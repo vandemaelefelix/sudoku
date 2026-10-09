@@ -2,9 +2,18 @@
   "name": "sudoku",
   "private": true,
   "packageManager": "pnpm@12.10.1",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "boundaries": "depcruise apps/mobile/App.tsx apps/mobile/src packages/sudoku-core/src --config .dependency-cruiser.cjs"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "18.5.0",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "57.0.2"
   }
 }
