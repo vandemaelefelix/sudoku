@@ -1,11 +1,20 @@
 import json
 from pathlib import Path
 
+import flatbuffers
 import numpy as np
 import pytest
 import torch
+from ai_edge_litert import schema_py_generated as schema
 
-from sudoku_ml.export import check_op_versions, export, op_versions, run_tflite
+from sudoku_ml.export import (
+    check_float32,
+    check_op_versions,
+    export,
+    non_float32_constants,
+    op_versions,
+    run_tflite,
+)
 from sudoku_ml.fixtures import load_reference_inputs
 from sudoku_ml.model import CellClassifier, ExportModel
 from sudoku_ml.train import load_config, train
@@ -26,6 +35,23 @@ def exported(tmp_path_factory) -> tuple[Path, Path]:
 def test_small_float32_file(exported):
     _, tflite = exported
     assert tflite.stat().st_size <= 1_000_000
+    check_float32(tflite)
+
+
+def test_check_float32_rejects_other_types(exported, tmp_path):
+    _, tflite = exported
+    model = schema.ModelT.InitFromObj(schema.Model.GetRootAsModel(tflite.read_bytes(), 0))
+    for tensor in model.subgraphs[0].tensors:
+        if model.buffers[tensor.buffer].data is not None and len(model.buffers[tensor.buffer].data):
+            tensor.type = schema.TensorType.FLOAT16
+            break
+    builder = flatbuffers.Builder(1024)
+    builder.Finish(model.Pack(builder), b"TFL3")
+    half = tmp_path / "half.tflite"
+    half.write_bytes(bytes(builder.Output()))
+    assert non_float32_constants(half)
+    with pytest.raises(ValueError, match="not float32"):
+        check_float32(half)
 
 
 def test_every_op_runs_on_tflite_2_17(exported):
