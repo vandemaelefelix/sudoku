@@ -64,14 +64,16 @@ straight into a dataset.
 
 ```json
 {
-  "id": "sha256 of the 64 × 64 cell image",
-  "source": "synthetic | legacy-v2 | emnist | app-export | fixture",
+  "id": "sha256 of the image, see below",
+  "source": "synthetic | legacy-v1 | legacy-v2 | emnist | app-export | fixture",
   "digit": 7,
   "kind": "printed",
   "scan": "optional scan id, groups the 81 cells of one photo"
 }
 ```
 
+- The `id` is the SHA-256 of the text `<width>x<height>` followed by the image's RGB pixel bytes,
+  row by row. Legacy cells keep their original size (71 × 71), so their id hashes that size.
 - A training dataset manifest MUST reject any entry with `source: fixture` (SUD-10). Fixtures are
   for evaluation only.
 - Legacy v2 labels map as: `0` → `empty`/`none`, `1–9` → digit with the kind still to label.

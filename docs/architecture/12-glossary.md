@@ -24,6 +24,8 @@ status: DRAFT
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
 | Intersection | One of the 10 × 10 points where grid lines cross. Found on capture, used for per-cell flattening |
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
+| legacy-v1 | The data of the 2020 repository `vandemaelefelix/sudoku_solver`. See `ml/DATA_SOURCES.md` |
+| legacy-v2 | The data of the 2025 sudoku project. See `ml/DATA_SOURCES.md` |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes` |
 | Lock-on | The moment the live outline has been steady long enough, and the scan captures |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
