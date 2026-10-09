@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value                                    |
 | ------- | ---------------------------------------- |
 | Project | Sudoku                                   |
-| Status  | Proposed, pending the device spike       |
+| Status  | Proposed, pending the walking skeleton (M0) |
 | Date    | 2026-10-09                               |
 | Contact | Felix                                    |
 
@@ -49,9 +49,10 @@ smoothness gain that A and B already deliver.
    interface ([05 §5.4](../05-building-block-view.md)) hides which engine runs a step.
 5. **Skia + Reanimated** for the outline and the transition, in both A and B.
 
-## Validation: the device spike
+## Validation: the walking skeleton (M0)
 
-Throwaway code on the developer's iPhone. ADR-002 moves to Accepted only if all of these pass:
+Real code that stays, built as milestone M0 and run on the developer's iPhone. ADR-002 moves to
+Accepted when all of these pass:
 
 | Check | Pass |
 | --- | --- |

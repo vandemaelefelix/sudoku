@@ -47,8 +47,8 @@ flowchart LR
 | Stage | Where it runs | Budget | Notes |
 | --- | --- | --- | --- |
 | Grid detection | Frame processor (ADR-002) | ≤ 15 ms per frame | On a frame downscaled to about 640 px. Returns `null` when no plausible quad is found |
-| Corner smoothing | Scan UI, UI thread | negligible | A filter over recent frames, so the outline does not jitter. Tuned in the spike |
-| Lock-on | Scan UI | — | Corners move less than a threshold for N consecutive frames. N and the threshold are tuned in the spike |
+| Corner smoothing | Scan UI, UI thread | negligible | A filter over recent frames, so the outline does not jitter. Tuned in the walking skeleton |
+| Lock-on | Scan UI | — | Corners move less than a threshold for N consecutive frames. N and the threshold are tuned in the walking skeleton |
 | Rough flatten | scanner, on capture | ≤ 30 ms | Perspective transform from the 4 corners to a square |
 | Intersections | scanner, on capture | ≤ 50 ms | Classical first: search each of the 100 expected points in a small window. An ML keypoint model replaces this only if book pages need it (F-12) |
 | Per-cell flatten | scanner, on capture | ≤ 30 ms | 81 small perspective transforms. Falls back to the rough flatten for a cell whose intersections were not found |
@@ -58,13 +58,13 @@ flowchart LR
 
 | Concern | Rule |
 | --- | --- |
-| Frame to OpenCV | Each frame is converted and downscaled with a VisionCamera resize plugin (`vision-camera-resize-plugin` or what the spike settles on) before fast-opencv sees it |
+| Frame to OpenCV | Each frame is converted and downscaled with a VisionCamera resize plugin (`vision-camera-resize-plugin` or what the walking skeleton settles on) before fast-opencv sees it |
 | Frame processor to UI thread | Detected corners are written to a Reanimated shared value from the frame processor (worklets). The UI thread reads it, smooths it and Skia draws the outline. No corner passes through the JS thread |
 | Coordinates | The live stage reports the quad in **normalised, upright coordinates**: `x` and `y` in `[0, 1]` of the frame after applying its orientation. This survives the different resolution, aspect ratio and orientation of the capture |
 | Capture source | On lock-on, VisionCamera takes a full-resolution photo. `recognise()` maps the normalised quad onto the photo after applying its EXIF orientation, then **re-detects the corners** in a small window around each mapped corner, because the phone may have moved a little |
-| Capture thread | `recognise()` runs off the JS thread (an async worklet or a native thread, settled in the spike), so the transition animation keeps running while it works |
+| Capture thread | `recognise()` runs off the JS thread (an async worklet or a native thread, settled in the walking skeleton), so the transition animation keeps running while it works |
 
-The exact VisionCamera major version and its worklet runtime are pinned by the spike and
+The exact VisionCamera major version and its worklet runtime are pinned by the walking skeleton and
 recorded in ADR-002.
 
 ## The transition
@@ -97,8 +97,8 @@ loads. If they have none or several, the correction screen says so and does not 
 
 | Question | Decided by |
 | --- | --- |
-| Smoothing filter and its parameters (moving average, One Euro filter, …) | Device spike, against QR-06 |
-| Lock-on rule: N frames and the movement threshold | Device spike |
+| Smoothing filter and its parameters (moving average, One Euro filter, …) | Walking skeleton (M0), against QR-06 |
+| Lock-on rule: N frames and the movement threshold | Walking skeleton (M0) |
 | Window size for the intersection search, and when a cell falls back to the rough flatten | First book-page fixtures |
 | Confidence threshold for "review this cell" | First real fixture set |
 

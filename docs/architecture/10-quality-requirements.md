@@ -55,7 +55,7 @@ are reported but do not gate.
 
 ## 10.3 Quality Scenarios
 
-The reference device is the developer's iPhone. The spike records its model in ADR-002.
+The reference device is the developer's iPhone. The walking skeleton records its model in ADR-002.
 
 | ID | Quality | Scenario | Target |
 | --- | --- | --- | --- |

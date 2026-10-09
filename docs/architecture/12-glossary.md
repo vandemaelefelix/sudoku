@@ -9,7 +9,7 @@ status: DRAFT
 | ai-edge-torch | Google's library to convert PyTorch models to TFLite (LiteRT). See ADR-005 |
 | Cell image | The 64 × 64 image of one cell after per-cell flattening. Preprocessed into the classifier's 32 × 32 input. See the model contract |
 | Contract | The model contract: input format, outputs, labels and manifest shared by `ml/` and the app |
-| Device spike | Throwaway code on a real iPhone that proves ADR-002 and ADR-005 before they are accepted |
+| Walking skeleton | Milestone M0: the thinnest real path from camera to model on the iPhone. Production code that proves ADR-002 and ADR-005 |
 | Digit head | The classifier output that says `empty` or 1–9 |
 | Entry | A digit the player filled in. In a scan: a `handwritten` digit. Editable |
 | Expo | The React Native framework and tooling used for the app. Development builds, since native modules are needed |

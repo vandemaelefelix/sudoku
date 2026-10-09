@@ -115,8 +115,8 @@ mismatch it disables scanning with a message instead of returning wrong digits.
 
 | Question | Decided by |
 | --- | --- |
-| float16 weights: supported cleanly by the ai-edge-torch export and fast-tflite? | Device spike |
-| Signature output names: exposed by fast-tflite, or only indices? | Device spike |
+| float16 weights: supported cleanly by the ai-edge-torch export and fast-tflite? | Walking skeleton (M0) |
+| Signature output names: exposed by fast-tflite, or only indices? | Walking skeleton (M0) |
 | Confidence threshold for "review this cell" | First real fixture set |
 
 ## Constraints
