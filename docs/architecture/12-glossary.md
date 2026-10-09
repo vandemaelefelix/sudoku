@@ -31,6 +31,8 @@ status: DRAFT
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
 | Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007) |
+| Review rate | The share of cells that the correction screen marks as uncertain. Accuracy is reported at a given review rate, for example 99.7 % at 5 % |
+| Suspect | A training cell whose label is probably wrong, found by `just suspects` |
 | Quad | The four outer corners of the detected grid |
 | Skia | `react-native-skia`, a 2D drawing library used for the outline and the transition |
 | VisionCamera | `react-native-vision-camera`, the camera library with frame processors |
