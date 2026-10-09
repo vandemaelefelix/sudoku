@@ -42,7 +42,7 @@ printed digits as givens, handwritten digits as editable player entries, and not
 | Source | Gives | Notes |
 | --- | --- | --- |
 | Synthetic printed digits | Unlimited `printed` and `empty` | Rendered in many fonts, with blur, perspective, paper texture, lighting and leftover grid lines |
-| Legacy v2 cells (~7.8k) | Real printed and some handwritten, plus `notes` | Re-check labels, add the kind |
+| Real cells in `ml/data/cells/` (~16k) | Real printed and some handwritten digits, empty cells | Add the kind. 71 cells still need a label |
 | EMNIST digits | `handwritten` | Augmented to look like ink inside a printed cell |
 | App export (F-11) | Real everything, especially the player's own handwriting | The correction screen's given / mine toggle labels the kind |
 

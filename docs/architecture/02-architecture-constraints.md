@@ -24,7 +24,6 @@ creates for itself are recorded as ADRs and indexed in [00-DECISIONS.md](00-DECI
 | OC-1 | One developer, side-project time | Every moving part must earn its place. Prefer one well-known tool over two specialised ones. |
 | OC-2 | Learning is a goal in itself | When two options are otherwise close, prefer the one that teaches the more relevant skill, and say so in the ADR. |
 | OC-3 | No ads, no tracking, no monetisation | The project exists partly to replace an ad-heavy app (F-16). |
-| OC-4 | Earlier repositories are archived, not ported | Code from the four predecessor repos is reference only. Data may be reused after re-checking. |
 
 ## 2.3 Conventions
 
