@@ -19,9 +19,11 @@ sudoku/
 │   ├── data/                    # images, NOT in git (ADR-009)
 │   └── artifacts/               # one folder per training run, gitignored
 ├── contracts/                   # model contract and data formats shared by ml/ and the app
-├── fixtures/scans/              # real photos + true grids, used by ml/ evaluation and app tests
+├── fixtures/
+│   ├── scans/                   # public-safe photos + true grids + the app's cell images (ADR-007, ADR-013)
+│   └── preprocess/              # reference cell images for preprocessing parity (model contract)
 ├── docs/architecture/           # this documentation
-├── package.json                 # pnpm workspaces + Turborepo
+├── package.json                 # pnpm workspaces
 └── justfile                     # one command list for both toolchains
 ```
 
@@ -51,11 +53,12 @@ flowchart TB
 
 | Block | Responsibility | Depends on | Must not depend on |
 | --- | --- | --- | --- |
-| **@sudoku/core** | Board model, rule checks, puzzle generator with difficulty grading, solver, logical next-step hints | nothing | React Native, Expo, any I/O (SUD-04) |
+| **@sudoku/core** | Board model, rule checks, a backtracking solver (uniqueness), a technique solver (grading and hints), the generator ([ADR-011](adr/adr-011-puzzle-generation-and-hints.md)) | nothing | React Native, Expo, any I/O (SUD-04) |
 | **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens | @sudoku/core, local storage | the scanner (SUD-03) |
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
-| **Local storage** | Puzzles, progress, settings, stats. Behind one repository interface so a sync layer can be added later | — | — |
+| **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)) | expo-sqlite | — |
+| **Fixture runner** | Development builds only. Runs the real scanner on fixture photos, writes cell images, reports scores ([ADR-010](adr/adr-010-testing-and-ci.md)) | scanner module | — |
 | **ml/** | Dataset assembly, synthetic data, training, evaluation on fixtures, export, promote | contracts/, fixtures/ | anything in apps/ or packages/ |
 
 ## 5.4 The scanner interface
@@ -64,24 +67,25 @@ The game and Scan UI see only this. Whether a step runs in fast-opencv or in a S
 invisible behind it (ADR-002). The types below are illustrative, not final.
 
 ```ts
-type Point = { x: number; y: number }
-type Quad = [Point, Point, Point, Point] // TL, TR, BR, BL, in frame coordinates
+type Point = { x: number; y: number }     // normalised: 0..1 of the upright image
+type Quad = [Point, Point, Point, Point]  // TL, TR, BR, BL
 
 // Live, called from a frame processor for every frame
 detectGrid(frame: Frame): { quad: Quad; score: number } | null
 
-// Once, after lock-on and capture
-recognise(photo: Photo, quad: Quad): {
+// Once, after lock-on and capture. Runs off the JS thread.
+// Maps the quad onto the photo (EXIF orientation applied) and re-detects corners near it.
+recognise(photo: Photo, quad: Quad): Promise<{
   cells: Array<{
     digit: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9  // 0 = empty
     kind: 'none' | 'printed' | 'handwritten' | 'notes'
     confidence: number                           // min of both heads
-    crop: Uri                                    // for the correction screen and export
+    cell: Uri                                    // 64 × 64 cell image: correction screen, export, fixtures
   }>                                             // 81 cells, row-major
   flattened: Uri                                 // for the transition animation
   intersections: Point[]                         // 100 points, used by the animation
   modelVersion: string
-}
+}>
 ```
 
 Smoothing the live corners, the lock-on rule and the animation live in the Scan UI, not in the

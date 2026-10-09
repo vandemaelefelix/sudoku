@@ -59,8 +59,9 @@ The full tree and scenarios are in [10-quality-requirements.md](10-quality-requi
 | --- | --- | --- |
 | 1 | **Recognition correctness** | One wrong digit breaks the puzzle. The grid as a whole has to be right, not the average cell |
 | 2 | **Smooth scanning** | The live outline and the transition are the feature people notice. Jitter or stutter makes it feel broken |
-| 3 | **Offline and private** | A daily game that needs a network is worse than the app it replaces. Photos stay on the phone |
+| 3 | **Offline and private** | A daily game that needs a network is worse than the app it replaces. Nothing leaves the phone unless the player exports it |
 | 4 | **Understandable architecture** | It is a learning and portfolio project. A reader must be able to follow every boundary and decision |
+| 5 | **Everyday game** | It replaces the app used every day: instant start, progress never lost, a hint when stuck |
 
 ## 1.3 Stakeholders
 
@@ -76,11 +77,11 @@ These are archived once this project covers what they did. Code is not ported. D
 
 | Repository | Period | What we keep |
 | --- | --- | --- |
-| [sudoku_solver](https://github.com/vandemaelefelix/sudoku_solver) (computer vision, v1) | 2020 | ~21k digit images (printed and handwritten), as a candidate data source |
+| [sudoku_solver](https://github.com/vandemaelefelix/sudoku_solver) (computer vision, v1) | 2020 | ~21k digit images, only if their origin can be established (ADR-013) |
 | [sudoku-solver](https://github.com/vandemaelefelix/sudoku-solver) (computer vision, v2) | 2025 | The ~7.8k labelled cells (re-checked, kind label added), the lesson that whole-grid accuracy is what matters, the class-imbalance findings |
 | [react-sudoku-app](https://github.com/vandemaelefelix/react-sudoku-app) (game) | 2022 | Game UX ideas: keyboard, timer, mistake highlighting, themes |
 | [next-sudoku-app](https://github.com/vandemaelefelix/next-sudoku-app) (Next starter) | 2022 | Nothing |
 
-The local folders `~/projects/sudoku_solver` and `~/projects/js-sudoku-solver` hold unpushed work
-from the v2 computer-vision project. The labelled cells in `sudoku_solver/data/digits` MUST be
-copied into this project's dataset before that folder is removed.
+An unversioned local copy of the v2 computer-vision project holds work that was never pushed,
+including the only copy of the ~7.8k labelled cells. Those cells MUST be copied into this
+project's dataset and backed up before anything is archived (R-09).

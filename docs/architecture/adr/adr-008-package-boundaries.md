@@ -21,7 +21,7 @@ and the scanner. A boundary can be a folder by convention, or a workspace packag
 
 | | Folder inside the app | Internal workspace package |
 | --- | --- | --- |
-| Boundary | By convention only | Enforced: the package can import only what its `package.json` lists |
+| Boundary | By convention only | Declared in its `package.json`. With pnpm's isolated linker that is enforced too. An Expo monorepo may need a hoisted `node_modules`, which removes that enforcement |
 | Tests | Inside the app's setup | Plain Node with Vitest, in milliseconds |
 | Reuse by the backend | Copy or move later | `"@sudoku/core": "workspace:*"` |
 | Native modules | Installed once, in the app | Must also be installed in the app, since Expo autolinks from the app only |
@@ -33,9 +33,10 @@ and the scanner. A boundary can be a folder by convention, or a workspace packag
    on React Native, Expo or any I/O (SUD-04). It is an internal package: the app imports its
    TypeScript source directly, with no build step and no publishing.
 2. **The scanner stays in `apps/mobile/src/scanner/`.** Its only user is the app, and its
-   dependencies are native modules. `src/scanner/index.ts` is its only entry point (SUD-05). A
-   lint rule forbids deep imports into it.
+   dependencies are native modules. `src/scanner/index.ts` is its only entry point (SUD-05).
 3. The game never imports the scanner (SUD-03). The Scan UI imports both.
+4. **Enforcement does not rely on the linker.** ESLint `no-restricted-imports` and
+   dependency-cruiser check SUD-03, SUD-04 and SUD-05 in CI ([ADR-010](adr-010-testing-and-ci.md)).
 
 ## Consequences
 

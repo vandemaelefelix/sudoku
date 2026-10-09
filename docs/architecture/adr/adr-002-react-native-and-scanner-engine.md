@@ -40,6 +40,8 @@ smoothness gain that A and B already deliver.
 ## Decision
 
 1. **React Native with Expo** (development builds, not Expo Go, since native modules are needed).
+   Continuous Native Generation: `ios/` and `android/` are generated from `app.json` and config
+   plugins, and are not committed.
 2. **VisionCamera** for the camera, with grid detection in a **frame processor**.
 3. **A by default.** fast-opencv for classical computer vision, fast-tflite for inference.
 4. **B per step, only when a step fails in A**, by being too slow, missing an API, or needing
@@ -57,6 +59,8 @@ Throwaway code on the developer's iPhone. ADR-002 moves to Accepted only if all 
 | Outline drawn in Skia from smoothed corners | Visibly steady on a still page, follows within 100 ms when moved |
 | fast-opencv covers the capture stage | perspective transform, threshold, contours, morphology available, or a named Swift fallback |
 | Memory | No growth over 5 minutes of scanning (Mat buffers released) |
+| Thread handoff | Corners reach the UI thread through a shared value without passing the JS thread. The VisionCamera major version and worklet runtime that do this are pinned here |
+| Capture off the JS thread | `recognise()` runs while the transition animation stays at 60 fps |
 
 A failing row decides which step moves to B, not the whole approach. The measured numbers are
 added to this ADR.

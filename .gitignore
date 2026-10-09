@@ -29,3 +29,7 @@ ml/artifacts/
 # Secrets
 .env
 .env.*
+
+# Expo Continuous Native Generation (ADR-002)
+apps/mobile/ios/
+apps/mobile/android/

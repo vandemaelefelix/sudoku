@@ -28,10 +28,20 @@ working.
 | Training on Apple Silicon | `tensorflow-metal`, fragile in the previous project | MPS backend, works without extra packages |
 | Skill relevance | Declining | Industry and research default |
 
+### Quantisation
+
+| Option | Size for ~100k parameters | For | Against |
+| --- | --- | --- | --- |
+| **float32 / float16** | ~400 KB / ~200 KB | No accuracy loss. Nothing extra to validate | Larger, still far under QR-13's 1 MB |
+| int8 | ~100 KB | Smallest, fastest on CPU | Accuracy risk, an extra gate check, and GPU or Core ML acceleration often falls back to CPU for int8 |
+
+int8 solves a size problem the project does not have.
+
 ## Decision
 
 1. **PyTorch** for training, on the MPS backend.
-2. **ai-edge-torch** to export `.tflite`, with int8 post-training quantisation.
+2. **ai-edge-torch** to export `.tflite` with **float weights** (float16 if the export supports it
+   cleanly, otherwise float32). No int8 in v1.
 3. **coremltools** only if a step moves to Swift (ADR-002).
 4. Training runs as **CLI scripts** with a config file (`just train cell-classifier`). Notebooks
    are for exploration only. Each run writes its model, `metrics.json` and a model card to
@@ -41,9 +51,13 @@ working.
 
 ## Validation: the device spike
 
-A tiny CNN trained for a few epochs, exported with ai-edge-torch, run through fast-tflite on the
-iPhone. Pass: the on-device outputs match PyTorch's on the same 81 reference crops (top class
-identical, probabilities within 1e-2 for float, within the quantisation tolerance for int8).
+A tiny CNN with both heads, trained for a few epochs, exported with ai-edge-torch, and run
+through fast-tflite on the iPhone. Pass:
+
+- The on-device outputs match PyTorch's on the 81 reference cells in `fixtures/preprocess/`:
+  same top class on both heads, probabilities within `1e-3` (float32) or `1e-2` (float16).
+- The two outputs can be told apart by name or by a stable index (see the
+  [model contract](../00-concepts/model-contract.md)).
 
 ## Consequences
 
@@ -55,4 +69,5 @@ identical, probabilities within 1e-2 for float, within the quantisation toleranc
 ## Reassessment Triggers
 
 - The export path breaks on an operator the model needs.
+- A model passes 1 MB, or inference passes its 100 ms budget. Then evaluate int8.
 - The app moves off TFLite (for example to ExecuTorch), which would remove the conversion step.
