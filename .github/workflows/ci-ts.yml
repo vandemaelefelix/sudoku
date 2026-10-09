@@ -11,7 +11,7 @@ on:
       - .npmrc
       - .nvmrc
       - tsconfig.base.json
-      - eslint.config.mjs
+      - .oxlintrc.json
       - .dependency-cruiser.cjs
       - justfile
       - .github/workflows/ci-ts.yml

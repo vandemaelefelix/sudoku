@@ -18,7 +18,7 @@ Prerequisites: Node 24, pnpm 12, uv, just. Xcode is needed from issue #2 on.
 
     just setup   # install TypeScript and Python dependencies
     just test    # all tests
-    just lint    # ESLint, boundary rules, ruff
+    just lint    # oxlint, boundary rules, ruff
     just --list  # every command
 
 ## Architecture docs

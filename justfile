@@ -27,7 +27,7 @@ test-ml:
 # Every lint, including the boundary rules
 lint: lint-ts boundaries lint-ml
 
-# ESLint for all TypeScript
+# oxlint for all TypeScript
 lint-ts:
     pnpm lint
 

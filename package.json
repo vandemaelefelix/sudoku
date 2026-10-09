@@ -8,12 +8,11 @@
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "eslint .",
+    "lint": "oxlint --deny-warnings",
     "boundaries": "depcruise apps/mobile/App.tsx apps/mobile/src packages/sudoku-core/src --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
     "dependency-cruiser": "18.5.0",
-    "eslint": "^9.39.5",
-    "eslint-config-expo": "57.0.2"
+    "oxlint": "1.87.0"
   }
 }
