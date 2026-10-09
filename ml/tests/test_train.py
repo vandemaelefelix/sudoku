@@ -1,10 +1,14 @@
 import json
+import tomllib
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
+from PIL import Image
 
-from sudoku_ml.contract import UNKNOWN_KIND
+from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND
+from sudoku_ml.fixtures import FIXTURE_SEED
 from sudoku_ml.train import (
     expected_calibration_error,
     fit_temperature,
@@ -84,3 +88,55 @@ def test_unknown_config_key_is_rejected(tmp_path: Path):
     bad.write_text((ML / "configs" / "smoke.toml").read_text() + "\nunknown = 1\n")
     with pytest.raises(TypeError):
         load_config(bad)
+
+
+def smoke_config(tmp_path: Path, **changes) -> Path:
+    values = tomllib.loads((ML / "configs" / "smoke.toml").read_text()) | changes
+    path = tmp_path / "config.toml"
+    path.write_text("\n".join(f"{k} = {json.dumps(v)}" for k, v in values.items()))
+    return path
+
+
+def test_real_cells_without_data_raise(tmp_path: Path):
+    config = load_config(smoke_config(tmp_path, real_cells=True))
+    root = tmp_path / "ml"
+    with pytest.raises(ValueError, match="real data is not present"):
+        train(config, root, artifacts_dir=tmp_path / "out")
+
+
+def test_real_cells_with_empty_folders_raise(tmp_path: Path):
+    root = tmp_path / "ml"
+    (root / "fonts").mkdir(parents=True)
+    for label in DIGIT_CLASSES:
+        (root / "data" / "cells" / label).mkdir(parents=True)
+    config = load_config(smoke_config(tmp_path, real_cells=True))
+    with pytest.raises(ValueError, match="real data is not present"):
+        train(config, root, artifacts_dir=tmp_path / "out")
+
+
+@pytest.mark.parametrize("seed", [FIXTURE_SEED, FIXTURE_SEED - 1])
+def test_seed_that_reaches_the_fixture_seed_is_rejected(tmp_path: Path, seed: int):
+    with pytest.raises(ValueError, match="fixture seed"):
+        load_config(smoke_config(tmp_path, seed=seed))
+
+
+def test_model_card_has_ece_and_test_size(tmp_path: Path):
+    run = train(load_config(ML / "configs" / "smoke.toml"), ML, artifacts_dir=tmp_path)
+    card = (run / "model-card.md").read_text()
+    assert "ECE:" in card and "Test cells:" in card
+    assert "not reviewed" not in card  # only real-cell runs carry this line
+
+
+def test_real_run_model_card_notes_unreviewed_labels(tmp_path: Path):
+    root = tmp_path / "ml"
+    root.mkdir()
+    (root / "fonts").symlink_to(ML / "fonts")
+    rng = np.random.default_rng(0)
+    for label in DIGIT_CLASSES:
+        (root / "data" / "cells" / label).mkdir(parents=True)
+        for n in range(12):
+            pixels = rng.integers(0, 256, (64, 64, 3), dtype=np.uint8)
+            Image.fromarray(pixels).save(root / "data" / "cells" / label / f"{label}{n:02d}.png")
+    config = load_config(smoke_config(tmp_path, real_cells=True))
+    run = train(config, root, artifacts_dir=tmp_path / "out")
+    assert "Labels: not reviewed by the suspects check" in (run / "model-card.md").read_text()

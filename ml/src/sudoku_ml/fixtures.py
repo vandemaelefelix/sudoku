@@ -11,8 +11,11 @@ from sudoku_ml.contract import BATCH
 from sudoku_ml.preprocess import preprocess_cell
 from sudoku_ml.synthetic import font_files, generate
 
+# SUD-10: training must never draw synthetic cells with this seed.
+FIXTURE_SEED = 2026
 
-def write_preprocess_fixtures(out_dir: Path, fonts: list[Path], seed: int = 2026) -> None:
+
+def write_preprocess_fixtures(out_dir: Path, fonts: list[Path], seed: int = FIXTURE_SEED) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     for n, sample in enumerate(generate(per_class=9, seed=seed, fonts=fonts)[:BATCH]):
         Image.fromarray(sample.image).save(out_dir / f"{n:02d}.cell.png")

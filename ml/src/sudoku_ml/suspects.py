@@ -30,6 +30,24 @@ def rank_suspects(names, labels, probs: np.ndarray, top: int) -> list[dict]:
     ]
 
 
+def refuse_reviewed(path: Path) -> None:
+    """Raise when the file has a chosen new_label. A rerun would destroy that work."""
+    if not path.exists():
+        return
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        if any((r.get("new_label") or "").strip() for r in csv.DictReader(handle)):
+            raise ValueError(f"{path} has reviewed labels. Move the file first.")
+
+
+def write_relabels(rows: list[dict], path: Path) -> None:
+    """Write the review file. Refuse to overwrite a file with a chosen new_label."""
+    refuse_reviewed(path)
+    with path.open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["file", "label", "predicted", "new_label"])
+        writer.writerows([[r["file"], r["label"], r["predicted"], ""] for r in rows])
+
+
 def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:
     model = CellClassifier().to(device)
     steps = max(1, len(images) // 256)
@@ -65,8 +83,12 @@ def _sheets(rows: list[dict], cells_dir: Path, out: Path) -> None:
 
 def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
     cells_dir = ml_root / "data" / "cells"
+    out = ml_root / "data" / "review"
+    refuse_reviewed(out / "relabels.csv")  # fail before the slow cross-validation
     paths = [p for label in DIGIT_CLASSES for p in sorted((cells_dir / label).glob("*.png"))]
     samples = load_cells(cells_dir)
+    if len(paths) != len(samples):
+        raise ValueError(f"{len(paths)} files but {len(samples)} cells")
     images, digit, kind = stack(samples)
     groups = group_ids(samples)
     unique = np.random.default_rng(0).permutation(np.unique(groups))
@@ -83,16 +105,12 @@ def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 15
         logits, _ = _logits(model, images[held], device)
         probs[held.numpy()] = logits.softmax(1).numpy()
     rows = rank_suspects([p.stem for p in paths], digit.tolist(), probs, top)
-    out = ml_root / "data" / "review"
     out.mkdir(parents=True, exist_ok=True)
     with (out / "suspects.csv").open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    with (out / "relabels.csv").open("w", newline="") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["file", "new_label"])
-        writer.writerows([[r["file"], ""] for r in rows])
+    write_relabels(rows, out / "relabels.csv")
     _sheets(rows, cells_dir, out)
     return out
 

@@ -73,6 +73,14 @@ def run_tflite(path: Path, inputs: np.ndarray) -> list[np.ndarray]:
     return [interpreter.get_tensor(d["index"]).copy() for d in interpreter.get_output_details()]
 
 
+def check_same_argmax(outputs: dict[str, np.ndarray], expected: dict[str, np.ndarray]) -> None:
+    """ADR-005: the digit and kind argmax must agree on every reference cell."""
+    for name in ("digit", "kind"):
+        wrong = np.nonzero(outputs[name].argmax(1) != expected[name].argmax(1))[0]
+        if len(wrong):
+            raise ValueError(f"TFLite and PyTorch disagree on the {name} of cells {wrong.tolist()}")
+
+
 def export(run: Path, fixture_dir: Path) -> Path:
     model = CellClassifier()
     model.load_state_dict(torch.load(run / "model.pt"))
@@ -93,6 +101,9 @@ def export(run: Path, fixture_dir: Path) -> Path:
     diff = max(float(np.abs(outputs[index[n]] - expected[n].detach().numpy()).max()) for n in index)
     if diff >= 1e-3:
         raise ValueError(f"TFLite differs from PyTorch by {diff}")
+    check_same_argmax(
+        {n: outputs[index[n]] for n in index}, {n: expected[n].detach().numpy() for n in index}
+    )
     info = {
         "contract": CONTRACT_VERSION,
         "input_shape": list(inputs.shape),

@@ -16,7 +16,7 @@ def apply_relabels(cells_dir: Path, relabels: Path) -> int:
             raise ValueError(f"{path.stem} is in two folders: {other} and {path.parent.name}")
         current[path.stem] = path
     wanted: dict[str, str] = {}
-    with relabels.open(newline="") as handle:
+    with relabels.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if not {"file", "new_label"} <= set(reader.fieldnames or ()):
             raise ValueError("relabel CSV needs the header file,new_label")
