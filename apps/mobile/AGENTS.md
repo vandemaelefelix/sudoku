@@ -1,41 +1,33 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# AGENTS.md: the Expo app
 
-## Expo has changed — do not trust your training data
+These instructions add to the root `AGENTS.md`. They apply to work in `apps/mobile/`.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+## Do not trust remembered Expo APIs
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+Expo changes its APIs in every SDK release. Before you write code that uses an Expo, EAS or
+React Native API:
+
+1. Read the major version of `expo` in `package.json`.
+2. Read the docs for that version: `https://docs.expo.dev/versions/v<major>.0.0/`.
+3. For other topics, start at `https://docs.expo.dev/llms.txt`. Do not answer from memory.
 
 ## Commands
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+| Task | Command |
+| --- | --- |
+| Add a dependency | `pnpm exec expo install <package>`. It picks the version that fits the SDK. Do not use `pnpm add` for Expo or React Native packages |
+| Start the dev server | `just app` |
+| Check the Expo setup | `pnpm dlx expo-doctor` |
+| Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |
 
-```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
-```
-
-Run lint and typecheck before declaring any task done.
-
-## Navigation & Routing
-
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
-
-## Building with EAS
-
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+Run lint, typecheck and tests before you say a task is done.
 
 ## Rules
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- `ios/` and `android/` are generated (Continuous Native Generation, ADR-002). Do not create,
+  edit or commit them. Configure native behaviour in `app.json` and config plugins.
+- Native modules need a development build, not Expo Go. Build locally with
+  `pnpm exec expo run:ios`. Cloud builds (EAS) are not used yet (ADR-010).
+- Keep the folders: `src/game/` (game UI), `src/scan/` (scan UI), `src/scanner/` (scanner, entered
+  only through `src/scanner/index.ts`). Navigation is not decided yet. Do not add Expo Router
+  without an ADR.

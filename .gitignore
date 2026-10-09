@@ -38,3 +38,4 @@ apps/mobile/android/
 .superpowers/
 coverage/
 apps/mobile/dist/
+.vitest/
