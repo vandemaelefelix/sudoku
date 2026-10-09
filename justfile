@@ -51,3 +51,7 @@ bundle:
 # Check relative links in the docs
 docs-check:
     python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md
+
+# Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
+preprocess-fixtures:
+    uv run --directory ml python -m sudoku_ml.fixtures ../fixtures/preprocess
