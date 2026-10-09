@@ -29,7 +29,9 @@ describe('countFrame', () => {
   })
 
   it('restarts when the clock goes backwards', () => {
-    expect(feed([5, 5.5, 2, 2.5])).toEqual([null, null, null, null])
+    const rates = feed([5, 5.5, 2, 3.2])
+    expect(rates.slice(0, 3)).toEqual([null, null, null])
+    expect(rates[3]).toBeCloseTo(1 / 1.2, 5)
   })
 
   it('never reports a rate that is not finite', () => {
