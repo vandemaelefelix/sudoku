@@ -51,5 +51,6 @@ def to_cell_image(rgb: np.ndarray) -> np.ndarray:
         return rgb
     wy = area_weights(rgb.shape[0], CELL_SIZE)
     wx = area_weights(rgb.shape[1], CELL_SIZE)
-    out = np.einsum("ij,jkc,lk->ilc", wy, rgb.astype(np.float32), wx)
+    tmp = np.einsum("ij,jkc->ikc", wy, rgb.astype(np.float32))
+    out = np.einsum("ikc,lk->ilc", tmp, wx)
     return np.clip(np.rint(out), 0, 255).astype(np.uint8)
