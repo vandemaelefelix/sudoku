@@ -35,14 +35,15 @@ and the scanner. A boundary can be a folder by convention, or a workspace packag
 2. **The scanner stays in `apps/mobile/src/scanner/`.** Its only user is the app, and its
    dependencies are native modules. `src/scanner/index.ts` is its only entry point (SUD-05).
 3. The game never imports the scanner (SUD-03). The Scan UI imports both.
-4. **Enforcement does not rely on the linker.** ESLint `no-restricted-imports` and
-   dependency-cruiser check SUD-03, SUD-04 and SUD-05 in CI ([ADR-010](adr-010-testing-and-ci.md)).
+4. **Enforcement does not rely on the linker.** dependency-cruiser checks SUD-03, SUD-04 and
+   SUD-05 in CI ([ADR-010](adr-010-testing-and-ci.md)).
 
 ## Consequences
 
 - The backend, when it comes, validates leaderboard results with the same solver.
 - Moving the scanner into a package later is mechanical, because its interface is already the
   only entry point.
+- Expo SDK 57 bundles `@sudoku/core` with pnpm's isolated linker. No hoisting is needed (#1).
 
 ## Reassessment Triggers
 

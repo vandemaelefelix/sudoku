@@ -9,8 +9,8 @@ tool-specific file.
 An ad-free iOS sudoku game. It can scan a paper sudoku with the camera, recognise printed and
 handwritten digits on the device, and load the puzzle to play, solve or get a hint.
 
-- **Status:** design. There is no code yet. Do not scaffold or write code until the
-  implementation plan is approved.
+- **Status:** milestone M0 (walking skeleton). The repository is scaffolded. Work on an issue
+  only after its implementation plan is approved.
 - **Goal:** learning and portfolio first. It also replaces an ad-heavy sudoku app. An App Store
   release is possible, not a goal.
 
@@ -24,6 +24,8 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | How a scan works | `docs/architecture/00-concepts/scan-pipeline.md` |
 | What the model must accept and return | `docs/architecture/00-concepts/model-contract.md` |
 | Words and their meaning | `docs/architecture/12-glossary.md` |
+| Commands (setup, test, lint) | `justfile`, or run `just --list` |
+| Rules for the Expo app | `apps/mobile/AGENTS.md` |
 
 ## Rules that bind all work
 

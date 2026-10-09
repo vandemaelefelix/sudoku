@@ -33,3 +33,9 @@ ml/artifacts/
 # Expo Continuous Native Generation (ADR-002)
 apps/mobile/ios/
 apps/mobile/android/
+
+# Agent plan workspaces
+.superpowers/
+coverage/
+apps/mobile/dist/
+.vitest/

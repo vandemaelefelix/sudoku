@@ -45,9 +45,14 @@ debugging without paper at hand. Product scanning stays camera-only (TC-5). It:
 - reports corner error, intersections found, and digit grid-exact against `truth.json`,
 - creates new fixtures from a scan plus the correction screen's result.
 
-### Boundaries in CI
+### Linting and boundaries in CI
 
-ESLint `no-restricted-imports` and dependency-cruiser enforce SUD-03, SUD-04 and SUD-05 in CI.
+**oxlint** lints all TypeScript. It replaces ESLint: one small JSON config, no plugin peer
+conflicts with Expo's ESLint config, and it runs in well under a second. Warnings fail CI.
+
+**dependency-cruiser** enforces SUD-03, SUD-04 and SUD-05 in CI. Each rule was shown to fail on
+every class of violation it claims to cover: a Node builtin, a hoisted npm package, a declared
+devDependency and a relative escape out of the package (#1).
 The package boundary does not rely on pnpm's isolation alone, because an Expo monorepo may need a
 hoisted `node_modules` ([ADR-008](adr-008-package-boundaries.md)).
 

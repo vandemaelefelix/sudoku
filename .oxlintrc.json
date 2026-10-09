@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "import",
+    "react",
+    "jest",
+    "vitest"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true
+  },
+  "settings": {
+    "react": {
+      "version": "19.2"
+    }
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.expo/**",
+    "ml/**",
+    ".superpowers/**"
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "import/no-cycle": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/style-prop-object": "off",
+    "unicorn/require-module-specifiers": "off"
+  }
+}
