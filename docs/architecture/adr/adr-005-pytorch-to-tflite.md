@@ -64,6 +64,16 @@ uses only builtin ops (CONV_2D, DEPTHWISE_CONV_2D for the first layer with one i
 v5, SOFTMAX, RESHAPE, TRANSPOSE), all supported by TFLite 2.17. The global-average-pooling network of ADR-006 adds a pooling or
 mean op: the export checks every op version against 2.17 (#4). The phone side is issue #5.
 
+**Measured with the trained model** (run `20261009-210543-cell-classifier`, 72,926 parameters):
+
+- The file is 326,348 bytes, float32.
+- The maximum absolute difference to PyTorch is 1.19 × 10⁻⁷ on the 81 reference cells.
+- The outputs are `digit` at index 0 and `kind` at index 1.
+- The ops are DEPTHWISE_CONV_2D v1, CONV_2D v1, MAX_POOL_2D v1, SUM v1, MUL v1, RESHAPE v1,
+  GATHER_ND v1, FULLY_CONNECTED v5 and SOFTMAX v1. All are within TFLite 2.17.
+- Global average pooling exports as SUM and MUL, not MEAN.
+- The op table `ml/src/sudoku_ml/tflite_2_17_ops.json` holds 168 ops from v2.17.0 `register.cc`.
+
 ## Consequences
 
 - Pins: Python 3.12, torch 2.13.0 (litert-torch 0.9.4 requires torch below 2.14), litert-torch

@@ -60,6 +60,11 @@ only. A cell whose kind is unknown adds no kind loss.
 
 ## Consequences
 
+- The first real run (`20261009-210543-cell-classifier`, MPS, 25 epochs, 252 s) gives a digit
+  accuracy of 98.71 % on 1,550 real test cells. The numbers are from before the label check.
+- The accuracy of the kept cells is 99.02 %, 99.14 % and 99.46 % at review rates of 1 %, 2 % and
+  5 %. The ECE is 0.63 % at a fitted temperature of 0.698.
+- The kind accuracy is 100 % on synthetic cells. This says nothing about real kinds.
 - Until handwritten cells with a kind label exist (EMNIST, app exports), the kind head cannot
   tell printed from handwritten. The app treats `kind` as a suggestion on the correction screen
   until then.
