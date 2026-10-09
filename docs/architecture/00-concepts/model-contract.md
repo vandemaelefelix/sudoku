@@ -64,19 +64,20 @@ straight into a dataset.
 
 ```json
 {
-  "id": "sha256 of the 64 × 64 cell image",
-  "source": "synthetic | legacy-v2 | emnist | app-export | fixture",
+  "id": "sha256 of the image, see below",
+  "source": "synthetic | photo | emnist | app-export | fixture",
   "digit": 7,
   "kind": "printed",
   "scan": "optional scan id, groups the 81 cells of one photo"
 }
 ```
 
+- The `id` is the SHA-256 of the text `<width>x<height>` followed by the image's RGB pixel bytes,
+  row by row. An image keeps its own size in the id: the cells in `ml/data/cells/` are 71 × 71.
 - A training dataset manifest MUST reject any entry with `source: fixture` (SUD-10). Fixtures are
   for evaluation only.
-- Legacy v2 labels map as: `0` → `empty`/`none`, `1–9` → digit with the kind still to label.
-  `10` (noise) is **not** mapped automatically. Those 67 cells are relabelled by hand as `notes`,
-  `empty` or a digit.
+- `photo` means a cell cut from a sudoku photo in `ml/data/`. Its kind is not labelled yet.
+  Cells in `ml/data/cells/unlabeled/` get a label by hand: `notes`, `empty` or a digit.
 
 ## Manifest
 

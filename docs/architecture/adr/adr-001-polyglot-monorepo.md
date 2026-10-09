@@ -15,15 +15,14 @@ status: DRAFT
 
 The project has a TypeScript side (the app and the game logic) and a Python side (training).
 They change together: a new model contract touches the training code, the export and the app's
-loader in one go. One developer maintains both (OC-1). Four earlier sudoku repositories already
-split this work across repos, and nothing tied them together.
+loader in one go. One developer maintains both (OC-1).
 
 ## Alternatives Evaluated
 
 | Option | For | Against |
 | --- | --- | --- |
 | **One monorepo, two toolchains side by side** | One PR changes contract, training and app together. Shared fixtures. One history | Two package managers in one repo |
-| Two repos (app, ml) | Each toolchain stays pure | The contract and fixtures have no single home. The model handoff crosses repos. This is the pattern that left four orphaned repos |
+| Two repos (app, ml) | Each toolchain stays pure | The contract and fixtures have no single home. The model handoff crosses repos |
 | One toolchain for everything (Nx or Bazel managing Python too) | One command surface | Heavy tooling for a solo side project. Fights uv instead of using it |
 
 ## Decision

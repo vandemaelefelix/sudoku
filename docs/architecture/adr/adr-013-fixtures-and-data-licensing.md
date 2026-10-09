@@ -18,8 +18,8 @@ are involved, and not all of them may be published:
 
 - Photos of newspaper and puzzle-book pages are copyrighted puzzles and layouts.
 - Synthetic training data is rendered with fonts, and each font has its own licence.
-- EMNIST is derived from NIST data, and the ~21k images from the 2020 repository have no
-  recorded source.
+- EMNIST is derived from NIST data. The real cells and photos in `ml/data/` include images
+  downloaded from the web, with no licence.
 
 The promote gate needs fixtures (ADR-007), and QR-01 / QR-02 talk about newspapers and books
 specifically.
@@ -39,7 +39,8 @@ specifically.
    Licence or similar). `ml/fonts/` holds the files together with each licence.
 4. **Every dataset source has a provenance line** in `ml/DATA_SOURCES.md`: origin, licence, and
    whether derived models may be published. EMNIST's terms are checked and recorded before it is
-   used. The 2020 images are **not used** unless their origin is established.
+   used. Data that may not be published may train models that stay private. It never goes into
+   `fixtures/`, and a model trained on it is not published.
 5. **App Store, if it ever ships:** a camera usage text that says scans stay on the phone, and the
    privacy label "Data Not Collected". Both follow from SUD-01 and SUD-02.
 

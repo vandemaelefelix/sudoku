@@ -15,9 +15,7 @@ status: DRAFT
 
 The models are trained on an Apple Silicon Mac (TC-4) and run in the app through fast-tflite
 (ADR-002), so they must end up as `.tflite` files. A Core ML export may be needed for any step
-that moves to a Swift plugin. Learning the current ML stack is a goal (OC-2). The earlier v2
-project used TensorFlow 2.13 with `tensorflow-metal`, and had to pin `numpy < 1.25` to keep it
-working.
+that moves to a Swift plugin. Learning the current ML stack is a goal (OC-2).
 
 ## Alternatives Evaluated
 
@@ -25,7 +23,7 @@ working.
 | --- | --- | --- |
 | Export to TFLite | Built in, most mature | Through Google's ai-edge-torch (LiteRT). Fine for plain CNNs, younger |
 | Export to Core ML | Possible | coremltools, well supported |
-| Training on Apple Silicon | `tensorflow-metal`, fragile in the previous project | MPS backend, works without extra packages |
+| Training on Apple Silicon | `tensorflow-metal`, pinned to old TensorFlow and NumPy versions | MPS backend, works without extra packages |
 | Skill relevance | Declining | Industry and research default |
 
 ### Quantisation
