@@ -3,7 +3,19 @@
 Training, evaluation and export of the cell classifier. A standalone uv project. It shares only
 files with the app: `contracts/`, `fixtures/` and the promoted model (SUD-07).
 
-PyTorch arrives with issue #4.
+## Commands
+
+Run these from the repository root. Run `just --list` for all commands.
+
+- `just train [config]`: train the two-head classifier. A run writes to `ml/artifacts/`.
+- `just export <run>`: export a run to TFLite. The run path is relative to `ml/`, for example `just export artifacts/<run>`.
+- `just preprocess-fixtures`: regenerate the synthetic reference pairs in `fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
+- `just dataset-manifest`: rewrite `ml/datasets/cells.csv` from the folders.
+- `just suspects`: rank the cells whose label the model doubts most.
+- `just relabel [file]`: apply the reviewed labels from a file to the cells.
+
+Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
+stays private (ADR-013).
 
 ## Data
 
@@ -34,3 +46,13 @@ ml/datasets/
 
 The dataset holds 16,277 cells and 253 photos. 71 cells have no label yet: 67 hold notes or other
 marks, and 4 need a check by hand.
+
+## Review suspect labels
+
+1. Run `just suspects`. It writes `ml/data/review/`: `suspects.csv`, `relabels.csv` and `sheet-NN.png`.
+2. Look at each sheet. The number under a cell is its row in `relabels.csv`, counted from 0.
+3. Fill the `new_label` column. A valid value is empty (keep the label), `empty`, `1` to `9`, or `unlabeled`.
+4. Save the file as CSV with comma separators.
+5. Run `just relabel`.
+
+Do not run `just suspects` again before step 5. It refuses to overwrite a `relabels.csv` that has a filled `new_label`. Move the file first.
