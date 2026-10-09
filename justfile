@@ -55,3 +55,7 @@ docs-check:
 # Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
 preprocess-fixtures:
     uv run --directory ml python -m sudoku_ml.fixtures ../fixtures/preprocess
+
+# Train a model from a config in ml/configs/ (default: the cell classifier)
+train config="cell-classifier":
+    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
