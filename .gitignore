@@ -1,0 +1,31 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# JS
+node_modules/
+.turbo/
+.expo/
+dist/
+*.log
+
+# iOS / Android build output
+ios/build/
+ios/Pods/
+android/build/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# ML: images and runs stay out of git (ADR-009)
+ml/data/
+ml/artifacts/
+
+# Secrets
+.env
+.env.*
