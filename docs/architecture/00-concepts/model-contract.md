@@ -26,32 +26,42 @@ The scanner's per-cell flatten ([scan-pipeline](scan-pipeline.md)) produces one 
 
 | Step | Exact rule |
 | --- | --- |
-| 1. Grayscale | `gray = 0.299 R + 0.587 G + 0.114 B` (ITU-R BT.601), on 8-bit values |
+| 1. Grayscale | Convert the 8-bit values to float32, then `gray = 0.299 R + 0.587 G + 0.114 B` (ITU-R BT.601) in float32. No rounding |
 | 2. Crop | Rows and columns `[6, 58)` of the 64 × 64 image, giving 52 × 52. This drops the grid lines |
-| 3. Resize | To 32 × 32 with area interpolation (OpenCV `INTER_AREA`) |
+| 3. Resize | To 32 × 32 with an exact area average, defined below |
 | 4. Polarity and range | `x = 1 − gray / 255`, as `float32`. Ink is near `1.0`, paper near `0.0`. Absolute, never normalised per cell |
-| 5. Shape | `[N, 32, 32, 1]`, N = 81 in the app |
+| 5. Shape | `[81, 32, 32, 1]`. The batch is static: always the 81 cells of one grid |
+
+**Exact area average.** The resize from 52 × 52 to 32 × 32 is a weighted average. Output pixel `i`
+covers the source interval `[i × 1.625, (i + 1) × 1.625)`. Weight `W[i][j]` is the overlap of
+source pixel `j` (the interval `[j, j + 1)`) with that interval, divided by 1.625. The resized
+image is `W · crop · Wᵀ`, with `W` a 32 × 52 matrix. This definition is the normative one. OpenCV's
+`INTER_AREA` on float32 computes the same thing within 4 × 10⁻⁵ gray levels (about 1.5 × 10⁻⁷
+after step 4), so it serves as a check. Neither side needs OpenCV for this step.
 
 `ml/` and the scanner module each implement these steps. Both are tested against the same
 reference pairs in `fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image) and
-`<n>.expected.json` (the 32 × 32 result). Every value must match within `1/255`.
+`<n>.expected.json` (the 32 × 32 result). Every value must match within `1/255`. The scanner implements them in plain TypeScript on a
+`Float32Array`, so the result does not depend on an OpenCV build.
 
 ## Model file
 
 | Property | Value |
 | --- | --- |
 | Format | TFLite (LiteRT) |
-| Weights | float32, or float16 if the export supports it cleanly. **No int8 in v1** ([ADR-005](../adr/adr-005-pytorch-to-tflite.md)) |
+| Weights | float32 in v1. No float16 and no int8 ([ADR-005](../adr/adr-005-pytorch-to-tflite.md)) |
+| Runtime | TFLite 2.17, the version `react-native-fast-tflite` bundles on iOS. TFLite 2.17 must support every op and op version in the model. Export and promote check this |
+| Delegate | CPU. `react-native-fast-tflite` does not support the Metal delegate |
 | Input and output dtype | `float32` |
 | Softmax | Inside the model. Outputs are probabilities |
-| Output identification | By signature output name, `digit` and `kind`. If the runtime exposes only tensor indices, `manifest.json` maps names to indices and the scanner reads that map. Tensor order is never assumed |
+| Output identification | By index. The phone runtime returns outputs in tensor order. Their names are not reliable identifiers. `manifest.json` records the index of `digit` and of `kind`, taken from the exported file. The scanner reads that map and checks the shapes `[81, 10]` and `[81, 4]` before it uses the outputs. The tensor names also contain `digit` and `kind`, for tools |
 
 ## Outputs
 
 | Head | Shape | Classes, in this order |
 | --- | --- | --- |
-| `digit` | `[N, 10]` | `empty, 1, 2, 3, 4, 5, 6, 7, 8, 9` |
-| `kind` | `[N, 4]` | `none, printed, handwritten, notes` |
+| `digit` | `[81, 10]` | `empty, 1, 2, 3, 4, 5, 6, 7, 8, 9` |
+| `kind` | `[81, 4]` | `none, printed, handwritten, notes` |
 
 Valid pairs: `empty` goes with `none` or `notes`. A digit goes with `printed` or `handwritten`.
 The app treats an invalid pair as low confidence. A cell's confidence is the lower of the two
@@ -116,8 +126,7 @@ mismatch it disables scanning with a message instead of returning wrong digits.
 
 | Question | Decided by |
 | --- | --- |
-| float16 weights: supported cleanly by the ai-edge-torch export and fast-tflite? | Walking skeleton (M0) |
-| Signature output names: exposed by fast-tflite, or only indices? | Walking skeleton (M0) |
+| float16 weights: run on the TFLite 2.17 runtime? Not needed in v1 | When model size matters |
 | Confidence threshold for "review this cell" | First real fixture set |
 
 ## Constraints
