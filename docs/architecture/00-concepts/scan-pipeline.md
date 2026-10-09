@@ -36,7 +36,7 @@ flowchart LR
         p["Full-res photo"] --> w["Rough flatten<br>from 4 corners"]
         w --> i["Find 100 intersections<br>near expected spots"]
         i --> c["Flatten each cell<br>from its own 4 corners"]
-        c --> m["81 crops → CNN<br>digit + kind"]
+        c --> m["81 cell images → CNN<br>digit + kind"]
     end
     s -->|steady for N frames:<br>lock-on| p
     m --> r["Correction screen"]
@@ -53,6 +53,19 @@ flowchart LR
 | Intersections | scanner, on capture | ≤ 50 ms | Classical first: search each of the 100 expected points in a small window. An ML keypoint model replaces this only if book pages need it (F-12) |
 | Per-cell flatten | scanner, on capture | ≤ 30 ms | 81 small perspective transforms. Falls back to the rough flatten for a cell whose intersections were not found |
 | Classification | scanner, on capture | ≤ 100 ms for 81 cells | One batched call, see [model-contract](model-contract.md) |
+
+## Threads and coordinates
+
+| Concern | Rule |
+| --- | --- |
+| Frame to OpenCV | Each frame is converted and downscaled with a VisionCamera resize plugin (`vision-camera-resize-plugin` or what the spike settles on) before fast-opencv sees it |
+| Frame processor to UI thread | Detected corners are written to a Reanimated shared value from the frame processor (worklets). The UI thread reads it, smooths it and Skia draws the outline. No corner passes through the JS thread |
+| Coordinates | The live stage reports the quad in **normalised, upright coordinates**: `x` and `y` in `[0, 1]` of the frame after applying its orientation. This survives the different resolution, aspect ratio and orientation of the capture |
+| Capture source | On lock-on, VisionCamera takes a full-resolution photo. `recognise()` maps the normalised quad onto the photo after applying its EXIF orientation, then **re-detects the corners** in a small window around each mapped corner, because the phone may have moved a little |
+| Capture thread | `recognise()` runs off the JS thread (an async worklet or a native thread, settled in the spike), so the transition animation keeps running while it works |
+
+The exact VisionCamera major version and its worklet runtime are pinned by the spike and
+recorded in ADR-002.
 
 ## The transition
 
@@ -80,9 +93,18 @@ the 100 intersections and the 81 results.
 The givens alone must have exactly one solution, checked by `@sudoku/core` before the puzzle
 loads. If they have none or several, the correction screen says so and does not load.
 
+## Open questions
+
+| Question | Decided by |
+| --- | --- |
+| Smoothing filter and its parameters (moving average, One Euro filter, …) | Device spike, against QR-06 |
+| Lock-on rule: N frames and the movement threshold | Device spike |
+| Window size for the intersection search, and when a cell falls back to the rough flatten | First book-page fixtures |
+| Confidence threshold for "review this cell" | First real fixture set |
+
 ## Constraints
 
 | ID | Constraint |
 | --- | --- |
-| SUD-02 | Camera frames and photos MUST NOT leave the device. |
+| SUD-02 | Camera frames, photos and cell images MUST NOT leave the device without an explicit user action for each export. |
 | SUD-05 | The app MUST reach the scanner only through `src/scanner/index.ts`. |

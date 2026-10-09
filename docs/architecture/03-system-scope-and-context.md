@@ -28,7 +28,7 @@ flowchart LR
 | Neighbour | Exchanges with the system | Channel |
 | --- | --- | --- |
 | Player | Plays puzzles, scans paper puzzles, corrects recognised digits | Touch UI, camera |
-| Paper sudoku | Is seen, never stored. Only the flattened grid and cell crops are kept | Camera frames |
+| Paper sudoku | Is seen. The photo, flattened grid and cell images stay on the phone | Camera frames |
 | ML workstation | Delivers model files to the app. Receives corrected scans as training data | The repository (promote step), the iOS share sheet |
 | TestFlight / App Store | Distributes builds | Xcode / EAS build |
 | Backend (future) | Not designed. The app must be able to add sync later without restructuring | — |
@@ -55,13 +55,13 @@ flowchart LR
     mobile -->|loads| models
     ml -.->|implements| contracts
     mobile -.->|implements| contracts
-    ml -->|evaluates on| fixtures
-    mobile -->|tests on| fixtures
+    ml -->|scores cell images| fixtures
+    mobile -->|fixture runner writes cells| fixtures
 ```
 
 | Interface | Producer | Consumer | Format |
 | --- | --- | --- | --- |
 | Model contract | written by hand | `ml/` and the app's scanner module | Markdown spec, see [model-contract](00-concepts/model-contract.md) |
 | Promoted model | `ml/` via `just promote-model` | the app's scanner module | `.tflite` + `manifest.json` |
-| Fixture scans | taken by hand, labelled once | ML evaluation and app tests | photo + JSON with the true grid and kinds |
-| Training-data export | the app's correction screen | `ml/` dataset | cell crops + labels, see the model contract |
+| Fixture scans | taken by hand, labelled once, cell images written by the fixture runner | promote gate (cell images), fixture runner (photos) | photo + `truth.json` + 81 cell images, see [ADR-007](adr/adr-007-model-promotion.md) |
+| Training-data export | the app's correction screen | `ml/` dataset | cell images + labels, see the model contract. Only on an explicit user action (SUD-02) |

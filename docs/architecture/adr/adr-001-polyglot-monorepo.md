@@ -30,8 +30,8 @@ split this work across repos, and nothing tied them together.
 
 One repository, `sudoku`, with:
 
-1. **pnpm workspaces + Turborepo** for `apps/*` and `packages/*`. Turborepo caches and orders the
-   TypeScript tasks (typecheck, test, lint).
+1. **pnpm workspaces** for `apps/*` and `packages/*`. Turborepo is not added yet: with one app
+   and one package, plain `pnpm -r` scripts are enough.
 2. **uv** for `ml/`, as a standalone Python project with its own `pyproject.toml` and lockfile.
    It is not part of the pnpm workspace.
 3. A **`justfile`** at the root as the single command list for both sides: `just app`,
@@ -49,4 +49,4 @@ One repository, `sudoku`, with:
 ## Reassessment Triggers
 
 - The backend arrives in a third language. Re-check whether `just` still holds it together.
-- Turborepo adds no value for a single app and package. Drop it and keep plain pnpm scripts.
+- A second app or package makes CI or local runs slow enough that caching pays. Add Turborepo.

@@ -31,12 +31,15 @@ few MB. Nothing here needs a server.
 
 ## Decision
 
-All inference runs on the device. Camera frames and photos never leave the phone (SUD-02).
+All inference runs on the device. Camera frames, photos and cell images never leave the phone
+without an explicit user action for each export (SUD-02).
 
 ## Consequences
 
 - Models are bundled with the app, so a better model needs an app build. Acceptable while the
   developer is the main user.
+- Exporting a corrected scan as training data (F-11) sends cell images off the phone, but only
+  when the player chooses to, each time. That is what SUD-02 allows.
 - The cloud enters only later, for training data: corrected scans uploaded by choice, once the
   backend exists. That is a training concern, not inference, and gets its own ADR.
 
