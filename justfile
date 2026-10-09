@@ -59,3 +59,7 @@ preprocess-fixtures:
 # Train a model from a config in ml/configs/ (default: the cell classifier)
 train config="cell-classifier":
     uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
+
+# Export a training run to TFLite and check it against PyTorch and TFLite 2.17
+export run:
+    uv run --directory ml python -m sudoku_ml.export {{run}}
