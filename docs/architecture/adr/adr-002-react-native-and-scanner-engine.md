@@ -45,8 +45,8 @@ smoothness gain that A and B already deliver.
 2. **VisionCamera 5** for the camera, with grid detection in a **frame processor**. VisionCamera 5
    is a Nitro module: it needs `react-native-nitro-modules`, `react-native-nitro-image`,
    `react-native-vision-camera-worklets` and `react-native-worklets` (0.10, the version Expo 57
-   ships). It does not use `react-native-worklets-core`. Frames are resized with
-   `react-native-vision-camera-resizer`.
+   ships). It does not use `react-native-worklets-core`. `react-native-vision-camera-resizer`
+   resizes the frames.
 3. **A by default.** fast-opencv (v1, OpenCV 4.9 on iOS) for classical computer vision,
    fast-tflite (v3, TFLite 2.17 on iOS) on the **CPU delegate** for inference. The Metal delegate
    of fast-tflite is not supported. The Core ML delegate is optional and not used in v1.
@@ -62,12 +62,12 @@ Accepted when all of these pass:
 
 | Check | Pass |
 | --- | --- |
-| fast-opencv builds on iOS with Expo 57 | The build passes. Known risk: fast-opencv issue #117 (iOS build fails on React Native 0.87 or a prebuilt React-Core). Fallback: apply the unmerged fix #119 with patch-package |
+| fast-opencv builds on iOS with Expo 57 | The build passes. Known risk: fast-opencv issue #117 (iOS build fails on React Native 0.87 or with a prebuilt React-Core). Expo 57 ships React Native 0.86.3, so only the prebuilt case can apply. Fallback: apply the unmerged fix #119 with patch-package |
 | Live 4-corner detection in a fast-opencv frame processor | ≥ 30 fps sustained over 60 s, no thermal warning |
 | Outline drawn in Skia from smoothed corners | Visibly steady on a still page, follows within 100 ms when moved |
 | fast-opencv covers the capture stage | perspective transform, threshold, contours, morphology are available (checked in the library). `cornerSubPix` is not: the intersection search uses a TypeScript or Swift replacement |
 | Photo to OpenCV | A captured photo reaches fast-opencv as an upright RGB image: `photo.toImageAsync()` → raw pixels → `Mat.createFromBuffer`. Check EXIF orientation and row stride |
-| Memory | No growth over 5 minutes of scanning. Mats are released explicitly with `release()`, because garbage collection in a worklet runtime can lag |
+| Memory | No growth over 5 minutes of scanning. The code releases every Mat with `release()`, because garbage collection in a worklet runtime can lag |
 | Thread handoff | Corners reach the UI thread through a shared value without passing the JS thread. The VisionCamera major version and worklet runtime that do this are pinned here |
 | Capture off the JS thread | `recognise()` runs while the transition animation stays at 60 fps |
 

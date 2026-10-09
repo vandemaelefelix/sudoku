@@ -18,7 +18,7 @@ Three questions:
 | torch 2.13.0, litert-torch 0.9.4 and ai-edge-litert 2.2.0 install on Python 3.12 (Mac and Linux x86_64). litert-torch requires torch below 2.14 | `uv sync` on the Mac; `uv sync --locked` in a `linux/amd64` container | High |
 | No TensorFlow is installed. litert-torch pulls in jax, jaxlib and a converter. Environment: 1.3 GB (Mac), 1.8 GB (Linux), about 470 MB of downloads on Linux with CPU torch | Package metadata, venv sizes | High |
 | The API is `litert_torch.convert(module, (sample,)).export(path)` | The installed package's `_convert/interface.py` | High |
-| A 90k-parameter two-head CNN converts to a 369 KB float32 file. BatchNorm is folded, Dropout removed, the NHWC permute absorbed | Conversion of the planned model | High |
+| The first design (90k parameters, flatten and a dense layer) converts to a 369 KB float32 file. BatchNorm is folded, Dropout removed, the NHWC permute absorbed | Conversion of the planned model | High |
 | A `forward` that returns `{"digit": d, "kind": k}` gives signature outputs and tensor names that contain `digit` and `kind`. A tuple gives `output_0`, `output_1` | Signature list of both variants | High |
 | Ops: DEPTHWISE_CONV_2D v1, CONV_2D v1, MAX_POOL_2D v1, FULLY_CONNECTED v5, SOFTMAX v1, TRANSPOSE v1, RESHAPE v1. No custom ops. Minimum runtime 2.0.0 | Flatbuffer read with the LiteRT schema | High |
 | TFLite and PyTorch agree: maximum difference 6 × 10⁻⁸, same top class on every input. float16 weights: 193 KB, difference 6 × 10⁻⁶ | Interpreter against PyTorch on a batch of 81 | High |
@@ -33,7 +33,7 @@ Three questions:
 | fast-tflite has no signature API and no input resize: the input size is static, outputs come back in tensor order, `outputs[i].name` gives tensor names | Library source, issue #124 | High |
 | `react-native-fast-opencv` 1.0.1 links OpenCV 4.9.0 on iOS. It has `cvtColor`, `resize`, `warpPerspective`, `getPerspectiveTransform`, `findContours`, `approxPolyDP`, `adaptiveThreshold`, `morphologyEx`. It has no `cornerSubPix` and no `remap` | Library source | High |
 | fast-opencv's iOS build fails on some React Native setups (issue #117). A fix (PR #119) is not merged. Whether Expo 57 hits it is not verified | Issue tracker | Medium |
-| VisionCamera 5.2.3 is a Nitro rewrite. Frame processors need `react-native-vision-camera-worklets` and `react-native-worklets`, not worklets-core. `vision-camera-resize-plugin` is dead; `react-native-vision-camera-resizer` replaces it | Library source and releases | High |
+| VisionCamera 5.2.3 is a Nitro rewrite. `react-native-vision-camera-resizer` can crop but does not rotate or make grayscale. Frame processors need `react-native-vision-camera-worklets` and `react-native-worklets`, not worklets-core. `vision-camera-resize-plugin` is dead; `react-native-vision-camera-resizer` replaces it | Library source and releases | High |
 | A captured photo reaches OpenCV through `toImageAsync()` and its raw pixels. Orientation handling and row stride are not verified | Library source | Medium |
 
 ### Preprocessing parity
@@ -44,7 +44,7 @@ Measured with OpenCV 4.9.0 and 5.0.0:
 | --- | --- |
 | `cvtColor` on float32 against `0.299 R + 0.587 G + 0.114 B` in float | 3 × 10⁻⁵ gray levels |
 | `cvtColor` on uint8 against the float formula | 0.503 gray levels (fixed-point rounding) |
-| `INTER_AREA` 52 → 32 on float32 against an exact separable area average | 2 × 10⁻⁷ |
+| `INTER_AREA` 52 → 32 on float32 against an exact separable area average | 2 × 10⁻⁷ in model-input units |
 
 Conclusion: the app implements the preprocessing in plain TypeScript (grayscale in float, crop,
 a 32 × 52 weight matrix applied to rows and columns). It is exact, needs no OpenCV, and is easy to
@@ -84,12 +84,14 @@ Findings:
 - Small plain CNNs are the usual choice for sudoku digits. Global average pooling moves capacity
   from the dense layer into the convolutions and gave the largest gain at the same size.
   Depthwise-separable layers gave no gain at this size. 32 × 32 input and batch normalisation stay.
-- A shared trunk with two heads is fine. A kind-loss weight of 0.3 to 0.5 keeps the kind head
-  from pulling the digit features. Without handwritten and notes examples, the kind head learns
-  "synthetic or real", not the kind of ink.
+- A shared trunk with two heads is the usual design. From the literature, not measured here: a
+  kind-loss weight of 0.3 to 0.5 keeps the kind head from pulling the digit features (Kendall et al.).
+  Expected, not measured: without handwritten and notes examples, the kind head learns "synthetic
+  or real", not the kind of ink.
 - Augmentation is the largest lever, then the schedule.
 - Choose the review threshold from accuracy at a given review rate, not from calibration error.
-- Cross-validated loss ranking finds wrong labels well on the first pass.
+- Loss ranking found wrong labels well on the first pass: of the 60 cells with the lowest
+  probability for their label, about 50 were clearly wrong. #4 makes it cross-validated.
 
 Sources:
 

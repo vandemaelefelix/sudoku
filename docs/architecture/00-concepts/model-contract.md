@@ -35,8 +35,9 @@ The scanner's per-cell flatten ([scan-pipeline](scan-pipeline.md)) produces one 
 **Exact area average.** The resize from 52 × 52 to 32 × 32 is a weighted average. Output pixel `i`
 covers the source interval `[i × 1.625, (i + 1) × 1.625)`. Weight `W[i][j]` is the overlap of
 source pixel `j` (the interval `[j, j + 1)`) with that interval, divided by 1.625. The resized
-image is `W · crop · Wᵀ`, with `W` a 32 × 52 matrix. OpenCV's `INTER_AREA` on float32 computes
-the same thing within 2 × 10⁻⁷. It is the reference, but neither side needs OpenCV for this step.
+image is `W · crop · Wᵀ`, with `W` a 32 × 52 matrix. This definition is the normative one. OpenCV's
+`INTER_AREA` on float32 computes the same thing within 4 × 10⁻⁵ gray levels (about 1.5 × 10⁻⁷
+after step 4), so it serves as a check. Neither side needs OpenCV for this step.
 
 `ml/` and the scanner module each implement these steps. Both are tested against the same
 reference pairs in `fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image) and
@@ -49,18 +50,18 @@ reference pairs in `fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image
 | --- | --- |
 | Format | TFLite (LiteRT) |
 | Weights | float32 in v1. No float16 and no int8 ([ADR-005](../adr/adr-005-pytorch-to-tflite.md)) |
-| Runtime | TFLite 2.17, the version `react-native-fast-tflite` bundles on iOS. Every op and op version in the model must be supported by 2.17. Promote checks this |
-| Delegate | CPU. The Metal delegate is not supported by `react-native-fast-tflite` |
+| Runtime | TFLite 2.17, the version `react-native-fast-tflite` bundles on iOS. TFLite 2.17 must support every op and op version in the model. Export and promote check this |
+| Delegate | CPU. `react-native-fast-tflite` does not support the Metal delegate |
 | Input and output dtype | `float32` |
 | Softmax | Inside the model. Outputs are probabilities |
-| Output identification | By index. The phone runtime returns outputs in tensor order, without names. `manifest.json` records the index of `digit` and of `kind`, taken from the exported file. The scanner reads that map and checks the shapes `[81, 10]` and `[81, 4]` before it uses the outputs. The tensor names also contain `digit` and `kind`, for tools |
+| Output identification | By index. The phone runtime returns outputs in tensor order. Their names are not reliable identifiers. `manifest.json` records the index of `digit` and of `kind`, taken from the exported file. The scanner reads that map and checks the shapes `[81, 10]` and `[81, 4]` before it uses the outputs. The tensor names also contain `digit` and `kind`, for tools |
 
 ## Outputs
 
 | Head | Shape | Classes, in this order |
 | --- | --- | --- |
-| `digit` | `[N, 10]` | `empty, 1, 2, 3, 4, 5, 6, 7, 8, 9` |
-| `kind` | `[N, 4]` | `none, printed, handwritten, notes` |
+| `digit` | `[81, 10]` | `empty, 1, 2, 3, 4, 5, 6, 7, 8, 9` |
+| `kind` | `[81, 4]` | `none, printed, handwritten, notes` |
 
 Valid pairs: `empty` goes with `none` or `notes`. A digit goes with `printed` or `handwritten`.
 The app treats an invalid pair as low confidence. A cell's confidence is the lower of the two

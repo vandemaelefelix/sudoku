@@ -6,7 +6,7 @@ status: DRAFT
 
 | Term | Definition |
 | --- | --- |
-| ai-edge-torch | Google's library to convert PyTorch models to TFLite (LiteRT). See ADR-005 |
+| litert-torch | Google's library to convert PyTorch models to TFLite (LiteRT), formerly ai-edge-torch. See ADR-005 |
 | Cell image | The 64 × 64 image of one cell after per-cell flattening. Preprocessed into the classifier's 32 × 32 input. See the model contract |
 | Contract | The model contract: input format, outputs, labels and manifest shared by `ml/` and the app |
 | Walking skeleton | Milestone M0: the thinnest real path from camera to model on the iPhone. Production code that proves ADR-002 and ADR-005 |
@@ -14,7 +14,7 @@ status: DRAFT
 | Entry | A digit the player filled in. In a scan: a `handwritten` digit. Editable |
 | Expo | The React Native framework and tooling used for the app. Development builds, since native modules are needed |
 | fast-opencv | `react-native-fast-opencv`, OpenCV functions callable from JS and frame processors over JSI |
-| fast-tflite | `react-native-fast-tflite`, runs TFLite models from JS and frame processors, with GPU / Core ML acceleration |
+| fast-tflite | `react-native-fast-tflite`, runs TFLite models from JS and frame processors. This project uses the CPU delegate: Metal is not supported, Core ML is opt-in |
 | Fixture | A photo of a sudoku with its true grid and kinds, and the cell images the app's scanner made from it. Public set in `fixtures/scans`, private set outside git (ADR-013). Never used for training |
 | Fixture runner | A screen in development builds that runs the real scanner on fixture photos (ADR-010) |
 | Holdout | The fixture split that is not looked at while training, only scored at promote (ADR-007) |
@@ -31,7 +31,7 @@ status: DRAFT
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
 | Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007) |
-| Review rate | The share of cells that the correction screen marks as uncertain. Accuracy is reported at a given review rate, for example 99.7 % at 5 % |
+| Review rate | The share of cells that the correction screen marks as uncertain. Reports give the accuracy at a review rate, for example 99.7 % at 5 % |
 | Suspect | A training cell whose label is probably wrong, found by `just suspects` |
 | Quad | The four outer corners of the detected grid |
 | Skia | `react-native-skia`, a 2D drawing library used for the outline and the transition |
