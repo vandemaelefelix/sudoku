@@ -22,13 +22,15 @@ status: DRAFT
 
 ## Order of work
 
-1. **Device spike** (throwaway). Proves the two Proposed bets on a real iPhone: live 4-corner
-   outline at 30 fps or more through VisionCamera and fast-opencv, and a tiny PyTorch model
-   exported to TFLite running through fast-tflite. Its result moves ADR-002 and ADR-005 to
-   Accepted or replaces them. Pass criteria are in ADR-002 and ADR-005.
-2. **Game first.** `@sudoku/core` (generator, solvers, grader, hints), local storage and the
-   playable app. Useful on day one without any ML.
-3. **Scanner, classical.** Live lock-on, capture, per-cell flatten, a first classifier trained on
+1. **M0 Walking skeleton.** The thinnest real path on the iPhone: live 4-corner outline through
+   VisionCamera and fast-opencv, capture, and a tiny PyTorch model exported to TFLite and run
+   through fast-tflite. This is production code that stays. Its acceptance criteria are the pass
+   criteria in ADR-002 and ADR-005. When they pass, both ADRs move to Accepted. A failed
+   criterion changes one step, not the plan.
+2. **M1 Game,** in parallel with M0. `@sudoku/core` (generator, solvers, grader, hints), local
+   storage and the playable app. It does not depend on ADR-002 or ADR-005. Useful on day one
+   without any ML.
+3. **M2 Scanner.** Live lock-on, capture, per-cell flatten, a first classifier trained on
    existing and synthetic data, the correction screen.
-4. **Data loop.** Fixture set, training-data export, retraining, the promote gate.
+4. **M3 Data loop.** Fixture set, training-data export, retraining, the promote gate.
 5. **Only if needed.** An ML model for grid intersections (F-12), Android (F-13), the backend.

@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value                              |
 | ------- | ---------------------------------- |
 | Project | Sudoku                             |
-| Status  | Proposed, pending the device spike |
+| Status  | Proposed, pending the walking skeleton (M0) |
 | Date    | 2026-10-09                         |
 | Contact | Felix                              |
 
@@ -49,10 +49,10 @@ int8 solves a size problem the project does not have.
 5. Augmentation with torchvision transforms or albumentations. TensorBoard for curves. No
    experiment-tracking service yet.
 
-## Validation: the device spike
+## Validation: the walking skeleton (M0)
 
-A tiny CNN with both heads, trained for a few epochs, exported with ai-edge-torch, and run
-through fast-tflite on the iPhone. Pass:
+Part of milestone M0, as code that stays. A tiny CNN with both heads, trained for a few epochs,
+exported with ai-edge-torch, and run through fast-tflite on the iPhone. Pass:
 
 - The on-device outputs match PyTorch's on the 81 reference cells in `fixtures/preprocess/`:
   same top class on both heads, probabilities within `1e-3` (float32) or `1e-2` (float16).
@@ -61,10 +61,10 @@ through fast-tflite on the iPhone. Pass:
 
 ## Consequences
 
-- Library versions in this space change quickly. The spike pins what works, and the pins are
-  recorded in `ml/pyproject.toml` with a comment pointing here.
-- If ai-edge-torch fails the spike, the fallback is PyTorch → ONNX → TFLite, then Keras 3 for
-  the export only. The fallback is a new ADR, not an edit.
+- Library versions in this space change quickly. The walking skeleton pins what works. The pins
+  go in `ml/pyproject.toml` with a comment pointing here.
+- If ai-edge-torch fails the walking skeleton, the fallback is PyTorch → ONNX → TFLite, then
+  Keras 3 for the export only. The fallback is a new ADR, not an edit.
 
 ## Reassessment Triggers
 

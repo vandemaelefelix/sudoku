@@ -9,10 +9,10 @@ status: DRAFT
 | ID | Decision | Status | Date | Link |
 |----|----------|--------|------|------|
 | ADR-001 | Polyglot monorepo: pnpm workspaces (TypeScript), uv (Python), root `justfile`. Turborepo deferred | Proposed | 2026-10-09 | [ADR-001](./adr/adr-001-polyglot-monorepo.md) |
-| ADR-002 | React Native (Expo, Continuous Native Generation) + VisionCamera. Scanner on fast-opencv and fast-tflite, a Swift plugin per step only where those fail | Proposed, pending the device spike | 2026-10-09 | [ADR-002](./adr/adr-002-react-native-and-scanner-engine.md) |
+| ADR-002 | React Native (Expo, Continuous Native Generation) + VisionCamera. Scanner on fast-opencv and fast-tflite, a Swift plugin per step only where those fail | Proposed, pending the walking skeleton | 2026-10-09 | [ADR-002](./adr/adr-002-react-native-and-scanner-engine.md) |
 | ADR-003 | All inference on the device. Nothing leaves the phone without an explicit user action | Proposed | 2026-10-09 | [ADR-003](./adr/adr-003-on-device-inference.md) |
 | ADR-004 | Two-stage scan pipeline: live 4-corner lock-on, per-cell flatten from 100 intersections on capture | Proposed | 2026-10-09 | [ADR-004](./adr/adr-004-two-stage-scan-pipeline.md) |
-| ADR-005 | PyTorch on MPS, exported to TFLite with ai-edge-torch, float weights (no int8 in v1) | Proposed, pending the device spike | 2026-10-09 | [ADR-005](./adr/adr-005-pytorch-to-tflite.md) |
+| ADR-005 | PyTorch on MPS, exported to TFLite with ai-edge-torch, float weights (no int8 in v1) | Proposed, pending the walking skeleton | 2026-10-09 | [ADR-005](./adr/adr-005-pytorch-to-tflite.md) |
 | ADR-006 | One cell classifier with two heads: digit (`empty`, 1–9) and kind (`none`, `printed`, `handwritten`, `notes`) | Proposed | 2026-10-09 | [ADR-006](./adr/adr-006-two-head-cell-classifier.md) |
 | ADR-007 | Models reach the app only through `just promote-model`: scored on the app's cell images per fixture, absolute floor plus tolerance, holdout split, stable filename with version in the manifest | Proposed | 2026-10-09 | [ADR-007](./adr/adr-007-model-promotion.md) |
 | ADR-008 | `@sudoku/core` as an internal workspace package. The scanner as a module inside the app with one entry point. Boundaries enforced by lint | Proposed | 2026-10-09 | [ADR-008](./adr/adr-008-package-boundaries.md) |

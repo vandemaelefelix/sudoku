@@ -80,6 +80,23 @@ all follow them.
 Technical names (such as "frame processor" or "promote gate") are allowed. Define them in the
 glossary.
 
+## Work tracking
+
+Work is tracked in GitHub issues. Use the `gh` CLI.
+
+1. Every change starts from an issue. If no issue exists, propose one to the developer. Do not
+   create it without approval.
+2. Each issue has one `type:` label, one `area:` label and a milestone (`M0` to `M3`).
+3. Use the templates in `.github/ISSUE_TEMPLATE/`. Acceptance criteria are a checklist.
+4. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
+5. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
+6. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.
+7. Tick an acceptance criterion in the issue when it is met.
+8. Before a pull request is merged, a second agent reviews it without this session's context.
+   Fix its findings, or answer them in the pull request.
+9. When work proves or changes a decision, update the ADR in the same pull request and link it
+   from the issue.
+
 ## Git
 
 - Commit messages follow Conventional Commits: `feat:`, `fix:`, `docs:`, `chore:`, and so on.
