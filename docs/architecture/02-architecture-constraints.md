@@ -34,3 +34,5 @@ creates for itself are recorded as ADRs and indexed in [00-DECISIONS.md](00-DECI
 | CV-2 | Conventional Commits | Readable history, and a later option to generate versions and changelogs. |
 | CV-3 | Every decision that constrains later work gets an ADR | Status `Proposed` until validated, then `Accepted`. Superseding is explicit. |
 | CV-4 | Diagrams in Mermaid | Renders on GitHub and in Obsidian, diffs as text. |
+| CV-5 | Simplified Technical English, light | All prose follows the ten writing rules in [`AGENTS.md`](../../AGENTS.md), based on ASD-STE100. The glossary is the dictionary. |
+| CV-6 | Agent instructions are tool-neutral | Shared instructions for coding agents live in `AGENTS.md`. Tool-specific files, such as `CLAUDE.md`, only import it. |
