@@ -16,7 +16,7 @@ def write_preprocess_fixtures(out_dir: Path, fonts: list[Path], seed: int = 2026
     out_dir.mkdir(parents=True, exist_ok=True)
     for n, sample in enumerate(generate(per_class=9, seed=seed, fonts=fonts)[:BATCH]):
         Image.fromarray(sample.image).save(out_dir / f"{n:02d}.cell.png")
-        values = np.round(preprocess_cell(sample.image), 6).tolist()
+        values = np.round(preprocess_cell(sample.image).astype(np.float64), 6).tolist()
         payload = {"shape": [32, 32], "values": values}
         (out_dir / f"{n:02d}.expected.json").write_text(json.dumps(payload))
 
