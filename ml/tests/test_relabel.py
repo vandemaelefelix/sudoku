@@ -40,8 +40,61 @@ def test_rejects_an_unknown_label_and_moves_nothing(tmp_path: Path):
     with pytest.raises(ValueError):
         apply_relabels(cells, write(tmp_path, "aaaaaaaaaaaaaaaa,3\nbbbbbbbbbbbbbbbb,10\n"))
     assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+    assert not (cells / "3" / "aaaaaaaaaaaaaaaa.png").exists()
 
 
 def test_rejects_a_missing_file(tmp_path: Path):
+    cells = tree(tmp_path)
     with pytest.raises(ValueError):
-        apply_relabels(tree(tmp_path), write(tmp_path, "dddddddddddddddd,3\n"))
+        apply_relabels(cells, write(tmp_path, "aaaaaaaaaaaaaaaa,3\ndddddddddddddddd,3\n"))
+    assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+    assert (cells / "4" / "bbbbbbbbbbbbbbbb.png").exists()
+
+
+def test_rejects_two_labels_for_one_file(tmp_path: Path):
+    cells = tree(tmp_path)
+    with pytest.raises(ValueError, match="aaaaaaaaaaaaaaaa"):
+        apply_relabels(cells, write(tmp_path, "aaaaaaaaaaaaaaaa,3\naaaaaaaaaaaaaaaa,4\n"))
+    assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+
+
+def test_rejects_a_file_in_two_folders(tmp_path: Path):
+    cells = tree(tmp_path)
+    (cells / "3").mkdir()
+    (cells / "3" / "aaaaaaaaaaaaaaaa.png").write_bytes(b"y")
+    with pytest.raises(ValueError, match="aaaaaaaaaaaaaaaa"):
+        apply_relabels(cells, write(tmp_path, "bbbbbbbbbbbbbbbb,3\n"))
+    assert (cells / "4" / "bbbbbbbbbbbbbbbb.png").exists()
+
+
+def test_rejects_a_move_onto_an_existing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    cells = tree(tmp_path)
+    (cells / "3").mkdir()
+    (cells / "3" / "aaaaaaaaaaaaaaaa.png").write_bytes(b"y")
+    # Hide the target from the folder scan, so only the move check can catch it.
+    real_glob = Path.glob
+    monkeypatch.setattr(
+        Path,
+        "glob",
+        lambda self, pattern: (p for p in real_glob(self, pattern) if p.parent.name != "3"),
+    )
+    with pytest.raises(ValueError, match="already exists"):
+        apply_relabels(cells, write(tmp_path, "aaaaaaaaaaaaaaaa,3\n"))
+    assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+    assert (cells / "3" / "aaaaaaaaaaaaaaaa.png").read_bytes() == b"y"
+
+
+def test_rejects_a_csv_without_the_required_header(tmp_path: Path):
+    cells = tree(tmp_path)
+    path = tmp_path / "relabels.csv"
+    path.write_text("file,label\naaaaaaaaaaaaaaaa,3\n")
+    with pytest.raises(ValueError, match="file,new_label"):
+        apply_relabels(cells, path)
+    assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+
+
+def test_rejects_a_short_row(tmp_path: Path):
+    cells = tree(tmp_path)
+    with pytest.raises(ValueError, match="short row"):
+        apply_relabels(cells, write(tmp_path, "aaaaaaaaaaaaaaaa\n"))
+    assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
