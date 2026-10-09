@@ -82,7 +82,8 @@ Research before M0 trained the planned network on the real cells (digit only, se
 | --- | --- |
 | Per-cell digit accuracy | 98.7 % |
 | Accuracy when the 1 %, 2 % or 5 % least certain cells go to review | 99.1 %, 99.3 %, 99.7 % |
-| Wrong labels in the data | about 0.6 %, which caps any measurement at about 99.3 % |
+| Wrong labels in the data | about 0.6 %. Every accuracy above counts them as model errors |
 
+These numbers are optimistic: 13 % of the validation cells had a near-identical cell in training.
 QR-03 (99.94 %) needs clean labels, handwriting data and the review step together. The review
 step is part of the design: the correction screen marks the least certain cells.

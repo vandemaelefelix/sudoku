@@ -21,7 +21,7 @@ that moves to a Swift plugin. Learning the current ML stack is a goal (OC-2).
 
 | | Keras 3 / TensorFlow | **PyTorch** |
 | --- | --- | --- |
-| Export to TFLite | Built in, most mature | Through Google's ai-edge-torch (LiteRT). Fine for plain CNNs, younger |
+| Export to TFLite | Built in, most mature | Through Google's litert-torch, formerly ai-edge-torch (LiteRT). Fine for plain CNNs, younger |
 | Export to Core ML | Possible | coremltools, well supported |
 | Training on Apple Silicon | `tensorflow-metal`, pinned to old TensorFlow and NumPy versions | MPS backend, works without extra packages |
 | Skill relevance | Declining | Industry and research default |
@@ -57,11 +57,12 @@ and run through fast-tflite on the iPhone. Pass:
 - The two outputs are found by index and checked by shape (see the
   [model contract](../00-concepts/model-contract.md)).
 
-**Measured before M0** (Python side, see the [research record](../../research/2026-10-09-cell-classifier-research.md)): the conversion works with the API
+**Measured before M0** on the first design (flatten and a dense layer, 90k parameters; Python side, see the [research record](../../research/2026-10-09-cell-classifier-research.md)): the conversion works with the API
 `litert_torch.convert(model, (sample,)).export(path)`, on the Mac and on Linux. TFLite and
-PyTorch differ by at most 6 × 10⁻⁸, with the same top class everywhere. A 90k-parameter model is
-369 KB. The file uses only builtin ops (CONV_2D, DEPTHWISE_CONV_2D, MAX_POOL_2D, FULLY_CONNECTED
-v5, SOFTMAX, RESHAPE, TRANSPOSE), all supported by TFLite 2.17. The phone side is issue #5.
+PyTorch differ by at most 6 × 10⁻⁸, with the same top class everywhere. That model is 369 KB. The file
+uses only builtin ops (CONV_2D, DEPTHWISE_CONV_2D for the first layer with one input channel, MAX_POOL_2D, FULLY_CONNECTED
+v5, SOFTMAX, RESHAPE, TRANSPOSE), all supported by TFLite 2.17. The global-average-pooling network of ADR-006 adds a pooling or
+mean op: the export checks every op version against 2.17 (#4). The phone side is issue #5.
 
 ## Consequences
 

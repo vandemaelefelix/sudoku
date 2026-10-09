@@ -29,7 +29,7 @@ So each cell needs two answers: which digit, and what kind of mark.
 
 ## Decision
 
-One small CNN (about 75k parameters, 32 × 32 grayscale input) with two output heads:
+One small CNN (about 73k parameters, 32 × 32 grayscale input) with two output heads:
 
 - `digit`: `empty, 1–9`
 - `kind`: `none, printed, handwritten, notes`
@@ -43,10 +43,11 @@ Research on the real cells compared it with the first design (flatten and a dens
 parameters) and a depthwise-separable variant: 98.7 % against 97.5 % and 98.6 %, at the same
 training recipe. See the [research record](../../research/2026-10-09-cell-classifier-research.md).
 
-**Training.** Augmentation of the 64 × 64 cell before preprocessing (shift, rotation, scale,
-shear, blur, contrast, noise), a one-cycle learning-rate schedule, label smoothing 0.05, and a
-kind-loss weight of 0.4 so the kind head cannot pull the digit features around. A cell whose kind
-is unknown adds no kind loss.
+**Training.** Training augments the 64 × 64 cell before preprocessing: shift, rotation, scale,
+shear, blur, contrast and noise. It uses a one-cycle learning-rate schedule and label smoothing
+0.05. The kind loss has a weight of 0.4, so the kind head cannot pull the digit features around.
+This weight follows the literature (Kendall et al. 2018). The research measured the digit task
+only. A cell whose kind is unknown adds no kind loss.
 
 ## Data
 
