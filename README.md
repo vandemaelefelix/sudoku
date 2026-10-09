@@ -10,7 +10,19 @@ One monorepo, two parts that share files only:
 | App (game + scanner) | `apps/mobile`, `packages/sudoku-core` | React Native (Expo), VisionCamera, Skia, TypeScript |
 | ML (cell classifier) | `ml/` | Python (uv), PyTorch, exported to TFLite |
 
-**Status:** design. No code yet. Start with the architecture docs:
+**Status:** scaffold. Start with the architecture docs below.
+
+## Getting started
+
+Prerequisites: Node 24, pnpm 12, uv, just. Xcode is needed from issue #2 on.
+
+    just setup   # install TypeScript and Python dependencies
+    just test    # all tests
+    just lint    # oxlint, boundary rules, ruff
+    just --list  # every command
+
+## Architecture docs
+
 
 - [Introduction and goals](docs/architecture/01-introduction-and-goals.md)
 - [Decisions and constraints](docs/architecture/00-DECISIONS.md)
