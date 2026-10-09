@@ -1,0 +1,25 @@
+name: ci-ml
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - ml/**
+      - contracts/**
+      - fixtures/**
+      - justfile
+      - .github/workflows/ci-ml.yml
+  pull_request:
+    paths: *paths
+
+jobs:
+  ml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          working-directory: ml
+      - uses: extractions/setup-just@v4
+      - run: uv sync --locked --directory ml
+      - run: just lint-ml
+      - run: just test-ml
