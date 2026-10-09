@@ -98,3 +98,10 @@ def test_rejects_a_short_row(tmp_path: Path):
     with pytest.raises(ValueError, match="short row"):
         apply_relabels(cells, write(tmp_path, "aaaaaaaaaaaaaaaa\n"))
     assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+
+
+def test_accepts_a_csv_with_an_excel_bom(tmp_path: Path):
+    cells = tree(tmp_path)
+    path = tmp_path / "relabels.csv"
+    path.write_bytes("file,new_label\naaaaaaaaaaaaaaaa,3\n".encode("utf-8-sig"))
+    assert apply_relabels(cells, path) == 1

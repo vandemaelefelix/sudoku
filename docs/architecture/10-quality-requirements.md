@@ -93,7 +93,7 @@ before the label check. The labels are not reviewed yet.
 
 | Measure | Value |
 | --- | --- |
-| Per-cell digit accuracy | 98.71 % |
+| Per-cell digit accuracy | 98.71 %. 1,550 test cells, one seed, 95 % confidence interval about ±0.56 percentage points |
 | Accuracy when the 1 %, 2 % or 5 % least certain cells go to review | 99.02 %, 99.14 %, 99.46 % |
 | Expected calibration error (ECE) | 0.63 % |
 | Wrong labels in the data | `just suspects` ranks 150 cells. 89 get under 5 % probability for their label |

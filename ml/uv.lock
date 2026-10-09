@@ -861,6 +861,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "flatbuffers" },
     { name = "opencv-python-headless" },
     { name = "pytest" },
     { name = "ruff" },
@@ -878,6 +879,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "flatbuffers" },
     { name = "opencv-python-headless", specifier = "==5.0.0.93" },
     { name = "pytest", specifier = ">=8.4" },
     { name = "ruff", specifier = ">=0.12" },

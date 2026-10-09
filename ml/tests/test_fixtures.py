@@ -28,7 +28,7 @@ def test_committed_fixtures_match_preprocessing():
             png.with_name(png.name.replace(".cell.png", ".expected.json")).read_text()
         )
         assert expected["shape"] == [32, 32]
-        assert np.abs(preprocess_cell(cell) - np.array(expected["values"])).max() <= 1 / 255
+        assert np.abs(preprocess_cell(cell) - np.array(expected["values"])).max() <= 1e-5
 
 
 def test_reference_inputs_are_one_model_batch():

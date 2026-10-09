@@ -10,6 +10,7 @@ from ai_edge_litert import schema_py_generated as schema
 from sudoku_ml.export import (
     check_float32,
     check_op_versions,
+    check_same_argmax,
     export,
     non_float32_constants,
     op_versions,
@@ -89,3 +90,13 @@ def test_tflite_matches_pytorch(exported):
         got, want = outputs[info["outputs"][name]], expected[name].detach().numpy()
         assert (got.argmax(1) == want.argmax(1)).all()
         assert np.abs(got - want).max() < 1e-3
+
+
+def test_check_same_argmax_rejects_a_different_digit():
+    same = {"digit": np.eye(10)[:3], "kind": np.eye(4)[:3]}
+    check_same_argmax(same, same)
+    other = {"digit": np.eye(10)[[0, 1, 9]], "kind": np.eye(4)[:3]}
+    with pytest.raises(ValueError, match="digit of cells \\[2\\]"):
+        check_same_argmax(other, same)
+    with pytest.raises(ValueError, match="kind"):
+        check_same_argmax(same, {"digit": same["digit"], "kind": np.eye(4)[[3, 1, 2]]})

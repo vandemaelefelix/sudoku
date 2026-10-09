@@ -13,8 +13,9 @@ import torch
 import torch.nn.functional as F
 
 from sudoku_ml.augment import augment
-from sudoku_ml.contract import CONTRACT_VERSION, UNKNOWN_KIND
+from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, UNKNOWN_KIND
 from sudoku_ml.dataset import group_ids, load_cells, split_by_group, stack
+from sudoku_ml.fixtures import FIXTURE_SEED
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.synthetic import font_files, generate
@@ -39,7 +40,11 @@ class Config:
 
 
 def load_config(path: Path) -> Config:
-    return Config(**tomllib.loads(path.read_text()))
+    config = Config(**tomllib.loads(path.read_text()))
+    # train() draws synthetic cells with seed and seed + 1 (SUD-10).
+    if FIXTURE_SEED in (config.seed, config.seed + 1):
+        raise ValueError(f"seed {config.seed} collides with the fixture seed {FIXTURE_SEED}")
+    return config
 
 
 def loss(digit_logits, kind_logits, digit, kind, kind_weight: float, label_smoothing: float):
@@ -108,13 +113,21 @@ def _logits(model, images: torch.Tensor, device) -> tuple[torch.Tensor, torch.Te
 
 def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> Path:
     started = time.time()
+    real = []
+    if config.real_cells:
+        cells_dir = ml_root / "data" / "cells"
+        missing = [c for c in DIGIT_CLASSES if not (cells_dir / c).is_dir()]
+        if missing:
+            raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
+        real = load_cells(cells_dir)
+        if not real:
+            raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
     generator = torch.Generator().manual_seed(config.seed)
     fonts = font_files(ml_root / "fonts")
     synthetic = generate(config.synthetic_per_class, config.seed, fonts)
     synthetic_val = generate(max(2, config.synthetic_per_class // 10), config.seed + 1, fonts)
 
-    real = load_cells(ml_root / "data" / "cells") if config.real_cells else []
     if real:
         train_idx, val_idx, test_idx = split_by_group(
             group_ids(real), tuple(config.split), config.seed
@@ -200,6 +213,9 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         f"- Digit accuracy: {metrics['digit_accuracy']:.4f}\n"
         f"- At review rates: {metrics['review']}\n"
         f"- Temperature: {metrics['temperature']}\n"
+        f"- ECE: {metrics['ece']:.4f}\n"
+        f"- Test cells: {metrics['n_test']}\n"
+        f"{'- Labels: not reviewed by the suspects check' + chr(10) if real else ''}"
         f"- Kind accuracy (synthetic cells only): {metrics['kind_accuracy_synthetic']:.4f}\n"
     )
     return run

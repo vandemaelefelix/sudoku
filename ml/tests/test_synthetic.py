@@ -42,3 +42,9 @@ def test_generate_counts_and_labels():
 def test_generate_is_deterministic():
     a, b = generate(1, 5, FONTS), generate(1, 5, FONTS)
     assert all(np.array_equal(x.image, y.image) for x, y in zip(a, b, strict=True))
+
+
+def test_every_font_has_its_own_licence():
+    fonts = list((Path(__file__).parents[1] / "fonts").glob("*/*.ttf"))
+    assert fonts
+    assert all((f.parent / "OFL.txt").is_file() for f in fonts)
