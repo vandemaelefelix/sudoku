@@ -68,3 +68,18 @@ def test_rejects_wrong_shape():
 def test_to_cell_image_resizes_71_pixel_cells():
     out = to_cell_image(np.full((71, 71, 3), 77, dtype=np.uint8))
     assert (out.shape, out.dtype, int(out[30, 30, 0])) == ((64, 64, 3), np.uint8, 77)
+
+
+def test_to_cell_image_matches_the_area_average():
+    img = np.random.default_rng(7).integers(0, 256, (71, 90, 3), dtype=np.uint8)
+    expected = np.clip(
+        np.rint(
+            np.einsum(
+                "ij,jkc,lk->ilc", area_weights(71, 64), img.astype(np.float32), area_weights(90, 64)
+            )
+        ),
+        0,
+        255,
+    ).astype(np.uint8)
+    diff = np.abs(to_cell_image(img).astype(int) - expected.astype(int))
+    assert diff.max() <= 1
