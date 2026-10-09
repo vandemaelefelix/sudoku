@@ -63,3 +63,12 @@ train config="cell-classifier":
 # Export a training run to TFLite and check it against PyTorch and TFLite 2.17
 export run:
     uv run --directory ml python -m sudoku_ml.export {{run}}
+
+# Rewrite ml/datasets/cells.csv from the folders in ml/data/cells/
+dataset-manifest:
+    uv run --directory ml python -m sudoku_ml.manifest
+
+# Move cells to the labels in a relabel CSV, then rewrite the manifest
+relabel file="data/review/relabels.csv":
+    uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
+    just dataset-manifest
