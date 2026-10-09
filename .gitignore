@@ -36,3 +36,5 @@ apps/mobile/android/
 
 # Agent plan workspaces
 .superpowers/
+coverage/
+apps/mobile/dist/
