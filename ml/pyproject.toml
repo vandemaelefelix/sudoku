@@ -42,3 +42,7 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # Upstream: torch.utils._pytree, called from litert_torch. Remove when litert_torch drops LeafSpec.
+    "ignore:`isinstance\\(treespec, LeafSpec\\)` is deprecated:FutureWarning",
+]

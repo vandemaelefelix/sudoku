@@ -15,7 +15,10 @@ from sudoku_ml.fixtures import load_reference_inputs
 from sudoku_ml.model import CellClassifier, ExportModel
 
 _OP_NAMES = {v: k for k, v in vars(schema.BuiltinOperator).items() if not k.startswith("_")}
+_TENSOR_NAMES = {v: k for k, v in vars(schema.TensorType).items() if not k.startswith("_")}
+_ALLOWED_CONSTANTS = {schema.TensorType.FLOAT32, schema.TensorType.INT32, schema.TensorType.INT64}
 TABLE_PATH = Path(__file__).with_name("tflite_2_17_ops.json")
+MAX_BYTES = 1_000_000
 
 
 def op_versions(path: Path) -> dict[str, int]:
@@ -38,6 +41,30 @@ def check_op_versions(path: Path, table: dict[str, int]) -> None:
         raise ValueError("not supported by TFLite 2.17: " + ", ".join(problems))
 
 
+def non_float32_constants(path: Path) -> list[str]:
+    """List each constant tensor that is not float32 (int32 and int64 shape constants are fine)."""
+    model = schema.Model.GetRootAsModel(path.read_bytes(), 0)
+    found = []
+    for s in range(model.SubgraphsLength()):
+        subgraph = model.Subgraphs(s)
+        for t in range(subgraph.TensorsLength()):
+            tensor = subgraph.Tensors(t)
+            if (
+                model.Buffers(tensor.Buffer()).DataLength() == 0
+                or tensor.Type() in _ALLOWED_CONSTANTS
+            ):
+                continue
+            name = (tensor.Name() or b"").decode()
+            found.append(f"{name or t} ({_TENSOR_NAMES[tensor.Type()]})")
+    return found
+
+
+def check_float32(path: Path) -> None:
+    found = non_float32_constants(path)
+    if found:
+        raise ValueError("not float32: " + ", ".join(found))
+
+
 def run_tflite(path: Path, inputs: np.ndarray) -> list[np.ndarray]:
     interpreter = Interpreter(model_path=str(path))
     interpreter.allocate_tensors()
@@ -55,6 +82,9 @@ def export(run: Path, fixture_dir: Path) -> Path:
     target = run / "cell-classifier.tflite"
     litert_torch.convert(wrapped, (torch.from_numpy(inputs),)).export(str(target))
     check_op_versions(target, json.loads(TABLE_PATH.read_text()))
+    check_float32(target)
+    if target.stat().st_size > MAX_BYTES:
+        raise ValueError(f"{target.stat().st_size} bytes is above the {MAX_BYTES} byte limit")
 
     outputs = run_tflite(target, inputs)
     by_width = {o.shape[1]: i for i, o in enumerate(outputs)}
