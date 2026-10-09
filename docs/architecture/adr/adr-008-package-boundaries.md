@@ -43,6 +43,7 @@ and the scanner. A boundary can be a folder by convention, or a workspace packag
 - The backend, when it comes, validates leaderboard results with the same solver.
 - Moving the scanner into a package later is mechanical, because its interface is already the
   only entry point.
+- Expo SDK 57 bundles `@sudoku/core` with pnpm's isolated linker. No hoisting is needed (#1).
 
 ## Reassessment Triggers
 
