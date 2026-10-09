@@ -9,6 +9,13 @@ module.exports = {
       to: { dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'] },
     },
     {
+      name: 'sud-04-core-stays-in-its-package',
+      comment: 'SUD-04: @sudoku/core must not reach outside its own folder with a relative import.',
+      severity: 'error',
+      from: { path: '^packages/sudoku-core/src' },
+      to: { pathNot: '^packages/sudoku-core/', dependencyTypesNot: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'] },
+    },
+    {
       name: 'sud-03-game-does-not-use-scanner',
       comment: 'SUD-03: the game must not depend on the scanner.',
       severity: 'error',
@@ -32,7 +39,7 @@ module.exports = {
   options: {
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
-    exclude: { path: '(^|/)(node_modules|dist|\\.expo)/' },
+    exclude: { path: '^apps/[^/]+/(dist|\\.expo)/' },
     enhancedResolveOptions: {
       exportsFields: ['exports'],
       conditionNames: ['import', 'require', 'node', 'default', 'types'],
