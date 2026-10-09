@@ -38,8 +38,8 @@ int8 solves a size problem the project does not have.
 ## Decision
 
 1. **PyTorch** for training, on the MPS backend.
-2. **ai-edge-torch** to export `.tflite` with **float weights** (float16 if the export supports it
-   cleanly, otherwise float32). No int8 in v1.
+2. **litert-torch** (formerly ai-edge-torch) to export `.tflite` with **float32 weights**. No
+   float16 and no int8 in v1: the iOS runtime is TFLite 2.17, and float32 is the safe set.
 3. **coremltools** only if a step moves to Swift (ADR-002).
 4. Training runs as **CLI scripts** with a config file (`just train cell-classifier`). Notebooks
    are for exploration only. Each run writes its model, `metrics.json` and a model card to
@@ -49,23 +49,31 @@ int8 solves a size problem the project does not have.
 
 ## Validation: the walking skeleton (M0)
 
-Part of milestone M0, as code that stays. A tiny CNN with both heads, trained for a few epochs,
-exported with ai-edge-torch, and run through fast-tflite on the iPhone. Pass:
+Part of milestone M0, as code that stays. A small CNN with both heads, exported with litert-torch,
+and run through fast-tflite on the iPhone. Pass:
 
 - The on-device outputs match PyTorch's on the 81 reference cells in `fixtures/preprocess/`:
-  same top class on both heads, probabilities within `1e-3` (float32) or `1e-2` (float16).
-- The two outputs can be told apart by name or by a stable index (see the
+  same top class on both heads, probabilities within `1e-3`.
+- The two outputs are found by index and checked by shape (see the
   [model contract](../00-concepts/model-contract.md)).
+
+**Measured before M0** (Python side, see the [research record](../../research/2026-10-09-cell-classifier-research.md)): the conversion works with the API
+`litert_torch.convert(model, (sample,)).export(path)`, on the Mac and on Linux. TFLite and
+PyTorch differ by at most 6 × 10⁻⁸, with the same top class everywhere. A 90k-parameter model is
+369 KB. The file uses only builtin ops (CONV_2D, DEPTHWISE_CONV_2D, MAX_POOL_2D, FULLY_CONNECTED
+v5, SOFTMAX, RESHAPE, TRANSPOSE), all supported by TFLite 2.17. The phone side is issue #5.
 
 ## Consequences
 
-- Library versions in this space change quickly. The walking skeleton pins what works. The pins
-  go in `ml/pyproject.toml` with a comment pointing here.
-- If ai-edge-torch fails the walking skeleton, the fallback is PyTorch → ONNX → TFLite, then
+- Pins: Python 3.12, torch 2.13.0 (litert-torch 0.9.4 requires torch below 2.14), litert-torch
+  0.9.4, ai-edge-litert 2.2.0. On Linux CI, torch comes from the PyTorch CPU index. The ML
+  environment is about 1.3 GB on the Mac and 1.8 GB on CI, so CI caches uv.
+- If litert-torch fails the walking skeleton, the fallback is PyTorch → ONNX → TFLite, then
   Keras 3 for the export only. The fallback is a new ADR, not an edit.
 
 ## Reassessment Triggers
 
 - The export path breaks on an operator the model needs.
-- A model passes 1 MB, or inference passes its 100 ms budget. Then evaluate int8.
+- A model passes 1 MB, or inference passes its 100 ms budget. Then evaluate float16 weights
+  (193 KB, difference 6 × 10⁻⁶, checked against TFLite 2.17 first) before int8.
 - The app moves off TFLite (for example to ExecuTorch), which would remove the conversion step.

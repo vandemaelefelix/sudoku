@@ -29,7 +29,7 @@ So each cell needs two answers: which digit, and what kind of mark.
 
 ## Decision
 
-One small CNN (about 100k parameters, 32 × 32 grayscale input) with two output heads:
+One small CNN (about 75k parameters, 32 × 32 grayscale input) with two output heads:
 
 - `digit`: `empty, 1–9`
 - `kind`: `none, printed, handwritten, notes`
@@ -37,17 +37,31 @@ One small CNN (about 100k parameters, 32 × 32 grayscale input) with two output 
 The full specification is in [model-contract](../00-concepts/model-contract.md). The scan loads
 printed digits as givens, handwritten digits as editable player entries, and notes cells as empty.
 
+**Network.** Three stages of two 3 × 3 convolutions with batch normalisation and ReLU (16, 32 and
+64 channels), max pooling between stages, global average pooling, dropout, and two linear heads.
+Research on the real cells compared it with the first design (flatten and a dense layer, 90k
+parameters) and a depthwise-separable variant: 98.7 % against 97.5 % and 98.6 %, at the same
+training recipe. See the [research record](../../research/2026-10-09-cell-classifier-research.md).
+
+**Training.** Augmentation of the 64 × 64 cell before preprocessing (shift, rotation, scale,
+shear, blur, contrast, noise), a one-cycle learning-rate schedule, label smoothing 0.05, and a
+kind-loss weight of 0.4 so the kind head cannot pull the digit features around. A cell whose kind
+is unknown adds no kind loss.
+
 ## Data
 
 | Source | Gives | Notes |
 | --- | --- | --- |
-| Synthetic printed digits | Unlimited `printed` and `empty` | Rendered in many fonts, with blur, perspective, paper texture, lighting and leftover grid lines |
+| Synthetic printed digits and notes | Unlimited `printed`, `notes` and `empty` | Rendered in many fonts, with blur, perspective, paper texture, lighting and leftover grid lines |
 | Real cells in `ml/data/cells/` (~16k) | Real printed and some handwritten digits, empty cells | Add the kind. 71 cells still need a label |
 | EMNIST digits | `handwritten` | Augmented to look like ink inside a printed cell |
 | App export (F-11) | Real everything, especially the player's own handwriting | The correction screen's given / mine toggle labels the kind |
 
 ## Consequences
 
+- Until handwritten cells with a kind label exist (EMNIST, app exports), the kind head cannot
+  tell printed from handwritten. The app treats `kind` as a suggestion on the correction screen
+  until then.
 - Handwriting is the weakest class at first. Expect the correction screen to do real work until
   app exports accumulate.
 - A kind mistake is cheaper than a digit mistake: it only changes whether a cell is editable, and
