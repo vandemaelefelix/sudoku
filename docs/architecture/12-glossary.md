@@ -15,9 +15,15 @@ status: DRAFT
 | Expo | The React Native framework and tooling used for the app. Development builds, since native modules are needed |
 | fast-opencv | `react-native-fast-opencv`, OpenCV functions callable from JS and frame processors over JSI |
 | fast-tflite | `react-native-fast-tflite`, runs TFLite models from JS and frame processors. This project uses the CPU delegate: Metal is not supported, Core ML is opt-in |
-| Fixture | A photo of a sudoku with its true grid and kinds, and the cell images the app's scanner made from it. Public set in `fixtures/scans`, private set outside git (ADR-013). Never used for training |
+| Fixture | A photo of a sudoku with its true grid and kinds, and the cell images the app's scanner made from it. Public set in `fixtures/scans`, private set outside git (ADR-013). Never used for training. The synthetic reference pairs in `fixtures/preprocess/` are also fixtures |
 | Fixture runner | A screen in development builds that runs the real scanner on fixture photos (ADR-010) |
 | Holdout | The fixture split that is not looked at while training, only scored at promote (ADR-007) |
+| Near-duplicate group | Cells with almost the same image, found by a difference hash. The split keeps a group in one set, so near-twins do not leak between training and validation |
+| Reference pair | A synthetic cell image in `fixtures/preprocess/` with its expected 32 × 32 model input. Python and the app both test against it |
+| Temperature | A number that divides the digit logits before the softmax. Fitted on the validation set so that the confidence matches the accuracy |
+| Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
+| Op table | `tflite_2_17_ops.json`: the highest version of each TFLite operator that the 2.17 runtime supports. Export checks the model against it (ADR-005) |
+| Contact sheet | An image of 50 numbered cells with their label and predicted label. A person uses it to check labels (`just suspects`) |
 | Technique solver | The solver in `@sudoku/core` that solves like a person. It grades difficulty and gives hints (ADR-011) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |

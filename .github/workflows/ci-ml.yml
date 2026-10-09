@@ -14,11 +14,13 @@ on:
 jobs:
   ml:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           working-directory: ml
+          enable-cache: true
       - uses: extractions/setup-just@v4
       - run: uv sync --locked --directory ml
       - run: just lint-ml

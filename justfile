@@ -51,3 +51,28 @@ bundle:
 # Check relative links in the docs
 docs-check:
     python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md
+
+# Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
+preprocess-fixtures:
+    uv run --directory ml python -m sudoku_ml.fixtures ../fixtures/preprocess
+
+# Train a model from a config in ml/configs/ (default: the cell classifier)
+train config="cell-classifier":
+    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
+
+# Export a training run to TFLite and check it against PyTorch and TFLite 2.17
+export run:
+    uv run --directory ml python -m sudoku_ml.export {{run}}
+
+# Rewrite ml/datasets/cells.csv from the folders in ml/data/cells/
+dataset-manifest:
+    uv run --directory ml python -m sudoku_ml.manifest
+
+# Move cells to the labels in a relabel CSV, then rewrite the manifest
+relabel file="data/review/relabels.csv":
+    uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
+    just dataset-manifest
+
+# List the 150 most likely wrong labels in ml/data/review/ (contact sheets + relabels.csv)
+suspects:
+    uv run --directory ml python -m sudoku_ml.suspects
