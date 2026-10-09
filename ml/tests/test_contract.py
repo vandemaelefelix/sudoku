@@ -1,4 +1,16 @@
-from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, KIND_CLASSES, is_valid_pair
+from sudoku_ml.contract import (
+    BATCH,
+    CELL_SIZE,
+    CONTRACT_VERSION,
+    CROP,
+    DIGIT_CLASSES,
+    INPUT_SIZE,
+    KIND_CLASSES,
+    UNKNOWN_KIND,
+    digit_index,
+    is_valid_pair,
+    kind_index,
+)
 
 
 def test_contract_version():
@@ -30,3 +42,19 @@ def test_digit_goes_with_printed_or_handwritten():
 def test_unknown_class_is_invalid():
     assert not is_valid_pair("10", "printed")
     assert not is_valid_pair("7", "typed")
+
+
+def test_sizes_follow_the_contract():
+    assert (CELL_SIZE, INPUT_SIZE, CROP, BATCH) == (64, 32, (6, 58), 81)
+
+
+def test_digit_index_follows_class_order():
+    assert (digit_index("empty"), digit_index("9")) == (0, 9)
+
+
+def test_kind_index_follows_class_order():
+    assert (kind_index("none"), kind_index("notes")) == (0, 3)
+
+
+def test_unknown_kind_is_negative():
+    assert UNKNOWN_KIND == -1
