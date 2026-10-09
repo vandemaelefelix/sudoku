@@ -72,3 +72,7 @@ dataset-manifest:
 relabel file="data/review/relabels.csv":
     uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
     just dataset-manifest
+
+# List the 150 most likely wrong labels in ml/data/review/ (contact sheets + relabels.csv)
+suspects:
+    uv run --directory ml python -m sudoku_ml.suspects
