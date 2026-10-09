@@ -45,3 +45,19 @@ def test_rejects_a_misnamed_file(tmp_path: Path):
     (cells / "3" / f"{cell_id[:16]}.png").rename(cells / "3" / "0000000000000000.png")
     with pytest.raises(ValueError):
         write_cells_manifest(cells, manifest)
+
+
+def test_rejects_an_unknown_label_folder(tmp_path: Path):
+    cells, manifest = tmp_path / "cells", tmp_path / "cells.csv"
+    add_cell(cells, "3", 50)
+    add_cell(cells, "bogus", 60)
+    with pytest.raises(ValueError, match="bogus"):
+        write_cells_manifest(cells, manifest)
+
+
+def test_rejects_a_duplicate_id(tmp_path: Path):
+    cells, manifest = tmp_path / "cells", tmp_path / "cells.csv"
+    add_cell(cells, "3", 50)
+    add_cell(cells, "4", 50)
+    with pytest.raises(ValueError, match="same pixels"):
+        write_cells_manifest(cells, manifest)
