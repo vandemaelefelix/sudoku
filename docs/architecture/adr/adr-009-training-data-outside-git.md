@@ -13,7 +13,7 @@ status: DRAFT
 
 ## Context
 
-The legacy v2 cells alone are 7.8k images and 71 MB. Synthetic data, EMNIST and app exports will
+The real cells alone are 16k images and 167 MB. Synthetic data, EMNIST and app exports will
 add more. Images in git bloat every clone forever. But a model is only reproducible if it is known
 exactly which images trained it.
 
@@ -38,8 +38,8 @@ exactly which images trained it.
 
 ## Consequences
 
-- Until DVC, a lost laptop means rebuilding the real data from backups. The legacy cells must be
-  backed up as soon as they are copied in.
+- Until DVC, a lost laptop means rebuilding the real data from backups. `ml/data/` must have
+  a backup.
 
 ## Reassessment Triggers
 

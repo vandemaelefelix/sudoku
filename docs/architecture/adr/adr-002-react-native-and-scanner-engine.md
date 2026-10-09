@@ -29,7 +29,7 @@ JavaScript thread, not on the UI framework.
 | Vision engine | VisionCamera frame processors with fast-opencv and fast-tflite | VisionCamera frame-processor plugin in Swift: OpenCV's iOS framework, Apple Vision, Core ML | Swift with Apple Vision and Core ML |
 | Per-frame cost | CPU OpenCV on a downscaled frame. JSI calls cost microseconds, image data stays native | Same with OpenCV. Apple Vision's rectangle detector is hardware-tuned and kinder to the battery | Same as B |
 | Animation | Skia + Reanimated | Skia + Reanimated | SwiftUI / Core Animation |
-| Porting the old OpenCV logic | Basic pipeline maps call for call. Coverage of the library's API subset to verify. scipy has no counterpart, and pixel loops in worklets are slow | Full OpenCV plus Accelerate. scipy parts still written by hand, in a fast language | Same as B |
+| Classical OpenCV pipeline | Basic steps map call for call. Coverage of the library's API subset to verify. scipy has no counterpart, and pixel loops in worklets are slow | Full OpenCV plus Accelerate. scipy parts still written by hand, in a fast language | Same as B |
 | Debugging | Logs inside worklets, little else | Xcode debugger and Instruments | Same as B |
 | Android later | Mostly free | A Kotlin twin of the plugin | Rewrite |
 | Learning value | RN + ML deployment | RN + Swift + iOS ML | Swift only, React Native knowledge unused |

@@ -8,9 +8,9 @@ concept: scan-pipeline
 ## Why
 
 Scanning is the feature that makes this more than a sudoku game, and it is judged in the first
-second: does the outline snap onto the grid, and does the grid that comes out look right. The
-earlier Python project spent about 4,000 lines on fixing bad still photos after the fact. A live
-camera lets the user fix most of that by holding the phone better, so the pipeline can be simpler
+second: does the outline snap onto the grid, and does the grid that comes out look right. Fixing
+a bad still photo after the fact takes a lot of code. A live camera lets the user fix most of
+that by holding the phone better, so the pipeline can be simpler
 and still handle a curved book page to some degree.
 
 ## What
@@ -19,8 +19,8 @@ Two stages. The **live** stage runs on every frame and only finds the four outer
 cheap and drives the outline. When the outline has been steady for a short while, the scan
 **locks on** and captures a full-resolution photo. The **capture** stage then does the expensive
 work once: it finds the 100 grid intersections, flattens every cell from its own four corners,
-and classifies the 81 cells. Flattening per cell corrects a curved page piece by piece, which is
-what the earlier spline code tried to do with far more maths.
+and classifies the 81 cells. Flattening per cell corrects a curved page piece by piece, with
+simple maths.
 
 ## Block diagram
 

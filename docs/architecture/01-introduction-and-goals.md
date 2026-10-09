@@ -9,15 +9,12 @@ day, and a machine-learning pipeline that lets the app scan a paper sudoku from 
 puzzle book, load it, and solve it or give a hint. A backend for accounts, history and a
 leaderboard may follow later.
 
-The project has three reasons to exist:
+The project has two reasons to exist:
 
 1. **Learning and portfolio.** Build the whole chain once, properly: data, training, export,
    on-device inference, a live camera pipeline and a React Native app, documented in Arc42.
 2. **Replace the current sudoku app.** The app on the phone today is full of ads. This one has
    none, works offline, and is good enough to use every day.
-3. **Consolidate.** Four earlier sudoku repositories exist (see 1.4). When this one is complete,
-   they are archived and this is the only sudoku project left.
-
 Shipping to the App Store is possible but not a goal. Decisions SHOULD NOT block it.
 
 ## 1.1 Requirements Overview
@@ -70,18 +67,3 @@ The full tree and scenarios are in [10-quality-requirements.md](10-quality-requi
 | Felix (developer and daily player) | A polished, ad-free game, and a project that teaches the full ML-to-mobile chain |
 | Portfolio reader | A clean repository whose architecture and decisions can be read without running it |
 | Possible App Store users | A trustworthy app: no ads, no tracking, works offline |
-
-## 1.4 Predecessors
-
-These are archived once this project covers what they did. Code is not ported. Data and lessons are.
-
-| Repository | Period | What we keep |
-| --- | --- | --- |
-| [sudoku_solver](https://github.com/vandemaelefelix/sudoku_solver) (computer vision, v1) | 2020 | ~21k digit images, only if their origin can be established (ADR-013) |
-| [sudoku-solver](https://github.com/vandemaelefelix/sudoku-solver) (computer vision, v2) | 2025 | The ~7.8k labelled cells (re-checked, kind label added), the lesson that whole-grid accuracy is what matters, the class-imbalance findings |
-| [react-sudoku-app](https://github.com/vandemaelefelix/react-sudoku-app) (game) | 2022 | Game UX ideas: keyboard, timer, mistake highlighting, themes |
-| [next-sudoku-app](https://github.com/vandemaelefelix/next-sudoku-app) (Next starter) | 2022 | Nothing |
-
-An unversioned local copy of the v2 computer-vision project holds work that was never pushed,
-including the only copy of the ~7.8k labelled cells. Those cells MUST be copied into this
-project's dataset and backed up before anything is archived (R-09).
