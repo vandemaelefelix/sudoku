@@ -1,14 +1,12 @@
 import { render, screen } from '@testing-library/react-native'
-import App from './App'
 
 describe('App', () => {
-  it('shows the title', () => {
+  it('opens on the camera screen', () => {
+    // App logs the fast-opencv probe when it loads. Keep the test output clean.
+    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    const App = (jest.requireActual('./App') as typeof import('./App')).default
+    log.mockRestore()
     render(<App />)
-    expect(screen.getByText('Sudoku')).toBeTruthy()
-  })
-
-  it('reads the grid size from @sudoku/core', () => {
-    render(<App />)
-    expect(screen.getByText('81 cells')).toBeTruthy()
+    expect(screen.getByTestId('camera')).toBeTruthy()
   })
 })

@@ -1,13 +1,17 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Sudoku",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vandemaelefelix.sudoku",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Sudoku uses the camera to scan a paper sudoku. The photos never leave your iPhone."
+      }
     },
     "android": {
       "adaptiveIcon": {
