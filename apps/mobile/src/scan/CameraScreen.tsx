@@ -48,35 +48,32 @@ export function CameraScreen() {
         const result = countFrame(window.getBlocking(), frame.timestamp, Date.now() - started)
         window.setBlocking(result.window)
         if (result.report !== null) scheduleOnRN(logFrameRate, result.report.fps, result.report.detectionMs)
-        detection.value = {
+        detection.set({
           quad: grid == null ? null : grid.quad,
           timestamp: frame.timestamp,
           aspect: uprightAspect(frame.width, frame.height, frame.orientation),
-        }
+        })
       } finally {
         frame.dispose()
       }
     },
   })
 
-  // react/immutability: a Reanimated shared value changes through `.value`, which the rule reads as a hook result edit.
-  /* oxlint-disable react/immutability */
   useAnimatedReaction(
     () => detection.value,
     (current) => {
       if (current == null) return
       const smoothed = smoothQuad(smoothing.value, current.quad, current.timestamp)
-      smoothing.value = smoothed
+      smoothing.set(smoothed)
       const shown = smoothed == null ? null : toPreview(smoothed.quad, current.aspect, viewSize.value)
-      outline.value = shown
+      outline.set(shown)
       if (MEASURE_JITTER) {
         const result = trackJitter(jitter.value, shown, current.timestamp)
-        jitter.value = result.window
+        jitter.set(result.window)
         if (result.report !== null) scheduleOnRN(logJitter, result.report)
       }
     },
   )
-  /* oxlint-enable react/immutability */
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => setIsActive(state === 'active'))
@@ -116,8 +113,7 @@ export function CameraScreen() {
       testID="camera-screen"
       style={StyleSheet.absoluteFill}
       onLayout={(event) => {
-        // oxlint-disable-next-line react/immutability -- a shared value changes through `.value`
-        viewSize.value = { width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height }
+        viewSize.set({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })
       }}
     >
       <StatusBar style="light" />
