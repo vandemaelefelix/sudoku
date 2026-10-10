@@ -11,7 +11,7 @@ export function uprightAspect(width: number, height: number, orientation: Camera
 
 /**
  * Maps a normalised quad to view points. The preview fills the view and crops the frame
- * ('cover', the VisionCamera default). Null before the view has a size.
+ * ('cover', the VisionCamera default). Null before the view has a size, and when the aspect is not a positive number.
  */
 export function toPreview(quad: Quad, aspect: number, view: ViewSize): Quad | null {
   'worklet'

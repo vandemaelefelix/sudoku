@@ -1,7 +1,7 @@
 import type { Point, Quad } from '../scanner'
 
 // One Euro filter (Casiez et al., CHI 2012): strong smoothing when still, little lag when moving.
-// Units: normalised frame coordinates and seconds. Tuned against QR-06.
+// Units: normalised frame coordinates and seconds. Targets QR-06.
 
 /** Hz. The cutoff of a still corner. Lower is steadier. */
 export const MIN_CUTOFF = 1

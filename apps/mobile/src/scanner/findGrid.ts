@@ -22,7 +22,7 @@ const APPROX_EPSILON = 0.02
 type Releasable = { release(): void }
 
 /**
- * pixels: interleaved RGB, uint8, width × height. Returns the largest plausible 4-corner contour.
+ * pixels: interleaved RGB, uint8, width × height. Returns the normalised quad and the score of the largest plausible 4-corner contour, or null.
  * Releases every OpenCV object before it returns or throws.
  */
 export function findGrid(pixels: Uint8Array, width: number, height: number): GridDetection | null {
