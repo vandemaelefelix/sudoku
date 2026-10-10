@@ -34,13 +34,9 @@ jest.mock('react-native-vision-camera', () => {
   }
 })
 
-jest.mock(
-  'react-native-fast-opencv',
-  () => ({
-    DataTypes: { CV_8U: 0 },
-    Mat: {
-      create: jest.fn((rows: number, cols: number) => ({ rows, cols, release: jest.fn() })),
-    },
-  }),
-  { virtual: true },
-)
+jest.mock('react-native-fast-opencv', () => ({
+  DataTypes: { CV_8U: 0 },
+  Mat: {
+    create: jest.fn((rows: number, cols: number) => ({ rows, cols, release: jest.fn() })),
+  },
+}))
