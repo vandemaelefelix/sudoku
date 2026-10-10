@@ -62,7 +62,7 @@ Accepted when all of these pass:
 
 | Check | Pass |
 | --- | --- |
-| fast-opencv builds on iOS with Expo 57 | The build passes. Known risk: fast-opencv issue #117 (iOS build fails on React Native 0.87 or with a prebuilt React-Core). Expo 57 ships React Native 0.86.3, so only the prebuilt case can apply. Fallback: apply the unmerged fix #119 with patch-package |
+| fast-opencv builds on iOS with Expo 57 (passed, 2026-10-10) | The build passes. Known risk: fast-opencv issue #117 (iOS build fails on React Native 0.87 or with a prebuilt React-Core). Expo 57 ships React Native 0.86.3, so only the prebuilt case can apply. Fallback: apply the unmerged fix #119 with patch-package |
 | Live 4-corner detection in a fast-opencv frame processor | ≥ 30 fps sustained over 60 s, no thermal warning |
 | Outline drawn in Skia from smoothed corners | Visibly steady on a still page, follows within 100 ms when moved |
 | fast-opencv covers the capture stage | perspective transform, threshold, contours, morphology are available (checked in the library). `cornerSubPix` is not: the intersection search uses a TypeScript or Swift replacement |
@@ -70,6 +70,15 @@ Accepted when all of these pass:
 | Memory | No growth over 5 minutes of scanning. The code releases every Mat with `release()`, because garbage collection in a worklet runtime can lag |
 | Thread handoff | Corners reach the UI thread through a shared value without passing the JS thread. The VisionCamera major version and worklet runtime that do this are pinned here |
 | Capture off the JS thread | `recognise()` runs while the transition animation stays at 60 fps |
+
+Result, fast-opencv build (2026-10-10, [issue #2 comment](https://github.com/vandemaelefelix/sudoku/issues/2#issuecomment-6095305070)):
+
+- Device: iPhone 17 Pro, iOS 26.6.2. Xcode 27.0 (27A266a).
+- fast-opencv 1.0.1 compiles. A `Mat` round trip works on the device.
+- fast-opencv issue #117 does not apply on React Native 0.86.3. The #119 fix is not needed.
+- Expo 57 asks for Xcode 26.4 or later. Xcode 27.0 works.
+- A free personal team needed Apple's WWDR G3 intermediate certificate.
+- The empty frame processor ran at a steady 30.0 fps.
 
 A failing row decides which step moves to B, not the whole approach. The measured numbers are
 added to this ADR.
