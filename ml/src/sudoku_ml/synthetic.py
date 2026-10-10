@@ -49,7 +49,6 @@ def _grid_lines(draw: ImageDraw.ImageDraw, rng: np.random.Generator, ink) -> Non
 
 
 def render_cell(rng: np.random.Generator, digit: int, kind: str, fonts: list[Path]) -> np.ndarray:
-    """Render one 64 × 64 cell image of the given kind."""
     paper, ink = _colour(rng, dark=False), _colour(rng, dark=True)
     image = Image.new("RGB", (CELL_SIZE, CELL_SIZE), paper)
     draw = ImageDraw.Draw(image)

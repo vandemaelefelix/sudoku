@@ -22,7 +22,6 @@ CELL_SIZE = 64
 """Side of the cell image that the scanner's per-cell flatten produces."""
 
 INPUT_SIZE = 32
-"""Side of the model input."""
 
 CROP = (6, 58)
 """Rows and columns of the cell image that the model sees. The rest holds grid lines."""
@@ -35,10 +34,8 @@ UNKNOWN_KIND = -1
 
 
 def digit_index(label: str) -> int:
-    """Index of a digit class in the `digit` output."""
     return DIGIT_CLASSES.index(label)
 
 
 def kind_index(kind: str) -> int:
-    """Index of a kind class in the `kind` output."""
     return KIND_CLASSES.index(kind)

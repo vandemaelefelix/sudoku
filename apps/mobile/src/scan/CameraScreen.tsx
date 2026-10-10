@@ -9,7 +9,6 @@ function logFrameRate(fps: number) {
   if (__DEV__) console.log(`[camera] ${fps.toFixed(1)} fps`)
 }
 
-/** The back camera, full screen. An empty frame processor logs the frame rate (issue #2). */
 export function CameraScreen() {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
