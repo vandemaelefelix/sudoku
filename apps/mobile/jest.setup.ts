@@ -44,3 +44,19 @@ jest.mock('react-native-fast-opencv', () => ({
 jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
 }))
+
+jest.mock('react-native-reanimated', () => ({
+  ...jest.requireActual('react-native-reanimated/mock'),
+  useAnimatedReaction: jest.fn(),
+}))
+
+// Skia's own Jest setup needs CanvasKit. Views are enough for these tests.
+jest.mock('@shopify/react-native-skia', () => {
+  const { View } = jest.requireActual('react-native')
+  const { createElement } = jest.requireActual('react')
+  return {
+    Canvas: ({ children, ...props }: { children?: unknown }) =>
+      createElement(View, { testID: 'skia-canvas', ...props }, children),
+    Points: (props: object) => createElement(View, { testID: 'skia-points', ...props }),
+  }
+})

@@ -44,3 +44,4 @@ status: DRAFT
 | VisionCamera | `react-native-vision-camera`, the camera library with frame processors |
 | Frame resizer | `react-native-vision-camera-resizer`. It turns a camera frame upright and scales it on the GPU before fast-opencv sees it |
 | One Euro filter | A smoothing filter whose cutoff rises with speed. It keeps a still outline steady and lets a moving outline follow with little lag. Used for corner smoothing |
+| Outline | The four-sided line that Skia draws over the camera preview, on the smoothed quad |
