@@ -8,7 +8,7 @@ export type GridDetection = { quad: Quad; score: number }
 
 export const MIN_AREA_FRACTION = 0.1
 
-/** A contour that reaches the frame edge is cut off by it, so it is not the grid. */
+/** A quad that touches the frame edge is cut off by it, so it is not the grid. */
 export const BORDER_MARGIN = 0.005
 
 export function quadArea(quad: Quad): number {

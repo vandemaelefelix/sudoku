@@ -8,7 +8,7 @@ import type { GridDetection } from './quad'
 export const DETECT_WIDTH = 360
 export const DETECT_HEIGHT = 640
 
-/** A worklet for the frame processor. */
+/** A worklet for the frame processor. It does not dispose the Frame. The caller owns it. */
 export type GridDetector = (frame: Frame) => GridDetection | null
 
 /** Undefined while the frame resizer loads, and when it fails to load. */
