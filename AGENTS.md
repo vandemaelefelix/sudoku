@@ -82,6 +82,34 @@ all follow them.
 Technical names (such as "frame processor" or "promote gate") are allowed. Define them in the
 glossary.
 
+## Code comments
+
+Write a comment only when it gives a fact that the code cannot show. A good name comes first. A
+comment is the last option.
+
+1. **Comment the reason, not the action.** The code says what it does. A comment says why, or
+   why the obvious way is wrong.
+2. **Write an interface comment only for facts.** Facts are units, shapes, ranges, invariants,
+   side effects and failure behaviour. Delete a comment that repeats the name or the types.
+3. **Point to durable sources.** Refer to `SUD-xx`, `ADR-NNN`, a concept or a record in
+   `docs/research/`. Do not refer to issues, pull requests or plan tasks. They belong in commits
+   and pull requests.
+4. **Do not write TODO, FIXME, XXX or HACK.** Propose an issue instead (see Work tracking).
+5. **Do not commit commented-out code.** Delete it. Git keeps the old version.
+6. **Name the rule in every lint suppression.** Give the reason in the same comment. Do not use a
+   blanket `eslint-disable` or a blanket `# noqa`.
+7. **Explain a test only when its setup is not obvious.** Do not repeat the assertion.
+8. **Keep comments true.** When you change code, change or delete its comment in the same commit.
+
+| Keep | Delete |
+| --- | --- |
+| `// The spy comes before render: the worklet captures countFrame when it is created.` | `/** The number of cells in a sudoku grid. */` above `GRID_CELLS` |
+| `# SUD-10: training must never draw synthetic cells with this seed.` | `"""Index of a digit class in the digit output."""` on `digit_index` |
+| `image: np.ndarray  # (64, 64, 3) uint8 RGB cell image` | `(issue #2)` at the end of a component comment |
+
+`just lint` enforces rules 4 and 6 with oxlint and ruff. Ruff also enforces rule 5. Comments
+follow the writing style above.
+
 ## Work tracking
 
 Work is tracked in GitHub issues. Use the `gh` CLI.
