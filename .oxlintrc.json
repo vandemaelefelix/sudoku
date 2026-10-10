@@ -38,7 +38,7 @@
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
     "import/no-cycle": "error",
-    "no-warning-comments": "error",
+    "no-warning-comments": ["error", { "terms": ["todo", "fixme", "xxx", "hack"] }],
     "unicorn/no-abusive-eslint-disable": "error",
     "react/react-in-jsx-scope": "off",
     "react/style-prop-object": "off",
