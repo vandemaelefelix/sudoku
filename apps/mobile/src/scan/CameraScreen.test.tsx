@@ -89,6 +89,12 @@ describe('CameraScreen', () => {
     expect(screen.getByTestId('camera')).toBeTruthy()
   })
 
+  it('keeps the frames upright with the portrait interface, not the accelerometer', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    expect(screen.getByTestId('camera').props.orientationSource).toBe('interface')
+  })
+
   it('uses a light status bar over the camera', () => {
     givenPermission('authorized')
     render(<CameraScreen />)

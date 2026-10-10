@@ -40,6 +40,15 @@ describe('trackJitter', () => {
     expect(reports[0].frames).toBe(150)
   })
 
+  it('starts again after a pause, so the step over the pause is not measured', () => {
+    const before = Array.from({ length: 10 }, (_, i): [Quad, number] => [at(100), i / 30])
+    const after = Array.from({ length: 151 }, (_, i): [Quad, number] => [at(240), 40 + i / 30])
+    const reports = feed([...before, ...after])
+    expect(reports).toHaveLength(1)
+    expect(reports[0].maxStep).toBe(0)
+    expect(reports[0].frames).toBe(150)
+  })
+
   it('starts again when the clock goes back', () => {
     const before = Array.from({ length: 100 }, (_, i): [Quad, number] => [at(100), 10 + i / 30])
     const after = Array.from({ length: 151 }, (_, i): [Quad, number] => [at(100), 1 + i / 30])
