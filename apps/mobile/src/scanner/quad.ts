@@ -42,9 +42,8 @@ export function orderCorners(points: Point[]): Quad {
   const cx = (points[0].x + points[1].x + points[2].x + points[3].x) / 4
   const cy = (points[0].y + points[1].y + points[2].y + points[3].y) / 4
   // y points down, so a rising angle runs clockwise on the screen.
-  const sorted = points.toSorted(
-    (a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx),
-  )
+  const sorted = points.slice()
+  sorted.sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx))
   let first = 0
   for (let i = 1; i < 4; i++) {
     if (sorted[i].x + sorted[i].y < sorted[first].x + sorted[first].y) first = i
