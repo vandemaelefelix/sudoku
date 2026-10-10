@@ -1,19 +1,17 @@
-import { createEmptyGrid } from '@sudoku/core'
-import { StatusBar } from 'expo-status-bar'
-import { StyleSheet, Text, View } from 'react-native'
+import { probeOpenCV } from './src/scanner'
+import { CameraScreen } from './src/scan/CameraScreen'
 
-export default function App() {
-  const cells = createEmptyGrid().length
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sudoku</Text>
-      <Text>{`${cells} cells`}</Text>
-      <StatusBar style="auto" />
-    </View>
-  )
+/** Logs whether fast-opencv works. A failing probe must never stop the app from starting. */
+export function logOpenCVProbe() {
+  try {
+    console.log(`[scanner] fast-opencv ${probeOpenCV() ? 'works' : 'FAILED'}`)
+  } catch (error) {
+    console.log(`[scanner] fast-opencv FAILED: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 32, fontWeight: '600' },
-})
+if (__DEV__) logOpenCVProbe()
+
+export default function App() {
+  return <CameraScreen />
+}
