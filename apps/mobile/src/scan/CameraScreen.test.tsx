@@ -4,6 +4,13 @@ import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-nati
 import { CameraScreen } from './CameraScreen'
 import * as frameRate from './frameRate'
 
+jest.mock('expo-status-bar', () => {
+  const { View } = jest.requireActual('react-native')
+  return {
+    StatusBar: ({ style }: { style: string }) => <View testID="status-bar" accessibilityLabel={style} />,
+  }
+})
+
 const permission = jest.mocked(useCameraPermission)
 const device = jest.mocked(useCameraDevice)
 const frameOutput = jest.mocked(useFrameOutput)
@@ -38,6 +45,18 @@ describe('CameraScreen', () => {
     givenPermission('authorized')
     render(<CameraScreen />)
     expect(screen.getByTestId('camera')).toBeTruthy()
+  })
+
+  it('uses a light status bar over the camera', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('light')
+  })
+
+  it('uses a dark status bar on the message screens', () => {
+    givenPermission('denied')
+    render(<CameraScreen />)
+    expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('dark')
   })
 
   it('asks for permission the first time', () => {
