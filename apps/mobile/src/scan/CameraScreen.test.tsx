@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
-import { Linking } from 'react-native'
+import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import { AppState, Linking } from 'react-native'
 import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
 import { CameraScreen } from './CameraScreen'
 import * as frameRate from './frameRate'
@@ -87,9 +87,11 @@ describe('CameraScreen', () => {
     givenPermission('authorized')
     render(<CameraScreen />)
     const handle = onFrame()
-    for (let i = 0; i <= 30; i++) handle({ timestamp: 100 + i / 30, dispose: jest.fn() })
+    const disposers = Array.from({ length: 31 }, () => jest.fn())
+    disposers.forEach((dispose, i) => handle({ timestamp: 100 + i / 30, dispose }))
     await Promise.resolve()
     expect(log).toHaveBeenCalledWith('[camera] 30.0 fps')
+    disposers.forEach((dispose) => expect(dispose).toHaveBeenCalledTimes(1))
     log.mockRestore()
   })
 
@@ -103,5 +105,24 @@ describe('CameraScreen', () => {
     const dispose = jest.fn()
     expect(() => onFrame()({ timestamp: 1, dispose })).toThrow('count failed')
     expect(dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('pauses the camera when the app is not active', () => {
+    const listener: { change: (state: string) => void } = { change: () => undefined }
+    const remove = jest.fn()
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
+      listener.change = handler as (state: string) => void
+      return { remove }
+    })
+    Object.assign(AppState, { currentState: 'active' })
+    givenPermission('authorized')
+    const { unmount } = render(<CameraScreen />)
+    expect(screen.getByTestId('camera').props.isActive).toBe(true)
+    act(() => listener.change('inactive'))
+    expect(screen.getByTestId('camera').props.isActive).toBe(false)
+    act(() => listener.change('active'))
+    expect(screen.getByTestId('camera').props.isActive).toBe(true)
+    unmount()
+    expect(remove).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,18 +1,19 @@
 import { StatusBar } from 'expo-status-bar'
-import { useEffect, useMemo } from 'react'
-import { Button, Linking, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { AppState, Button, Linking, StyleSheet, Text, View } from 'react-native'
 import { Camera, useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
 import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
 import { countFrame, EMPTY_WINDOW } from './frameRate'
 
 function logFrameRate(fps: number) {
-  console.log(`[camera] ${fps.toFixed(1)} fps`)
+  if (__DEV__) console.log(`[camera] ${fps.toFixed(1)} fps`)
 }
 
 /** The back camera, full screen. An empty frame processor logs the frame rate (issue #2). */
 export function CameraScreen() {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
+  const [isActive, setIsActive] = useState(AppState.currentState === 'active')
   const window = useMemo(() => createSynchronizable(EMPTY_WINDOW), [])
 
   const frameOutput = useFrameOutput({
@@ -28,6 +29,11 @@ export function CameraScreen() {
       }
     },
   })
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => setIsActive(state === 'active'))
+    return () => subscription.remove()
+  }, [])
 
   useEffect(() => {
     if (canRequestPermission) void requestPermission()
@@ -60,7 +66,7 @@ export function CameraScreen() {
   return (
     <View style={StyleSheet.absoluteFill}>
       <StatusBar style="light" />
-      <Camera style={StyleSheet.absoluteFill} device={device} isActive outputs={[frameOutput]} />
+      <Camera style={StyleSheet.absoluteFill} device={device} isActive={isActive} outputs={[frameOutput]} />
     </View>
   )
 }

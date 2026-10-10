@@ -15,7 +15,7 @@ React Native API:
 
 | Task | Command |
 | --- | --- |
-| Add a dependency | `pnpm exec expo install <package>`. It picks the version that fits the SDK. Do not use `pnpm add` for Expo or React Native packages |
+| Add a dependency | For a package in Expo's bundled list, run `pnpm exec expo install <package>`. It picks the version that fits the SDK. For any other native package, run `pnpm add <package>@<version> --save-exact`. Pin the version, because a native module can break with an SDK upgrade |
 | Start the dev server | `just app` |
 | Check the Expo setup | `pnpm dlx expo-doctor` |
 | Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |
