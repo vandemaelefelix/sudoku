@@ -89,15 +89,15 @@ comment is the last option.
 
 1. **Comment the reason, not the action.** The code says what it does. A comment says why, or
    why the obvious way is wrong.
-2. **Write an interface comment only when it adds facts.** Units, shapes, ranges, invariants, side
-   effects and failure behaviour are facts. A comment that repeats the name or the types is noise.
-   Delete it.
-3. **Point to durable sources.** Refer to `SUD-xx`, `ADR-NNN`, a concept or a research record. Do
-   not refer to issues, pull requests or plan tasks. They belong in commits and pull requests.
-4. **Do not write TODO, FIXME, XXX or HACK.** Open an issue instead.
+2. **Write an interface comment only for facts.** Facts are units, shapes, ranges, invariants,
+   side effects and failure behaviour. Delete a comment that repeats the name or the types.
+3. **Point to durable sources.** Refer to `SUD-xx`, `ADR-NNN`, a concept or a record in
+   `docs/research/`. Do not refer to issues, pull requests or plan tasks. They belong in commits
+   and pull requests.
+4. **Do not write TODO, FIXME, XXX or HACK.** Propose an issue instead (see Work tracking).
 5. **Do not commit commented-out code.** Delete it. Git keeps the old version.
-6. **Name the rule in every lint suppression, and give the reason.** Do not use a blanket
-   `eslint-disable` or a blanket `# noqa`.
+6. **Name the rule in every lint suppression.** Give the reason in the same comment. Do not use a
+   blanket `eslint-disable` or a blanket `# noqa`.
 7. **Explain a test only when its setup is not obvious.** Do not repeat the assertion.
 8. **Keep comments true.** When you change code, change or delete its comment in the same commit.
 
