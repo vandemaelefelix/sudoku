@@ -33,13 +33,19 @@ describe('trackJitter', () => {
 
   it('starts again when the outline disappears', () => {
     const before = Array.from({ length: 100 }, (_, i): [Quad, number] => [at(100), i / 30])
-    const after = Array.from({ length: 100 }, (_, i): [Quad, number] => [at(100), 4 + i / 30])
-    expect(feed([...before, [null, 3.5], ...after])).toEqual([])
+    const after = Array.from({ length: 151 }, (_, i): [Quad, number] => [at(100), 4 + i / 30])
+    const reports = feed([...before, [null, 3.5], ...after])
+    expect(reports).toHaveLength(1)
+    expect(reports[0].seconds).toBeCloseTo(5, 10)
+    expect(reports[0].frames).toBe(150)
   })
 
   it('starts again when the clock goes back', () => {
     const before = Array.from({ length: 100 }, (_, i): [Quad, number] => [at(100), 10 + i / 30])
-    const after = Array.from({ length: 100 }, (_, i): [Quad, number] => [at(100), 1 + i / 30])
-    expect(feed([...before, ...after])).toEqual([])
+    const after = Array.from({ length: 151 }, (_, i): [Quad, number] => [at(100), 1 + i / 30])
+    const reports = feed([...before, ...after])
+    expect(reports).toHaveLength(1)
+    expect(reports[0].seconds).toBeCloseTo(5, 10)
+    expect(reports[0].frames).toBe(150)
   })
 })
