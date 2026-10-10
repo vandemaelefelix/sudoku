@@ -43,3 +43,4 @@ status: DRAFT
 | Skia | `react-native-skia`, a 2D drawing library used for the outline and the transition |
 | VisionCamera | `react-native-vision-camera`, the camera library with frame processors |
 | Frame resizer | `react-native-vision-camera-resizer`. It turns a camera frame upright and scales it on the GPU before fast-opencv sees it |
+| One Euro filter | A smoothing filter whose cutoff rises with speed. It keeps a still outline steady and lets a moving outline follow with little lag. Used for corner smoothing |
