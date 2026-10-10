@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar'
 import { useEffect, useMemo } from 'react'
 import { Button, Linking, StyleSheet, Text, View } from 'react-native'
 import { Camera, useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
@@ -34,10 +35,15 @@ export function CameraScreen() {
 
   if (!hasPermission) {
     if (canRequestPermission) {
-      return <View testID="camera-waiting" style={styles.message} />
+      return (
+        <View testID="camera-waiting" style={styles.message}>
+          <StatusBar style="dark" />
+        </View>
+      )
     }
     return (
       <View testID="camera-denied" style={styles.message}>
+        <StatusBar style="dark" />
         <Text style={styles.text}>Sudoku needs the camera to scan a puzzle.</Text>
         <Button testID="open-settings" title="Open Settings" onPress={() => void Linking.openSettings()} />
       </View>
@@ -46,12 +52,14 @@ export function CameraScreen() {
   if (device == null) {
     return (
       <View testID="camera-missing" style={styles.message}>
+        <StatusBar style="dark" />
         <Text style={styles.text}>This phone has no back camera.</Text>
       </View>
     )
   }
   return (
     <View style={StyleSheet.absoluteFill}>
+      <StatusBar style="light" />
       <Camera style={StyleSheet.absoluteFill} device={device} isActive outputs={[frameOutput]} />
     </View>
   )
