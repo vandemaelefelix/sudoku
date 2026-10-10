@@ -70,8 +70,9 @@ invisible behind it (ADR-002). The types below are illustrative, not final.
 type Point = { x: number; y: number }     // normalised: 0..1 of the upright image
 type Quad = [Point, Point, Point, Point]  // TL, TR, BR, BL
 
-// Live, called from a frame processor for every frame
-detectGrid(frame: Frame): { quad: Quad; score: number } | null
+// Live. The hook gives the frame processor a detector once the frame resizer is ready.
+// score: the share of the frame that the quad covers, 0..1.
+useGridDetector(): ((frame: Frame) => { quad: Quad; score: number } | null) | undefined
 
 // Once, after lock-on and capture. Runs off the JS thread.
 // Maps the quad onto the photo (EXIF orientation applied) and re-detects corners near it.

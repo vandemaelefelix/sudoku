@@ -208,6 +208,9 @@ importers:
       react-native-vision-camera:
         specifier: 5.2.3
         version: 5.2.3(32deb05c85369c5f4484c38ba859dc48)
+      react-native-vision-camera-resizer:
+        specifier: 5.2.3
+        version: 5.2.3(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3))(react-native-vision-camera@5.2.3(32deb05c85369c5f4484c38ba859dc48))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       react-native-vision-camera-worklets:
         specifier: 5.2.3
         version: 5.2.3(4762771fefba3627a1d4037fc65441fe)
@@ -3298,6 +3301,17 @@ packages:
 
   react-native-skia-apple-tvos@147.1.0:
     resolution: {integrity: sha512-b+4vILXHPu++t8H41PHLBVsTab2LPqwXNdzgdScyl4+Cu8Ta34aUQW3T469cB0ogAMPdu//KV00w4YVpDZoRUQ==}
+
+  react-native-vision-camera-resizer@5.2.3:
+    resolution: {integrity: sha512-L5+MDvhHxNReHfxhHvOiXGVO8OK24kMrcBKtcJGqPFLc+bNctl99BFZCZGGBzIQYLMFbon7440Qj4Tke86vMiA==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-nitro-modules: '*'
+      react-native-vision-camera: '*'
+    peerDependenciesMeta:
+      react-native-nitro-modules:
+        optional: true
 
   react-native-vision-camera-worklets@5.2.3:
     resolution: {integrity: sha512-POwjbl1853KFSWYw3/yb3NnRpCWjg7w4dS5LvFVHeMGvPv1Qyu5CCOqYKcB3TUJlg3L4Tn/iBgs0p1NHcCrmxA==}
@@ -7934,6 +7948,14 @@ snapshots:
   react-native-skia-apple-macos@147.1.0: {}
 
   react-native-skia-apple-tvos@147.1.0: {}
+
+  react-native-vision-camera-resizer@5.2.3(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3))(react-native-vision-camera@5.2.3(32deb05c85369c5f4484c38ba859dc48))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1)
+      react-native-vision-camera: 5.2.3(32deb05c85369c5f4484c38ba859dc48)
+    optionalDependencies:
+      react-native-nitro-modules: 0.37.1(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
 
   react-native-vision-camera-worklets@5.2.3(4762771fefba3627a1d4037fc65441fe):
     dependencies:

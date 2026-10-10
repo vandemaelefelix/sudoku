@@ -42,3 +42,4 @@ status: DRAFT
 | Quad | The four outer corners of the detected grid |
 | Skia | `react-native-skia`, a 2D drawing library used for the outline and the transition |
 | VisionCamera | `react-native-vision-camera`, the camera library with frame processors |
+| Frame resizer | `react-native-vision-camera-resizer`. It turns a camera frame upright and scales it on the GPU before fast-opencv sees it |
