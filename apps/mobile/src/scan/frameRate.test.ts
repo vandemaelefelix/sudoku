@@ -1,11 +1,11 @@
 import { countFrame, EMPTY_WINDOW, type FrameWindow } from './frameRate'
 
-function feed(timestamps: number[]): Array<number | null> {
+function feed(timestamps: number[], detectionMs = 0): Array<number | null> {
   let window: FrameWindow = EMPTY_WINDOW
   return timestamps.map((t) => {
-    const result = countFrame(window, t)
+    const result = countFrame(window, t, detectionMs)
     window = result.window
-    return result.fps
+    return result.report?.fps ?? null
   })
 }
 
@@ -53,5 +53,15 @@ describe('countFrame', () => {
     const rates = feed([0, 0.1, 0.7, 1.1, 1.5, 1.8])
     expect(rates.slice(0, 5)).toEqual([null, null, null, null, null])
     expect(rates[5]).toBeCloseTo(3 / 1.1, 5)
+  })
+
+  it('reports the mean detection time of the window', () => {
+    let window: FrameWindow = EMPTY_WINDOW
+    const reports = Array.from({ length: 31 }, (_, i) => {
+      const result = countFrame(window, 10 + i / 30, i % 2 === 0 ? 4 : 8)
+      window = result.window
+      return result.report
+    })
+    expect(reports[30]!.detectionMs).toBeCloseTo(6, 1)
   })
 })
