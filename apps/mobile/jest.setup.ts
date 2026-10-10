@@ -40,3 +40,7 @@ jest.mock('react-native-fast-opencv', () => ({
     create: jest.fn((rows: number, cols: number) => ({ rows, cols, release: jest.fn() })),
   },
 }))
+
+jest.mock('react-native-vision-camera-resizer', () => ({
+  useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
+}))
