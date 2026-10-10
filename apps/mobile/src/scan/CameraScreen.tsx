@@ -11,7 +11,7 @@ import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
 import { toPreview, uprightAspect, type ViewSize } from './previewMapping'
 import { type Smoothing, smoothQuad } from './smoothing'
 
-/** One frame's result, from the camera thread to the UI thread. aspect: of the upright frame. */
+/** One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame. */
 export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number }
 
 const MEASURE_JITTER = __DEV__
@@ -117,7 +117,13 @@ export function CameraScreen() {
       }}
     >
       <StatusBar style="light" />
-      <Camera style={StyleSheet.absoluteFill} device={device} isActive={isActive} outputs={[frameOutput]} />
+      <Camera
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={isActive}
+        outputs={[frameOutput]}
+        orientationSource="interface"
+      />
       <GridOutline outline={outline} />
     </View>
   )
