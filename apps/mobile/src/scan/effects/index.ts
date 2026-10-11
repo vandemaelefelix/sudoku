@@ -1,10 +1,11 @@
 import { gatheringDots } from './gathering-dots'
 import { gridLattice } from './grid-lattice'
+import { ripples } from './ripples'
 import { spotlightBrackets } from './spotlight-brackets'
 import type { AnyEffect } from './types'
 
 // To add an effect, add its folder and one line here. The dev list keeps this order within a family.
-export const EFFECTS: readonly AnyEffect[] = [gatheringDots, spotlightBrackets, gridLattice]
+export const EFFECTS: readonly AnyEffect[] = [gatheringDots, spotlightBrackets, gridLattice, ripples]
 
 /** A release build runs only this effect. */
 export const DEFAULT_INDEX = 0
