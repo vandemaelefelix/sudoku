@@ -31,6 +31,8 @@ jest.mock('react-native-vision-camera', () => {
     })),
     useCameraDevice: jest.fn(() => ({ id: 'back' })),
     useFrameOutput: jest.fn(() => ({})),
+    usePhotoOutput: jest.fn(() => ({ capturePhoto: jest.fn() })),
+    CommonResolutions: { UHD_16_9: { width: 2160, height: 3840 } },
   }
 })
 
@@ -47,6 +49,11 @@ jest.mock('react-native-fast-tflite', () => ({
     outputs: [{ shape: [81, 10] }, { shape: [81, 4] }],
     runSync: () => [new ArrayBuffer(81 * 10 * 4), new ArrayBuffer(81 * 4 * 4)],
   })),
+}))
+
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: 'light' },
 }))
 
 jest.mock('react-native-vision-camera-resizer', () => ({
