@@ -133,7 +133,11 @@ jest.mock('@shopify/react-native-skia', () => {
     StrokeJoin: { Miter: 0, Round: 1, Bevel: 2 },
     BlendMode: { Modulate: 13 },
     TileMode: { Clamp: 0 },
+    ColorType: { RGBA_8888: 4, BGRA_8888: 6 },
+    AlphaType: { Opaque: 1, Premul: 2 },
     Skia: {
+      Data: { fromBytes: jest.fn((bytes: Uint8Array) => ({ bytes })) },
+      Image: { MakeImage: jest.fn(() => ({ dispose: jest.fn() })) },
       Color: (color: string) => color,
       Paint: () => ({
         setAntiAlias: jest.fn(),
