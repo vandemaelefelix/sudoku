@@ -19,7 +19,7 @@ import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
 import { kvSettings } from '@/settings/SettingsRepository'
 import { type RecogniseResult, useGridDetector } from '@/scanner'
 import { useColors } from '@/theme/colors'
-import { CorrectionScreen } from './correction/CorrectionScreen'
+import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import {
   countFrame,
@@ -30,14 +30,14 @@ import {
   type Smoothing,
   smoothQuad,
 } from '@/scan/utils/tracking.utils'
-import { DEFAULT_INDEX } from './effects/registry'
-import { EffectCanvas } from './effects/EffectCanvas'
-import { EffectPicker } from './effects/EffectPicker'
+import { DEFAULT_INDEX } from '@/scan/effects/registry'
+import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
+import { EffectPicker } from '@/scan/effects/components/EffectPicker'
 import { toPreview, uprightAspect } from '@/scan/utils/preview.utils'
 import type { Gates, CaptureFrame } from '@/scan/utils/transition.utils'
-import { TransitionCanvas } from './transition/TransitionCanvas'
-import { TransitionClock, type TransitionPlan } from './transition/TransitionClock'
-import { useCapture } from './useCapture'
+import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
+import { TransitionClock, type TransitionPlan } from '@/scan/components/TransitionClock'
+import { useCapture } from '@/scan/hooks/useCapture'
 import { type Quad, type ViewSize, rectQuad } from '@/utils/geometry.utils'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
 

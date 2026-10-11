@@ -5,9 +5,9 @@ import { type SharedValue, useFrameCallback, useReducedMotion, useSharedValue } 
 import { scheduleOnRN } from 'react-native-worklets'
 import { countFrame, EMPTY_WINDOW } from '@/scan/utils/tracking.utils'
 import type { CaptureFrame } from '@/scan/utils/transition.utils'
-import { advance, advanceCapture, type Engine } from './engine'
-import { DEFAULT_EFFECT, EFFECTS, effectAt } from './registry'
-import { makeDrawKit } from './kit'
+import { advance, advanceCapture, type Engine } from '@/scan/effects/engine'
+import { DEFAULT_EFFECT, EFFECTS, effectAt } from '@/scan/effects/registry'
+import { makeDrawKit } from '@/scan/effects/kit'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { devLog } from '@/utils/log.utils'
 
