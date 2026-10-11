@@ -371,7 +371,7 @@ describe('capture', () => {
   it('locks on through the canvas, once, with the quad', () => {
     lockOn(quad, { quad, image: null, result: null })
     expect(capture).toHaveBeenCalledTimes(1)
-    expect(capture).toHaveBeenCalledWith(quad)
+    expect(capture).toHaveBeenCalledWith(quad, expect.any(Number))
     act(() => effectCanvas.mock.calls.at(-1)![0].onLock(quad))
     expect(capture).toHaveBeenCalledTimes(1)
   })
@@ -388,7 +388,7 @@ describe('capture', () => {
     givenPermission('authorized')
     render(<CameraScreen {...props()} />)
     fireEvent.press(screen.getByTestId('shutter'))
-    expect(capture).toHaveBeenCalledWith(null)
+    expect(capture).toHaveBeenCalledWith(null, expect.any(Number))
   })
 
   it('renders the transition layers and hides the shutter and the effect lab', () => {

@@ -5,6 +5,7 @@ import { useSharedValue } from 'react-native-reanimated'
 import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
 import { createScanner, type Quad, type RecogniseResult, type Scanner } from '../scanner'
+import { sameAspect, uprightAspect } from './previewMapping'
 import { photoToSkImage } from './transition/photoImage'
 
 /**
@@ -72,13 +73,13 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
     [sharedImage],
   )
 
-  const capture = useCallback((quad: Quad | null) => {
+  const capture = useCallback((quad: Quad | null, frameAspect: number) => {
     if (busy.current) return
     busy.current = true
     const attempt = ++generation.current
     // An unmount makes the attempt stale. A stale attempt must not write state.
     const current = () => generation.current === attempt
-    const update = (change: { image: SkImage } | { imageFailed: true } | { result: RecogniseResult }) =>
+    const update = (change: { image: SkImage } | { imageFailed: true } | { result: RecogniseResult } | { quad: null }) =>
       setState((previous) => (previous.phase === 'capturing' ? { ...previous, ...change } : previous))
     setState({ phase: 'capturing', quad, image: null, imageFailed: false, result: null })
     const started = Date.now()
@@ -117,9 +118,17 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
         settle(photoMs, { ok: false, reason: reasonOf(error) })
         return
       }
+      // The quad is normalised to the frame. It fits the photo only when both have the same field of view (ADR-002). Without it,
+      // recognise searches the whole photo and the transition cross-fades.
+      let locked = quad
+      if (quad != null && !sameAspect(uprightAspect(photo.width, photo.height, photo.orientation), frameAspect)) {
+        locked = null
+        if (__DEV__) console.warn('[scan] the photo and the frame differ in aspect, so the locked quad does not fit the photo')
+        if (current()) update({ quad: null })
+      }
       try {
         await Promise.all([
-          scanner.recognise(photo, quad).then(
+          scanner.recognise(photo, locked).then(
             (result) => settle(photoMs, result),
             (error) => settle(photoMs, { ok: false, reason: reasonOf(error) }),
           ),

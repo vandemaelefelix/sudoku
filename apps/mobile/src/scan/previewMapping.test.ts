@@ -1,5 +1,5 @@
 import type { Quad } from '../scanner'
-import { toPreview, uprightAspect } from './previewMapping'
+import { sameAspect, toPreview, uprightAspect } from './previewMapping'
 
 const corners: Quad = [
   { x: 0, y: 0 },
@@ -56,5 +56,20 @@ describe('toPreview', () => {
 
   it('has no outline when the frame shape is unknown', () => {
     expect(toPreview(corners, Number.NaN, { width: 400, height: 800 })).toBeNull()
+  })
+})
+
+describe('sameAspect', () => {
+  it('accepts the 16:9 photo against a 16:9 frame', () => {
+    expect(sameAspect(2376 / 4224, 1080 / 1920)).toBe(true)
+  })
+
+  it('refuses a 4:3 frame against a 16:9 photo', () => {
+    expect(sameAspect(2376 / 4224, 3 / 4)).toBe(false)
+  })
+
+  it('refuses an aspect that is not a positive number', () => {
+    expect(sameAspect(0, 9 / 16)).toBe(false)
+    expect(sameAspect(9 / 16, Number.NaN)).toBe(false)
   })
 })
