@@ -63,6 +63,16 @@ export function CameraScreen() {
   })
   const { state, capture, retake } = useCapture(photoOutput)
 
+  // The result view unmounts the camera, so these values still hold the grid from before the photo.
+  // A new scene or a shutter press must not use it before the restarted camera sends frames.
+  const retakeScan = () => {
+    detection.set(null)
+    smoothing.set(null)
+    outline.set(null)
+    frameQuad.set(null)
+    retake()
+  }
+
   const frameOutput = useFrameOutput({
     pixelFormat: 'yuv',
     onFrame(frame) {
@@ -143,7 +153,7 @@ export function CameraScreen() {
       </View>
     )
   }
-  if (state.phase === 'result') return <ResultView result={state.result} onRetake={retake} />
+  if (state.phase === 'result') return <ResultView result={state.result} onRetake={retakeScan} />
   return (
     <View
       testID="camera-screen"

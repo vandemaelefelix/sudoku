@@ -319,7 +319,38 @@ describe('capture', () => {
     givenPhase({ phase: 'result', result })
     render(<CameraScreen />)
     expect(screen.queryByTestId('camera')).toBeNull()
-    expect(jest.mocked(ResultView).mock.calls.at(-1)![0]).toEqual({ result, onRetake: retake })
+    const props = jest.mocked(ResultView).mock.calls.at(-1)![0]
+    expect(props.result).toBe(result)
+    expect(retake).not.toHaveBeenCalled()
+    props.onRetake()
+    expect(retake).toHaveBeenCalledTimes(1)
+  })
+
+  it('forgets the old grid on retake, so a shutter press passes no quad', () => {
+    givenPermission('authorized')
+    const { rerender } = render(<CameraScreen />)
+    fireEvent(screen.getByTestId('camera-screen'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
+    })
+    lastReaction().react({ quad, timestamp: 5, aspect: 0.5625 })
+    const outline = jest.mocked(EffectCanvas).mock.calls.at(-1)![0].outline
+    expect(outline.value).not.toBeNull()
+    fireEvent.press(screen.getByTestId('shutter'))
+    expect(capture).toHaveBeenLastCalledWith(quad)
+
+    givenPhase({ phase: 'result', result: { ok: false, reason: 'no grid in the photo' } })
+    rerender(<CameraScreen />)
+    jest.mocked(ResultView).mock.calls.at(-1)![0].onRetake()
+    expect(retake).toHaveBeenCalledTimes(1)
+    expect(outline.value).toBeNull()
+
+    givenPhase({ phase: 'live' })
+    rerender(<CameraScreen />)
+    fireEvent.press(screen.getByTestId('shutter'))
+    expect(capture).toHaveBeenLastCalledWith(null)
+    // A grid that was lost during the capture must not come back from the old smoothing state.
+    lastReaction().react({ quad: null, timestamp: 6, aspect: 0.5625 })
+    expect(jest.mocked(EffectCanvas).mock.calls.at(-1)![0].outline.value).toBeNull()
   })
 
   it('adds the photo output to the camera', () => {
