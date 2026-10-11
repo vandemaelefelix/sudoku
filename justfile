@@ -27,9 +27,17 @@ test-ml:
 # Every lint, including the boundary rules
 lint: lint-ts boundaries lint-ml
 
-# oxlint for all TypeScript
-lint-ts:
+# oxlint and the oxfmt check for all TypeScript
+lint-ts: format-check
     pnpm lint
+
+# Format TypeScript, JavaScript and JSON with oxfmt
+format:
+    pnpm format
+
+# Fail when a file is not formatted
+format-check:
+    pnpm format:check
 
 # SUD-03, SUD-04 and SUD-05
 boundaries:
