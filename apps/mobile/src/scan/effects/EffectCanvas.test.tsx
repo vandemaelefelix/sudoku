@@ -98,7 +98,13 @@ function lastFrame() {
 }
 
 function renderCanvas(view: ViewSize, effect = DEFAULT_INDEX, outline: Quad | null = null) {
-  const props = { outline: shared(outline), view: shared(view), effect: shared(effect) }
+  const props = {
+    outline: shared(outline),
+    view: shared(view),
+    effect: shared(effect),
+    frameQuad: shared<Quad | null>(null),
+    onLock: jest.fn(),
+  }
   render(<EffectCanvas {...props} />)
   return props
 }
@@ -208,5 +214,44 @@ describe('EffectCanvas', () => {
       renderCanvas(VIEW)
       expect(Skia.RuntimeEffect.Make).not.toHaveBeenCalled()
     })
+  })
+})
+
+/** A shared value that gives a new quad object per read, as the camera gives one per detection. */
+function fresh(quad: Quad): SharedValue<Quad | null> {
+  const copy = () => quad.map((p) => ({ ...p })) as Quad
+  return { get: copy, value: copy() } as unknown as SharedValue<Quad | null>
+}
+function constant<T>(value: T): SharedValue<T> {
+  return { get: () => value, value } as unknown as SharedValue<T>
+}
+
+describe('lock-on', () => {
+  const NORMALISED: Quad = [
+    { x: 0.2, y: 0.3 },
+    { x: 0.8, y: 0.3 },
+    { x: 0.8, y: 0.65 },
+    { x: 0.2, y: 0.65 },
+  ]
+  it('calls onLock once, with the normalised quad, when the scene locks on', async () => {
+    // Three seconds of frames make the development frame-rate log fire.
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const onLock = jest.fn()
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(NORMALISED)}
+        onLock={onLock}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    for (let ms = 0; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    // The worklets mock runs scheduleOnRN in a microtask.
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(onLock).toHaveBeenCalledTimes(1)
+    expect(onLock).toHaveBeenCalledWith(NORMALISED)
+    log.mockRestore()
   })
 })
