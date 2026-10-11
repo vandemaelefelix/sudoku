@@ -70,11 +70,7 @@ pins the exact versions.
 
 ## The transition
 
-The transition starts at lock-on. It shows the photo flattening into the grid square, the grid lines
-growing through the gathered dots and the digits appearing. It ends with a filled correction screen
-within the QR-07 budget of 1.5 s. `recognise()` still supplies the flattened image, the 100
-intersections and the 81 results. See the
-[scan experience design](../../superpowers/specs/2026-10-11-scan-experience-design.md).
+The transition starts at lock-on. The photo flattens into the grid square, the grid lines grow through the gathered dots and the digits appear. A filled correction screen shows within the QR-07 budget of 1.5 s. `recognise()` still supplies the flattened image, the 100 intersections and the 81 results. See the [scan experience design](../../superpowers/specs/2026-10-11-scan-experience-design.md).
 
 ## Loading the result
 
