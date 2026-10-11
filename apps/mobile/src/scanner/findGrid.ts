@@ -11,7 +11,8 @@ import {
   Size,
   ThresholdTypes,
 } from 'react-native-fast-opencv'
-import { type GridDetection, MIN_AREA_FRACTION, type Point, toGridDetection } from './quad'
+import { type GridDetection, MIN_AREA_FRACTION, toGridDetection } from './quad'
+import type { Point } from '@/utils/geometry.utils'
 
 const BLUR_SIZE = 5
 const THRESHOLD_BLOCK = 11

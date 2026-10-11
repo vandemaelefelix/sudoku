@@ -1,8 +1,8 @@
 import type { Photo } from 'react-native-vision-camera'
 import { createWorkletRuntime } from 'react-native-worklets'
 import { loadClassifier } from './model'
-import type { Quad } from './quad'
 import { recognise } from './recognise'
+import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('./model', () => ({ loadClassifier: jest.fn() }))
 jest.mock('./recognise', () => ({ recognise: jest.fn() }))

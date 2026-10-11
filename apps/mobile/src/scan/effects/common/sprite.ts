@@ -1,7 +1,5 @@
 import { type SkImage, Skia, TileMode } from '@shopify/react-native-skia'
-
-/** Pixels. Sharp at 3x density for the largest dot: radius 1.25 × 1.7 pt gives a star of about 19 pt. */
-export const SPRITE_SIZE = 64
+import { SPRITE_SIZE } from './common.constants'
 
 /** A white core with a soft halo that fades out at the image edge, which is 4.5 radii from the centre. */
 export function makeStarSprite(): SkImage {

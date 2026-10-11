@@ -1,4 +1,4 @@
-import { GRID_UV_SKSL } from '../common/gridUv'
+import { GRID_UV_SKSL } from '@/scan/effects/common/gridUv'
 
 // Prototype section 1b, "Grid lattice" (FRAG, uKind == 0), ported from GLSL to SkSL.
 // The uniforms and the grid helpers come from GRID_UV_SKSL. latticeUniforms builds the uniforms in that order.

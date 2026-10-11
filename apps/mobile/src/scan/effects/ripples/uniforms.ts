@@ -1,7 +1,7 @@
-import type { Homography } from '../common/geometry'
-import { lockTime } from '../common/lock'
-import { prototypePixel, prototypeScale, toColumnMajor } from '../common/shaderMatrix'
-import type { Scene } from '../scene'
+import { lockTime } from '@/scan/effects/common/lock'
+import { prototypePixel, prototypeScale, toColumnMajor } from '@/scan/effects/common/shaderMatrix'
+import type { Scene } from '@/scan/effects/scene'
+import type { Homography } from '@/utils/homography.utils'
 
 /** The 15 floats of RIPPLES_SKSL, in its uniform order. inverse: view points to the unit square. time: from effectTime. */
 export function rippleUniforms(scene: Scene, inverse: Homography, time: number): number[] {

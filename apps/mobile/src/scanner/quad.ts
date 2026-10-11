@@ -1,7 +1,4 @@
-export type Point = { x: number; y: number }
-
-/** Normalised to 0..1 of the upright frame. Order: top-left, top-right, bottom-right, bottom-left. */
-export type Quad = [Point, Point, Point, Point]
+import type { Point, Quad } from '@/utils/geometry.utils'
 
 /** score: the share of the frame that the quad covers, 0..1. */
 export type GridDetection = { quad: Quad; score: number }
@@ -22,25 +19,28 @@ export function turnHalf(quad: Quad): Quad {
   return [turnPoint(quad[2]), turnPoint(quad[3]), turnPoint(quad[0]), turnPoint(quad[1])]
 }
 
+function edgeCross(a: Point, b: Point): number {
+  'worklet'
+  return a.x * b.y - b.x * a.y
+}
+
 export function quadArea(quad: Quad): number {
   'worklet'
-  let twice = 0
-  for (let i = 0; i < 4; i++) {
-    const a = quad[i]
-    const b = quad[(i + 1) % 4]
-    twice += a.x * b.y - b.x * a.y
-  }
+  const [p0, p1, p2, p3] = quad
+  const twice = edgeCross(p0, p1) + edgeCross(p1, p2) + edgeCross(p2, p3) + edgeCross(p3, p0)
   return Math.abs(twice) / 2
+}
+
+function turnCross(a: Point, b: Point, c: Point): number {
+  'worklet'
+  return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
 }
 
 export function isConvex(quad: Quad): boolean {
   'worklet'
+  const [p0, p1, p2, p3] = quad
   let sign = 0
-  for (let i = 0; i < 4; i++) {
-    const a = quad[i]
-    const b = quad[(i + 1) % 4]
-    const c = quad[(i + 2) % 4]
-    const cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
+  for (const cross of [turnCross(p0, p1, p2), turnCross(p1, p2, p3), turnCross(p2, p3, p0), turnCross(p3, p0, p1)]) {
     if (cross === 0) return false
     if (sign === 0) sign = Math.sign(cross)
     else if (Math.sign(cross) !== sign) return false
@@ -48,18 +48,42 @@ export function isConvex(quad: Quad): boolean {
   return true
 }
 
+/** Starts the ring at corner k of q, 0..3. */
+function rotateQuad(q: Quad, k: number): Quad {
+  'worklet'
+  const [a, b, c, d] = q
+  if (k === 1) return [b, c, d, a]
+  if (k === 2) return [c, d, a, b]
+  if (k === 3) return [d, a, b, c]
+  return q
+}
+
+/** Throws a RangeError for fewer than 4 points. */
 export function orderCorners(points: Point[]): Quad {
   'worklet'
-  const cx = (points[0].x + points[1].x + points[2].x + points[3].x) / 4
-  const cy = (points[0].y + points[1].y + points[2].y + points[3].y) / 4
+  const [p0, p1, p2, p3] = points
+  if (p0 === undefined || p1 === undefined || p2 === undefined || p3 === undefined) {
+    throw new RangeError(`orderCorners takes 4 points, got ${points.length}`)
+  }
+  const cx = (p0.x + p1.x + p2.x + p3.x) / 4
+  const cy = (p0.y + p1.y + p2.y + p3.y) / 4
   // y points down, so a rising angle runs clockwise on the screen.
   const sorted = points.slice()
   sorted.sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx))
-  let first = 0
-  for (let i = 1; i < 4; i++) {
-    if (sorted[i].x + sorted[i].y < sorted[first].x + sorted[first].y) first = i
+  const [s0, s1, s2, s3] = sorted
+  if (s0 === undefined || s1 === undefined || s2 === undefined || s3 === undefined) {
+    throw new RangeError(`orderCorners takes 4 points, got ${points.length}`)
   }
-  return [sorted[first], sorted[(first + 1) % 4], sorted[(first + 2) % 4], sorted[(first + 3) % 4]]
+  const ring: Quad = [s0, s1, s2, s3]
+  let first = 0
+  let best = s0.x + s0.y
+  for (const [i, p] of ring.entries()) {
+    if (p.x + p.y < best) {
+      best = p.x + p.y
+      first = i
+    }
+  }
+  return rotateQuad(ring, first)
 }
 
 /** points: pixel coordinates in a width × height image. Null when they are not a plausible grid. */

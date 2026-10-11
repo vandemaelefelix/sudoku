@@ -5,7 +5,7 @@ jest.mock('react-native-worklets', () => {
   return {
     ...mock,
     // The library mock returns the value itself. The camera screen needs a holder.
-    createSynchronizable: <T,>(initial: T) => {
+    createSynchronizable: <T>(initial: T) => {
       let value = initial
       return {
         getBlocking: () => value,
@@ -57,7 +57,10 @@ jest.mock('expo-haptics', () => ({
 }))
 
 // The library ships its own mock: a provider with zero insets and a 320 × 640 frame.
-jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default)
+jest.mock(
+  'react-native-safe-area-context',
+  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
+)
 
 jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
@@ -82,7 +85,7 @@ jest.mock('react-native-reanimated', () => {
   return {
     ...jest.requireActual('react-native-reanimated/mock'),
     // The library mock makes a new holder on every render and has no modify().
-    useSharedValue: <T,>(initial: T) => {
+    useSharedValue: <T>(initial: T) => {
       const holder: { current: { value: T } | null } = useRef(null)
       if (holder.current == null) {
         const mockShared = {

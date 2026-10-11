@@ -3,8 +3,9 @@ import { findGrid } from './findGrid'
 import { cornerOffset, downscaleSize, fromCrop, searchRect, toPhotoPixels } from './photoGeometry'
 import { cropRgb, FLAT_SIZE, type RawPixels, sliceCells, toRgb } from './pixels'
 import { preprocessCells } from './preprocess'
-import type { Quad } from './quad'
 import { warpGrid } from './warp'
+import type { Quad } from '@/utils/geometry.utils'
+import { errorMessage } from '@/utils/log.utils'
 
 // Scan-pipeline concept, "Threads and coordinates". Every function here runs on the scanner runtime.
 
@@ -28,7 +29,14 @@ export type RecogniseTimings = { imageMs: number; detectMs: number; flattenMs: n
 
 /** quad: the corners used, normalised to the upright photo. cornerOffset: of the re-detected corners from the locked quad, as a share of the grid side, or null. */
 export type RecogniseResult =
-  | { ok: true; cells: CellResult[]; quad: Quad; corners: CornerSource; cornerOffset: number | null; timings: RecogniseTimings }
+  | {
+      ok: true
+      cells: CellResult[]
+      quad: Quad
+      corners: CornerSource
+      cornerOffset: number | null
+      timings: RecogniseTimings
+    }
   | { ok: false; reason: string }
 
 /** A re-detected corner farther than this share of the grid side from the locked corner belongs to another grid. */
@@ -102,7 +110,7 @@ export function recognise(
       timings: { imageMs, detectMs, flattenMs, classifyMs },
     }
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+    return { ok: false, reason: errorMessage(error) }
   } finally {
     for (const image of images) image.dispose()
   }

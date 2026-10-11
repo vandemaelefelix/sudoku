@@ -1,9 +1,9 @@
-import type { Quad } from '../../scanner'
-import type { ViewSize } from '../previewMapping'
-import type { Channels } from '../transition/timeline'
-import { invert, unitToQuad } from './common/geometry'
-import { createScene, MAX_STEP, type Scene, stepScene } from './scene'
+import type { Channels } from '@/scan/utils/transition.utils'
+import { createScene, type Scene, stepScene } from './scene'
 import type { AnyEffect } from './types'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { invert, unitToQuad } from '@/utils/homography.utils'
+import { MAX_STEP } from './scene.constants'
 
 /** id: the effect that state belongs to. */
 export type Engine = { id: string; scene: Scene; state: unknown }
@@ -38,7 +38,14 @@ export function advance(
  * The latch, the motion and the presence of the scene stay as they were at lock-on. crossFade: the transition fades the layers
  * with the Reduce Motion channels. Mutates the scene.
  */
-export function advanceCapture(engine: Engine, effect: AnyEffect, quad: Quad, t: number, channels: Channels, crossFade: boolean): Engine {
+export function advanceCapture(
+  engine: Engine,
+  effect: AnyEffect,
+  quad: Quad,
+  t: number,
+  channels: Channels,
+  crossFade: boolean,
+): Engine {
   'worklet'
   const scene = engine.scene
   // The cross-fade replaces the motion, so the effects draw as under Reduce Motion (scan-pipeline concept).

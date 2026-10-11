@@ -1,12 +1,6 @@
-import type { Point, Quad } from '../../../scanner'
-import { intersections, invert, isBoxCorner, project, pushOutside, unitToQuad } from './geometry'
-
-const skewed: Quad = [
-  { x: 100, y: 200 },
-  { x: 300, y: 190 },
-  { x: 330, y: 420 },
-  { x: 80, y: 400 },
-]
+import { intersections, isBoxCorner, pushOutside } from './geometry'
+import type { Point, Quad } from '@/utils/geometry.utils'
+import { invert, unitToQuad } from '@/utils/homography.utils'
 
 const square: Quad = [
   { x: 100, y: 100 },
@@ -18,58 +12,6 @@ const square: Quad = [
 function near(p: Point) {
   return { x: expect.closeTo(p.x, 6), y: expect.closeTo(p.y, 6) }
 }
-
-describe('unitToQuad', () => {
-  it('returns null for a quad with a NaN corner', () => {
-    expect(unitToQuad([{ x: NaN, y: 0 }, square[1], square[2], square[3]])).toBeNull()
-  })
-
-  it('maps the unit square corners onto the quad corners', () => {
-    const m = unitToQuad(skewed)!
-    expect(project(m, 0, 0)).toEqual(near(skewed[0]))
-    expect(project(m, 1, 0)).toEqual(near(skewed[1]))
-    expect(project(m, 1, 1)).toEqual(near(skewed[2]))
-    expect(project(m, 0, 1)).toEqual(near(skewed[3]))
-  })
-
-  it('maps the centre of a square to its centre', () => {
-    expect(project(unitToQuad(square)!, 0.5, 0.5)).toEqual(near({ x: 150, y: 150 }))
-  })
-
-  it('refuses a quad whose last three corners lie on one line', () => {
-    const flat: Quad = [
-      { x: 0, y: 0 },
-      { x: 100, y: 0 },
-      { x: 100, y: 100 },
-      { x: 100, y: 200 },
-    ]
-    expect(unitToQuad(flat)).toBeNull()
-  })
-})
-
-describe('invert', () => {
-  it('returns null for a matrix with a NaN entry', () => {
-    expect(invert([NaN, 0, 0, 0, 1, 0, 0, 0])).toBeNull()
-  })
-
-  it('has no inverse when the first three corners lie on one line', () => {
-    const flat: Quad = [
-      { x: 0, y: 0 },
-      { x: 100, y: 0 },
-      { x: 200, y: 0 },
-      { x: 0, y: 100 },
-    ]
-    expect(invert(unitToQuad(flat)!)).toBeNull()
-  })
-
-  it('maps the quad corners back to the unit square', () => {
-    const m = unitToQuad(skewed)!
-    const inverse = invert(m)!
-    expect(project(inverse, skewed[2].x, skewed[2].y)).toEqual(near({ x: 1, y: 1 }))
-    const p = project(m, 0.3, 0.7)
-    expect(project(inverse, p.x, p.y)).toEqual(near({ x: 0.3, y: 0.7 }))
-  })
-})
 
 describe('intersections', () => {
   it('gives 100 points in rows, from the top-left corner to the bottom-right corner', () => {

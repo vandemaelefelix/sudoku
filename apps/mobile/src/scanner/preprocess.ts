@@ -40,7 +40,7 @@ export function preprocessCells(cells: Uint8Array): Float32Array {
     let lo = CROP_SIZE
     let hi = -1
     for (let j = 0; j < CROP_SIZE; j++) {
-      if (w[i * CROP_SIZE + j] > 0) {
+      if ((w[i * CROP_SIZE + j] ?? 0) > 0) {
         if (j < lo) lo = j
         hi = j
       }
@@ -56,26 +56,26 @@ export function preprocessCells(cells: Uint8Array): Float32Array {
     for (let y = 0; y < CROP_SIZE; y++) {
       for (let x = 0; x < CROP_SIZE; x++) {
         const p = base + ((y + CROP_START) * CELL_SIZE + x + CROP_START) * 3
-        gray[y * CROP_SIZE + x] = 0.299 * cells[p] + 0.587 * cells[p + 1] + 0.114 * cells[p + 2]
+        gray[y * CROP_SIZE + x] = 0.299 * (cells[p] ?? 0) + 0.587 * (cells[p + 1] ?? 0) + 0.114 * (cells[p + 2] ?? 0)
       }
     }
     // W · crop, then (W · crop) · Wᵀ.
     for (let i = 0; i < INPUT_SIZE; i++) {
-      const lo = first[i]
-      const hi = last[i]
+      const lo = first[i] ?? 0
+      const hi = last[i] ?? -1
       for (let x = 0; x < CROP_SIZE; x++) {
         let sum = 0
-        for (let y = lo; y <= hi; y++) sum += w[i * CROP_SIZE + y] * gray[y * CROP_SIZE + x]
+        for (let y = lo; y <= hi; y++) sum += (w[i * CROP_SIZE + y] ?? 0) * (gray[y * CROP_SIZE + x] ?? 0)
         rows[i * CROP_SIZE + x] = sum
       }
     }
     const outBase = n * INPUT_SIZE * INPUT_SIZE
     for (let i = 0; i < INPUT_SIZE; i++) {
       for (let k = 0; k < INPUT_SIZE; k++) {
-        const lo = first[k]
-        const hi = last[k]
+        const lo = first[k] ?? 0
+        const hi = last[k] ?? -1
         let sum = 0
-        for (let x = lo; x <= hi; x++) sum += rows[i * CROP_SIZE + x] * w[k * CROP_SIZE + x]
+        for (let x = lo; x <= hi; x++) sum += (rows[i * CROP_SIZE + x] ?? 0) * (w[k * CROP_SIZE + x] ?? 0)
         out[outBase + i * INPUT_SIZE + k] = 1 - sum / 255
       }
     }

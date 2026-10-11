@@ -5,13 +5,19 @@ import { CELL_SIZE, CELLS, INPUT_LENGTH, INPUT_SIZE, preprocessCells } from './p
 
 const FIXTURES = join(__dirname, '../../../../fixtures/preprocess')
 
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 function readCellRgb(file: string): Uint8Array {
   const png = PNG.sync.read(readFileSync(join(FIXTURES, file)))
   const rgb = new Uint8Array(CELL_SIZE * CELL_SIZE * 3)
   for (let p = 0; p < CELL_SIZE * CELL_SIZE; p++) {
-    rgb[p * 3] = png.data[p * 4]
-    rgb[p * 3 + 1] = png.data[p * 4 + 1]
-    rgb[p * 3 + 2] = png.data[p * 4 + 2]
+    rgb[p * 3] = png.data[p * 4] ?? 0
+    rgb[p * 3 + 1] = png.data[p * 4 + 1] ?? 0
+    rgb[p * 3 + 2] = png.data[p * 4 + 2] ?? 0
   }
   return rgb
 }
@@ -38,20 +44,20 @@ function denseReference(cells: Uint8Array): Float32Array {
     for (let y = 0; y < crop; y++) {
       for (let x = 0; x < crop; x++) {
         const p = base + ((y + start) * CELL_SIZE + x + start) * 3
-        gray[y * crop + x] = 0.299 * cells[p] + 0.587 * cells[p + 1] + 0.114 * cells[p + 2]
+        gray[y * crop + x] = 0.299 * (cells[p] ?? 0) + 0.587 * (cells[p + 1] ?? 0) + 0.114 * (cells[p + 2] ?? 0)
       }
     }
     for (let i = 0; i < INPUT_SIZE; i++) {
       for (let x = 0; x < crop; x++) {
         let sum = 0
-        for (let y = 0; y < crop; y++) sum += w[i * crop + y] * gray[y * crop + x]
+        for (let y = 0; y < crop; y++) sum += (w[i * crop + y] ?? 0) * (gray[y * crop + x] ?? 0)
         rows[i * crop + x] = sum
       }
     }
     for (let i = 0; i < INPUT_SIZE; i++) {
       for (let k = 0; k < INPUT_SIZE; k++) {
         let sum = 0
-        for (let x = 0; x < crop; x++) sum += rows[i * crop + x] * w[k * crop + x]
+        for (let x = 0; x < crop; x++) sum += (rows[i * crop + x] ?? 0) * (w[k * crop + x] ?? 0)
         out[n * INPUT_SIZE * INPUT_SIZE + i * INPUT_SIZE + k] = 1 - sum / 255
       }
     }
@@ -60,7 +66,9 @@ function denseReference(cells: Uint8Array): Float32Array {
 }
 
 describe('preprocessCells', () => {
-  const pngs = readdirSync(FIXTURES).filter((f) => f.endsWith('.cell.png')).toSorted()
+  const pngs = readdirSync(FIXTURES)
+    .filter((f) => f.endsWith('.cell.png'))
+    .toSorted()
 
   it('has all 81 reference pairs', () => {
     expect(pngs).toHaveLength(CELLS)
@@ -78,8 +86,8 @@ describe('preprocessCells', () => {
       ).values
       for (let y = 0; y < INPUT_SIZE; y++) {
         for (let x = 0; x < INPUT_SIZE; x++) {
-          const got = input[n * INPUT_SIZE * INPUT_SIZE + y * INPUT_SIZE + x]
-          worst = Math.max(worst, Math.abs(got - expected[y][x]))
+          const got = at(input, n * INPUT_SIZE * INPUT_SIZE + y * INPUT_SIZE + x)
+          worst = Math.max(worst, Math.abs(got - at(at(expected, y), x)))
         }
       }
     })
@@ -103,7 +111,7 @@ describe('preprocessCells', () => {
     const got = preprocessCells(cells)
     const want = denseReference(cells)
     let worst = 0
-    for (let i = 0; i < want.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]))
+    for (let i = 0; i < want.length; i++) worst = Math.max(worst, Math.abs(at(got, i) - at(want, i)))
     expect(worst).toBeLessThan(1e-6)
   })
 

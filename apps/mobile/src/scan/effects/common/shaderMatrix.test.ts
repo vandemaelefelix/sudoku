@@ -1,7 +1,7 @@
-import type { Quad } from '../../../scanner'
-import { createScene, stepScene } from '../scene'
-import { invert, project, unitToQuad } from './geometry'
+import { createScene, stepScene } from '@/scan/effects/scene'
 import { gridInverse, IDENTITY, prototypePixel, prototypeScale, toColumnMajor } from './shaderMatrix'
+import type { Quad } from '@/utils/geometry.utils'
+import { invert, project, unitToQuad } from '@/utils/homography.utils'
 
 const skewed: Quad = [
   { x: 100, y: 200 },
@@ -9,6 +9,12 @@ const skewed: Quad = [
   { x: 330, y: 420 },
   { x: 80, y: 400 },
 ]
+
+function itemAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
 
 describe('toColumnMajor', () => {
   it('gives the 9 floats of a float3x3 uniform, column by column, with 1 at the end', () => {
@@ -18,10 +24,10 @@ describe('toColumnMajor', () => {
     expect(c[8]).toBe(1)
     const u = 0.3
     const v = 0.7
-    const w = c[2] * u + c[5] * v + c[8]
+    const w = itemAt(c, 2) * u + itemAt(c, 5) * v + itemAt(c, 8)
     const p = project(m, u, v)
-    expect((c[0] * u + c[3] * v + c[6]) / w).toBeCloseTo(p.x, 6)
-    expect((c[1] * u + c[4] * v + c[7]) / w).toBeCloseTo(p.y, 6)
+    expect((itemAt(c, 0) * u + itemAt(c, 3) * v + itemAt(c, 6)) / w).toBeCloseTo(p.x, 6)
+    expect((itemAt(c, 1) * u + itemAt(c, 4) * v + itemAt(c, 7)) / w).toBeCloseTo(p.y, 6)
   })
 
   it('keeps the identity', () => {
