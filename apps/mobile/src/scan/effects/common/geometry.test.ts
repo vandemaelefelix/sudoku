@@ -1,4 +1,4 @@
-import type { Point, Quad } from '../../../scanner'
+import type { Point, Quad } from '@/scanner'
 import { intersections, invert, isBoxCorner, project, pushOutside, unitToQuad } from './geometry'
 
 const skewed: Quad = [

@@ -1,7 +1,7 @@
-import type { Quad } from '../../../scanner'
-import { makeDrawKit } from '../kit'
-import { createScene, stepScene } from '../scene'
-import { gatheringDots } from './index'
+import type { Quad } from '@/scanner'
+import { makeDrawKit } from '@/scan/effects/kit'
+import { createScene, stepScene } from '@/scan/effects/scene'
+import { gatheringDots } from './gathering-dots.effect'
 
 const VIEW = { width: 402, height: 874 }
 

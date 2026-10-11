@@ -1,4 +1,4 @@
-import type { Scene } from '../scene'
+import type { Scene } from '@/scan/effects/scene'
 import { type Homography, invert, unitToQuad } from './geometry'
 
 /** Points. The width of the phone that the prototype draws. */

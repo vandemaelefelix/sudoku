@@ -1,4 +1,4 @@
-import type { Point } from '../../../scanner'
+import type { Point } from '@/scanner'
 
 function pushPair(
   points: Point[],

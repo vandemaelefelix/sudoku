@@ -1,4 +1,4 @@
-import type { Quad } from '../scanner'
+import type { Quad } from '@/scanner'
 import { MAX_GAP } from './frameRate'
 
 /** Seconds of outline without a gap per report (QR-06). */

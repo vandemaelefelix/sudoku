@@ -1,8 +1,8 @@
-import type { Quad } from '../../../scanner'
-import { IDENTITY, prototypePixel, prototypeScale, toColumnMajor } from '../common/shaderMatrix'
-import { makeDrawKit } from '../kit'
-import { createScene, type Scene, stepScene } from '../scene'
-import { ripples } from './index'
+import type { Quad } from '@/scanner'
+import { IDENTITY, prototypePixel, prototypeScale, toColumnMajor } from '@/scan/effects/common/shaderMatrix'
+import { makeDrawKit } from '@/scan/effects/kit'
+import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
+import { ripples } from './ripples.effect'
 import { RIPPLES_SKSL } from './shader'
 import { rippleUniforms } from './uniforms'
 

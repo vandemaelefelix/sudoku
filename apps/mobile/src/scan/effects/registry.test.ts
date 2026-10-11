@@ -1,4 +1,4 @@
-import { DEFAULT_EFFECT, DEFAULT_INDEX, EFFECTS, effectAt, effectIndex, findEffect } from './index'
+import { DEFAULT_EFFECT, DEFAULT_INDEX, EFFECTS, effectAt, effectIndex, findEffect } from './registry'
 
 const FAMILIES = ['path', 'shader', 'screen', 'simulation']
 

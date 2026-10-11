@@ -1,4 +1,4 @@
-import type { Point, Quad } from '../../../scanner'
+import type { Point, Quad } from '@/scanner'
 
 /** Maps grid coordinates (u, v in 0..1) to view points: x = (m0·u + m1·v + m2) / (m6·u + m7·v + 1), y uses m3..m5. */
 export type Homography = [number, number, number, number, number, number, number, number]

@@ -1,5 +1,5 @@
-import type { Quad } from '../../../scanner'
-import { createScene, stepScene } from '../scene'
+import type { Quad } from '@/scanner'
+import { createScene, stepScene } from '@/scan/effects/scene'
 import { invert, project, unitToQuad } from './geometry'
 import { gridInverse, IDENTITY, prototypePixel, prototypeScale, toColumnMajor } from './shaderMatrix'
 

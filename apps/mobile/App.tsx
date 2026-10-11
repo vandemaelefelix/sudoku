@@ -1,6 +1,6 @@
-import { checkModelParity, formatParity, probeOpenCV, type ReferenceOutputs } from './src/scanner'
+import { checkModelParity, formatParity, probeOpenCV, type ReferenceOutputs } from '@/scanner'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { ScanFlow } from './src/scan/ScanFlow'
+import { ScanFlow } from '@/scan/ScanFlow'
 
 /** Logs whether fast-opencv works. A failing probe must never stop the app from starting. */
 export function logOpenCVProbe() {

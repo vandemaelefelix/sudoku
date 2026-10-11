@@ -1,4 +1,4 @@
-import type { Quad } from '../scanner'
+import type { Quad } from '@/scanner'
 import { HOLD, type Smoothing, smoothQuad } from './smoothing'
 
 const FRAME = 1 / 30

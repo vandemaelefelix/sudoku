@@ -1,4 +1,4 @@
-import type { Point, Quad } from '../scanner'
+import type { Point, Quad } from '@/scanner'
 
 // One Euro filter (Casiez et al., CHI 2012): strong smoothing when still, little lag when moving.
 // Units: normalised frame coordinates and seconds. Targets QR-06.

@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
-import type { CellResult, RecogniseResult } from '../../scanner'
-import { LIGHT } from '../../theme/colors'
+import type { CellResult, RecogniseResult } from '@/scanner'
+import { LIGHT } from '@/theme/colors'
 import { CorrectionScreen } from './CorrectionScreen'
-import { GATE_RESULTS, digitAlpha, panelAt, ringsAt } from '../transition/timeline'
+import { GATE_RESULTS, digitAlpha, panelAt, ringsAt } from '@/scan/transition/timeline'
 import { correctionLayout } from './layout'
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })

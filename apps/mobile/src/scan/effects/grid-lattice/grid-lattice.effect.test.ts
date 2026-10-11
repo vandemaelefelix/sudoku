@@ -1,8 +1,8 @@
-import type { Quad } from '../../../scanner'
-import { IDENTITY, prototypePixel, toColumnMajor } from '../common/shaderMatrix'
-import { makeDrawKit } from '../kit'
-import { createScene, type Scene, stepScene } from '../scene'
-import { gridLattice } from './index'
+import type { Quad } from '@/scanner'
+import { IDENTITY, prototypePixel, toColumnMajor } from '@/scan/effects/common/shaderMatrix'
+import { makeDrawKit } from '@/scan/effects/kit'
+import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
+import { gridLattice } from './grid-lattice.effect'
 import { LATTICE_SKSL } from './shader'
 import { latticeUniforms } from './uniforms'
 

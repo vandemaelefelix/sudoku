@@ -1,8 +1,8 @@
-import type { Quad } from '../../../scanner'
-import { type Channels, TRANSITION_END, transitionAt } from '../../transition/timeline'
-import { SPRITE_SIZE } from '../common/sprite'
-import { makeDrawKit } from '../kit'
-import { createScene, stepScene } from '../scene'
+import type { Quad } from '@/scanner'
+import { type Channels, TRANSITION_END, transitionAt } from '@/scan/transition/timeline'
+import { SPRITE_SIZE } from '@/scan/effects/common/sprite'
+import { makeDrawKit } from '@/scan/effects/kit'
+import { createScene, stepScene } from '@/scan/effects/scene'
 import { drawField, STAR_SCALE } from './draw'
 import { createField, DIM, stepField } from './field'
 

@@ -1,4 +1,4 @@
-import type { Quad } from '../../scanner'
+import type { Quad } from '@/scanner'
 import {
   createScene,
   GRID_WIDTH_HYSTERESIS,

@@ -1,5 +1,5 @@
 import type { CameraOrientation } from 'react-native-vision-camera'
-import type { Quad } from '../scanner'
+import type { Quad } from '@/scanner'
 
 export type ViewSize = { width: number; height: number }
 

@@ -1,5 +1,5 @@
-import type { Quad } from '../../scanner'
-import { transitionAt } from '../transition/timeline'
+import type { Quad } from '@/scanner'
+import { transitionAt } from '@/scan/transition/timeline'
 import { project } from './common/geometry'
 import { advance, advanceCapture } from './engine'
 import type { AnyEffect } from './types'

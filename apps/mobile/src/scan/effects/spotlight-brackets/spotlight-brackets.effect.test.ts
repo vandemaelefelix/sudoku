@@ -1,6 +1,6 @@
-import type { Quad } from '../../../scanner'
-import { makeDrawKit } from '../kit'
-import { createScene, type Scene, stepScene } from '../scene'
+import type { Quad } from '@/scanner'
+import { makeDrawKit } from '@/scan/effects/kit'
+import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import {
   BRACKET_BASE,
   BRACKET_STEADY,
@@ -9,7 +9,7 @@ import {
   DIM_BASE,
   DIM_STEADY,
   spotlightBrackets,
-} from './index'
+} from './spotlight-brackets.effect'
 
 const VIEW = { width: 402, height: 874 }
 

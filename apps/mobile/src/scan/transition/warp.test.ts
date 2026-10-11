@@ -1,5 +1,5 @@
-import type { Point, Quad } from '../../scanner'
-import { toPreview } from '../previewMapping'
+import type { Point, Quad } from '@/scanner'
+import { toPreview } from '@/scan/previewMapping'
 import { lerpQuad, photoMatrix, quadToQuad, rectQuad } from './warp'
 
 const trapezoid: Quad = [

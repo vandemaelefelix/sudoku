@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import type { RecogniseResult } from '../scanner'
+import type { RecogniseResult } from '@/scanner'
 import { CameraScreen } from './CameraScreen'
 import { CorrectionScreen } from './correction/CorrectionScreen'
 import { EffectCanvas } from './effects/EffectCanvas'
 import { ScanFlow } from './ScanFlow'
 import { useCapture } from './useCapture'
 
-jest.mock('../scanner', () => ({ ...jest.requireActual('../scanner'), useGridDetector: jest.fn(() => undefined) }))
+jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), useGridDetector: jest.fn(() => undefined) }))
 jest.mock('./useCapture', () => ({ useCapture: jest.fn() }))
 jest.mock('./effects/EffectPicker', () => ({ EffectPicker: () => null }))
 jest.mock('./transition/TransitionCanvas', () => ({ TransitionCanvas: () => null }))

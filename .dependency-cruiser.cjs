@@ -33,6 +33,20 @@ module.exports = {
       to: { path: '^apps/mobile/src/scanner/', pathNot: '^apps/mobile/src/scanner/index\\.ts$' },
     },
     {
+      name: 'no-circular',
+      comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
+      severity: 'error',
+      from: {},
+      to: { circular: true },
+    },
+    {
+      name: 'index-reexports-its-own-folder',
+      comment: 'An index.ts is the entry of one folder, not a barrel that collects other folders.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/(.+)/index\\.ts$', pathNot: '^apps/mobile/src/scanner/index\\.ts$' },
+      to: { pathNot: '^apps/mobile/src/$1/[^/]+$', dependencyTypesNot: ['npm', 'npm-dev', 'npm-peer', 'core'] },
+    },
+    {
       name: 'no-unresolvable',
       severity: 'error',
       from: {},
@@ -43,6 +57,8 @@ module.exports = {
   options: {
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
+    // The app aliases (@/, @assets/) are copied from apps/mobile/tsconfig.json. The Expo base config cannot be read from the root.
+    tsConfig: { fileName: 'tsconfig.boundaries.json' },
     exclude: { path: '^apps/[^/]+/(dist|\\.expo)/' },
     enhancedResolveOptions: {
       exportsFields: ['exports'],

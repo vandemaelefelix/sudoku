@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
-import type { SettingsRepository } from '../../settings/SettingsRepository'
-import { DEFAULT_INDEX, EFFECTS, effectIndex } from './index'
+import type { SettingsRepository } from '@/settings/SettingsRepository'
+import { DEFAULT_INDEX, EFFECTS, effectIndex } from './registry'
 import type { EffectFamily } from './types'
 
 /** The settings key of the saved effect id. */

@@ -1,6 +1,6 @@
 import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
-import type { Quad } from '../../scanner'
+import type { Quad } from '@/scanner'
 import {
   advanceClock,
   GATE_RESULTS,

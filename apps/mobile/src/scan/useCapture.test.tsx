@@ -2,11 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { impactAsync } from 'expo-haptics'
 import type { SkImage } from '@shopify/react-native-skia'
 import type { Photo } from 'react-native-vision-camera'
-import { createScanner, type Quad, type RecogniseResult } from '../scanner'
+import { createScanner, type Quad, type RecogniseResult } from '@/scanner'
 import { photoToSkImage } from './transition/photoImage'
 import { formatScanLog, useCapture } from './useCapture'
 
-jest.mock('../scanner', () => ({ ...jest.requireActual('../scanner'), createScanner: jest.fn() }))
+jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), createScanner: jest.fn() }))
 jest.mock('./transition/photoImage', () => ({ photoToSkImage: jest.fn() }))
 
 // A new image per test: the automatic unmount after a test disposes the image of that test a little later.
