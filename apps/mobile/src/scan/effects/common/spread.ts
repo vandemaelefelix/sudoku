@@ -1,4 +1,4 @@
-import type { Point } from '../../scanner'
+import type { Point } from '../../../scanner'
 
 /** radius, push: points. Two points closer than the radius push each other apart by up to `push` each. */
 export function spreadStep(points: Point[], movable: boolean[], radius: number, push: number): Point[] {

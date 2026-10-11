@@ -1,4 +1,4 @@
-import type { Point } from '../../scanner'
+import type { Point } from '../../../scanner'
 
 /** Candidate dots per target. Enough in practice; a full scan covers the rare target whose candidates are all taken. */
 const CANDIDATES = 8

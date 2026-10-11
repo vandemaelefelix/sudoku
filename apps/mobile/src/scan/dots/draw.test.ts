@@ -1,6 +1,7 @@
 import type { Quad } from '../../scanner'
 import { createScene, stepScene } from '../effects/scene'
-import { drawField, makeStarSprite, SPRITE_SIZE, STAR_SCALE } from './draw'
+import { makeStarSprite, SPRITE_SIZE } from '../effects/common/sprite'
+import { drawField, STAR_SCALE } from './draw'
 import { createField, DIM_OUTSIDE, DIM_SEARCH, stepField } from './field'
 
 const VIEW = { width: 402, height: 874 }

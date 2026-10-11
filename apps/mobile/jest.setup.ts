@@ -96,6 +96,9 @@ jest.mock('@shopify/react-native-skia', () => {
     Picture: (props: object) => createElement(View, { testID: 'skia-picture', ...props }),
     createPicture: jest.fn(() => ({})),
     FillType: { Winding: 0, EvenOdd: 1 },
+    PaintStyle: { Fill: 0, Stroke: 1 },
+    StrokeCap: { Butt: 0, Round: 1, Square: 2 },
+    StrokeJoin: { Miter: 0, Round: 1, Bevel: 2 },
     BlendMode: { Modulate: 13 },
     TileMode: { Clamp: 0 },
     Skia: {
@@ -105,11 +108,16 @@ jest.mock('@shopify/react-native-skia', () => {
         setColor: jest.fn(),
         setAlphaf: jest.fn(),
         setShader: jest.fn(),
+        setStyle: jest.fn(),
+        setStrokeWidth: jest.fn(),
+        setStrokeCap: jest.fn(),
+        setStrokeJoin: jest.fn(),
       }),
       Path: { Make: mockPath },
       RSXform: (scos: number, ssin: number, tx: number, ty: number) => ({ scos, ssin, tx, ty }),
       XYWHRect: (x: number, y: number, width: number, height: number) => ({ x, y, width, height }),
       Shader: { MakeRadialGradient: jest.fn(() => ({})) },
+      RuntimeEffect: { Make: jest.fn(() => ({ makeShader: jest.fn(() => ({})) })) },
       Surface: {
         Make: jest.fn(() => ({
           getCanvas: () => ({ drawPaint: jest.fn() }),

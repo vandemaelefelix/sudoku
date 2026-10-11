@@ -11,7 +11,7 @@ import {
   stepField,
   type FieldState,
 } from './field'
-import { intersections, invert, project, unitToQuad } from './geometry'
+import { intersections, invert, project, unitToQuad } from '../effects/common/geometry'
 
 const VIEW = { width: 402, height: 874 }
 
