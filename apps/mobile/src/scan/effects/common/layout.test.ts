@@ -1,4 +1,11 @@
-import { createDots, DOT_SPACING, twinkle, wander, WANDER_MAX } from './layout'
+import { createDots, twinkle, wander } from './layout'
+import { DOT_SPACING, WANDER_MAX } from './common.constants'
+
+function itemAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
 
 describe('createDots', () => {
   it('lays out 12 × 26 = 312 dots on the reference view', () => {
@@ -46,7 +53,7 @@ describe('createDots', () => {
 
 describe('wander', () => {
   it('never moves a dot further than its amplitude on each axis', () => {
-    const dot = createDots({ width: 402, height: 874 })[7]
+    const dot = itemAt(createDots({ width: 402, height: 874 }), 7)
     for (let t = 0; t < 60; t += 0.05) {
       const w = wander(dot, t)
       expect(Math.abs(w.x)).toBeLessThanOrEqual(dot.ax + 1e-9)
@@ -55,14 +62,14 @@ describe('wander', () => {
   })
 
   it('keeps moving', () => {
-    const dot = createDots({ width: 402, height: 874 })[7]
+    const dot = itemAt(createDots({ width: 402, height: 874 }), 7)
     expect(wander(dot, 1)).not.toEqual(wander(dot, 1.5))
   })
 })
 
 describe('twinkle', () => {
   it('changes the opacity by at most 28 %', () => {
-    const dot = createDots({ width: 402, height: 874 })[3]
+    const dot = itemAt(createDots({ width: 402, height: 874 }), 3)
     for (let t = 0; t < 20; t += 0.1) {
       expect(twinkle(dot, t)).toBeGreaterThanOrEqual(0.72 - 1e-9)
       expect(twinkle(dot, t)).toBeLessThanOrEqual(1.28 + 1e-9)

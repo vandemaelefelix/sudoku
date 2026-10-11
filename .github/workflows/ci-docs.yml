@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths: &paths
-      - "**/*.md"
+      - '**/*.md'
       - scripts/check_links.py
       - justfile
       - .github/workflows/ci-docs.yml

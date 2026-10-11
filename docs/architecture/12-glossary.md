@@ -64,3 +64,6 @@ status: DRAFT
 | Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, and when the photo conversion fails |
 | Install (model) | `just install-model <run>`: copies an exported run into the app without the promote gate. M0 only (ADR-007) |
 | Reference outputs | `reference-outputs.json`: the PyTorch probabilities for the 81 reference cells. The phone's outputs must match them (ADR-005) |
+| Domain utils file | `<domain>.utils.ts`: the plain functions and types of one domain, such as tracking or transition. No React, no UI. See `apps/mobile/AGENTS.md` |
+| Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
+| Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |

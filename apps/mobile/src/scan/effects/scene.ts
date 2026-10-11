@@ -1,30 +1,19 @@
-import type { Quad } from '../../scanner'
-import { type Homography, invert, unitToQuad } from './common/geometry'
-import type { ViewSize } from '../previewMapping'
-import type { Channels } from '../transition/timeline'
-
-// Times are seconds. Speeds are points per second.
-/** Corners slower than this count as slow. The lock-on threshold. Tuned on the device, see the scan-pipeline concept. */
-export const STEADY_SPEED = 30
-export const MOTION_TIME = 0.3
-/** The scene is steady while motion is below this value. The lock-on threshold. Tuned on the device, see the scan-pipeline concept. */
-export const STEADY_MOTION = 0.5
-/** Seconds the grid must stay steady before the scan locks on. To tune on the device, see the scan-pipeline concept. */
-export const LOCK_DWELL = 1.0
-/** Seconds after the first frame of a scene with no lock-on, so the camera settles first. To tune on the device, see the scan-pipeline concept. */
-export const WARMUP = 1.0
-/** Seconds without a grid that arm a scene that is not armed. To tune on the device, see the scan-pipeline concept. */
-export const REARM_LOST = 0.5
-/** The smallest grid width, as a share of the view width, that can lock on. To tune on the device, see the scan-pipeline concept. */
-export const MIN_GRID_WIDTH = 0.35
-/** A big grid stays big down to MIN_GRID_WIDTH minus this share, so a grid near the limit does not flicker the progress. To tune on the device, see the scan-pipeline concept. */
-export const GRID_WIDTH_HYSTERESIS = 0.03
-/** A corner step in one frame larger than this share of the grid diagonal means another grid. */
-export const JUMP = 0.25
-/** The longest step the scene takes, so a pause does not make an effect jump. */
-export const MAX_STEP = 0.1
-/** Seconds for presence to go from 0 to 1, or back. */
-export const PRESENCE_TIME = 0.4
+import type { Channels } from '@/scan/utils/transition.utils'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { type Homography, invert, unitToQuad } from '@/utils/homography.utils'
+import {
+  STEADY_SPEED,
+  MOTION_TIME,
+  STEADY_MOTION,
+  LOCK_DWELL,
+  WARMUP,
+  REARM_LOST,
+  MIN_GRID_WIDTH,
+  GRID_WIDTH_HYSTERESIS,
+  JUMP,
+  MAX_STEP,
+  PRESENCE_TIME,
+} from './scene.constants'
 
 export type GridEvent = 'found' | 'lost' | 'none'
 
@@ -76,9 +65,15 @@ function toward(value: number, target: number, step: number): number {
 
 function largestCornerStep(a: Quad, b: Quad): number {
   'worklet'
-  let step = 0
-  for (let i = 0; i < 4; i++) step = Math.max(step, Math.hypot(a[i].x - b[i].x, a[i].y - b[i].y))
-  return step
+  const [a0, a1, a2, a3] = a
+  const [b0, b1, b2, b3] = b
+  return Math.max(
+    0,
+    Math.hypot(a0.x - b0.x, a0.y - b0.y),
+    Math.hypot(a1.x - b1.x, a1.y - b1.y),
+    Math.hypot(a2.x - b2.x, a2.y - b2.y),
+    Math.hypot(a3.x - b3.x, a3.y - b3.y),
+  )
 }
 
 export function diagonal(quad: Quad): number {
@@ -89,7 +84,11 @@ export function diagonal(quad: Quad): number {
 /** The mean length of the top and bottom edges, in view points. */
 function gridWidth(quad: Quad): number {
   'worklet'
-  return (Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) + Math.hypot(quad[2].x - quad[3].x, quad[2].y - quad[3].y)) / 2
+  return (
+    (Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) +
+      Math.hypot(quad[2].x - quad[3].x, quad[2].y - quad[3].y)) /
+    2
+  )
 }
 
 /** armed: false after a scan or a Retake, so the scene does not lock on again on the same puzzle. */

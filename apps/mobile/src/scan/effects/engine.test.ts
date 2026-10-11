@@ -1,8 +1,8 @@
-import type { Quad } from '../../scanner'
-import { transitionAt } from '../transition/timeline'
-import { project } from './common/geometry'
+import { transitionAt } from '@/scan/utils/transition.utils'
 import { advance, advanceCapture } from './engine'
 import type { AnyEffect } from './types'
+import type { Quad } from '@/utils/geometry.utils'
+import { project } from '@/utils/homography.utils'
 
 const VIEW = { width: 402, height: 874 }
 
@@ -105,7 +105,8 @@ describe('advance', () => {
 /** Runs a still grid until the scene locks on. A new quad object per frame, as the camera gives one per detection. */
 function lockedEngine(effect: AnyEffect) {
   let engine = advance(null, effect, VIEW, grid, 0, false)
-  for (let t = 1 / 60; t <= 2.5; t += 1 / 60) engine = advance(engine, effect, VIEW, grid.map((p) => ({ ...p })) as Quad, t, false)
+  for (let t = 1 / 60; t <= 2.5; t += 1 / 60)
+    engine = advance(engine, effect, VIEW, grid.map((p) => ({ ...p })) as Quad, t, false)
   expect(engine.scene.lockedAt).toBeGreaterThan(0)
   return engine
 }

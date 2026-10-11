@@ -96,6 +96,7 @@ Result, capture (2026-10-11, issue #6):
 - fast-opencv works on the scanner runtime for `cvtColor`, `GaussianBlur`, `adaptiveThreshold`, `findContours`, `contourArea`, `arcLength`, `approxPolyDP` and `warpPerspective`.
 - `getPerspectiveTransform` does not work. In fast-opencv 1.0.1, `Point2fVector.create(points)` ignores its points and returns an empty vector (`cpp/structures/point2fVector/Point2fVectorFactory.cpp`). No other JS path fills a `Point2fVector`. Every scan failed with `src.checkVector(2, CV_32F) == 4`.
 - The app computes the homography in TypeScript (`perspectiveTransform` in `src/scanner/photoGeometry.ts`). It passes the result as `Mat.create(3, 3, CV_64F, h)`. This is the capture step that needs a replacement. No Swift plugin is needed.
+  Later (issue #28): the scanner uses `quadToQuad` in `src/utils/homography.utils.ts`, the one homography of the app.
 - The downscale for the re-detection uses nitro-image `resize()`, not OpenCV.
 - Timings over 7 scans, lock-on to result view: photo 118 to 133 ms, image 158 to 208 ms, detect 1 to 4 ms, flatten 129 to 137 ms, classify 76 to 87 ms, total 512 to 539 ms.
 - Classify took 424 to 453 ms before the preprocessing skipped the zero weights of the area-average matrix. The output did not change.

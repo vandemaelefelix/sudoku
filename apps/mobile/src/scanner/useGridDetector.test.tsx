@@ -2,13 +2,20 @@ import { renderHook } from '@testing-library/react-native'
 import type { Frame } from 'react-native-vision-camera'
 import { useResizer } from 'react-native-vision-camera-resizer'
 import { findGrid } from './findGrid'
-import { type Quad, turnHalf } from './quad'
+import { turnHalf } from './quad'
 import { DETECT_HEIGHT, DETECT_WIDTH, useGridDetector } from './useGridDetector'
+import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('./findGrid', () => ({ findGrid: jest.fn(() => null) }))
 
 const resizerState = jest.mocked(useResizer)
 const find = jest.mocked(findGrid)
+
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
 const trapezoid: Quad = [
   { x: 0.25, y: 0.125 },
   { x: 0.5, y: 0.125 },
@@ -68,7 +75,7 @@ describe('useGridDetector', () => {
     const { result } = renderHook(() => useGridDetector())
     expect(result.current!(frame)).toBe(detection)
     expect(resizer.resize).toHaveBeenCalledWith(frame)
-    const [pixels, width, height] = find.mock.calls[0]
+    const [pixels, width, height] = at(find.mock.calls, 0)
     expect(pixels).toBeInstanceOf(Uint8Array)
     expect(pixels.length).toBe(360 * 640 * 3)
     expect([width, height]).toEqual([360, 640])

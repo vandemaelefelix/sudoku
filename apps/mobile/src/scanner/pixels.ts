@@ -1,10 +1,8 @@
+import type { Rect } from '@/utils/geometry.utils'
 import { CELL_SIZE, CELLS } from './preprocess'
 
 /** Raw pixels as nitro-image gives them. A row may end in padding: the row length is byteLength / height. */
 export type RawPixels = { buffer: ArrayBuffer; width: number; height: number; pixelFormat: string }
-
-/** Integer pixels. */
-export type Rect = { x: number; y: number; width: number; height: number }
 
 /** The side of the rough flatten: 9 cells of CELL_SIZE. */
 export const FLAT_SIZE = 9 * CELL_SIZE
@@ -40,7 +38,9 @@ export function rowBytes(raw: RawPixels): number {
   'worklet'
   const row = raw.buffer.byteLength / raw.height
   if (!Number.isInteger(row) || row < raw.width * bytesPerPixel(raw.pixelFormat)) {
-    throw new RangeError(`${raw.buffer.byteLength} bytes do not hold ${raw.height} rows of ${raw.width} ${raw.pixelFormat} pixels`)
+    throw new RangeError(
+      `${raw.buffer.byteLength} bytes do not hold ${raw.height} rows of ${raw.width} ${raw.pixelFormat} pixels`,
+    )
   }
   return row
 }
@@ -56,9 +56,9 @@ export function toRgb(raw: RawPixels): Uint8Array {
     let p = y * row
     let q = y * raw.width * 3
     for (let x = 0; x < raw.width; x++) {
-      out[q] = src[p + layout.r]
-      out[q + 1] = src[p + layout.g]
-      out[q + 2] = src[p + layout.b]
+      out[q] = src[p + layout.r] ?? 0
+      out[q + 1] = src[p + layout.g] ?? 0
+      out[q + 2] = src[p + layout.b] ?? 0
       p += layout.bytes
       q += 3
     }

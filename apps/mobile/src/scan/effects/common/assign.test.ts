@@ -11,20 +11,37 @@ describe('assignNearest', () => {
   })
 
   it('serves the shortest pair first', () => {
-    const dots = [{ x: 0, y: 0 }, { x: 100, y: 0 }]
-    const targets = [{ x: 10, y: 0 }, { x: 1, y: 0 }]
+    const dots = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ]
+    const targets = [
+      { x: 10, y: 0 },
+      { x: 1, y: 0 },
+    ]
     expect(assignNearest(dots, targets)).toEqual([1, 0])
   })
 
   it('gives each target its nearest dot when the dots do not compete', () => {
-    const dots = [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 100, y: 0 }]
-    const targets = [{ x: 98, y: 0 }, { x: 2, y: 0 }]
+    const dots = [
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+      { x: 100, y: 0 },
+    ]
+    const targets = [
+      { x: 98, y: 0 },
+      { x: 2, y: 0 },
+    ]
     expect(assignNearest(dots, targets)).toEqual([2, 0])
   })
 
   it('leaves intersections without a dot when there are too few dots', () => {
     const dots = [{ x: 0, y: 0 }]
-    const targets = [{ x: 1, y: 0 }, { x: 5, y: 0 }, { x: 9, y: 0 }]
+    const targets = [
+      { x: 1, y: 0 },
+      { x: 5, y: 0 },
+      { x: 9, y: 0 },
+    ]
     expect(assignNearest(dots, targets)).toEqual([0, -1, -1])
   })
 

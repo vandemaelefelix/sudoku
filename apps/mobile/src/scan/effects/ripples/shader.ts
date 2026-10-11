@@ -1,4 +1,4 @@
-import { GRID_UV_SKSL } from '../common/gridUv'
+import { GRID_UV_SKSL } from '@/scan/effects/common/gridUv'
 
 // Prototype section 1c, "Ripples" (AMB_BG, uBg == 3), ported from GLSL to SkSL.
 // The uniforms and the grid helpers come from GRID_UV_SKSL. uVis carries the detection fade (uDet in the prototype).

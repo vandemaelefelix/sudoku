@@ -3,4 +3,4 @@ packages:
   - packages/*
 
 allowBuilds:
-  "@shopify/react-native-skia": true
+  '@shopify/react-native-skia': true
