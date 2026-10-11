@@ -1,14 +1,14 @@
-import type { Point, Quad } from '../../scanner'
-import type { ViewSize } from '../previewMapping'
-import { assignNearest } from './assign'
-import { type Homography, intersections, invert, isBoxCorner, project, pushOutside, unitToQuad } from './geometry'
-import { createDots, type Dot, DOT_SPACING, twinkle, wander } from './layout'
-import { spreadStep } from './spread'
+import type { Point, Quad } from '../../../scanner'
+import type { ViewSize } from '../../previewMapping'
+import { assignNearest } from '../common/assign'
+import { type Homography, intersections, isBoxCorner, project, pushOutside } from '../common/geometry'
+import { createDots, type Dot, DOT_SPACING, twinkle, wander } from '../common/layout'
+import { spreadStep } from '../common/spread'
+import { diagonal, type Scene } from '../scene'
 
 // Stage 1 of the scan experience design. Opacities are 0..1, times are seconds, sizes are points.
 export const DIM_SEARCH = 0.3
 export const DIM_OUTSIDE = 0.45
-export const DIM_FADE = 0.4
 export const FREE_ALPHA = 0.32
 export const GATHER_ALPHA_START = 0.4
 export const GATHER_ALPHA_END = 0.8
@@ -23,13 +23,6 @@ export const MARGIN = 0.08
 export const SPREAD_TIME = 1.0
 export const RELEASE_TIME = 0.5
 export const REDUCED_FADE = 0.2
-/** pt/s. Corners slower than this count as steady. Provisional until the lock-on rule sets the threshold (scan-pipeline concept). */
-export const STEADY_SPEED = 30
-export const MOTION_TIME = 0.3
-/** A corner step in one frame larger than this share of the grid diagonal means another grid. */
-export const JUMP = 0.25
-/** The longest step of the fades, so a pause does not snap the dim or the wobble. */
-export const MAX_STEP = 0.1
 /** Motion above which the homes keep spreading after the first SPREAD_TIME. */
 const SPREAD_MOTION = 0.5
 export const SPREAD_RADIUS = 1.3 * DOT_SPACING
@@ -55,43 +48,17 @@ export type FieldDot = Dot & {
   alpha: number
 }
 
-/** presence: 0..1, how far the dim has moved to "grid found". motion: 0..1, the corner speed relative to STEADY_SPEED. speed: pt/s, the corner speed measured at the last quad change. changedAt: time of the last change of the quad object. */
+/** holding: the dots are gathered on a grid. gatheredAt: the time of the last gather, which starts the spread of the free dots. */
 export type FieldState = {
-  width: number
-  height: number
   dots: FieldDot[]
-  quad: Quad | null
-  lastQuad: Quad | null
-  foundAt: number
-  t: number
-  presence: number
-  motion: number
-  speed: number
-  changedAt: number
+  holding: boolean
+  gatheredAt: number
 }
 
 function smooth(x: number): number {
   'worklet'
   const c = Math.min(1, Math.max(0, x))
   return c * c * (3 - 2 * c)
-}
-
-/** Moves value toward target by at most step, so a fade over T seconds uses step = dt / T. */
-function toward(value: number, target: number, step: number): number {
-  'worklet'
-  return value < target ? Math.min(target, value + step) : Math.max(target, value - step)
-}
-
-function largestCornerStep(a: Quad, b: Quad): number {
-  'worklet'
-  let step = 0
-  for (let i = 0; i < 4; i++) step = Math.max(step, Math.hypot(a[i].x - b[i].x, a[i].y - b[i].y))
-  return step
-}
-
-function diagonal(quad: Quad): number {
-  'worklet'
-  return Math.hypot(quad[2].x - quad[0].x, quad[2].y - quad[0].y)
 }
 
 export function createField(view: ViewSize): FieldState {
@@ -114,19 +81,7 @@ export function createField(view: ViewSize): FieldState {
       alpha: FREE_ALPHA,
     }
   })
-  return {
-    width: view.width,
-    height: view.height,
-    dots,
-    quad: null,
-    lastQuad: null,
-    foundAt: -1,
-    t: -1,
-    presence: 0,
-    motion: 1,
-    speed: STEADY_SPEED,
-    changedAt: -1,
-  }
+  return { dots, holding: false, gatheredAt: -1 }
 }
 
 function gather(state: FieldState, m: Homography, t: number) {
@@ -157,7 +112,8 @@ function gather(state: FieldState, m: Homography, t: number) {
     d.target = j
     d.delay = longest > 0 ? (Math.hypot(p.x - targets[j].x, p.y - targets[j].y) / longest) * MAX_DELAY : 0
   }
-  state.foundAt = t
+  state.holding = true
+  state.gatheredAt = t
 }
 
 function release(state: FieldState, t: number) {
@@ -172,6 +128,7 @@ function release(state: FieldState, t: number) {
     d.homeX = d.origX
     d.homeY = d.origY
   }
+  state.holding = false
 }
 
 /** Indices of the free dots that can change a movable home: the movable ones, and the ones that are less than SPREAD_RADIUS outside the reach. In dot order, so the sums in spreadStep stay the same as over all free dots. */
@@ -187,7 +144,7 @@ export function selectSpreadDots(state: FieldState, centre: Point, reach: number
   return chosen
 }
 
-export function spreadHomes(state: FieldState, quad: Quad, m: Homography, inverse: Homography) {
+export function spreadHomes(state: FieldState, scene: Scene, quad: Quad, m: Homography, inverse: Homography) {
   'worklet'
   const centre = project(m, 0.5, 0.5)
   const reach = diagonal(quad) * NEAR
@@ -203,14 +160,14 @@ export function spreadHomes(state: FieldState, quad: Quad, m: Homography, invers
   for (let k = 0; k < chosen.length; k++) {
     if (!movable[k]) continue
     // A clamp to the view would pull a home that the grid pushed out of the view back into the grid, and it would jump to another side.
-    const leaves = next[k].x < 0 || next[k].x > state.width || next[k].y < 0 || next[k].y > state.height
+    const leaves = next[k].x < 0 || next[k].x > scene.width || next[k].y < 0 || next[k].y > scene.height
     const home = pushOutside(leaves ? homes[k] : next[k], m, inverse, MARGIN)
     state.dots[chosen[k]].homeX = home.x
     state.dots[chosen[k]].homeY = home.y
   }
 }
 
-function placeGathered(state: FieldState, d: FieldDot, t: number, m: Homography, reduceMotion: boolean) {
+function placeGathered(d: FieldDot, t: number, m: Homography, motion: number, reduceMotion: boolean) {
   'worklet'
   const at = project(m, (d.target % 10) / 9, Math.floor(d.target / 10) / 9)
   const grow = isBoxCorner(d.target) ? GROW_BOX : GROW
@@ -226,8 +183,8 @@ function placeGathered(state: FieldState, d: FieldDot, t: number, m: Homography,
   const u = smooth((t - d.since - d.delay) / FLIGHT)
   const sx = d.fromX + w.x - w0.x
   const sy = d.fromY + w.y - w0.y
-  const ex = at.x + w.x * WOBBLE * state.motion
-  const ey = at.y + w.y * WOBBLE * state.motion
+  const ex = at.x + w.x * WOBBLE * motion
+  const ey = at.y + w.y * WOBBLE * motion
   const arc = Math.sin(u * Math.PI) * ARC * (d.px / (2 * Math.PI) - 0.5)
   d.x = sx + (ex - sx) * u - (ey - sy) * arc
   d.y = sy + (ey - sy) * u + (ex - sx) * arc
@@ -259,7 +216,7 @@ function placeFree(
     y = out.y
   }
   // A release or a spread starts where the dot is drawn, and keeps its wander.
-  const start = d.releasing ? d.since : state.foundAt
+  const start = d.releasing ? d.since : state.gatheredAt
   const span = d.releasing ? RELEASE_TIME : SPREAD_TIME
   const moving = d.releasing || (m != null && inverse != null)
   const u = reduceMotion || !moving ? 1 : smooth((t - start) / span)
@@ -277,41 +234,29 @@ function placeFree(
   d.alpha = FREE_ALPHA * (reduceMotion ? 1 : twinkle(d, t))
 }
 
-/** Advances the field to time t. quad: the smoothed grid in view points, or null. Mutates and returns state. */
-export function stepField(state: FieldState, quad: Quad | null, t: number, reduceMotion: boolean): FieldState {
+/**
+ * Advances the dots to scene.t. Run stepScene first. Mutates and returns state.
+ * The dots gather on 'found', and also on the first frame with a grid when the field is new, so a switch to this effect while a grid is in view gathers at once.
+ */
+export function stepField(state: FieldState, scene: Scene): FieldState {
   'worklet'
-  const dt = state.t < 0 ? 0 : Math.min(MAX_STEP, Math.max(0, t - state.t))
-  state.t = t
-  const m = quad == null ? null : unitToQuad(quad)
-  const inverse = m == null ? null : invert(m)
-  const grid = m != null && inverse != null ? quad : null
-  const previous = state.quad
-  // The camera sends a new quad object per detection, so speed is measured only at those changes.
-  const changed = grid !== previous
-  const step = grid != null && previous != null ? largestCornerStep(grid, previous) : 0
-  const jumped = grid != null && previous != null && step > JUMP * diagonal(previous)
-  if (grid != null && m != null && (previous == null || jumped)) {
-    gather(state, m, t)
-    state.speed = STEADY_SPEED
-  } else if (grid == null && previous != null) {
+  const t = scene.t
+  const quad = scene.quad
+  const m = scene.m
+  const inverse = scene.inverse
+  const usable = quad != null && m != null && inverse != null
+  if (usable) {
+    if (scene.event === 'found' || !state.holding) gather(state, m, t)
+  } else if (state.holding) {
     release(state, t)
-    state.speed = STEADY_SPEED
-  } else if (changed && grid != null && previous != null && t > state.changedAt) {
-    state.speed = step / (t - state.changedAt)
   }
-  if (changed) state.changedAt = t
-  state.motion = toward(state.motion, Math.min(1, state.speed / STEADY_SPEED), dt / MOTION_TIME)
-  state.presence = toward(state.presence, grid != null ? 1 : 0, dt / DIM_FADE)
-  state.quad = grid
-  if (grid != null) state.lastQuad = grid
-  const usable = grid != null && m != null && inverse != null
   // While the grid moves, homes that it sweeps along keep spreading, so they do not pile on the margin.
-  const spreading = t - state.foundAt < SPREAD_TIME || state.motion > SPREAD_MOTION
-  if (usable && !reduceMotion && spreading) spreadHomes(state, grid, m, inverse)
+  const spreading = t - state.gatheredAt < SPREAD_TIME || scene.motion > SPREAD_MOTION
+  if (usable && !scene.reduceMotion && spreading) spreadHomes(state, scene, quad, m, inverse)
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
-    if (d.target >= 0 && usable) placeGathered(state, d, t, m, reduceMotion)
-    else placeFree(state, d, t, usable ? m : null, usable ? inverse : null, reduceMotion)
+    if (d.target >= 0 && m != null) placeGathered(d, t, m, scene.motion, scene.reduceMotion)
+    else placeFree(state, d, t, m, inverse, scene.reduceMotion)
   }
   return state
 }

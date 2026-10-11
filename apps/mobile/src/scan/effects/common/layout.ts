@@ -1,5 +1,5 @@
-import type { Point } from '../../scanner'
-import type { ViewSize } from '../previewMapping'
+import type { Point } from '../../../scanner'
+import type { ViewSize } from '../../previewMapping'
 
 /** Points between dot homes. The 402 × 874 pt reference view gets 12 × 26 = 312 dots. */
 export const DOT_SPACING = 33.5

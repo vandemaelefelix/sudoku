@@ -1,4 +1,4 @@
-import type { Point } from '../../scanner'
+import type { Point } from '../../../scanner'
 
 function pushPair(points: Point[], next: Point[], movable: boolean[], a: number, b: number, radius: number, push: number) {
   'worklet'
