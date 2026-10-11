@@ -74,6 +74,13 @@ mean op: the export checks every op version against 2.17 (#4). The phone side is
 - Global average pooling exports as SUM and MUL, not MEAN.
 - The op table `ml/src/sudoku_ml/tflite_2_17_ops.json` holds 168 ops from v2.17.0 `register.cc`.
 
+**Measured on the iPhone** (development build, fast-tflite 3.0.1, CPU delegate, run
+`20261009-210543-cell-classifier`):
+
+- The top class of both heads matches PyTorch on all 81 reference cells.
+- The largest probability difference is 2.38 × 10⁻⁷.
+- One batched call for 81 cells takes 21.1 ms (median of 20 calls, three app starts: 21.1, 21.5 and 21.1 ms).
+
 ## Consequences
 
 - Pins: Python 3.12, torch 2.13.0 (litert-torch 0.9.4 requires torch below 2.14), litert-torch
