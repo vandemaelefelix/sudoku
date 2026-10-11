@@ -11,6 +11,17 @@ export const MIN_AREA_FRACTION = 0.1
 /** A quad that touches the frame edge is cut off by it, so it is not the grid. */
 export const BORDER_MARGIN = 0.005
 
+function turnPoint(p: Point): Point {
+  'worklet'
+  return { x: 1 - p.x, y: 1 - p.y }
+}
+
+/** Turns the quad by 180 degrees about the frame centre. The result starts again at the top-left corner. */
+export function turnHalf(quad: Quad): Quad {
+  'worklet'
+  return [turnPoint(quad[2]), turnPoint(quad[3]), turnPoint(quad[0]), turnPoint(quad[1])]
+}
+
 export function quadArea(quad: Quad): number {
   'worklet'
   let twice = 0
