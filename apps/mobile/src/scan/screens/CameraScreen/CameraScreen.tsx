@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AppState, Button, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { AppState, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -12,53 +12,25 @@ import {
   CommonResolutions,
   useCameraDevice,
   useCameraPermission,
-  useFrameOutput,
   usePhotoOutput,
 } from 'react-native-vision-camera'
-import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
+import { scheduleOnRN } from 'react-native-worklets'
+import type { RecogniseResult } from '@/scanner'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { type RecogniseResult, useGridDetector } from '@/scanner'
 import { useColors } from '@/theme/colors'
-import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
-import type { CorrectionLayout } from '@/scan/utils/correction.utils'
-import {
-  countFrame,
-  EMPTY_WINDOW,
-  EMPTY_JITTER,
-  type JitterReport,
-  trackJitter,
-  type Smoothing,
-  smoothQuad,
-} from '@/scan/utils/tracking.utils'
-import { DEFAULT_INDEX } from '@/scan/effects/registry'
+import { CameraPermission } from '@/scan/components/CameraPermission'
+import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { EffectPicker } from '@/scan/effects/components/EffectPicker'
-import { toPreview, uprightAspect } from '@/scan/utils/preview.utils'
-import type { Gates, CaptureFrame } from '@/scan/utils/transition.utils'
-import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
-import { TransitionClock, type TransitionPlan } from '@/scan/components/TransitionClock'
+import { DEFAULT_INDEX } from '@/scan/effects/registry'
 import { useCapture } from '@/scan/hooks/useCapture'
-import { type Quad, type ViewSize, rectQuad } from '@/utils/geometry.utils'
-import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
-import { FLASH_PEAK, DARK_BAR_DIM, MEASURE_JITTER } from './CameraScreen.constants'
-
-/** One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame. */
-export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number }
-
-function logFrameRate(fps: number, detectionMs: number) {
-  devLog('camera', `${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)
-}
-
-function warnDetector(message: string) {
-  devWarn('camera', `grid detection failed: ${message}`)
-}
-
-function logJitter(report: JitterReport) {
-  devLog(
-    'outline',
-    `max corner step ${report.maxStep.toFixed(2)} pt over ${report.frames} frames (${report.seconds.toFixed(1)} s)`,
-  )
-}
+import { useCaptureTransition } from '@/scan/hooks/useCaptureTransition'
+import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
+import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
+import type { CorrectionLayout } from '@/scan/utils/correction.utils'
+import type { ViewSize } from '@/utils/geometry.utils'
+import { DARK_BAR_DIM, FLASH_PEAK } from './CameraScreen.constants'
+import { styles } from './CameraScreen.styles'
 
 /**
  * The live camera, and from lock-on the capture transition into the correction screen.
@@ -80,16 +52,8 @@ export function CameraScreen({
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
   const [isActive, setIsActive] = useState(AppState.currentState === 'active')
-  const frameWindow = useMemo(() => createSynchronizable(EMPTY_WINDOW), [])
-  const lastWarned = useMemo(() => createSynchronizable(''), [])
-  const detectGrid = useGridDetector()
-  const detection = useSharedValue<FrameDetection | null>(null)
   const viewSize = useSharedValue<ViewSize>({ width: 0, height: 0 })
-  const smoothing = useSharedValue<Smoothing | null>(null)
-  const jitter = useSharedValue(EMPTY_JITTER)
-  const outline = useSharedValue<Quad | null>(null)
   const effect = useSharedValue(DEFAULT_INDEX)
-  const frameQuad = useSharedValue<Quad | null>(null)
   const photoOutput = usePhotoOutput({
     targetResolution: CommonResolutions.UHD_16_9,
     // 'speed' throws on a device without it (VisionCamera, PhotoOutputOptions).
@@ -98,116 +62,17 @@ export function CameraScreen({
   const { state, capture, sharedImage } = useCapture(photoOutput)
   const colors = useColors()
   const reduceMotion = useReducedMotion()
-  const clock = useSharedValue(0)
-  const waiting = useSharedValue(false)
-  const resultsAt = useSharedValue(-1)
-  const plan = useSharedValue<TransitionPlan | null>(null)
-  const gates = useSharedValue<Gates>({ photo: false, results: false })
-  const captureFrame = useSharedValue<CaptureFrame | null>(null)
-  const [lockedView, setLockedView] = useState<Quad | null>(null)
-  const lockedAt = useRef<number | null>(null)
-  const latestResult = useRef<RecogniseResult | null>(null)
-  const planVersion = useRef(0)
+  const { frameOutput, detection, outline, frameQuad } = useFrameTracking(viewSize)
+  const { startCapture, capturing, crossFade, clock, waiting, resultsAt, captureFrame, stepClock } =
+    useCaptureTransition({ state, capture, layout, onDone, detection, viewSize, reduceMotion })
   const [darkBar, setDarkBar] = useState(false)
 
-  // capture keeps its identity, so this does too: the UI thread holds it as onLock from the first frame.
-  const startCapture = useCallback(
-    (quad: Quad | null) => {
-      if (lockedAt.current != null) return
-      lockedAt.current = Date.now()
-      // The frame aspect at lock-on: the photo has the field of view of the frames.
-      const aspect = detection.get()?.aspect ?? 0
-      setLockedView(quad == null ? null : toPreview(quad, aspect, viewSize.get()))
-      capture(quad, aspect)
-    },
-    [capture, detection, viewSize],
-  )
-
-  const capturing = state.phase === 'capturing' ? state : null
-  const isCapturing = capturing != null
-  // Without a locked grid or a photo, nothing can flatten (scan-pipeline concept).
-  const crossFade =
-    capturing != null && (reduceMotion || capturing.quad == null || lockedView == null || capturing.imageFailed)
-  const photoReady = capturing != null && (capturing.image != null || capturing.quad == null || capturing.imageFailed)
-  const resultsReady = capturing?.result?.ok === true
-  const result = capturing?.result ?? null
-
-  useEffect(() => {
-    if (!isCapturing) return
-    const to = rectQuad(layout.grid)
-    planVersion.current++
-    plan.set({ from: lockedView ?? to, to, crossFade, version: planVersion.current })
-  }, [isCapturing, crossFade, lockedView, layout.grid, plan])
-
-  useEffect(() => {
-    gates.set({ photo: photoReady, results: resultsReady })
-  }, [photoReady, resultsReady, gates])
-
-  useEffect(() => {
-    latestResult.current = result
-  }, [result])
-
-  const finish = useCallback(() => {
-    const done = latestResult.current
-    if (done == null || !done.ok) return
-    if (lockedAt.current != null) devLog('scan', `transition done in ${Date.now() - lockedAt.current} ms`)
-    onDone(done)
-  }, [onDone])
-
   const flashStyle = useAnimatedStyle(() => ({ opacity: FLASH_PEAK * (captureFrame.value?.channels.flash ?? 0) }))
-
-  const frameOutput = useFrameOutput({
-    pixelFormat: 'yuv',
-    onFrame(frame) {
-      'worklet'
-      try {
-        const started = Date.now()
-        let grid = null
-        try {
-          grid = detectGrid == null ? null : detectGrid(frame)
-        } catch (error) {
-          const message = errorMessage(error)
-          if (__DEV__ && lastWarned.getBlocking() !== message) {
-            lastWarned.setBlocking(message)
-            scheduleOnRN(warnDetector, message)
-          }
-        }
-        const counted = countFrame(frameWindow.getBlocking(), frame.timestamp, Date.now() - started)
-        frameWindow.setBlocking(counted.window)
-        if (__DEV__ && counted.report !== null)
-          scheduleOnRN(logFrameRate, counted.report.fps, counted.report.detectionMs)
-        detection.set({
-          quad: grid == null ? null : grid.quad,
-          timestamp: frame.timestamp,
-          aspect: uprightAspect(frame.width, frame.height, frame.orientation),
-        })
-      } finally {
-        frame.dispose()
-      }
-    },
-  })
 
   useAnimatedReaction(
     () => (captureFrame.value?.channels.dim ?? 0) > DARK_BAR_DIM,
     (dark, previous) => {
       if (dark !== previous) scheduleOnRN(setDarkBar, dark)
-    },
-  )
-
-  useAnimatedReaction(
-    () => detection.value,
-    (current) => {
-      if (current == null) return
-      const smoothed = smoothQuad(smoothing.value, current.quad, current.timestamp)
-      smoothing.set(smoothed)
-      frameQuad.set(smoothed == null ? null : smoothed.quad)
-      const shown = smoothed == null ? null : toPreview(smoothed.quad, current.aspect, viewSize.value)
-      outline.set(shown)
-      if (MEASURE_JITTER) {
-        const tracked = trackJitter(jitter.value, shown, current.timestamp)
-        jitter.set(tracked.window)
-        if (tracked.report !== null) scheduleOnRN(logJitter, tracked.report)
-      }
     },
   )
 
@@ -220,30 +85,8 @@ export function CameraScreen({
     if (canRequestPermission) void requestPermission()
   }, [canRequestPermission, requestPermission])
 
-  if (!hasPermission) {
-    if (canRequestPermission) {
-      return (
-        <View testID="camera-waiting" style={styles.message}>
-          <StatusBar style="dark" />
-        </View>
-      )
-    }
-    return (
-      <View testID="camera-denied" style={styles.message}>
-        <StatusBar style="dark" />
-        <Text style={styles.text}>Sudoku needs the camera to scan a puzzle.</Text>
-        <Button testID="open-settings" title="Open Settings" onPress={() => void Linking.openSettings()} />
-      </View>
-    )
-  }
-  if (device == null) {
-    return (
-      <View testID="camera-missing" style={styles.message}>
-        <StatusBar style="dark" />
-        <Text style={styles.text}>This phone has no back camera.</Text>
-      </View>
-    )
-  }
+  if (!hasPermission) return <CameraPermission block={canRequestPermission ? 'waiting' : 'denied'} />
+  if (device == null) return <CameraPermission block="missing" />
   return (
     <View
       testID="camera-screen"
@@ -272,15 +115,6 @@ export function CameraScreen({
           colors={colors}
         />
       )}
-      <TransitionClock
-        plan={plan}
-        gates={gates}
-        clock={clock}
-        waiting={waiting}
-        resultsAt={resultsAt}
-        capture={captureFrame}
-        onEnd={finish}
-      />
       <EffectCanvas
         outline={outline}
         view={viewSize}
@@ -288,6 +122,7 @@ export function CameraScreen({
         frameQuad={frameQuad}
         onLock={startCapture}
         capture={captureFrame}
+        beforeFrame={stepClock}
         armed={armed}
       />
       {capturing != null ? (
@@ -320,18 +155,3 @@ export function CameraScreen({
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  message: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
-  text: { fontSize: 17, textAlign: 'center' },
-  flash: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'white' },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 48, alignItems: 'center' },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: 'white',
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-})

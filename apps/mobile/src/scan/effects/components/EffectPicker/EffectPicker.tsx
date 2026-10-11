@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 import type { SettingsRepository } from '@/settings/SettingsRepository'
 import { DEFAULT_INDEX, EFFECTS, effectIndex } from '@/scan/effects/registry'
-import type { EffectFamily } from '@/scan/effects/types'
 import { devLog, errorMessage } from '@/utils/log.utils'
-import { EFFECT_KEY } from './EffectPicker.constants'
-
-const FAMILIES: { family: EffectFamily; title: string }[] = [
-  { family: 'simulation', title: 'Simulation' },
-  { family: 'path', title: 'Path' },
-  { family: 'shader', title: 'Shader' },
-  { family: 'screen', title: 'Screen' },
-]
+import { EFFECT_KEY, FAMILIES } from './EffectPicker.constants'
+import { styles } from './EffectPicker.styles'
 
 function logSettingsError(error: unknown) {
   devLog('fx', `settings failed: ${errorMessage(error)}`)
@@ -85,14 +78,3 @@ export function EffectPicker({ effect, settings }: { effect: SharedValue<number>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  layer: { ...StyleSheet.absoluteFill, alignItems: 'center', paddingTop: 70 },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.6)' },
-  pillText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
-  list: { marginTop: 8, padding: 12, minWidth: 240, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.8)' },
-  family: { marginTop: 8, color: 'rgba(255,255,255,0.6)', fontSize: 12, textTransform: 'uppercase' },
-  row: { paddingVertical: 8 },
-  rowText: { color: '#ffffff', fontSize: 16 },
-  rowActive: { color: '#ffd60a', fontSize: 16, fontWeight: '600' },
-})

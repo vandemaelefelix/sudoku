@@ -1,7 +1,8 @@
 import { AlphaType, ColorType, Skia, type SkImage } from '@shopify/react-native-skia'
+import type { SharedValue } from 'react-native-reanimated'
 import type { Photo } from 'react-native-vision-camera'
 import type { Quad } from '@/utils/geometry.utils'
-import { quadToQuad } from '@/utils/homography.utils'
+import { type Homography, quadToQuad } from '@/utils/homography.utils'
 import { TRANSITION_END, REDUCED_END, GATE_PHOTO, GATE_RESULTS } from '@/scan/constants/transition.constants'
 
 // Seconds from lock-on. docs/architecture/00-concepts/scan-pipeline.md describes the stages.
@@ -171,9 +172,47 @@ function colorTypeOf(pixelFormat: string): ColorType {
  */
 export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels; crossFade: boolean }
 
+/**
+ * from: the locked grid in view points. to: the grid square of the correction screen. version: changes with each new plan.
+ * crossFade: no warp. The dots stay on the locked grid, the cells and lines draw on the square, and the Reduce Motion channels fade
+ * the layers.
+ */
+export type TransitionPlan = { from: Quad; to: Quad; crossFade: boolean; version: number }
+
 /** Maps photo pixels (photoWidth × photoHeight, upright) to view points so that the normalised locked quad lands on screenQuad. */
 export function photoMatrix(photoWidth: number, photoHeight: number, locked: Quad, screenQuad: Quad): number[] | null {
   'worklet'
   const inPixels = locked.map((p) => ({ x: p.x * photoWidth, y: p.y * photoHeight })) as Quad
   return quadToQuad(inPixels, screenQuad)
+}
+
+/** What a cell, a ring or the panel of the correction screen follows. Without a clock, everything shows (the review phase). */
+export type SweepTiming = {
+  clock?: SharedValue<number> | undefined
+  resultsAt?: SharedValue<number> | undefined
+  reduceMotion: boolean
+}
+
+/** The sweep shift at clock time t. 0 before the results arrive. */
+export function shiftOf(t: number, resultsAt: SharedValue<number> | undefined, reduceMotion: boolean): number {
+  'worklet'
+  return resultsAt ? sweepShift(resultsAt.value, t, reduceMotion) : 0
+}
+
+/** m with the unit square shrunk by inset points on each side of a square of side points, so the last frame matches the board. */
+export function insetUnit(m: Homography, inset: number, side: number): Homography {
+  'worklet'
+  const a = (side - 2 * inset) / side
+  const b = inset / side
+  const c = (m[6] + m[7]) * b + 1
+  return [
+    (m[0] * a) / c,
+    (m[1] * a) / c,
+    ((m[0] + m[1]) * b + m[2]) / c,
+    (m[3] * a) / c,
+    (m[4] * a) / c,
+    ((m[3] + m[4]) * b + m[5]) / c,
+    (m[6] * a) / c,
+    (m[7] * a) / c,
+  ]
 }

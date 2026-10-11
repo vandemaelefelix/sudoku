@@ -13,28 +13,10 @@ import { StyleSheet } from 'react-native'
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
 import type { Colors } from '@/theme/colors'
 import { drawGridLines } from '@/scan/utils/correction.utils'
-import { type CaptureFrame, photoMatrix } from '@/scan/utils/transition.utils'
+import { type CaptureFrame, insetUnit, photoMatrix } from '@/scan/utils/transition.utils'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
-import { type Homography, unitToQuad } from '@/utils/homography.utils'
+import { unitToQuad } from '@/utils/homography.utils'
 import { LINE_INSET } from './TransitionCanvas.constants'
-
-/** m with the unit square shrunk by inset points on each side of a square of side points, so the last frame matches the board. */
-function insetUnit(m: Homography, inset: number, side: number): Homography {
-  'worklet'
-  const a = (side - 2 * inset) / side
-  const b = inset / side
-  const c = (m[6] + m[7]) * b + 1
-  return [
-    (m[0] * a) / c,
-    (m[1] * a) / c,
-    ((m[0] + m[1]) * b + m[2]) / c,
-    (m[3] * a) / c,
-    (m[4] * a) / c,
-    ((m[3] + m[4]) * b + m[5]) / c,
-    (m[6] * a) / c,
-    (m[7] * a) / c,
-  ]
-}
 
 function addQuad(path: SkPath, quad: Quad): SkPath {
   'worklet'
