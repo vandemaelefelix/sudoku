@@ -45,6 +45,20 @@ jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
 }))
 
+// The key-value store of expo-sqlite is native. This stand-in keeps the values in memory for one test file.
+jest.mock('expo-sqlite/kv-store', () => {
+  const mockItems = new Map<string, string>()
+  return {
+    __esModule: true,
+    default: {
+      getItemAsync: jest.fn(async (key: string) => mockItems.get(key) ?? null),
+      setItemAsync: jest.fn(async (key: string, value: string) => {
+        mockItems.set(key, value)
+      }),
+    },
+  }
+})
+
 jest.mock('react-native-reanimated', () => {
   const { useRef } = jest.requireActual('react')
   return {
