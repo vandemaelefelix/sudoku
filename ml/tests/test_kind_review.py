@@ -96,3 +96,14 @@ def test_an_old_suspects_file_asks_for_a_new_run(tmp_path: Path):
     path.write_text(f"file,label,predicted,p_label,p_predicted\n{A[:16]},7,1,0.01,0.97\n")
     with pytest.raises(ValueError, match="just suspects"):
         model_items(path, {A[:16]: A}, lambda c, f: "7")
+
+
+def test_an_undone_review_confirmation_reopens_the_item(tmp_path: Path):
+    path = tmp_path / "suspects.csv"
+    write_suspects(path, [f"kind,{A[:16]},printed,handwritten,0.03,0.97"])
+    lines = [kind(1, A, "printed")]
+    confirm = Line("2026-10-12T09:30:00Z", "s", "s-9", A, "kind", "printed", "printed", "review")
+    undo = Line("2026-10-12T09:31:00Z", "s", "undo:s-9", A, "kind", "printed", "printed", "undo")
+    items = model_items(path, {A[:16]: A}, lambda c, f: "printed")
+    assert open_items(items, [*lines, confirm]) == []
+    assert len(open_items(items, [*lines, confirm, undo])) == 1

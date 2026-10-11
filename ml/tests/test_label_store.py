@@ -232,3 +232,34 @@ def test_progress_counts_per_folder(tmp_path: Path):
     seven = store.progress()["folders"]["7"]
     assert (seven["cells"], seven["printed"], seven["unsure"], seven["without"]) == (3, 1, 1, 1)
     assert seven["groups"] == [{"group": 0, "size": 3, "without": 1}]
+
+
+def test_a_second_check_answer_for_a_cell_is_refused(tmp_path: Path):
+    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    clock = Clock()
+    store = LabelStore(paths, clock)
+    store.save(kinds_of(ids["7"], "printed"), "groups")
+    clock.moment += timedelta(days=8)
+    store.check_answer([{"id": ids["7"][0], "answer": "printed"}])
+    with pytest.raises(ValueError, match="already checked"):
+        store.check_answer([{"id": ids["7"][0], "answer": "printed"}])
+    assert len(paths.checks.read_text().splitlines()) == 1
+
+
+def test_a_rollback_from_another_process_reaches_the_running_store(tmp_path: Path):
+    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    cell = ids["7"][0]
+    first = LabelStore(paths, Clock())
+    first.save(kinds_of([cell], "printed"), "groups")
+    first.move(cell, "1", "groups")
+    later = Clock()
+    later.moment += timedelta(hours=1)
+    running = LabelStore(paths, later)
+    assert running.next_screen() is None
+    other = Clock()
+    other.moment += timedelta(hours=2)
+    LabelStore(paths, other).rollback(first.session)
+    screen = running.next_screen()
+    assert screen["folder"] == "7" and screen["cells"][0]["kind"] is None
+    assert running.cell_file(cell[:16]).exists()
+    assert running.save(kinds_of([cell], "printed"), "groups") == 1

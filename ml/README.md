@@ -60,5 +60,5 @@ marks, and 4 need a check by hand.
 4. After a labelling pass, run `just suspects`. Then work through the Review screen.
 5. At least 7 days later, run the Check screen. It shows how often you agree with your labels.
 
-Stop the server with Ctrl-C. `just label-cells` rewrites `cells.csv` before and after.
+Stop the server with Ctrl-C. The server then rewrites `cells.csv`, so training sees the new labels.
 Commit `ml/datasets/kind-log.jsonl`, `kind-check.jsonl` and `cells.csv` after a session.
