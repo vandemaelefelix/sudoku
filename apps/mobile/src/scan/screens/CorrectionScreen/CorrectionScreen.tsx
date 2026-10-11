@@ -1,5 +1,5 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
-import { memo, useMemo } from 'react'
+import { useMemo } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   useAnimatedReaction,
@@ -9,16 +9,12 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated'
 import type { RecogniseResult } from '@/scanner'
-import { useColors, type Colors } from '@/theme/colors'
-import { digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '@/scan/utils/transition.utils'
-import {
-  cellLook,
-  cellsToCheck,
-  type CellLook,
-  drawGridLines,
-  type CorrectionLayout,
-} from '@/scan/utils/correction.utils'
-import { PANEL_HIDDEN, FAILURE_SLIDE_MS, RING_INSET, DIGIT_RISE } from './CorrectionScreen.constants'
+import { useColors } from '@/theme/colors'
+import { CorrectionCell } from '@/scan/components/CorrectionCell'
+import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
+import { cellLook, cellsToCheck, drawGridLines, type CorrectionLayout } from '@/scan/utils/correction.utils'
+import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
+import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 
 export type CorrectionProps = {
@@ -33,95 +29,6 @@ export type CorrectionProps = {
   /** The clock value when the results gate opened, or -1 before (see sweepShift). */
   resultsAt?: SharedValue<number>
 }
-
-type Timing = {
-  clock?: SharedValue<number> | undefined
-  resultsAt?: SharedValue<number> | undefined
-  reduceMotion: boolean
-}
-
-type CellProps = Timing & { n: number; look: CellLook; size: number; left: number; top: number; colors: Colors }
-
-type RingProps = Timing & { n: number; size: number; left: number; top: number; color: string }
-
-function shiftOf(t: number, resultsAt: SharedValue<number> | undefined, reduceMotion: boolean): number {
-  'worklet'
-  return resultsAt ? sweepShift(resultsAt.value, t, reduceMotion) : 0
-}
-
-const Ring = memo(function Ring({ n, size, left, top, color, clock, resultsAt, reduceMotion }: RingProps) {
-  const style = useAnimatedStyle(() => {
-    if (!clock) return { opacity: 1 }
-    const t = clock.value
-    return { opacity: ringsAt(t, reduceMotion, shiftOf(t, resultsAt, reduceMotion)) }
-  })
-  return (
-    <Animated.View
-      testID={`correction-ring-${n}`}
-      pointerEvents="none"
-      style={[
-        styles.ring,
-        {
-          left: left + RING_INSET,
-          top: top + RING_INSET,
-          width: size - 2 * RING_INSET,
-          height: size - 2 * RING_INSET,
-          borderColor: color,
-        },
-        style,
-      ]}
-    />
-  )
-})
-
-const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, resultsAt, reduceMotion }: CellProps) {
-  const row = Math.floor(n / 9)
-  const col = n % 9
-  const digitStyle = useAnimatedStyle(() => {
-    let alpha = 1
-    if (clock) {
-      const t = clock.value
-      alpha = digitAlpha(t, row, col, reduceMotion, shiftOf(t, resultsAt, reduceMotion))
-    }
-    return { opacity: alpha, transform: [{ translateY: (1 - alpha) * DIGIT_RISE }] }
-  })
-  const entry = look.style === 'entry'
-  return (
-    <>
-      <Animated.Text
-        testID={`correction-cell-${n}`}
-        style={[
-          styles.digit,
-          {
-            left,
-            top,
-            width: size,
-            height: size,
-            lineHeight: size,
-            fontSize: size * 0.6,
-            color: entry ? colors.accent : colors.text,
-            fontWeight: entry ? '500' : '600',
-          },
-          digitStyle,
-        ]}
-      >
-        {look.digit}
-      </Animated.Text>
-      {look.uncertain && (
-        <Ring
-          n={n}
-          size={size}
-          left={left}
-          top={top}
-          color={colors.warning}
-          clock={clock}
-          resultsAt={resultsAt}
-          reduceMotion={reduceMotion}
-        />
-      )}
-    </>
-  )
-})
 
 export function CorrectionScreen({
   result,
@@ -193,7 +100,7 @@ export function CorrectionScreen({
         <Text style={[styles.subtitle, { color: colors.muted }]}>Tap a digit to fix it</Text>
       </Animated.View>
       {looks.map((look, n) => (
-        <Cell
+        <CorrectionCell
           // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
           key={n}
           n={n}
@@ -265,32 +172,3 @@ export function CorrectionScreen({
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  title: { position: 'absolute', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  titleText: { fontSize: 17, fontWeight: '600' },
-  subtitle: { fontSize: 13 },
-  digit: { position: 'absolute', textAlign: 'center', fontVariant: ['tabular-nums'] },
-  ring: { position: 'absolute', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 6 },
-  waiting: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  panel: {
-    position: 'absolute',
-    borderRadius: 24,
-    padding: 12,
-    gap: 9,
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  chip: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999 },
-  chipText: { fontSize: 13, fontWeight: '600' },
-  sure: { fontSize: 13, fontWeight: '500' },
-  play: { alignItems: 'center', paddingVertical: 12, borderRadius: 14, opacity: 0.5 },
-  playText: { fontSize: 16, fontWeight: '600' },
-  retake: { fontSize: 15, fontWeight: '500', textAlign: 'center' },
-  failure: { gap: 4 },
-  failureTitle: { fontSize: 16, fontWeight: '600' },
-  failureReason: { fontSize: 13 },
-})

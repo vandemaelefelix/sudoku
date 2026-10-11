@@ -1,1 +1,1 @@
-export { type FrameDetection, CameraScreen } from './CameraScreen'
+export { CameraScreen } from './CameraScreen'

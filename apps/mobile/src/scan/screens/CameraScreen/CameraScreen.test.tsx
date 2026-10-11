@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { AppState, Linking } from 'react-native'
 import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
-import { useAnimatedReaction, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
+import { useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import type { SkImage } from '@shopify/react-native-skia'
 import { kvSettings } from '@/settings/SettingsRepository'
 import { type GridDetector, type RecogniseResult, useGridDetector } from '@/scanner'
-import { CameraScreen, type FrameDetection } from './CameraScreen'
+import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
+import { CameraScreen } from './CameraScreen'
 import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import * as frameRate from '@/scan/utils/tracking.utils'
@@ -101,9 +102,12 @@ const quad: Quad = [
   { x: 0.2, y: 0.8 },
 ]
 
-/** The last render's reaction: its input (the published detection) and its handler. */
+/**
+ * The last render's detection reaction: its input (the published detection) and its handler. Each render registers it in
+ * useFrameTracking, before the status bar reaction of the screen.
+ */
 function lastReaction() {
-  const [prepare, react] = reaction.mock.calls.at(-1)! as unknown as [
+  const [prepare, react] = reaction.mock.calls.at(-2)! as unknown as [
     () => FrameDetection | null,
     (current: FrameDetection | null) => void,
   ]
@@ -355,13 +359,12 @@ describe('capture', () => {
     return show
   }
 
-  /** Runs UI frames of 1/60 s for the given seconds. */
+  /** Runs UI frames of 1/60 s for the given seconds, through the clock step that the overlay calls first in each frame. */
   function runFrames(seconds: number) {
-    const callback = jest.mocked(useFrameCallback).mock.calls.at(-1)![0] as unknown as (frame: {
-      timestamp: number
-    }) => void
+    const step = effectCanvas.mock.calls.at(-1)?.[0].beforeFrame
+    if (step == null) throw new Error('the overlay has no clock step')
     for (let i = 0; i <= Math.round(seconds * 60); i++) {
-      callback({ timestamp: frameTime * 1000 })
+      step(frameTime * 1000)
       frameTime += 1 / 60
     }
   }

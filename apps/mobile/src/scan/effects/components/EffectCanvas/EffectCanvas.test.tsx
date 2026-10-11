@@ -289,6 +289,51 @@ describe('lock-on', () => {
 // The spy comes before render: the frame worklet captures advanceCapture when it is created.
 const advanceCaptureSpy = () => jest.spyOn(engine, 'advanceCapture')
 
+describe('beforeFrame', () => {
+  it('runs first in each frame, with the timestamp in milliseconds, before the overlay reads the capture', () => {
+    const order: string[] = []
+    const capture = shared<CaptureFrame | null>(null)
+    const read = capture.get
+    Object.assign(capture, {
+      get: () => {
+        order.push('capture')
+        return read()
+      },
+    })
+    const beforeFrame = jest.fn(() => order.push('clock'))
+    render(
+      <EffectCanvas
+        outline={shared<Quad | null>(grid)}
+        view={shared(VIEW)}
+        effect={shared(DEFAULT_INDEX)}
+        frameQuad={shared<Quad | null>(null)}
+        onLock={jest.fn()}
+        capture={capture}
+        beforeFrame={beforeFrame}
+      />,
+    )
+    tick(2)
+    expect(beforeFrame).toHaveBeenCalledWith(2000)
+    expect(order.slice(0, 2)).toEqual(['clock', 'capture'])
+  })
+
+  it('runs before the view has a size', () => {
+    const beforeFrame = jest.fn()
+    render(
+      <EffectCanvas
+        outline={shared<Quad | null>(null)}
+        view={shared({ width: 0, height: 0 })}
+        effect={shared(DEFAULT_INDEX)}
+        frameQuad={shared<Quad | null>(null)}
+        onLock={jest.fn()}
+        beforeFrame={beforeFrame}
+      />,
+    )
+    tick(1)
+    expect(beforeFrame).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('the capture phase', () => {
   const flat: Quad = [
     { x: 16, y: 120 },

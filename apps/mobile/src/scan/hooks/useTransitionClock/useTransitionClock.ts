@@ -1,33 +1,24 @@
-import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated'
+import { type SharedValue, useSharedValue } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import {
   advanceClock,
+  type CaptureFrame,
   type Gates,
   sweepShift,
   transitionAt,
   transitionEnd,
-  type CaptureFrame,
+  type TransitionPlan,
 } from '@/scan/utils/transition.utils'
-import { type Quad, lerpQuad } from '@/utils/geometry.utils'
-import { MAX_CLOCK_STEP } from './TransitionClock.constants'
+import { lerpQuad } from '@/utils/geometry.utils'
 import { GATE_RESULTS, SPINNER_DELAY } from '@/scan/constants/transition.constants'
+import { MAX_CLOCK_STEP } from './useTransitionClock.constants'
 
 /**
- * from: the locked grid in view points. to: the grid square of the correction screen. version: changes with each new plan.
- * crossFade: no warp. The dots stay on the locked grid, the cells and lines draw on the square, and the Reduce Motion channels fade
- * the layers.
+ * Returns the step of the transition clock: a worklet that advances the clock once per UI frame and publishes the moving grid with
+ * its channels. timestamp: milliseconds, the frame clock. Nothing changes while a gate holds the clock, so then it writes nothing.
+ * The overlay calls it first in its own frame callback, so the overlay always draws the grid of this frame.
  */
-export type TransitionPlan = { from: Quad; to: Quad; crossFade: boolean; version: number }
-
-/**
- * Advances the transition clock once per UI frame and publishes the moving grid with its channels. Nothing changes while a gate
- * holds the clock, so then it writes nothing and no picture is drawn again.
- *
- * Precondition: render this before EffectCanvas, as a sibling, and give neither of them memo. Reanimated runs frame callbacks in
- * the order of registration. Each render registers both inline callbacks again, in tree order. So EffectCanvas reads the grid of
- * this frame, not the grid of the last frame.
- */
-export function TransitionClock({
+export function useTransitionClock({
   plan,
   gates,
   clock,
@@ -44,16 +35,16 @@ export function TransitionClock({
   resultsAt: SharedValue<number>
   capture: SharedValue<CaptureFrame | null>
   onEnd: () => void
-}) {
+}): (timestamp: number) => void {
   const lastFrame = useSharedValue(-1)
   const held = useSharedValue(0)
   const shownVersion = useSharedValue(-1)
   const ended = useSharedValue(false)
-  useFrameCallback((frame) => {
+  return (timestamp: number) => {
     'worklet'
     const path = plan.get()
     if (path == null) return
-    const now = frame.timestamp / 1000
+    const now = timestamp / 1000
     const previous = lastFrame.get()
     lastFrame.set(now)
     const dt = previous < 0 ? 0 : Math.min(MAX_CLOCK_STEP, Math.max(0, now - previous))
@@ -78,6 +69,5 @@ export function TransitionClock({
       ended.set(true)
       scheduleOnRN(onEnd)
     }
-  })
-  return null
+  }
 }
