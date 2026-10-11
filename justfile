@@ -93,3 +93,14 @@ suspects:
 # Group the cells of each digit folder for the labelling page. The run path is relative to ml/
 group-cells run="":
     uv run --directory ml python -m sudoku_ml.grouping {{run}}
+
+# Open the labelling page on 127.0.0.1. The manifest is rewritten before and after
+label-cells:
+    just dataset-manifest
+    uv run --directory ml python -m sudoku_ml.label_server
+    just dataset-manifest
+
+# Reverse every change of one labelling session
+label-rollback session:
+    uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
+    just dataset-manifest
