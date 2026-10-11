@@ -8,7 +8,7 @@ concept: scan-pipeline
 ## Why
 
 Scanning is the feature that makes this more than a sudoku game, and it is judged in the first
-second: does the dot field snap onto the grid, and does the grid that comes out look right. Fixing
+second: does the live overlay snap onto the grid, and does the grid that comes out look right. Fixing
 a bad still photo after the fact takes a lot of code. A live camera lets the user fix most of
 that by holding the phone better, so the pipeline can be simpler
 and still handle a curved book page to some degree.
@@ -16,7 +16,7 @@ and still handle a curved book page to some degree.
 ## What
 
 Two stages. The **live** stage runs on every frame and only finds the four outer corners. It is
-cheap and drives the dot field. When the grid has been steady for a short while, the scan
+cheap and drives the live overlay. When the grid has been steady for a short while, the scan
 **locks on** and captures a full-resolution photo. The **capture** stage then does the expensive
 work once: it finds the 100 grid intersections, flattens every cell from its own four corners,
 and classifies the 81 cells. Flattening per cell corrects a curved page piece by piece, with
@@ -30,7 +30,7 @@ flowchart LR
         f["Camera frame"] --> d["Downscale, grayscale,<br>adaptive threshold"]
         d --> q["Largest 4-corner contour"]
         q --> s["Smooth corners<br>over frames"]
-        s --> o["Dot field in Skia"]
+        s --> o["Active effect in Skia"]
     end
     subgraph cap["On capture, once"]
         p["Full-res photo"] --> w["Rough flatten<br>from 4 corners"]
@@ -48,7 +48,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | Grid detection | Frame processor (ADR-002) | ≤ 15 ms per frame | On a frame downscaled to about 640 px. Returns `null` when no plausible quad is found |
 | Corner smoothing | Scan UI, UI thread | negligible | A filter over recent frames, so the dots do not jitter. Tuned in the walking skeleton |
-| Dot field | Scan UI, UI thread | ≤ 4 ms per frame | Floating dots that gather on the 100 intersections projected from the smoothed corners. See the [scan experience design](../../superpowers/specs/2026-10-11-scan-experience-design.md) |
+| Live overlay | Scan UI, UI thread | ≤ 4 ms per frame for the scene and one effect | The active effect draws from the scene, which the engine computes once per frame from the smoothed corners. The default effect is Gathering dots. A development build switches effects with the dev pill (ADR-014). See the [effect lab design](../../superpowers/specs/2026-10-11-effect-lab-design.md) |
 | Lock-on | Scan UI | — | Corners move less than a threshold for N consecutive frames. N and the threshold are tuned in the walking skeleton |
 | Rough flatten | scanner, on capture | ≤ 30 ms | Perspective transform from the 4 corners to a square |
 | Intersections | scanner, on capture | ≤ 50 ms | Classical first: search each of the 100 expected points in a small window. fast-opencv has no `cornerSubPix`, so the refinement is our own code. An ML keypoint model replaces this only if book pages need it (F-12) |
@@ -60,7 +60,7 @@ flowchart LR
 | Concern | Rule |
 | --- | --- |
 | Frame to OpenCV | `react-native-vision-camera-resizer` turns each frame and scales the whole frame to 360 × 640 RGB on the GPU. It applies the frame orientation and mirroring. Version 5.2.3 turns a `left` or `right` frame the wrong way, so the image is upside down. `useGridDetector` turns the quad back by 180°. It does not make grayscale, so fast-opencv does that |
-| Frame processor to UI thread | Detected corners are written to a Reanimated shared value from the frame processor (`react-native-worklets`). The UI thread reads it, smooths it and Skia draws the dot field. No corner passes through the JS thread |
+| Frame processor to UI thread | Detected corners are written to a Reanimated shared value from the frame processor (`react-native-worklets`). The UI thread reads it, smooths it, steps the scene and Skia draws the active effect. No corner passes through the JS thread |
 | Coordinates | The live stage reports the quad in **normalised, upright coordinates**: `x` and `y` in `[0, 1]` of the frame after applying its orientation. This survives the different resolution, aspect ratio and orientation of the capture |
 | Capture source | On lock-on, VisionCamera takes a full-resolution photo (`capturePhoto()`, then `toImageAsync()` and its raw pixels into a Mat). `recognise()` maps the normalised quad onto the photo after applying its EXIF orientation, then **re-detects the corners** in a small window around each mapped corner, because the phone may have moved a little |
 | Capture thread | `recognise()` runs off the JS thread (an async worklet or a native thread, settled in the walking skeleton), so the transition animation keeps running while it works |
