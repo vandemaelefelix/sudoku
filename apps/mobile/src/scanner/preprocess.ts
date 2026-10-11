@@ -32,6 +32,22 @@ export function preprocessCells(cells: Uint8Array): Float32Array {
     throw new RangeError(`expected ${CELLS * CELL_BYTES} bytes of cell images, got ${cells.length}`)
   }
   const w = areaWeights(CROP_SIZE, INPUT_SIZE)
+  // Each output row of w has 2 or 3 non-zero weights in a run. Loop over the run only: the dense
+  // sum adds the same terms in the same order, so the result is the same.
+  const first = new Int32Array(INPUT_SIZE)
+  const last = new Int32Array(INPUT_SIZE)
+  for (let i = 0; i < INPUT_SIZE; i++) {
+    let lo = CROP_SIZE
+    let hi = -1
+    for (let j = 0; j < CROP_SIZE; j++) {
+      if (w[i * CROP_SIZE + j] > 0) {
+        if (j < lo) lo = j
+        hi = j
+      }
+    }
+    first[i] = lo
+    last[i] = hi
+  }
   const gray = new Float64Array(CROP_SIZE * CROP_SIZE)
   const rows = new Float64Array(INPUT_SIZE * CROP_SIZE)
   const out = new Float32Array(INPUT_LENGTH)
@@ -45,17 +61,21 @@ export function preprocessCells(cells: Uint8Array): Float32Array {
     }
     // W · crop, then (W · crop) · Wᵀ.
     for (let i = 0; i < INPUT_SIZE; i++) {
+      const lo = first[i]
+      const hi = last[i]
       for (let x = 0; x < CROP_SIZE; x++) {
         let sum = 0
-        for (let y = 0; y < CROP_SIZE; y++) sum += w[i * CROP_SIZE + y] * gray[y * CROP_SIZE + x]
+        for (let y = lo; y <= hi; y++) sum += w[i * CROP_SIZE + y] * gray[y * CROP_SIZE + x]
         rows[i * CROP_SIZE + x] = sum
       }
     }
     const outBase = n * INPUT_SIZE * INPUT_SIZE
     for (let i = 0; i < INPUT_SIZE; i++) {
       for (let k = 0; k < INPUT_SIZE; k++) {
+        const lo = first[k]
+        const hi = last[k]
         let sum = 0
-        for (let x = 0; x < CROP_SIZE; x++) sum += rows[i * CROP_SIZE + x] * w[k * CROP_SIZE + x]
+        for (let x = lo; x <= hi; x++) sum += rows[i * CROP_SIZE + x] * w[k * CROP_SIZE + x]
         out[outBase + i * INPUT_SIZE + k] = 1 - sum / 255
       }
     }
