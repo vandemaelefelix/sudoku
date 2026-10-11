@@ -47,6 +47,35 @@ module.exports = {
       to: { pathNot: '^apps/mobile/src/$1/[^/]+$', dependencyTypesNot: ['npm', 'npm-dev', 'npm-peer', 'core'] },
     },
     {
+      name: 'utils-and-constants-have-no-ui',
+      comment:
+        'A utils or constants file holds plain logic and values. It does not import React, React Native or UI modules.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/.+\\.(utils|constants)\\.ts$' },
+      to: { path: ['/node_modules/(react|react-native)/', '^apps/mobile/src/.*/(components|screens|hooks)/'] },
+    },
+    {
+      name: 'constants-import-only-constants-and-types',
+      comment: 'A constants file holds values. It may build on other constants and import types, nothing else.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/.+\\.constants\\.ts$' },
+      to: { pathNot: '\\.constants\\.ts$', dependencyTypesNot: ['type-only'] },
+    },
+    {
+      name: 'styles-import-only-react-native',
+      comment: 'A styles file holds a static StyleSheet. Styles that need the theme stay in the component.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
+      to: { pathNot: '/node_modules/react-native/' },
+    },
+    {
+      name: 'components-and-hooks-do-not-import-screens',
+      comment: 'A screen composes components and hooks, not the other way round.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/.*/(components|hooks)/' },
+      to: { path: '^apps/mobile/src/.*/screens/' },
+    },
+    {
       name: 'no-unresolvable',
       severity: 'error',
       from: {},

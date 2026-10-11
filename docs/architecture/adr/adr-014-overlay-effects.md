@@ -51,7 +51,7 @@ reasoning.
 
 ## Consequences
 
-- To add an effect, add a folder in `src/scan/effects/` and one line in `effects/index.ts`. To
+- To add an effect, add a folder in `src/scan/effects/` and one line in `effects/registry.ts`. To
   remove an effect, delete both.
 - The scene and one effect must stay within 4 ms per frame on the UI thread.
 - A shader that does not compile draws nothing, and the development log names it. Jest compiles
