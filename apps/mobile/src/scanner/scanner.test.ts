@@ -65,3 +65,28 @@ it('rejects when the model does not load', async () => {
   jest.mocked(loadClassifier).mockRejectedValue(new Error('the scanner does not implement model contract 2.0'))
   await expect(freshScanner()).rejects.toThrow('model contract 2.0')
 })
+
+// The scanner and its error class come from the same isolated module registry, so instanceof holds.
+function freshModules() {
+  let modules: { scanner: typeof import('./scanner'); classifier: typeof import('./classifier') } | undefined
+  jest.isolateModules(() => {
+    modules = { scanner: require('./scanner'), classifier: require('./classifier') }
+  })
+  return modules!
+}
+
+it('loads the model again after a failure that is not a contract error', async () => {
+  const { scanner } = freshModules()
+  jest.mocked(loadClassifier).mockRejectedValueOnce(new Error('file not ready'))
+  await expect(scanner.createScanner()).rejects.toThrow('file not ready')
+  await expect(scanner.createScanner()).resolves.toBeDefined()
+  expect(loadClassifier).toHaveBeenCalledTimes(2)
+})
+
+it('keeps the contract error for every later call', async () => {
+  const { scanner, classifier } = freshModules()
+  jest.mocked(loadClassifier).mockRejectedValueOnce(new classifier.ModelContractError('contract 2.0'))
+  await expect(scanner.createScanner()).rejects.toThrow('contract 2.0')
+  await expect(scanner.createScanner()).rejects.toThrow('contract 2.0')
+  expect(loadClassifier).toHaveBeenCalledTimes(1)
+})
