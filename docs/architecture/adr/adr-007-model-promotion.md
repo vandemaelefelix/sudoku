@@ -74,6 +74,7 @@ fixture photo. The capture stage is tested separately, on the device ([ADR-010](
   the model file does not bundle. Run `just install-model` first.
 - Consequence: `git log apps/mobile/assets/models` shows the manifest history, not the model
   bytes. The run name in the manifest points to the run in `ml/artifacts/`.
+- SUD-06 has this M0 exception. The exception ends when `just promote-model` exists.
 
 ## Consequences
 

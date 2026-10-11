@@ -136,6 +136,6 @@ mismatch it disables scanning with a message instead of returning wrong digits.
 
 | ID | Constraint |
 | --- | --- |
-| SUD-06 | A model MUST reach the app only through `just promote-model`. |
+| SUD-06 | A model MUST reach the app only through `just promote-model`. Until M3, `just install-model` is the one exception (ADR-007, amendment). |
 | SUD-09 | Promote and the test suite MUST refuse a model whose contract major version the scanner does not implement. |
 | SUD-10 | Fixture cells MUST NOT appear in any training dataset. |
