@@ -1,5 +1,11 @@
 import { spreadStep } from './spread'
 
+function itemAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 describe('spreadStep', () => {
   it('pushes two close points apart along the line between them', () => {
     const next = spreadStep(
@@ -78,26 +84,26 @@ describe('spreadStep', () => {
     const expected = points.map((p) => ({ ...p }))
     for (let a = 0; a < points.length; a++) {
       for (let b = a + 1; b < points.length; b++) {
-        const dx = points[a].x - points[b].x
-        const dy = points[a].y - points[b].y
+        const dx = itemAt(points, a).x - itemAt(points, b).x
+        const dy = itemAt(points, a).y - itemAt(points, b).y
         const distance = Math.hypot(dx, dy)
         if (distance >= radius || distance < 1e-6) continue
         const k = ((radius - distance) / radius) * push
         if (movable[a]) {
-          expected[a].x += (dx / distance) * k
-          expected[a].y += (dy / distance) * k
+          itemAt(expected, a).x += (dx / distance) * k
+          itemAt(expected, a).y += (dy / distance) * k
         }
         if (movable[b]) {
-          expected[b].x -= (dx / distance) * k
-          expected[b].y -= (dy / distance) * k
+          itemAt(expected, b).x -= (dx / distance) * k
+          itemAt(expected, b).y -= (dy / distance) * k
         }
       }
     }
     const next = spreadStep(points, movable, radius, push)
-    expect(next.some((p, i) => p.x !== points[i].x)).toBe(true)
-    for (let i = 0; i < points.length; i++) {
-      expect(Math.abs(next[i].x - expected[i].x)).toBeLessThan(1e-9)
-      expect(Math.abs(next[i].y - expected[i].y)).toBeLessThan(1e-9)
+    expect(next.some((p, i) => p.x !== itemAt(points, i).x)).toBe(true)
+    for (const [i, e] of expected.entries()) {
+      expect(Math.abs(itemAt(next, i).x - e.x)).toBeLessThan(1e-9)
+      expect(Math.abs(itemAt(next, i).y - e.y)).toBeLessThan(1e-9)
     }
   })
 })

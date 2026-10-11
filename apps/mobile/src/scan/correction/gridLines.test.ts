@@ -5,17 +5,27 @@ import type { Homography } from '@/scan/effects/common/geometry'
 const scale90: Homography = [90, 0, 0, 0, 90, 0, 0, 0]
 
 function setup() {
-  const widths: number[] = []
-  const colours: string[] = []
+  let width: number | undefined
+  let colour: string | undefined
   const paint = {
     setStyle: jest.fn(),
-    setColor: (c: string) => colours.push(c),
-    setStrokeWidth: (w: number) => widths.push(w),
+    setColor: (c: string) => {
+      colour = c
+    },
+    setStrokeWidth: (w: number) => {
+      width = w
+    },
   } as unknown as SkPaint
-  const lines: { x0: number; y0: number; x1: number; y1: number; width: number; colour: string }[] = []
+  const lines: {
+    x0: number
+    y0: number
+    x1: number
+    y1: number
+    width: number | undefined
+    colour: string | undefined
+  }[] = []
   const canvas = {
-    drawLine: (x0: number, y0: number, x1: number, y1: number) =>
-      lines.push({ x0, y0, x1, y1, width: widths[widths.length - 1], colour: colours[colours.length - 1] }),
+    drawLine: (x0: number, y0: number, x1: number, y1: number) => lines.push({ x0, y0, x1, y1, width, colour }),
   } as unknown as SkCanvas
   return { canvas, paint, lines }
 }

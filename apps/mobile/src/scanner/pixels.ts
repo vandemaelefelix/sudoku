@@ -58,9 +58,9 @@ export function toRgb(raw: RawPixels): Uint8Array {
     let p = y * row
     let q = y * raw.width * 3
     for (let x = 0; x < raw.width; x++) {
-      out[q] = src[p + layout.r]
-      out[q + 1] = src[p + layout.g]
-      out[q + 2] = src[p + layout.b]
+      out[q] = src[p + layout.r] ?? 0
+      out[q + 1] = src[p + layout.g] ?? 0
+      out[q + 2] = src[p + layout.b] ?? 0
       p += layout.bytes
       q += 3
     }

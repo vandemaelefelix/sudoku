@@ -23,8 +23,7 @@ export function drawField(canvas: SkCanvas, state: FieldState, scene: Scene, kit
   const srcs = []
   const dsts = []
   const colors = []
-  for (let i = 0; i < state.dots.length; i++) {
-    const d = state.dots[i]
+  for (const d of state.dots) {
     const scale = (STAR_SCALE * d.radius) / SPRITE_SIZE
     const offset = scale * (SPRITE_SIZE / 2)
     const alpha = Math.min(1, d.alpha)

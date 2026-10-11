@@ -51,13 +51,11 @@ export function fromCrop(quad: Quad, rect: Rect, width: number, height: number):
 /** The largest distance between matching corners of a and b, as a share of b's mean side. Both quads are normalised to one width × height image. */
 export function cornerOffset(a: Quad, b: Quad, width: number, height: number): number {
   'worklet'
-  let sides = 0
-  let largest = 0
-  for (let i = 0; i < 4; i++) {
-    const next = b[(i + 1) % 4]
-    sides += Math.hypot((next.x - b[i].x) * width, (next.y - b[i].y) * height)
-    largest = Math.max(largest, Math.hypot((a[i].x - b[i].x) * width, (a[i].y - b[i].y) * height))
-  }
+  const distance = (p: Point, q: Point): number => Math.hypot((q.x - p.x) * width, (q.y - p.y) * height)
+  const [a0, a1, a2, a3] = a
+  const [b0, b1, b2, b3] = b
+  const sides = distance(b0, b1) + distance(b1, b2) + distance(b2, b3) + distance(b3, b0)
+  const largest = Math.max(0, distance(b0, a0), distance(b1, a1), distance(b2, a2), distance(b3, a3))
   return largest / (sides / 4)
 }
 
@@ -68,28 +66,38 @@ export function cornerOffset(a: Quad, b: Quad, width: number, height: number): n
 export function perspectiveTransform(from: Point[], to: Point[]): number[] {
   'worklet'
   // Rows of [a | b]: for each pair, h0 x + h1 y + h2 - X (h6 x + h7 y) = X and h3 x + h4 y + h5 - Y (h6 x + h7 y) = Y.
+  if (from.length < 4 || to.length < 4) throw new RangeError('perspectiveTransform takes 4 points each')
   const rows: number[][] = []
-  for (let i = 0; i < 4; i++) {
-    const { x, y } = from[i]
-    const { x: u, y: v } = to[i]
+  for (const [i, { x, y }] of from.slice(0, 4).entries()) {
+    const target = to[i]
+    if (target === undefined) throw new RangeError('perspectiveTransform takes 4 points each')
+    const { x: u, y: v } = target
     rows.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u])
     rows.push([0, 0, 0, x, y, 1, -v * x, -v * y, v])
   }
+  const rowAt = (r: number): number[] => {
+    const row = rows[r]
+    if (row === undefined) throw new RangeError(`the system has no row ${r}`)
+    return row
+  }
   for (let col = 0; col < 8; col++) {
     let pivot = col
-    for (let r = col + 1; r < 8; r++) if (Math.abs(rows[r][col]) > Math.abs(rows[pivot][col])) pivot = r
-    if (Math.abs(rows[pivot][col]) < 1e-9) throw new Error('the corners do not give a perspective transform')
-    const swap = rows[col]
-    rows[col] = rows[pivot]
-    rows[pivot] = swap
-    for (let r = 0; r < 8; r++) {
+    for (let r = col + 1; r < 8; r++) {
+      if (Math.abs(rowAt(r)[col] ?? 0) > Math.abs(rowAt(pivot)[col] ?? 0)) pivot = r
+    }
+    const pivotRow = rowAt(pivot)
+    const pivotValue = pivotRow[col] ?? 0
+    if (Math.abs(pivotValue) < 1e-9) throw new Error('the corners do not give a perspective transform')
+    rows[pivot] = rowAt(col)
+    rows[col] = pivotRow
+    for (const [r, row] of rows.entries()) {
       if (r === col) continue
-      const factor = rows[r][col] / rows[col][col]
-      for (let c = col; c < 9; c++) rows[r][c] -= factor * rows[col][c]
+      const factor = (row[col] ?? 0) / pivotValue
+      for (let c = col; c < 9; c++) row[c] = (row[c] ?? 0) - factor * (pivotRow[c] ?? 0)
     }
   }
   const h: number[] = []
-  for (let r = 0; r < 8; r++) h.push(rows[r][8] / rows[r][r])
+  for (const [r, row] of rows.entries()) h.push((row[8] ?? 0) / (row[r] ?? 0))
   h.push(1)
   return h
 }

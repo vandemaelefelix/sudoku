@@ -1,4 +1,4 @@
-import type { Quad } from '@/scanner'
+import type { Point, Quad } from '@/scanner'
 import { invert, unitToQuad } from '@/scan/effects/common/geometry'
 import type { Rect } from '@/scan/correction/layout'
 import type { Channels } from './timeline'
@@ -10,9 +10,16 @@ import type { Channels } from './timeline'
  */
 export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels; crossFade: boolean }
 
+function lerpPoint(p: Point, q: Point, u: number): Point {
+  'worklet'
+  return { x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u }
+}
+
 export function lerpQuad(a: Quad, b: Quad, u: number): Quad {
   'worklet'
-  return a.map((p, i) => ({ x: p.x + (b[i].x - p.x) * u, y: p.y + (b[i].y - p.y) * u })) as Quad
+  const [a0, a1, a2, a3] = a
+  const [b0, b1, b2, b3] = b
+  return [lerpPoint(a0, b0, u), lerpPoint(a1, b1, u), lerpPoint(a2, b2, u), lerpPoint(a3, b3, u)]
 }
 
 /** The square of a Rect as a Quad, in quad corner order. */
@@ -36,16 +43,22 @@ export function quadToQuad(a: Quad, b: Quad): number[] | null {
   if (from === null || to === null) return null
   const back = invert(from)
   if (back === null) return null
-  const x = [back[0], back[1], back[2], back[3], back[4], back[5], back[6], back[7], 1]
-  const y = [to[0], to[1], to[2], to[3], to[4], to[5], to[6], to[7], 1]
-  const h: number[] = []
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      h.push(y[row * 3] * x[col] + y[row * 3 + 1] * x[3 + col] + y[row * 3 + 2] * x[6 + col])
-    }
-  }
-  const scale = h[8]
+  const [x0, x1, x2, x3, x4, x5, x6, x7] = back
+  const [y0, y1, y2, y3, y4, y5, y6, y7] = to
+  // to × back as 3 × 3 matrices; each Homography leaves out its last cell, which is 1.
+  const scale = y6 * x2 + y7 * x5 + 1
   if (!(Math.abs(scale) >= 1e-12)) return null
+  const h = [
+    y0 * x0 + y1 * x3 + y2 * x6,
+    y0 * x1 + y1 * x4 + y2 * x7,
+    y0 * x2 + y1 * x5 + y2,
+    y3 * x0 + y4 * x3 + y5 * x6,
+    y3 * x1 + y4 * x4 + y5 * x7,
+    y3 * x2 + y4 * x5 + y5,
+    y6 * x0 + y7 * x3 + x6,
+    y6 * x1 + y7 * x4 + x7,
+    scale,
+  ]
   const normalised = h.map((v) => v / scale)
   return normalised.every(Number.isFinite) ? normalised : null
 }

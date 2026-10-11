@@ -29,6 +29,12 @@ const corners = [
   { x: 10, y: 90 },
 ]
 
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 beforeEach(() => {
   created.length = 0
   jest.clearAllMocks()
@@ -47,7 +53,7 @@ it('returns side × side pixels in the source format', () => {
 
 it('reads a padded row as extra columns', () => {
   warpGrid({ buffer: new ArrayBuffer(100 * 104 * 4), width: 100, height: 100, pixelFormat: 'BGRA' }, corners, 4)
-  expect(jest.mocked(Mat.createFromBuffer).mock.calls[0].slice(1, 4)).toEqual([100, 104, 4])
+  expect(at(jest.mocked(Mat.createFromBuffer).mock.calls, 0).slice(1, 4)).toEqual([100, 104, 4])
 })
 
 it('builds the transform in TypeScript from the corners to the edges of the square', () => {
@@ -57,13 +63,13 @@ it('builds the transform in TypeScript from the corners to the edges of the squa
   expect(call.slice(0, 3)).toEqual([3, 3, 6])
   const h = call[3] as number[]
   const apply = (p: { x: number; y: number }) => {
-    const w = h[6] * p.x + h[7] * p.y + h[8]
-    return [(h[0] * p.x + h[1] * p.y + h[2]) / w, (h[3] * p.x + h[4] * p.y + h[5]) / w]
+    const w = at(h, 6) * p.x + at(h, 7) * p.y + at(h, 8)
+    return [(at(h, 0) * p.x + at(h, 1) * p.y + at(h, 2)) / w, (at(h, 3) * p.x + at(h, 4) * p.y + at(h, 5)) / w]
   }
-  expect(apply(corners[0])[0]).toBeCloseTo(-0.5, 6)
-  expect(apply(corners[0])[1]).toBeCloseTo(-0.5, 6)
-  expect(apply(corners[2])[0]).toBeCloseTo(3.5, 6)
-  expect(apply(corners[2])[1]).toBeCloseTo(3.5, 6)
+  expect(apply(at(corners, 0))[0]).toBeCloseTo(-0.5, 6)
+  expect(apply(at(corners, 0))[1]).toBeCloseTo(-0.5, 6)
+  expect(apply(at(corners, 2))[0]).toBeCloseTo(3.5, 6)
+  expect(apply(at(corners, 2))[1]).toBeCloseTo(3.5, 6)
 })
 
 it('releases every OpenCV object, also when the warp throws', () => {

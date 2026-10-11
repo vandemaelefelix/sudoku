@@ -1,6 +1,12 @@
 import { cornerOffset, downscaleSize, fromCrop, perspectiveTransform, searchRect, toPhotoPixels } from './photoGeometry'
 import type { Quad } from './quad'
 
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 function square(x: number, y: number, size: number): Quad {
   return [
     { x, y },
@@ -65,8 +71,11 @@ describe('cornerOffset', () => {
 })
 
 function apply(h: number[], p: { x: number; y: number }) {
-  const w = h[6] * p.x + h[7] * p.y + h[8]
-  return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w }
+  const w = at(h, 6) * p.x + at(h, 7) * p.y + at(h, 8)
+  return {
+    x: (at(h, 0) * p.x + at(h, 1) * p.y + at(h, 2)) / w,
+    y: (at(h, 3) * p.x + at(h, 4) * p.y + at(h, 5)) / w,
+  }
 }
 
 type Pt = { x: number; y: number }
@@ -77,8 +86,8 @@ function expectMaps(from: Pt[], to: Pt[]): number[] {
   expect(h[8]).toBe(1)
   from.forEach((p, i) => {
     const mapped = apply(h, p)
-    expect(mapped.x).toBeCloseTo(to[i].x, 6)
-    expect(mapped.y).toBeCloseTo(to[i].y, 6)
+    expect(mapped.x).toBeCloseTo(at(to, i).x, 6)
+    expect(mapped.y).toBeCloseTo(at(to, i).y, 6)
   })
   return h
 }

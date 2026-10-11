@@ -64,7 +64,7 @@ export function checkManifest(value: unknown): ModelManifest {
 function argmax(values: Float32Array, start: number, width: number): number {
   'worklet'
   let best = 0
-  for (let c = 1; c < width; c++) if (values[start + c] > values[start + best]) best = c
+  for (let c = 1; c < width; c++) if ((values[start + c] ?? 0) > (values[start + best] ?? 0)) best = c
   return best
 }
 
@@ -76,8 +76,9 @@ export function decodeOutputs(raw: RawOutputs): CellResult[] {
     const digit = argmax(raw.digit, n * DIGIT_CLASSES, DIGIT_CLASSES)
     const kindIndex = argmax(raw.kind, n * width, width)
     const kind = KIND_CLASSES[kindIndex]
+    if (kind === undefined) throw new RangeError(`kind index ${kindIndex} is out of range`)
     const validPair = digit === 0 ? kind === 'none' || kind === 'notes' : kind === 'printed' || kind === 'handwritten'
-    const confidence = Math.min(raw.digit[n * DIGIT_CLASSES + digit], raw.kind[n * width + kindIndex])
+    const confidence = Math.min(raw.digit[n * DIGIT_CLASSES + digit] ?? 0, raw.kind[n * width + kindIndex] ?? 0)
     cells.push({ digit, kind, confidence, validPair })
   }
   return cells
@@ -110,7 +111,7 @@ export function runModel(model: TfliteModel, outputs: OutputIndex, input: Float3
 export function createClassifier(model: TfliteModel, manifest: ModelManifest): Classifier {
   const { digit, kind } = manifest.outputs
   const inputTensor = model.inputs[0]
-  if (!sameShape(inputTensor?.shape, [CELLS, INPUT_SIZE, INPUT_SIZE, 1]) || inputTensor.dataType !== 'float32') {
+  if (!sameShape(inputTensor?.shape, [CELLS, INPUT_SIZE, INPUT_SIZE, 1]) || inputTensor?.dataType !== 'float32') {
     throw new ModelContractError('the model input is not float32 [81, 32, 32, 1]')
   }
   if (!sameShape(model.outputs[digit]?.shape, [CELLS, DIGIT_CLASSES])) {

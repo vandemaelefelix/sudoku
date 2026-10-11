@@ -25,6 +25,12 @@ import {
   type FieldState,
 } from './field'
 
+function itemAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 const VIEW = { width: 402, height: 874 }
 
 type World = { scene: Scene; field: FieldState }
@@ -68,8 +74,10 @@ const positions = (w: World) => w.field.dots.map((d) => ({ x: d.x, y: d.y }))
 /** The largest distance that any dot moved between two frames. */
 function largestMove(before: { x: number; y: number }[], after: { x: number; y: number }[]) {
   let most = 0
-  for (let i = 0; i < before.length; i++)
-    most = Math.max(most, Math.hypot(after[i].x - before[i].x, after[i].y - before[i].y))
+  for (const [i, b] of before.entries()) {
+    const a = itemAt(after, i)
+    most = Math.max(most, Math.hypot(a.x - b.x, a.y - b.y))
+  }
   return most
 }
 
@@ -88,9 +96,10 @@ function pan() {
     if (i % 2 === 0) quad = gridAt(x, 300)
     frame(w, quad, t)
     const after = positions(w)
-    for (let k = 0; k < after.length; k++) {
-      if (w.field.dots[k].target >= 0) continue
-      most = Math.max(most, Math.hypot(after[k].x - before[k].x, after[k].y - before[k].y))
+    for (const [k, a] of after.entries()) {
+      if (itemAt(w.field.dots, k).target >= 0) continue
+      const b = itemAt(before, k)
+      most = Math.max(most, Math.hypot(a.x - b.x, a.y - b.y))
     }
     before = after
     const inverse = invert(unitToQuad(quad!)!)!
@@ -133,7 +142,7 @@ describe('stepField', () => {
     run(w, grid, 1, 1 + MAX_DELAY + FLIGHT + 1)
     const points = intersections(unitToQuad(grid)!)
     for (const d of gathered(w)) {
-      expect(Math.hypot(d.x - points[d.target].x, d.y - points[d.target].y)).toBeLessThan(0.01)
+      expect(Math.hypot(d.x - itemAt(points, d.target).x, d.y - itemAt(points, d.target).y)).toBeLessThan(0.01)
       expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
     }
   })
@@ -143,7 +152,9 @@ describe('stepField', () => {
     for (let t = 1; t < 3; t += 1 / 60) frame(w, gridAt(50 + 60 * (t - 1), 300), t)
     expect(w.scene.motion).toBeGreaterThan(0.9)
     const points = intersections(unitToQuad(w.scene.quad!)!)
-    const offsets = gathered(w).map((d) => Math.hypot(d.x - points[d.target].x, d.y - points[d.target].y))
+    const offsets = gathered(w).map((d) =>
+      Math.hypot(d.x - itemAt(points, d.target).x, d.y - itemAt(points, d.target).y),
+    )
     expect(Math.max(...offsets)).toBeGreaterThan(0.1)
     expect(Math.max(...offsets)).toBeLessThanOrEqual(0.15 * 9 * Math.SQRT2 + 1e-6)
   })
@@ -203,7 +214,7 @@ describe('stepField', () => {
     frame(w, grid, 1, true)
     const points = intersections(unitToQuad(grid)!)
     for (const d of gathered(w)) {
-      expect(Math.hypot(d.x - points[d.target].x, d.y - points[d.target].y)).toBeLessThan(0.01)
+      expect(Math.hypot(d.x - itemAt(points, d.target).x, d.y - itemAt(points, d.target).y)).toBeLessThan(0.01)
       expect(d.alpha).toBe(0)
     }
     run(w, grid, 1 + 1 / 60, 1.3, true)
@@ -268,25 +279,29 @@ describe('stepField', () => {
     it('keeps the same spread result as a full pass', () => {
       const state = createField(VIEW)
       // Gathered dots do not spread, so the test needs some.
-      for (let i = 0; i < 100; i++) state.dots[i * 2].target = i
-      const free = state.dots.map((_, i) => i).filter((i) => state.dots[i].target < 0)
-      const homes = free.map((i) => ({ x: state.dots[i].homeX, y: state.dots[i].homeY }))
+      for (let i = 0; i < 100; i++) itemAt(state.dots, i * 2).target = i
+      const free = state.dots.map((_, i) => i).filter((i) => itemAt(state.dots, i).target < 0)
+      const homes = free.map((i) => {
+        const d = itemAt(state.dots, i)
+        return { x: d.homeX, y: d.homeY }
+      })
       const movable = homes.map((h) => Math.hypot(h.x - centre.x, h.y - centre.y) < reach)
       const next = spreadStep(homes, movable, SPREAD_RADIUS, SPREAD_PUSH)
       const inverse = invert(m)!
       const expected = new Map<number, { x: number; y: number }>()
       free.forEach((i, k) => {
         if (!movable[k]) return
-        const leaves = next[k].x < 0 || next[k].x > VIEW.width || next[k].y < 0 || next[k].y > VIEW.height
-        expected.set(i, pushOutside(leaves ? homes[k] : next[k], m, inverse, MARGIN))
+        const to = itemAt(next, k)
+        const leaves = to.x < 0 || to.x > VIEW.width || to.y < 0 || to.y > VIEW.height
+        expected.set(i, pushOutside(leaves ? itemAt(homes, k) : to, m, inverse, MARGIN))
       })
       expect(expected.size).toBeGreaterThan(10)
 
       spreadHomes(state, createScene(VIEW), grid, m, inverse)
 
       for (const [i, home] of expected) {
-        expect(state.dots[i].homeX).toBe(home.x)
-        expect(state.dots[i].homeY).toBe(home.y)
+        expect(itemAt(state.dots, i).homeX).toBe(home.x)
+        expect(itemAt(state.dots, i).homeY).toBe(home.y)
       }
     })
   })
@@ -359,8 +374,8 @@ describe('the capture phase', () => {
     const w = captureFrame(locked(), 2.6, {})
     const targets = intersections(unitToQuad(gridAt(50, 300))!)
     for (const d of gathered(w)) {
-      expect(d.x).toBeCloseTo(targets[d.target].x, 6)
-      expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+      expect(d.x).toBeCloseTo(itemAt(targets, d.target).x, 6)
+      expect(d.y).toBeCloseTo(itemAt(targets, d.target).y, 6)
       expect(d.alpha).toBe(1)
     }
   })
@@ -369,9 +384,9 @@ describe('the capture phase', () => {
     const w = run(world(), gridAt(50, 300), 0, 0.2)
     captureFrame(w, 0.21, {})
     const targets = intersections(unitToQuad(gridAt(50, 300))!)
-    const d = gathered(w)[0]
-    expect(d.x).toBeCloseTo(targets[d.target].x, 6)
-    expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+    const d = itemAt(gathered(w), 0)
+    expect(d.x).toBeCloseTo(itemAt(targets, d.target).x, 6)
+    expect(d.y).toBeCloseTo(itemAt(targets, d.target).y, 6)
     expect(d.radius).toBeCloseTo(d.size * (isBoxCorner(d.target) ? GROW_BOX : GROW), 9)
   })
 
@@ -379,7 +394,7 @@ describe('the capture phase', () => {
     const w = locked()
     const radii = gathered(w).map((d) => d.radius)
     captureFrame(w, 2.6, { pulse: 1 })
-    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(1.6 * radii[i], 6))
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(1.6 * itemAt(radii, i), 6))
   })
 
   it('shrinks an ink dot to 0.8 × the radius of the white dot', () => {
@@ -387,9 +402,9 @@ describe('the capture phase', () => {
     const radii = gathered(w).map((d) => d.radius)
     captureFrame(w, 2.6, { ink: 1 })
     expect(INK_RADIUS).toBe(0.8)
-    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(INK_RADIUS * radii[i], 6))
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(INK_RADIUS * itemAt(radii, i), 6))
     captureFrame(w, 2.7, { ink: 0.5 })
-    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(0.9 * radii[i], 6))
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(0.9 * itemAt(radii, i), 6))
   })
 
   it('shrinks the gathered dots to nothing at the end of the transition', () => {
@@ -405,7 +420,7 @@ describe('the capture phase', () => {
     const start = free(w).map((d) => Math.hypot(d.x - centre.x, d.y - centre.y))
     captureFrame(w, 2.7, { freeDrift: 1 })
     free(w).forEach((d, i) => {
-      expect(Math.hypot(d.x - centre.x, d.y - centre.y)).toBeCloseTo(start[i] + 40, 4)
+      expect(Math.hypot(d.x - centre.x, d.y - centre.y)).toBeCloseTo(itemAt(start, i) + 40, 4)
       expect(d.alpha).toBe(0)
     })
   })
@@ -416,8 +431,8 @@ describe('the capture phase', () => {
     const before = free(w).map((d) => ({ x: d.x, y: d.y }))
     captureFrame(w, 2.7, { freeDrift: 1 })
     free(w).forEach((d, i) => {
-      expect(d.x).toBeCloseTo(before[i].x, 6)
-      expect(d.y).toBeCloseTo(before[i].y, 6)
+      expect(d.x).toBeCloseTo(itemAt(before, i).x, 6)
+      expect(d.y).toBeCloseTo(itemAt(before, i).y, 6)
       expect(d.alpha).toBe(0)
     })
   })
@@ -428,8 +443,8 @@ describe('the capture phase', () => {
     captureFrame(w, 2.6, {})
     captureFrame(w, 3.4, {})
     free(w).forEach((d, i) => {
-      expect(d.x).toBeCloseTo(before[i].x, 6)
-      expect(d.y).toBeCloseTo(before[i].y, 6)
+      expect(d.x).toBeCloseTo(itemAt(before, i).x, 6)
+      expect(d.y).toBeCloseTo(itemAt(before, i).y, 6)
     })
   })
 
@@ -442,8 +457,8 @@ describe('the capture phase', () => {
     captureFrame(w, 2.7, {})
     const targets = intersections(w.scene.m!)
     for (const d of gathered(w)) {
-      expect(d.x).toBeCloseTo(targets[d.target].x, 6)
-      expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+      expect(d.x).toBeCloseTo(itemAt(targets, d.target).x, 6)
+      expect(d.y).toBeCloseTo(itemAt(targets, d.target).y, 6)
     }
   })
 })

@@ -1,5 +1,5 @@
-import { type SkCanvas, Skia } from '@shopify/react-native-skia'
-import type { Quad } from '@/scanner'
+import { type SkCanvas, type SkPath, Skia } from '@shopify/react-native-skia'
+import type { Point, Quad } from '@/scanner'
 import { drawDim } from '@/scan/effects/common/dim'
 import { prototypeScale } from '@/scan/effects/common/shaderMatrix'
 import type { Scene } from '@/scan/effects/scene'
@@ -15,18 +15,23 @@ export const BRACKET_STEADY = 0.38
 /** Prototype points. */
 export const BRACKET_WIDTH = 2.6
 
+/** a: the previous corner. c: the corner. b: the next corner. */
+function addBracket(path: SkPath, a: Point, c: Point, b: Point, share: number) {
+  'worklet'
+  path.moveTo(c.x + (a.x - c.x) * share, c.y + (a.y - c.y) * share)
+  path.lineTo(c.x, c.y)
+  path.lineTo(c.x + (b.x - c.x) * share, c.y + (b.y - c.y) * share)
+}
+
 /** One L per corner: share of the edge to the previous corner, the corner, share of the edge to the next corner. */
 export function bracketPath(quad: Quad, share: number) {
   'worklet'
   const path = Skia.Path.Make()
-  for (let i = 0; i < 4; i++) {
-    const c = quad[i]
-    const a = quad[(i + 3) % 4]
-    const b = quad[(i + 1) % 4]
-    path.moveTo(c.x + (a.x - c.x) * share, c.y + (a.y - c.y) * share)
-    path.lineTo(c.x, c.y)
-    path.lineTo(c.x + (b.x - c.x) * share, c.y + (b.y - c.y) * share)
-  }
+  const [q0, q1, q2, q3] = quad
+  addBracket(path, q3, q0, q1, share)
+  addBracket(path, q0, q1, q2, share)
+  addBracket(path, q1, q2, q3, share)
+  addBracket(path, q2, q3, q0, share)
   return path
 }
 

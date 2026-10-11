@@ -78,7 +78,7 @@ describe('gridLattice', () => {
     expect(effect.makeShader).toHaveBeenCalledTimes(1)
     expect(effect.makeShader.mock.calls[0][0]).toHaveLength(14)
     expect((kit.shader as unknown as { setShader: jest.Mock }).setShader).toHaveBeenCalledWith(
-      effect.makeShader.mock.results[0].value,
+      effect.makeShader.mock.results[0]?.value,
     )
     expect(canvas.drawRect).toHaveBeenCalledWith({ x: 0, y: 0, width: 402, height: 874 }, kit.shader)
   })

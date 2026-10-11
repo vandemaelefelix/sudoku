@@ -28,6 +28,21 @@ function alpha(cutoff: number, dt: number): number {
   return 1 / (1 + tau / dt)
 }
 
+type Corner = { point: Point; velocity: Point }
+
+function smoothCorner(previous: Point, velocity: Point, target: Point, dt: number, derivativeAlpha: number): Corner {
+  'worklet'
+  const vx = velocity.x + derivativeAlpha * ((target.x - previous.x) / dt - velocity.x)
+  const vy = velocity.y + derivativeAlpha * ((target.y - previous.y) / dt - velocity.y)
+  return {
+    point: {
+      x: previous.x + alpha(MIN_CUTOFF + BETA * Math.abs(vx), dt) * (target.x - previous.x),
+      y: previous.y + alpha(MIN_CUTOFF + BETA * Math.abs(vy), dt) * (target.y - previous.y),
+    },
+    velocity: { x: vx, y: vy },
+  }
+}
+
 /** Null means: no outline. */
 export function smoothQuad(state: Smoothing | null, quad: Quad | null, timestamp: number): Smoothing | null {
   'worklet'
@@ -39,17 +54,16 @@ export function smoothQuad(state: Smoothing | null, quad: Quad | null, timestamp
   }
   const dt = timestamp - state.timestamp
   const derivativeAlpha = alpha(DERIVATIVE_CUTOFF, dt)
-  const next: Point[] = []
-  const velocity: Point[] = []
-  for (let i = 0; i < 4; i++) {
-    const previous = state.quad[i]
-    const vx = state.velocity[i].x + derivativeAlpha * ((quad[i].x - previous.x) / dt - state.velocity[i].x)
-    const vy = state.velocity[i].y + derivativeAlpha * ((quad[i].y - previous.y) / dt - state.velocity[i].y)
-    next.push({
-      x: previous.x + alpha(MIN_CUTOFF + BETA * Math.abs(vx), dt) * (quad[i].x - previous.x),
-      y: previous.y + alpha(MIN_CUTOFF + BETA * Math.abs(vy), dt) * (quad[i].y - previous.y),
-    })
-    velocity.push({ x: vx, y: vy })
+  const [p0, p1, p2, p3] = state.quad
+  const [v0, v1, v2, v3] = state.velocity
+  const [t0, t1, t2, t3] = quad
+  const c0 = smoothCorner(p0, v0, t0, dt, derivativeAlpha)
+  const c1 = smoothCorner(p1, v1, t1, dt, derivativeAlpha)
+  const c2 = smoothCorner(p2, v2, t2, dt, derivativeAlpha)
+  const c3 = smoothCorner(p3, v3, t3, dt, derivativeAlpha)
+  return {
+    quad: [c0.point, c1.point, c2.point, c3.point],
+    velocity: [c0.velocity, c1.velocity, c2.velocity, c3.velocity],
+    timestamp,
   }
-  return { quad: next as Quad, velocity: velocity as Quad, timestamp }
 }

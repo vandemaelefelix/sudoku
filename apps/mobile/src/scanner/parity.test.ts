@@ -10,6 +10,12 @@ import {
 } from './parity'
 import { INPUT_LENGTH } from './preprocess'
 
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 function oneHot(width: number, top: number): number[][] {
   return Array.from({ length: 81 }, () => Array.from({ length: width }, (_, c) => (c === top ? 1 : 0)))
 }
@@ -48,9 +54,9 @@ describe('compareOutputs', () => {
 
   it('reports the largest difference and the cells with another top class', () => {
     const digit = oneHot(10, 3)
-    digit[5] = digit[5].map((_, c) => (c === 8 ? 1 : 0))
+    digit[5] = at(digit, 5).map((_, c) => (c === 8 ? 1 : 0))
     const kind = oneHot(4, 1)
-    kind[2][1] = 0.9996
+    at(kind, 2)[1] = 0.9996
     const result = compareOutputs(raw(digit, kind), REFERENCE)
     expect(result.digitMismatches).toEqual([5])
     expect(result.kindMismatches).toEqual([])
@@ -80,7 +86,7 @@ describe('measureParity', () => {
     const now = () => (call++ % 2 === 0 ? clock : (clock += Math.floor(call / 2)))
     const report = measureParity(classifier, REFERENCE, now)
     expect(sent).toHaveLength(PARITY_RUNS + 1)
-    expect(sent[0][0]).toBe(0.25)
+    expect(at(sent, 0)[0]).toBe(0.25)
     expect(report.medianMs).toBe(10.5)
     expect(report.maxDiff).toBe(0)
     expect(report).toMatchObject({ run: 'test-run', runMatches: true })
