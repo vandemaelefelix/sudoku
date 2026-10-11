@@ -1,5 +1,5 @@
 import type { Quad } from '../../scanner'
-import { createScene, MAX_STEP, PRESENCE_TIME, type Scene, stepScene } from './scene'
+import { createScene, LOCK_DWELL, MAX_STEP, PRESENCE_TIME, type Scene, stepScene } from './scene'
 
 const VIEW = { width: 402, height: 874 }
 
@@ -42,7 +42,7 @@ describe('stepScene', () => {
 
   it('reports lost when the grid goes, and keeps the last grid', () => {
     const grid = gridAt(50, 300)
-    const scene = run(createScene(VIEW), grid, 0, 1)
+    const scene = run(createScene(VIEW), grid, 0, 0.5)
     stepScene(scene, null, 1.5, false)
     expect(scene.event).toBe('lost')
     expect(scene.lostAt).toBe(1.5)
@@ -53,7 +53,7 @@ describe('stepScene', () => {
   })
 
   it('reports a jump to another grid as found, with the loss in the same frame', () => {
-    const scene = run(createScene(VIEW), gridAt(50, 100, 200), 0, 1)
+    const scene = run(createScene(VIEW), gridAt(50, 100, 200), 0, 0.5)
     stepScene(scene, gridAt(50, 550, 200), 1.5, false)
     expect(scene.event).toBe('found')
     expect(scene.foundAt).toBe(1.5)
@@ -86,9 +86,9 @@ describe('stepScene', () => {
     run(scene, gridAt(50, 300), 1, 1 + PRESENCE_TIME / 2)
     expect(scene.presence).toBeGreaterThan(0.4)
     expect(scene.presence).toBeLessThan(0.6)
-    run(scene, gridAt(50, 300), 1 + PRESENCE_TIME / 2 + 1 / 60, 2)
+    run(scene, gridAt(50, 300), 1 + PRESENCE_TIME / 2 + 1 / 60, 1.5)
     expect(scene.presence).toBe(1)
-    run(scene, null, 2 + 1 / 60, 3)
+    run(scene, null, 1.5 + 1 / 60, 3)
     expect(scene.presence).toBe(0)
   })
 
@@ -132,11 +132,11 @@ describe('stepScene', () => {
 
   it('becomes steady when the corners hold still, and records the time', () => {
     const scene = run(createScene(VIEW), null, 0, 1)
-    run(scene, gridAt(50, 300), 1, 3)
+    run(scene, gridAt(50, 300), 1, 1.5)
     expect(scene.steady).toBe(true)
     expect(scene.steadyAt).toBeGreaterThan(1)
     expect(scene.steadyAt).toBeLessThan(2)
-    stepScene(scene, null, 3 + 1 / 60, false)
+    stepScene(scene, null, 1.5 + 1 / 60, false)
     expect(scene.steady).toBe(false)
   })
 
@@ -144,5 +144,53 @@ describe('stepScene', () => {
     const scene = createScene(VIEW)
     stepScene(scene, null, 0, true)
     expect(scene.reduceMotion).toBe(true)
+  })
+})
+
+describe('lock-on', () => {
+  const FRAME = 1 / 60
+
+  it('grows the progress from the time the scene becomes steady', () => {
+    const scene = run(createScene(VIEW), gridAt(50, 300), 0, 0.5)
+    expect(scene.steady).toBe(true)
+    expect(scene.lockProgress).toBeCloseTo((scene.t - scene.steadyAt) / LOCK_DWELL, 6)
+    expect(scene.lockProgress).toBeGreaterThan(0)
+    expect(scene.lockedAt).toBe(-1)
+  })
+
+  it('locks on LOCK_DWELL after the scene becomes steady', () => {
+    const scene = run(createScene(VIEW), gridAt(50, 300), 0, 2)
+    expect(scene.lockProgress).toBe(1)
+    expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+  })
+
+  it('resets the progress when the grid is lost', () => {
+    const scene = run(createScene(VIEW), gridAt(50, 300), 0, 0.5)
+    stepScene(scene, null, 0.5 + FRAME, false)
+    expect(scene.lockProgress).toBe(0)
+  })
+
+  it('restarts the progress when the grid jumps to another grid', () => {
+    const scene = run(createScene(VIEW), gridAt(50, 100, 200), 0, 0.5)
+    stepScene(scene, gridAt(50, 550, 200), 0.5 + FRAME, false)
+    expect(scene.lockProgress).toBe(0)
+  })
+
+  it('keeps the locked quad and ignores new detections after lock-on', () => {
+    const locked = gridAt(50, 300)
+    const scene = run(createScene(VIEW), locked, 0, 2)
+    const lockedAt = scene.lockedAt
+    stepScene(scene, gridAt(50, 100, 200), 2 + FRAME, false)
+    stepScene(scene, null, 2 + 2 * FRAME, false)
+    expect(scene.quad).toEqual(locked)
+    expect(scene.event).toBe('none')
+    expect(scene.lockedAt).toBe(lockedAt)
+    expect(scene.lockProgress).toBe(1)
+  })
+
+  it('starts unlocked', () => {
+    const scene = createScene(VIEW)
+    expect(scene.lockProgress).toBe(0)
+    expect(scene.lockedAt).toBe(-1)
   })
 })

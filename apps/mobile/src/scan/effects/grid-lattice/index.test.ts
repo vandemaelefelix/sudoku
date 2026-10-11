@@ -43,13 +43,13 @@ describe('latticeUniforms', () => {
     expect(u[13]).toBe(-1)
   })
 
-  it('gives the seconds since the scene became steady as the lock-on time', () => {
-    const scene = { ...found(), steady: true, steadyAt: 0.25 }
+  it('gives the seconds since lock-on as the lock-on time', () => {
+    const scene = { ...found(), lockedAt: 0.25 }
     expect(latticeUniforms(scene, IDENTITY, 0)[13]).toBeCloseTo(scene.t - 0.25, 9)
   })
 
   it('stops the lock-on reaction under Reduce Motion', () => {
-    const scene = { ...found(), reduceMotion: true, steady: true, steadyAt: 0.25 }
+    const scene = { ...found(), reduceMotion: true, lockedAt: 0.25 }
     expect(latticeUniforms(scene, IDENTITY, 0)[13]).toBe(-1)
   })
 })
