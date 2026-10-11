@@ -2,7 +2,7 @@ import { AlphaType, ColorType, Skia, type SkImage } from '@shopify/react-native-
 import type { Photo } from 'react-native-vision-camera'
 
 /**
- * Upright Skia image of the photo, long side at most maxSide px. Disposes every nitro image it makes. Runs on the JS thread.
+ * Upright Skia image of the photo, long side at most maxSide px. Disposes every nitro image and the pixel data it makes. Runs on the JS thread.
  * The resize comes first: the pixels of the photo itself are the sideways sensor buffer, and resize returns them upright (ADR-002).
  */
 export async function photoToSkImage(photo: Pick<Photo, 'toImageAsync'>, maxSide: number): Promise<SkImage> {
@@ -20,7 +20,13 @@ export async function photoToSkImage(photo: Pick<Photo, 'toImageAsync'>, maxSide
       }
       const alphaType = pixelFormat.endsWith('X') ? AlphaType.Opaque : AlphaType.Premul
       const data = Skia.Data.fromBytes(new Uint8Array(buffer))
-      const image = Skia.Image.MakeImage({ width, height, colorType, alphaType }, data, rowBytes)
+      let image: SkImage | null
+      try {
+        image = Skia.Image.MakeImage({ width, height, colorType, alphaType }, data, rowBytes)
+      } finally {
+        // The image keeps its own reference to the pixels.
+        data.dispose()
+      }
       if (image == null) throw new Error('Skia could not make an image of the photo')
       return image
     } finally {

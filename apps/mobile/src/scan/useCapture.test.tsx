@@ -89,9 +89,9 @@ it('gives the image to the UI thread too', async () => {
 it('on unmount, clears the image on the UI thread before it disposes the image', async () => {
   const { hook } = setup()
   await act(async () => hook.result.current.capture(QUAD))
-  const photo = hook.result.current.sharedImage
+  const sharedImage = hook.result.current.sharedImage
   const seenAtDispose: unknown[] = []
-  jest.mocked(IMAGE.dispose).mockImplementationOnce(() => seenAtDispose.push(photo.value))
+  jest.mocked(IMAGE.dispose).mockImplementationOnce(() => seenAtDispose.push(sharedImage.value))
   hook.unmount()
   expect(IMAGE.dispose).not.toHaveBeenCalled()
   await waitFor(() => expect(IMAGE.dispose).toHaveBeenCalledTimes(1))

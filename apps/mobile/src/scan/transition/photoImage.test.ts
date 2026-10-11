@@ -53,6 +53,17 @@ it.each([
   expect(jest.mocked(Skia.Image.MakeImage).mock.calls[0]![0]).toMatchObject({ alphaType })
 })
 
+it('disposes the pixel data once Skia made the image, and also when it could not', async () => {
+  const { photo } = setup('BGRA')
+  await photoToSkImage(photo, 1600)
+  const data = jest.mocked(Skia.Data.fromBytes).mock.results[0]!.value
+  expect(jest.mocked(Skia.Image.MakeImage).mock.calls[0]![1]).toBe(data)
+  expect(data.dispose).toHaveBeenCalledTimes(1)
+  jest.mocked(Skia.Image.MakeImage).mockReturnValueOnce(null)
+  await expect(photoToSkImage(setup('BGRA').photo, 1600)).rejects.toThrow('Skia')
+  expect(jest.mocked(Skia.Data.fromBytes).mock.results[1]!.value.dispose).toHaveBeenCalledTimes(1)
+})
+
 it('does not enlarge a small photo', async () => {
   const { photo, full } = setup('BGRA', { width: 800, height: 600 })
   await photoToSkImage(photo, 1600)
