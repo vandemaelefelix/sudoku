@@ -27,6 +27,7 @@ export function EffectCanvas({
   view: SharedValue<ViewSize>
   effect: SharedValue<number>
 }) {
+  // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
   const kit = useMemo(() => makeDrawKit(EFFECTS), [])
   const empty = useMemo(

@@ -4,13 +4,20 @@ import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-nati
 import type { Quad } from '../../scanner'
 import type { ViewSize } from '../previewMapping'
 import { EffectCanvas } from './EffectCanvas'
-import { DEFAULT_INDEX } from './index'
+import { DEFAULT_INDEX, effectIndex } from './index'
 
 const frameCallback = jest.mocked(useFrameCallback)
 const picture = jest.mocked(createPicture)
 const reducedMotion = jest.mocked(useReducedMotion)
 
 const VIEW = { width: 402, height: 874 }
+
+const grid: Quad = [
+  { x: 50, y: 300 },
+  { x: 350, y: 300 },
+  { x: 350, y: 600 },
+  { x: 50, y: 600 },
+]
 
 /** A shared value stand-in. get() reads value, so a test can change value between frames with Object.assign. */
 function shared<T>(value: T) {
@@ -99,5 +106,16 @@ describe('EffectCanvas', () => {
     await Promise.resolve()
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/^\[fx\] gathering-dots \d+\.\d fps, overlay \d+\.\d\d ms$/))
     log.mockRestore()
+  })
+
+  it('switches to another effect on the next frame and draws nothing of the old one', () => {
+    const props = renderCanvas(VIEW, DEFAULT_INDEX, grid)
+    tick(1)
+    expect(lastFrame().drawAtlas).toHaveBeenCalledTimes(1)
+    Object.assign(props.effect, { value: effectIndex('spotlight-brackets') })
+    tick(1 + 1 / 60)
+    const canvas = lastFrame()
+    expect(canvas.drawAtlas).not.toHaveBeenCalled()
+    expect(canvas.drawPath).toHaveBeenCalledTimes(2)
   })
 })
