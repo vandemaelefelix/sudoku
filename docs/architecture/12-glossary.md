@@ -45,3 +45,6 @@ status: DRAFT
 | Frame resizer | `react-native-vision-camera-resizer`. It turns a camera frame and scales it on the GPU before fast-opencv sees it. Version 5.2.3 turns a sideways frame upside down |
 | One Euro filter | A smoothing filter whose cutoff rises with speed. It keeps a still outline steady and lets a moving outline follow with little lag. Used for corner smoothing |
 | Outline | The four-sided line that Skia draws over the camera preview, on the smoothed quad |
+| Dot field | The live overlay on the camera screen: faint dots that float, and gather on the grid intersections when a grid is found |
+| Free dot | A dot of the dot field that floats. It stays out of the grid and its margin |
+| Gathered dot | A dot of the dot field that sits on one grid intersection and follows it |
