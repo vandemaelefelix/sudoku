@@ -56,6 +56,9 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light' },
 }))
 
+// The library ships its own mock: a provider with zero insets and a 320 × 640 frame.
+jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default)
+
 jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
 }))
