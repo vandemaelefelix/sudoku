@@ -21,3 +21,4 @@ status: DRAFT
 | ADR-011 | On-device generation. A technique solver grades difficulty and gives hints, with reveal-a-cell as fallback. A pool of 3 per level | Proposed | 2026-10-09 | [ADR-011](./adr/adr-011-puzzle-generation-and-hints.md) |
 | ADR-012 | expo-sqlite behind repository interfaces, sync-ready rows, progress saved on every move | Proposed | 2026-10-09 | [ADR-012](./adr/adr-012-local-persistence.md) |
 | ADR-013 | Public-safe fixtures in git, real-world scans private, provenance and licence per data source, App Store privacy items | Proposed | 2026-10-09 | [ADR-013](./adr/adr-013-fixtures-and-data-licensing.md) |
+| ADR-014 | Scan overlay effects as plug-in modules on one engine and one scene, with an effect lab (dev pill, saved choice) in development builds only | Proposed | 2026-10-11 | [ADR-014](./adr/adr-014-overlay-effects.md) |

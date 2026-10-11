@@ -58,3 +58,4 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ADR-007 | Gated promote step, scored on the app's own cell images per fixture, with a floor, a tolerance and a holdout split. | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
 | ADR-009 | Images outside git, a dataset manifest inside. DVC later. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md) |
 | ADR-013 | Public-safe fixtures in git, real-world scans private, a licence on record for every data source. | Concept | 2026-10-09 | Felix | [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
+| ADR-014 | Live overlay effects are modules on one engine and one scene. Development builds have an effect lab with a dev pill. Release builds run the default effect only. | Concept | 2026-10-11 | Felix | [ADR-014](adr/adr-014-overlay-effects.md) |
