@@ -1,8 +1,18 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { AppState, Linking } from 'react-native'
 import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
-import { CameraScreen } from './CameraScreen'
+import { useAnimatedReaction } from 'react-native-reanimated'
+import { type GridDetector, type Quad, useGridDetector } from '../scanner'
+import { CameraScreen, type FrameDetection } from './CameraScreen'
 import * as frameRate from './frameRate'
+import { GridOutline } from './GridOutline'
+
+jest.mock('../scanner', () => ({
+  ...jest.requireActual('../scanner'),
+  useGridDetector: jest.fn(() => undefined),
+}))
+
+jest.mock('./GridOutline', () => ({ GridOutline: jest.fn(() => null) }))
 
 jest.mock('expo-status-bar', () => {
   const { View } = jest.requireActual('react-native')
@@ -26,15 +36,47 @@ function givenPermission(status: 'authorized' | 'denied' | 'not-determined') {
   return requestPermission
 }
 
-type FrameConfig = { onFrame: (frame: { timestamp: number; dispose: () => void }) => void }
+type FakeFrame = {
+  timestamp: number
+  width: number
+  height: number
+  orientation: 'up' | 'right' | 'down' | 'left'
+  dispose: () => void
+}
+type FrameConfig = { onFrame: (frame: FakeFrame) => void }
 
 function onFrame() {
   const config = frameOutput.mock.calls.at(-1)?.[0] as unknown as FrameConfig
   return config.onFrame
 }
 
+function frameAt(timestamp: number, dispose: () => void = jest.fn()): FakeFrame {
+  return { timestamp, width: 1920, height: 1080, orientation: 'right', dispose }
+}
+
+const detector = jest.mocked(useGridDetector)
+const reaction = jest.mocked(useAnimatedReaction)
+const outline = jest.mocked(GridOutline)
+
+const quad: Quad = [
+  { x: 0.2, y: 0.2 },
+  { x: 0.8, y: 0.2 },
+  { x: 0.8, y: 0.8 },
+  { x: 0.2, y: 0.8 },
+]
+
+/** The last render's reaction: its input (the published detection) and its handler. */
+function lastReaction() {
+  const [prepare, react] = reaction.mock.calls.at(-1)! as unknown as [
+    () => FrameDetection | null,
+    (current: FrameDetection | null) => void,
+  ]
+  return { prepare, react }
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
+  detector.mockReturnValue(undefined)
   device.mockReturnValue({ id: 'back' } as unknown as ReturnType<typeof useCameraDevice>)
 })
 
@@ -45,6 +87,12 @@ describe('CameraScreen', () => {
     givenPermission('authorized')
     render(<CameraScreen />)
     expect(screen.getByTestId('camera')).toBeTruthy()
+  })
+
+  it('keeps the frames upright with the portrait interface, not the accelerometer', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    expect(screen.getByTestId('camera').props.orientationSource).toBe('interface')
   })
 
   it('uses a light status bar over the camera', () => {
@@ -88,9 +136,9 @@ describe('CameraScreen', () => {
     render(<CameraScreen />)
     const handle = onFrame()
     const disposers = Array.from({ length: 31 }, () => jest.fn())
-    disposers.forEach((dispose, i) => handle({ timestamp: 100 + i / 30, dispose }))
+    disposers.forEach((dispose, i) => handle(frameAt(100 + i / 30, dispose)))
     await Promise.resolve()
-    expect(log).toHaveBeenCalledWith('[camera] 30.0 fps')
+    expect(log).toHaveBeenCalledWith('[camera] 30.0 fps, detection 0.0 ms')
     disposers.forEach((dispose) => expect(dispose).toHaveBeenCalledTimes(1))
     log.mockRestore()
   })
@@ -103,7 +151,7 @@ describe('CameraScreen', () => {
     })
     render(<CameraScreen />)
     const dispose = jest.fn()
-    expect(() => onFrame()({ timestamp: 1, dispose })).toThrow('count failed')
+    expect(() => onFrame()(frameAt(1, dispose))).toThrow('count failed')
     expect(dispose).toHaveBeenCalledTimes(1)
   })
 
@@ -124,5 +172,68 @@ describe('CameraScreen', () => {
     expect(screen.getByTestId('camera').props.isActive).toBe(true)
     unmount()
     expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  it('publishes the detection of every frame for the UI thread', () => {
+    givenPermission('authorized')
+    const detectGrid = jest.fn(() => ({ quad, score: 0.36 }))
+    detector.mockReturnValue(detectGrid as unknown as GridDetector)
+    render(<CameraScreen />)
+    const frame = frameAt(5)
+    onFrame()(frame)
+    expect(detectGrid).toHaveBeenCalledWith(frame)
+    expect(lastReaction().prepare()).toEqual({ quad, timestamp: 5, aspect: 1080 / 1920 })
+  })
+
+  it('publishes an empty detection while the detector loads', () => {
+    givenPermission('authorized')
+    detector.mockReturnValue(undefined)
+    render(<CameraScreen />)
+    onFrame()(frameAt(5))
+    expect(lastReaction().prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920 })
+  })
+
+  it('publishes an empty detection and disposes the frame when detection fails', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    givenPermission('authorized')
+    detector.mockReturnValue((() => {
+      throw new Error('detect failed')
+    }) as unknown as GridDetector)
+    render(<CameraScreen />)
+    const dispose = jest.fn()
+    expect(() => onFrame()(frameAt(5, dispose))).not.toThrow()
+    expect(lastReaction().prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920 })
+    expect(dispose).toHaveBeenCalledTimes(1)
+    onFrame()(frameAt(6))
+    await Promise.resolve()
+    expect(warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('turns a detection into an outline in view points', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    fireEvent(screen.getByTestId('camera-screen'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
+    })
+    lastReaction().react({ quad, timestamp: 5, aspect: 0.5625 })
+    const shown = outline.mock.calls.at(-1)![0].outline.value
+    expect(shown).toEqual([
+      { x: 72, y: 128 },
+      { x: 288, y: 128 },
+      { x: 288, y: 512 },
+      { x: 72, y: 512 },
+    ])
+  })
+
+  it('removes the outline when the grid is gone for longer than the hold time', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    fireEvent(screen.getByTestId('camera-screen'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
+    })
+    const { react } = lastReaction()
+    react({ quad, timestamp: 5, aspect: 0.5625 })
+    react({ quad: null, timestamp: 6, aspect: 0.5625 })
+    expect(outline.mock.calls.at(-1)![0].outline.value).toBeNull()
   })
 })
