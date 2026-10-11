@@ -3,11 +3,13 @@ import { type Homography, invert, unitToQuad } from './common/geometry'
 import type { ViewSize } from '../previewMapping'
 
 // Times are seconds. Speeds are points per second.
-/** Corners slower than this count as slow. Provisional until the lock-on rule sets the threshold (scan-pipeline concept). */
+/** Corners slower than this count as slow. The lock-on threshold. Tune it on the device (capture flow design). */
 export const STEADY_SPEED = 30
 export const MOTION_TIME = 0.3
-/** The scene is steady while motion is below this value. Provisional until the lock-on rule exists. */
+/** The scene is steady while motion is below this value. The lock-on threshold. Tune it on the device (capture flow design). */
 export const STEADY_MOTION = 0.5
+/** Seconds the grid must stay steady before the scan locks on. Tune it between 0.6 and 0.8 on the device (capture flow design). */
+export const LOCK_DWELL = 0.7
 /** A corner step in one frame larger than this share of the grid diagonal means another grid. */
 export const JUMP = 0.25
 /** The longest step the scene takes, so a pause does not make an effect jump. */
@@ -22,6 +24,7 @@ export type GridEvent = 'found' | 'lost' | 'none'
  * quad, m and inverse are null together when there is no usable grid. m maps the unit square to the view, inverse maps the view to the unit square.
  * event is for this frame only. A jump to another grid gives 'found', with lostAt and foundAt both at t.
  * presence and motion: 0..1. steadyAt: the time the scene last became steady. speed and changedAt belong to stepScene.
+ * lockProgress: 0..1, see LOCK_DWELL. lockedAt: the time of lock-on, or -1. From lock-on, the scene keeps the locked quad and ignores new detections.
  */
 export type Scene = {
   t: number
@@ -40,6 +43,8 @@ export type Scene = {
   motion: number
   steady: boolean
   steadyAt: number
+  lockProgress: number
+  lockedAt: number
   speed: number
   changedAt: number
 }
@@ -81,17 +86,20 @@ export function createScene(view: ViewSize): Scene {
     motion: 1,
     steady: false,
     steadyAt: -1,
+    lockProgress: 0,
+    lockedAt: -1,
     speed: STEADY_SPEED,
     changedAt: -1,
   }
 }
 
-/** Advances the scene to time t. quad: the smoothed grid in view points, or null. Mutates and returns scene. */
-export function stepScene(scene: Scene, quad: Quad | null, t: number, reduceMotion: boolean): Scene {
+/** Advances the scene to time t. detected: the smoothed grid in view points, or null. After lock-on it is ignored. Mutates and returns scene. */
+export function stepScene(scene: Scene, detected: Quad | null, t: number, reduceMotion: boolean): Scene {
   'worklet'
   scene.dt = scene.t < 0 ? 0 : Math.min(MAX_STEP, Math.max(0, t - scene.t))
   scene.t = t
   scene.reduceMotion = reduceMotion
+  const quad = scene.lockedAt >= 0 ? scene.quad : detected
   const m = quad == null ? null : unitToQuad(quad)
   const inverse = m == null ? null : invert(m)
   const grid = m != null && inverse != null ? quad : null
@@ -119,6 +127,12 @@ export function stepScene(scene: Scene, quad: Quad | null, t: number, reduceMoti
   const steady = grid != null && scene.motion < STEADY_MOTION
   if (steady && !scene.steady) scene.steadyAt = t
   scene.steady = steady
+  if (scene.lockedAt < 0) {
+    // foundAt also moves on a jump, so a switch to another grid starts the dwell again.
+    const since = Math.max(scene.steadyAt, scene.foundAt)
+    scene.lockProgress = steady ? Math.min(1, Math.max(0, (t - since) / LOCK_DWELL)) : 0
+    if (scene.lockProgress >= 1) scene.lockedAt = t
+  }
   scene.quad = grid
   scene.m = grid == null ? null : m
   scene.inverse = grid == null ? null : inverse

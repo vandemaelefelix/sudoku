@@ -1,5 +1,5 @@
 import type { Homography } from '../common/geometry'
-import { lockProgress, lockTime } from '../common/lock'
+import { lockTime } from '../common/lock'
 import { prototypePixel, toColumnMajor } from '../common/shaderMatrix'
 import type { Scene } from '../scene'
 
@@ -11,7 +11,7 @@ export function latticeUniforms(scene: Scene, inverse: Homography, time: number)
     prototypePixel(scene.width),
     time,
     scene.presence,
-    lockProgress(scene),
+    scene.lockProgress,
     scene.reduceMotion ? -1 : lockTime(scene),
   )
   return uniforms

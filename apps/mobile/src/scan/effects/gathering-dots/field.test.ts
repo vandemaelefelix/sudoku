@@ -70,14 +70,15 @@ function largestMove(before: { x: number; y: number }[], after: { x: number; y: 
 /** Gathers a grid, then pans it for 3 s with a new quad object every 2nd frame. Returns the largest free-dot move and the margin check. */
 function pan() {
   const w = run(world(), null, 0, 1)
-  run(w, gridAt(50, 300), 1, 2.5)
+  // The grid creeps at 35 pt/s while the dots gather. A still grid would lock the scene, and a locked scene ignores the pan.
+  for (let t = 1; t <= 2.5 + 1e-9; t += 1 / 60) frame(w, gridAt(50 + 35 * (t - 1), 300), t)
   let quad: Quad | null = null
   let before = positions(w)
   let most = 0
   let inMargin = 0
   let i = 0
   for (let t = 2.5; t < 5.5; t += 1 / 60, i++) {
-    const x = 50 + 60 * (t - 2.5)
+    const x = 50 + 35 * 1.5 + 60 * (t - 2.5)
     if (i % 2 === 0) quad = gridAt(x, 300)
     frame(w, quad, t)
     const after = positions(w)
@@ -155,19 +156,19 @@ describe('stepField', () => {
 
   it('frees the gathered dots when the grid is lost', () => {
     const w = run(world(), null, 0, 1)
-    run(w, gridAt(50, 300), 1, 3)
-    frame(w, null, 3 + 1 / 60)
+    run(w, gridAt(50, 300), 1, 1.5)
+    frame(w, null, 1.5 + 1 / 60)
     expect(gathered(w)).toHaveLength(0)
     expect(w.field.holding).toBe(false)
-    run(w, null, 3 + 2 / 60, 3 + RELEASE_TIME + 0.1)
+    run(w, null, 1.5 + 2 / 60, 1.5 + RELEASE_TIME + 0.1)
     expect(w.field.dots.every((d) => !d.releasing)).toBe(true)
   })
 
   it('reassigns when the grid jumps', () => {
     const w = run(world(), null, 0, 1)
-    run(w, gridAt(50, 100, 200), 1, 3)
-    frame(w, gridAt(50, 550, 200), 3 + 1 / 60)
-    expect(w.field.gatheredAt).toBeCloseTo(3 + 1 / 60, 9)
+    run(w, gridAt(50, 100, 200), 1, 1.5)
+    frame(w, gridAt(50, 550, 200), 1.5 + 1 / 60)
+    expect(w.field.gatheredAt).toBeCloseTo(1.5 + 1 / 60, 9)
     expect(gathered(w)).toHaveLength(100)
   })
 
