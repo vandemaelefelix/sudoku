@@ -41,6 +41,10 @@ jest.mock('react-native-fast-opencv', () => ({
   },
 }))
 
+jest.mock('react-native-fast-tflite', () => ({
+  loadTensorflowModel: jest.fn(),
+}))
+
 jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
 }))
