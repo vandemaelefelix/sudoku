@@ -263,3 +263,16 @@ def test_a_rollback_from_another_process_reaches_the_running_store(tmp_path: Pat
     assert screen["folder"] == "7" and screen["cells"][0]["kind"] is None
     assert running.cell_file(cell[:16]).exists()
     assert running.save(kinds_of([cell], "printed"), "groups") == 1
+
+
+@pytest.mark.parametrize(("other", "expected"), [("7", 2), ("1", 0)])
+def test_near_duplicates_count_only_inside_one_folder(tmp_path: Path, other: str, expected: int):
+    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    twin = pattern(1)
+    twin[0, 0, 0] ^= 1
+    twin_id = add_cell(paths.cells, other, twin)
+    write_cells_manifest(paths.cells, paths.manifest)
+    store = LabelStore(paths, Clock())
+    store.save(kinds_of(ids["7"], "printed") + kinds_of([twin_id], "handwritten"), "groups")
+    reasons = [r["reason"] for i in store.review_items() for r in i["reasons"]]
+    assert reasons == ["near-duplicate"] * expected

@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES
-from sudoku_ml.dataset import cell_paths, group_ids, read_ids, split_by_group
+from sudoku_ml.dataset import cell_paths, dhash, group_ids, read_ids, split_by_group
 from sudoku_ml.kind_check import CheckLine, NotEnoughCells, draw_sample, summary
 from sudoku_ml.kind_log import (
     KINDS,
@@ -32,6 +32,7 @@ from sudoku_ml.relabel import move_cells
 from sudoku_ml.synthetic import Sample
 
 SCREEN_SIZE = 50
+NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
 DIGIT_FOLDERS = tuple(str(d) for d in range(1, 10))
 _LABELLED = ("printed", "handwritten")
 
@@ -74,7 +75,7 @@ class LabelStore:
         self.groups = (
             json.loads(paths.groups.read_text())["folders"] if paths.groups.exists() else {}
         )
-        self._dups: tuple[dict[str, int], set[str]] | None = None
+        self._dups: tuple[list[tuple[str, str]], set[str]] | None = None
 
     def _log_size(self) -> int:
         return self.paths.log.stat().st_size if self.paths.log.exists() else 0
@@ -252,22 +253,24 @@ class LabelStore:
 
     # Review screen
 
-    def _near_duplicates(self) -> tuple[dict[str, int], set[str]]:
-        """Near-duplicate group per cell id, and the ids in the test split. Slow: reads every
-        cell once, then caches."""
+    def _near_duplicates(self) -> tuple[list[tuple[str, str]], set[str]]:
+        """Near-duplicate pairs inside one folder, and the ids in the test split. Slow: reads
+        every cell once, then caches."""
         if self._dups is None:
             paths = cell_paths(self.paths.cells)
-            samples = [
-                Sample(to_cell_image(np.asarray(Image.open(p).convert("RGB"))), 0, 0) for p in paths
-            ]
-            groups = group_ids(samples)
+            images = [to_cell_image(np.asarray(Image.open(p).convert("RGB"))) for p in paths]
+            ids = [self._stem_ids[p.stem] for p in paths]
+            folders = np.array([p.parent.name for p in paths])
+            hashes = np.array([dhash(image) for image in images], dtype=np.uint64)
+            pairs = []
+            for i in range(len(ids) - 1):
+                distance = np.bitwise_count(hashes[i + 1 :] ^ hashes[i])
+                close = (distance <= NEAR_DUPLICATE_BITS) & (folders[i + 1 :] == folders[i])
+                pairs += [(ids[i], ids[j]) for j in np.nonzero(close)[0] + i + 1]
+            groups = group_ids([Sample(image, 0, 0) for image in images])
             config = tomllib.loads(self.paths.config.read_text())
             _, _, test = split_by_group(groups, tuple(config["split"]), config["seed"])
-            ids = [self._stem_ids[p.stem] for p in paths]
-            self._dups = (
-                {c: int(g) for c, g in zip(ids, groups, strict=True)},
-                {ids[i] for i in test},
-            )
+            self._dups = (pairs, {ids[i] for i in test})
         return self._dups
 
     def review_items(self) -> list[dict]:

@@ -1,7 +1,6 @@
 """Review items: cells whose label a check doubts. The near-duplicate, model and blind checks."""
 
 import csv
-from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -23,15 +22,13 @@ class ReviewItem:
     since: str  # time of the evidence. A review line at or after it closes the item
 
 
-def near_duplicate_items(dup_group: dict[str, int], lines: list[Line]) -> list[ReviewItem]:
+def near_duplicate_items(pairs: list[tuple[str, str]], lines: list[Line]) -> list[ReviewItem]:
+    """Only direct pairs count: chains of near-duplicates join cells that do not look alike."""
     kinds = current_kinds(lines)
     changed = {x.cell: x.t for x in lines if x.field == "kind" and x.screen != "review"}
-    members: dict[int, list[str]] = defaultdict(list)
-    for cell, group in dup_group.items():
-        members[group].append(cell)
     items = []
-    for cells in members.values():
-        cells.sort()
+    for pair in pairs:
+        cells = sorted(pair)
         if len({kinds.get(c) for c in cells} & _LABELLED) < 2:
             continue
         since = max(changed.get(c, "") for c in cells)
