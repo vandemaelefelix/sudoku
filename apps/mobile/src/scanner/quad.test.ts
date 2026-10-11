@@ -1,4 +1,4 @@
-import { isConvex, orderCorners, type Point, type Quad, quadArea, toGridDetection } from './quad'
+import { isConvex, orderCorners, type Point, type Quad, quadArea, toGridDetection, turnHalf } from './quad'
 
 const square: Quad = [
   { x: 0.2, y: 0.2 },
@@ -96,5 +96,22 @@ describe('toGridDetection', () => {
   it('rejects a quad that touches the frame border', () => {
     const touching = [{ x: 0, y: 127.5 }, pixels[3], pixels[0], pixels[2]]
     expect(toGridDetection(touching, width, height)).toBeNull()
+  })
+})
+
+describe('turnHalf', () => {
+  it('turns the quad by 180 degrees and keeps the corner order', () => {
+    const trapezoid: Quad = [
+      { x: 0.25, y: 0.125 },
+      { x: 0.5, y: 0.125 },
+      { x: 0.875, y: 0.5 },
+      { x: 0.125, y: 0.5 },
+    ]
+    expect(turnHalf(trapezoid)).toEqual([
+      { x: 0.125, y: 0.5 },
+      { x: 0.875, y: 0.5 },
+      { x: 0.75, y: 0.875 },
+      { x: 0.5, y: 0.875 },
+    ])
   })
 })
