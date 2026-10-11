@@ -49,7 +49,10 @@ def model_items(
     since = format_time(datetime.fromtimestamp(suspects_csv.stat().st_mtime, UTC))
     items = []
     with suspects_csv.open(newline="") as handle:
-        for row in csv.DictReader(handle):
+        reader = csv.DictReader(handle)
+        if "field" not in (reader.fieldnames or ()):
+            raise ValueError(f"{suspects_csv} has the old format. Run: just suspects")
+        for row in reader:
             cell = stem_to_id.get(row["file"])
             if cell is None or current(cell, row["field"]) != row["label"]:
                 continue
