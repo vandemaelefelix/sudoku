@@ -9,9 +9,11 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from sudoku_ml.label_store import LabelStore, Paths
+from sudoku_ml.manifest import write_cells_manifest
 
 PAGE = Path(__file__).with_name("label_page.html")
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
+ML_ROOT = Path(__file__).parents[2]
 
 
 def make_server(store: LabelStore, host: str = "127.0.0.1", port: int = 8765) -> HTTPServer:
@@ -106,8 +108,8 @@ def make_server(store: LabelStore, host: str = "127.0.0.1", port: int = 8765) ->
     return HTTPServer((host, port), Handler)
 
 
-def main(argv: list[str]) -> int:
-    paths = Paths.under(Path(__file__).parents[2])
+def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
+    paths = Paths.under(ml_root)
     if not paths.groups.exists():
         print(f"{paths.groups} is missing. Run: just group-cells", file=sys.stderr)
         return 1
@@ -123,7 +125,11 @@ def main(argv: list[str]) -> int:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
-    server.server_close()
+    finally:
+        server.server_close()
+        # Ctrl-C also stops `just`, so a recipe line after this one never runs.
+        write_cells_manifest(paths.cells, paths.manifest, paths.log)
+        print(f"Rewrote {paths.manifest}.")
     return 0
 
 

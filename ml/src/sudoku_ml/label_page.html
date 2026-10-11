@@ -136,6 +136,7 @@ let screen = null;
 let local = {};
 let hovered = null;
 let checkPage = 0;
+let busy = false;
 
 const $ = (id) => document.getElementById(id);
 const say = (text) => { $("message").textContent = text || ""; };
@@ -251,6 +252,7 @@ function render() {
       render();
     };
     div.onmouseenter = () => showDetail(cell);
+    div.onmouseleave = () => { hovered = null; };
     grid.append(div);
   }
   title();
@@ -379,14 +381,20 @@ function renderProgress(value) {
 }
 
 async function run(action) {
+  // A held or double Enter would otherwise send the same screen twice.
+  if (busy) return;
+  busy = true;
   try {
     await action();
   } catch (error) {
     say(error.message);
+  } finally {
+    busy = false;
   }
 }
 
 async function open(next, target) {
+  if (busy) return;
   mode = next;
   screen = null;
   local = {};

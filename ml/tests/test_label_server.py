@@ -7,7 +7,7 @@ import pytest
 from test_label_store import Clock, build
 
 from sudoku_ml.kind_log import read_log
-from sudoku_ml.label_server import make_server
+from sudoku_ml.label_server import main, make_server
 from sudoku_ml.label_store import LabelStore
 
 
@@ -97,3 +97,22 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Run <code>just suspects</code>",
     ):
         assert text in page
+
+
+def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeypatch):
+    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+
+    class Interrupted:
+        server_port = 0
+
+        def serve_forever(self):
+            LabelStore(paths, Clock()).save([{"id": ids["7"][0], "kind": "handwritten"}], "groups")
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store: Interrupted())
+    monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
+    assert main(["label_server"], tmp_path) == 0
+    assert paths.manifest.read_text().splitlines()[1].endswith(",handwritten")

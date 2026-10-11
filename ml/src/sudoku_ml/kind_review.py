@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sudoku_ml.kind_check import CheckLine
-from sudoku_ml.kind_log import Line, current_kinds, format_time
+from sudoku_ml.kind_log import Line, current_kinds, format_time, undone_actions
 
 Current = Callable[[str, str], str | None]
 _LABELLED = {"printed", "handwritten"}
@@ -75,8 +75,9 @@ def check_items(checks: list[CheckLine], current: Current) -> list[ReviewItem]:
 
 
 def open_items(items: list[ReviewItem], lines: list[Line]) -> list[ReviewItem]:
+    undone = undone_actions(lines)
     reviewed: dict[tuple[str, str], str] = {}
     for x in lines:
-        if x.screen == "review":
+        if x.screen == "review" and x.action not in undone:
             reviewed[(x.cell, x.field)] = max(reviewed.get((x.cell, x.field), ""), x.t)
     return [i for i in items if reviewed.get((i.cell, i.field), "") < i.since]

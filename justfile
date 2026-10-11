@@ -94,11 +94,10 @@ suspects:
 group-cells run="":
     uv run --directory ml python -m sudoku_ml.grouping {{run}}
 
-# Open the labelling page on 127.0.0.1. The manifest is rewritten before and after
+# Open the labelling page on 127.0.0.1. The manifest is rewritten before the start and at Ctrl-C
 label-cells:
     just dataset-manifest
     uv run --directory ml python -m sudoku_ml.label_server
-    just dataset-manifest
 
 # Reverse every change of one labelling session
 label-rollback session:

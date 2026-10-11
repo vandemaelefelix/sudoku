@@ -70,17 +70,31 @@ class LabelStore:
         self.session = now().strftime("%Y%m%d-%H%M%S")
         self._actions = 0
         self._stem_ids = read_ids(paths.manifest)
-        self.folder: dict[str, str] = {}
-        for path in paths.cells.glob("*/*.png"):
-            if path.stem not in self._stem_ids:
-                raise ValueError(f"{path} is not in {paths.manifest}. Run: just dataset-manifest")
-            self.folder[self._stem_ids[path.stem]] = path.parent.name
-        self.lines = read_log(paths.log)
-        self.checks = read_records(paths.checks, CheckLine)
+        self._load()
         self.groups = (
             json.loads(paths.groups.read_text())["folders"] if paths.groups.exists() else {}
         )
         self._dups: tuple[dict[str, int], set[str]] | None = None
+
+    def _log_size(self) -> int:
+        return self.paths.log.stat().st_size if self.paths.log.exists() else 0
+
+    def _load(self) -> None:
+        self.folder: dict[str, str] = {}
+        for path in self.paths.cells.glob("*/*.png"):
+            if path.stem not in self._stem_ids:
+                raise ValueError(
+                    f"{path} is not in {self.paths.manifest}. Run: just dataset-manifest"
+                )
+            self.folder[self._stem_ids[path.stem]] = path.parent.name
+        self.lines = read_log(self.paths.log)
+        self.checks = read_records(self.paths.checks, CheckLine)
+        self._seen_size = self._log_size()
+
+    def _refresh(self) -> None:
+        # `just label-rollback` in another terminal appends to the log and moves files.
+        if self._log_size() != self._seen_size:
+            self._load()
 
     def _t(self) -> str:
         return format_time(self._now())
@@ -92,6 +106,7 @@ class LabelStore:
     def _write(self, lines: list[Line]) -> None:
         append_records(self.paths.log, lines)
         self.lines.extend(lines)
+        self._seen_size = self._log_size()
 
     def _apply_digits(self, lines: list[Line]) -> None:
         for line in lines:
@@ -103,6 +118,7 @@ class LabelStore:
         return current_kinds(self.lines)
 
     def cell_file(self, stem: str) -> Path:
+        self._refresh()
         return self.paths.cells / self.folder[self._stem_ids[stem]] / f"{stem}.png"
 
     def _groups_of(self, folder: str) -> list[dict]:
@@ -132,6 +148,7 @@ class LabelStore:
         return {"cells": len(cells), "labelled": sum(kinds.get(c) is not None for c in cells)}
 
     def screen(self, folder: str, group: int, page: int) -> dict:
+        self._refresh()
         groups = self._groups_of(folder)
         chosen = groups[group]
         members = self._members(folder, chosen)
@@ -171,6 +188,7 @@ class LabelStore:
 
     def next_screen(self, after: tuple[str, int, int] | None = None) -> dict | None:
         """The first screen after `after` with a cell without a kind. Wraps around once."""
+        self._refresh()
         kinds = self.kinds()
         order = list(self._screens())
         start = 0
@@ -185,6 +203,7 @@ class LabelStore:
 
     def save(self, entries: list[dict], screen: str, confirm_digits: list[str] = ()) -> int:
         """Log a kind line per changed or new cell. On the Review screen, also per confirmation."""
+        self._refresh()
         kinds, t, action = self.kinds(), self._t(), self._action()
         lines = []
         for entry in entries:
@@ -203,6 +222,7 @@ class LabelStore:
         return len(lines)
 
     def move(self, cell: str, digit: str, screen: str) -> None:
+        self._refresh()
         if digit not in DIGIT_CLASSES:
             raise ValueError(f"unknown digit folder {digit!r}")
         old = self.folder[cell]
@@ -217,12 +237,14 @@ class LabelStore:
         self._write(lines)
 
     def undo(self) -> int:
+        self._refresh()
         lines = undo_lines(self.lines, self._t(), self.session)
         self._apply_digits(lines)
         self._write(lines)
         return len(lines)
 
     def rollback(self, session: str) -> int:
+        self._refresh()
         lines = rollback_lines(self.lines, session, self._t(), self.session)
         self._apply_digits(lines)
         self._write(lines)
@@ -249,6 +271,7 @@ class LabelStore:
         return self._dups
 
     def review_items(self) -> list[dict]:
+        self._refresh()
         kinds = self.kinds()
 
         def current(cell: str, field: str) -> str | None:
@@ -284,6 +307,7 @@ class LabelStore:
     # Check screen
 
     def check_start(self, n: int = 200) -> dict:
+        self._refresh()
         test_ids = self._near_duplicates()[1]
         try:
             cells = draw_sample(self.lines, self.checks, test_ids, self._now(), n)
@@ -295,10 +319,15 @@ class LabelStore:
         return {"cells": [{"id": c, "stem": c[:16]} for c in cells]}
 
     def check_answer(self, answers: list[dict]) -> dict:
+        self._refresh()
         kinds, t = self.kinds(), self._t()
+        checked = {c.cell for c in self.checks}
         records = []
         for answer in answers:
             cell, value = answer["id"], answer["answer"]
+            if cell in checked:
+                raise ValueError(f"{cell[:16]}: already checked")
+            checked.add(cell)
             if value not in KINDS:
                 raise ValueError(f"{cell[:16]}: unknown kind {value!r}")
             if kinds.get(cell) not in _LABELLED:
@@ -311,6 +340,7 @@ class LabelStore:
     # Progress
 
     def progress(self) -> dict:
+        self._refresh()
         kinds = self.kinds()
         undone = undone_actions(self.lines)
         moved_out = Counter(
@@ -346,6 +376,7 @@ class LabelStore:
         }
 
     def label_state(self) -> dict:
+        self._refresh()
         kinds = self.kinds()
         counts = Counter(kinds.get(c) for c, f in self.folder.items() if f in DIGIT_FOLDERS)
         return {
