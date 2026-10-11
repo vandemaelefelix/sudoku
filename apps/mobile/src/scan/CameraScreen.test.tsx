@@ -307,7 +307,7 @@ describe('capture', () => {
 
   it('shows a spinner instead of the shutter while it recognises', () => {
     givenPermission('authorized')
-    givenPhase({ phase: 'recognising' })
+    givenPhase({ phase: 'capturing', quad: null, image: null, result: null })
     render(<CameraScreen />)
     expect(screen.getByTestId('recognising')).toBeTruthy()
     expect(screen.queryByTestId('shutter')).toBeNull()
@@ -316,7 +316,7 @@ describe('capture', () => {
   it('shows the result view with retake after a scan', () => {
     givenPermission('authorized')
     const result = { ok: false as const, reason: 'no grid in the photo' }
-    givenPhase({ phase: 'result', result })
+    givenPhase({ phase: 'capturing', quad: null, image: null, result })
     render(<CameraScreen />)
     expect(screen.queryByTestId('camera')).toBeNull()
     const props = jest.mocked(ResultView).mock.calls.at(-1)![0]
@@ -338,7 +338,7 @@ describe('capture', () => {
     fireEvent.press(screen.getByTestId('shutter'))
     expect(capture).toHaveBeenLastCalledWith(quad)
 
-    givenPhase({ phase: 'result', result: { ok: false, reason: 'no grid in the photo' } })
+    givenPhase({ phase: 'capturing', quad: null, image: null, result: { ok: false, reason: 'no grid in the photo' } })
     rerender(<CameraScreen />)
     jest.mocked(ResultView).mock.calls.at(-1)![0].onRetake()
     expect(retake).toHaveBeenCalledTimes(1)

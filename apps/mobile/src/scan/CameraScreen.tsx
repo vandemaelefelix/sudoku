@@ -153,7 +153,7 @@ export function CameraScreen() {
       </View>
     )
   }
-  if (state.phase === 'result') return <ResultView result={state.result} onRetake={retakeScan} />
+  if (state.phase === 'capturing' && state.result != null) return <ResultView result={state.result} onRetake={retakeScan} />
   return (
     <View
       testID="camera-screen"
@@ -172,7 +172,7 @@ export function CameraScreen() {
       />
       <EffectCanvas outline={outline} view={viewSize} effect={effect} frameQuad={frameQuad} onLock={capture} />
       <View style={styles.bottom} pointerEvents="box-none">
-        {state.phase === 'recognising' ? (
+        {state.phase === 'capturing' ? (
           <ActivityIndicator testID="recognising" color="white" size="large" />
         ) : (
           <Pressable
