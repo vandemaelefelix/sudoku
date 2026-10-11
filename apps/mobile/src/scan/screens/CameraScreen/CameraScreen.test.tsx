@@ -6,15 +6,15 @@ import type { SkImage } from '@shopify/react-native-skia'
 import { kvSettings } from '@/settings/SettingsRepository'
 import { type GridDetector, type RecogniseResult, useGridDetector } from '@/scanner'
 import { CameraScreen, type FrameDetection } from './CameraScreen'
-import { CorrectionScreen } from './correction/CorrectionScreen'
+import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import * as frameRate from '@/scan/utils/tracking.utils'
-import { DEFAULT_INDEX } from './effects/registry'
-import { EffectCanvas } from './effects/EffectCanvas'
-import { EffectPicker } from './effects/EffectPicker'
+import { DEFAULT_INDEX } from '@/scan/effects/registry'
+import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
+import { EffectPicker } from '@/scan/effects/components/EffectPicker'
 import { GATE_PHOTO, GATE_RESULTS, REDUCED_END, TRANSITION_END } from '@/scan/utils/transition.utils'
-import { TransitionCanvas } from './transition/TransitionCanvas'
-import { useCapture } from './useCapture'
+import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
+import { useCapture } from '@/scan/hooks/useCapture'
 import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('@/scanner', () => ({
@@ -22,14 +22,14 @@ jest.mock('@/scanner', () => ({
   useGridDetector: jest.fn(() => undefined),
 }))
 
-jest.mock('./effects/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
-jest.mock('./effects/EffectPicker', () => ({ EffectPicker: jest.fn(() => null) }))
-jest.mock('./useCapture', () => ({ useCapture: jest.fn() }))
-jest.mock('./transition/TransitionCanvas', () => ({ TransitionCanvas: jest.fn(() => null) }))
+jest.mock('@/scan/effects/components/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
+jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: jest.fn(() => null) }))
+jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
+jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: jest.fn(() => null) }))
 // The real screen renders, and the mock records its props (the clock, the waiting flag, Reduce Motion).
-jest.mock('./correction/CorrectionScreen', () => {
+jest.mock('@/scan/screens/CorrectionScreen', () => {
   const { createElement } = jest.requireActual('react')
-  const actual = jest.requireActual('./correction/CorrectionScreen')
+  const actual = jest.requireActual('@/scan/screens/CorrectionScreen')
   return { CorrectionScreen: jest.fn((screenProps: object) => createElement(actual.CorrectionScreen, screenProps)) }
 })
 

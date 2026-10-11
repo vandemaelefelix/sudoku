@@ -3,8 +3,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { RecogniseResult } from '@/scanner'
-import { CameraScreen } from './CameraScreen'
-import { CorrectionScreen } from './correction/CorrectionScreen'
+import { CameraScreen } from '@/scan/screens/CameraScreen'
+import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 
 type Phase = { phase: 'live' } | { phase: 'review'; result: RecogniseResult }

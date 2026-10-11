@@ -1,18 +1,18 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import type { RecogniseResult } from '@/scanner'
-import { CameraScreen } from './CameraScreen'
-import { CorrectionScreen } from './correction/CorrectionScreen'
-import { EffectCanvas } from './effects/EffectCanvas'
+import { CameraScreen } from '@/scan/screens/CameraScreen'
+import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
+import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { ScanFlow } from './ScanFlow'
-import { useCapture } from './useCapture'
+import { useCapture } from '@/scan/hooks/useCapture'
 
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), useGridDetector: jest.fn(() => undefined) }))
-jest.mock('./useCapture', () => ({ useCapture: jest.fn() }))
-jest.mock('./effects/EffectPicker', () => ({ EffectPicker: () => null }))
-jest.mock('./transition/TransitionCanvas', () => ({ TransitionCanvas: () => null }))
+jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
+jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: () => null }))
+jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: () => null }))
 
 const mockMounts: number[] = []
-jest.mock('./effects/EffectCanvas', () => ({
+jest.mock('@/scan/effects/components/EffectCanvas', () => ({
   EffectCanvas: jest.fn(() => {
     // Counts mounts, so a test sees a new canvas with a new engine.
     jest.requireActual('react').useEffect(() => {
@@ -23,14 +23,14 @@ jest.mock('./effects/EffectCanvas', () => ({
 }))
 
 // The real screens render, and the mocks record their props.
-jest.mock('./CameraScreen', () => {
+jest.mock('@/scan/screens/CameraScreen', () => {
   const { createElement } = jest.requireActual('react')
-  const actual = jest.requireActual('./CameraScreen')
+  const actual = jest.requireActual('@/scan/screens/CameraScreen')
   return { CameraScreen: jest.fn((props: object) => createElement(actual.CameraScreen, props)) }
 })
-jest.mock('./correction/CorrectionScreen', () => {
+jest.mock('@/scan/screens/CorrectionScreen', () => {
   const { createElement } = jest.requireActual('react')
-  const actual = jest.requireActual('./correction/CorrectionScreen')
+  const actual = jest.requireActual('@/scan/screens/CorrectionScreen')
   return { CorrectionScreen: jest.fn((props: object) => createElement(actual.CorrectionScreen, props)) }
 })
 

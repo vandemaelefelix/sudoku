@@ -3,10 +3,10 @@ import type { SharedValue } from 'react-native-reanimated'
 import { createMemorySettings } from '@/settings/memorySettings'
 import type { SettingsRepository } from '@/settings/SettingsRepository'
 import { EFFECT_KEY, EffectPicker } from './EffectPicker'
-import { DEFAULT_INDEX, EFFECTS, effectIndex } from './registry'
+import { DEFAULT_INDEX, EFFECTS, effectIndex } from '@/scan/effects/registry'
 
 // Test effects stand in for the registry, so removing a real effect cannot break these tests.
-jest.mock('./registry', () => {
+jest.mock('@/scan/effects/registry', () => {
   const effects = [
     ['alpha', 'Alpha', 'simulation'],
     ['beta', 'Beta', 'path'],

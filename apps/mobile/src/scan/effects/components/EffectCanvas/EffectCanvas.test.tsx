@@ -3,12 +3,12 @@ import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
 import { transitionAt, type CaptureFrame } from '@/scan/utils/transition.utils'
 import { EffectCanvas } from './EffectCanvas'
-import * as engine from './engine'
-import { DEFAULT_INDEX, effectIndex } from './registry'
+import * as engine from '@/scan/effects/engine'
+import { DEFAULT_INDEX, effectIndex } from '@/scan/effects/registry'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 
 // Test effects stand in for the registry, so removing a real effect cannot break these tests.
-jest.mock('./registry', () => {
+jest.mock('@/scan/effects/registry', () => {
   const alpha = {
     id: 'alpha',
     name: 'Alpha',
