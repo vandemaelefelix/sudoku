@@ -160,12 +160,12 @@ function cellsOnScreen() {
 }
 
 function reasonText(cell) {
-  return cell.reasons.map((r) => r.reason).join(", ");
+  return `in ${cell.folder}/ · ${cell.reasons.map((r) => r.reason).join(", ")}`;
 }
 
 function detailText(cell) {
   if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
-  return cell.reasons.map((r) => {
+  return `This cell is in folder ${cell.folder}/. ` + cell.reasons.map((r) => {
     if (r.reason === "check") return `Your check answer: ${r.answer}. The label: ${r.label}.`;
     if (r.reason === "near-duplicate") return `Near-duplicates (below) have these kinds: ${Object.values(r.kinds).join(", ")}.`;
     return `The model says ${r.predicted} (${Math.round(r.p_predicted * 100)} %). The label: ${r.label}.`;

@@ -95,6 +95,7 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Written by a person with a pen or a pencil.",
         "You cannot decide. Training ignores it.",
         "Run <code>just suspects</code>",
+        "This cell is in folder",
     ):
         assert text in page
 
