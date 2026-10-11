@@ -92,12 +92,13 @@ straight into a dataset.
 
 ## Manifest
 
-`apps/mobile/assets/models/manifest.json`, written only by `just promote-model` (ADR-007). The
-model file keeps a **stable name**, `cell-classifier.tflite`, because React Native's bundler
+`apps/mobile/assets/models/manifest.json`. `just promote-model` writes it (ADR-007). Until M3,
+`just install-model` writes it, with the fields model, version, contract, file, outputs, run,
+metrics and installedAt (ADR-007, amendment).
+
+The model file keeps a **stable name**, `cell-classifier.tflite`, because React Native's bundler
 needs a static `require()`. The version lives in the manifest only. `metro.config.js` lists
 `tflite` in `assetExts`.
-
-Until M3, `just install-model` writes the manifest with the fields model, version, contract, file, outputs, run, metrics and installedAt (ADR-007, amendment).
 
 ```json
 {
