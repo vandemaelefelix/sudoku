@@ -10,7 +10,9 @@ status: DRAFT
 sudoku/
 ├── apps/
 │   └── mobile/                  # Expo / React Native app: game UI, scan UI, local storage
+│       ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
 │       ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
+│       ├── src/utils/           # code that more than one feature uses: geometry, homography, logs
 │       └── assets/models/       # promoted model files + manifest.json (committed)
 ├── packages/
 │   └── sudoku-core/             # @sudoku/core: board, rules, generator, solver, hints. Pure TS
@@ -57,13 +59,15 @@ flowchart TB
 | **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens | @sudoku/core, local storage | the scanner (SUD-03) |
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
+| **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |
 | **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)) | expo-sqlite | — |
 | **Fixture runner** | Development builds only. Runs the real scanner on fixture photos, writes cell images, reports scores ([ADR-010](adr/adr-010-testing-and-ci.md)) | scanner module | — |
 | **ml/** | Dataset assembly, synthetic data, training, evaluation on fixtures, export, promote | contracts/, fixtures/ | anything in apps/ or packages/ |
 
 ## 5.4 The scanner interface
 
-The game and Scan UI see only this. Whether a step runs in fast-opencv or in a Swift plugin is
+The game and Scan UI see only this. `Point` and `Quad` come from `src/utils/geometry.utils.ts`, because the scanner and
+the Scan UI both use them. Whether a step runs in fast-opencv or in a Swift plugin is
 invisible behind it (ADR-002). The types below are illustrative, not final.
 
 ```ts

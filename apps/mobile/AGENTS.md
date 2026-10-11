@@ -31,3 +31,56 @@ Run lint, typecheck and tests before you say a task is done.
 - Keep the folders: `src/game/` (game UI), `src/scan/` (scan UI), `src/scanner/` (scanner, entered
   only through `src/scanner/index.ts`). Navigation is not decided yet. Do not add Expo Router
   without an ADR.
+
+## Layout inside a feature
+
+A feature folder (`src/scan/`, later `src/game/`) has these folders. Create a folder only when it
+has a file.
+
+| Folder | Holds |
+| --- | --- |
+| `screens/<Name>/` | A screen. It composes components and hooks |
+| `components/<Name>/` | A component |
+| `hooks/<name>/` | A hook |
+| `utils/` | One `<domain>.utils.ts` file per domain, with its `<domain>.utils.test.ts` |
+| `constants/` | One `<domain>.constants.ts` file per domain, for the values of the utils of that domain |
+
+A screen, component or hook folder holds these files. Only `<Name>.tsx` and `index.ts` are always
+there.
+
+| File | Holds |
+| --- | --- |
+| `<Name>.tsx` | The component, screen or hook (`<name>.ts` for a hook) |
+| `<Name>.styles.ts` | The static `StyleSheet`. Styles that need `useColors()` stay in the component |
+| `<Name>.constants.ts` | The constants that only this module uses |
+| `<Name>.test.tsx` | The tests |
+| `index.ts` | Named re-exports of the folder's public items. Nothing else |
+
+Code that more than one feature uses lives in `src/utils/` and `src/constants/`. The scanner keeps
+its own files behind `src/scanner/index.ts` (SUD-05). `src/scan/effects/` keeps one folder per
+effect: `<name>.effect.ts`, `<name>.constants.ts` and an `index.ts`. The effect list is
+`effects/registry.ts`.
+
+### Import rules
+
+`just lint` checks every rule in this list.
+
+1. Import with the `@/` alias (`src/`) or `@assets/` (`assets/`). Use `./` only for a file in the
+   same folder. Do not use `../`.
+2. Import a folder through its `index.ts`, for example `@/scan/components/TransitionCanvas`. Inside
+   the folder, import the sibling file directly.
+3. Do not write a barrel that collects other folders, and do not use `export *`. The one module
+   entry is `src/scanner/index.ts`.
+4. Do not create a circular import. Two checks catch it: oxlint `import/no-cycle` and
+   dependency-cruiser `no-circular`.
+5. A utils or constants file does not import React, React Native, components, screens or hooks.
+   A constants file imports only other constants files and types.
+6. A styles file imports only React Native.
+7. A component or hook does not import a screen.
+8. A test mocks the path that the code imports, which is the folder path.
+
+### Worklets
+
+Put a helper or a constant above the worklet that uses it. A worklet captures its outside values
+when it is defined, so a helper declared further down the file is `undefined` inside the worklet.
+An imported value is always safe.
