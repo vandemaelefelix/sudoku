@@ -73,7 +73,10 @@ export function recognise(
     images.push(small)
     const smallRaw = small.toRawPixelData()
     const smallRgb = toRgb(smallRaw)
-    const full = image.toRawPixelData()
+    // The raw pixels of the photo image keep the sensor orientation. A resize draws them upright.
+    const upright = image.resize(image.width, image.height)
+    images.push(upright)
+    const full = upright.toRawPixelData()
     const imageMs = Date.now() - started
 
     started = Date.now()

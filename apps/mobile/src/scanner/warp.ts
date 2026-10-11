@@ -1,16 +1,14 @@
 import {
   BorderTypes,
   DataTypes,
-  DecompTypes,
   InterpolationFlags,
   Mat,
   OpenCV,
-  Point2f,
-  Point2fVector,
   Scalar,
   Size,
 } from 'react-native-fast-opencv'
 import { bytesPerPixel, type RawPixels, rowBytes } from './pixels'
+import { perspectiveTransform } from './photoGeometry'
 import type { Point } from './quad'
 
 type Releasable = { release(): void }
@@ -33,18 +31,16 @@ export function warpGrid(raw: RawPixels, corners: Point[], side: number): RawPix
     if (row % channels !== 0) throw new RangeError(`a row of ${row} bytes is not whole ${raw.pixelFormat} pixels`)
     // A padded row becomes extra columns on the right. The warp reads only inside the grid, so they never show.
     const src = own(Mat.createFromBuffer('uint8', raw.height, row / channels, channels as 3 | 4, new Uint8Array(raw.buffer)))
-    const from = own(Point2fVector.create(corners.map((p) => own(Point2f.create(p.x, p.y)))))
     // Pixel centres are on integers, so the edges of the square are at -0.5 and side - 0.5.
     const edge = side - 0.5
-    const to = own(
-      Point2fVector.create([
-        own(Point2f.create(-0.5, -0.5)),
-        own(Point2f.create(edge, -0.5)),
-        own(Point2f.create(edge, edge)),
-        own(Point2f.create(-0.5, edge)),
-      ]),
-    )
-    const transform = own(OpenCV.getPerspectiveTransform(from, to, DecompTypes.DECOMP_LU))
+    const squareCorners = [
+      { x: -0.5, y: -0.5 },
+      { x: edge, y: -0.5 },
+      { x: edge, y: edge },
+      { x: -0.5, y: edge },
+    ]
+    // fast-opencv 1.0.1 drops the points of Point2fVector.create, so the transform comes from TypeScript.
+    const transform = own(Mat.create(3, 3, DataTypes.CV_64F, perspectiveTransform(corners, squareCorners)))
     // warpPerspective gives dst the type of src.
     const dst = own(Mat.create(side, side, DataTypes.CV_8U))
     OpenCV.warpPerspective(
