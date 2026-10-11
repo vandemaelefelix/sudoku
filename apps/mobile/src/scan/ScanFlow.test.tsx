@@ -72,6 +72,12 @@ it('starts live on the camera', () => {
   expect(mockMounts).toHaveLength(1)
 })
 
+it('arms the first camera screen', () => {
+  render(<ScanFlow />)
+  expect(jest.mocked(CameraScreen).mock.calls.at(-1)![0].armed).toBe(true)
+  expect(lastCanvas().armed).toBe(true)
+})
+
 it('shows the static correction screen after the transition', () => {
   render(<ScanFlow />)
   act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
@@ -90,6 +96,8 @@ it('goes back live with a new scene on Retake from the review', () => {
   expect(screen.getByTestId('camera-screen')).toBeTruthy()
   expect(mockMounts).toHaveLength(2)
   expect(lastCanvas().capture!.value).toBeNull()
+  expect(jest.mocked(CameraScreen).mock.calls.at(-1)![0].armed).toBe(false)
+  expect(lastCanvas().armed).toBe(false)
 })
 
 it('mounts a new camera screen and a new effect canvas on Retake from the transition', () => {
@@ -101,4 +109,6 @@ it('mounts a new camera screen and a new effect canvas on Retake from the transi
   expect(mockMounts).toHaveLength(2)
   expect(lastCanvas().capture).not.toBe(before.capture)
   expect(lastCanvas().capture!.value).toBeNull()
+  expect(jest.mocked(CameraScreen).mock.calls.at(-1)![0].armed).toBe(false)
+  expect(lastCanvas().armed).toBe(false)
 })

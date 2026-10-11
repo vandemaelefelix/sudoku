@@ -20,6 +20,7 @@ function logOverlay(id: string, fps: number, overlayMs: number) {
  * effect: an index into EFFECTS. Only the JS thread writes it, and only when the developer picks an effect.
  * frameQuad: the same grid, normalised to the upright frame. onLock: called once per scene, on the JS thread, with frameQuad at lock-on.
  * capture: the transition frame (the dots follow its quad), or null in the live phase. While it is set, outline is ignored and onLock is not called.
+ * armed: false after a scan or a Retake, so the new scene does not lock on again on the same puzzle (scan-pipeline concept).
  */
 export function EffectCanvas({
   outline,
@@ -28,6 +29,7 @@ export function EffectCanvas({
   frameQuad,
   onLock,
   capture,
+  armed = true,
 }: {
   outline: SharedValue<Quad | null>
   view: SharedValue<ViewSize>
@@ -35,6 +37,7 @@ export function EffectCanvas({
   frameQuad: SharedValue<Quad | null>
   onLock: (quad: Quad) => void
   capture?: SharedValue<CaptureFrame | null>
+  armed?: boolean
 }) {
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
@@ -64,7 +67,7 @@ export function EffectCanvas({
     engine.modify((current) => {
       'worklet'
       if (captured != null && current != null) return advanceCapture(current, active, captured.quad, t, captured.channels, captured.crossFade)
-      return advance(current, active, size, quad, t, reduceMotion)
+      return advance(current, active, size, quad, t, reduceMotion, armed)
     }, true)
     const now = engine.get()
     if (now == null) return
