@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 from sudoku_ml.kind_check import CheckLine
 from sudoku_ml.kind_log import Line, parse_time
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
@@ -87,3 +89,10 @@ def test_check_items_are_the_disagreements_that_still_hold():
     assert [(i.cell, i.evidence) for i in items] == [
         (A, {"label": "printed", "answer": "handwritten"})
     ]
+
+
+def test_an_old_suspects_file_asks_for_a_new_run(tmp_path: Path):
+    path = tmp_path / "suspects.csv"
+    path.write_text(f"file,label,predicted,p_label,p_predicted\n{A[:16]},7,1,0.01,0.97\n")
+    with pytest.raises(ValueError, match="just suspects"):
+        model_items(path, {A[:16]: A}, lambda c, f: "7")
