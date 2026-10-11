@@ -1,9 +1,9 @@
 /**
  * @jest-environment node
  */
-import { compileSkSL } from '../common/compileSkSL'
-import { IDENTITY } from '../common/shaderMatrix'
-import { createScene } from '../scene'
+import { compileSkSL } from '@/scan/effects/common/compileSkSL'
+import { IDENTITY } from '@/scan/effects/common/shaderMatrix'
+import { createScene } from '@/scan/effects/scene'
 import { LATTICE_SKSL } from './shader'
 import { latticeUniforms } from './uniforms'
 

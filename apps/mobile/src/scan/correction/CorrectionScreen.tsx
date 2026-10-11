@@ -8,9 +8,9 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
-import type { RecogniseResult } from '../../scanner'
-import { useColors, type Colors } from '../../theme/colors'
-import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '../transition/timeline'
+import type { RecogniseResult } from '@/scanner'
+import { useColors, type Colors } from '@/theme/colors'
+import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '@/scan/transition/timeline'
 import { cellLook, cellsToCheck, type CellLook } from './cells'
 import { drawGridLines } from './gridLines'
 import type { CorrectionLayout } from './layout'
@@ -191,6 +191,7 @@ export function CorrectionScreen({
       </Animated.View>
       {looks.map((look, n) => (
         <Cell
+          // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
           key={n}
           n={n}
           look={look}

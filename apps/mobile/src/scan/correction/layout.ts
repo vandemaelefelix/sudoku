@@ -1,4 +1,4 @@
-import type { ViewSize } from '../previewMapping'
+import type { ViewSize } from '@/scan/previewMapping'
 
 export type Rect = { x: number; y: number; width: number; height: number }
 export type Insets = { top: number; bottom: number; left: number; right: number }

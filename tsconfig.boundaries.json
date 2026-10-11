@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./apps/mobile/src/*"],
+      "@assets/*": ["./apps/mobile/assets/*"]
+    }
+  },
+  "include": ["apps/mobile/App.tsx", "apps/mobile/src", "packages/sudoku-core/src"]
+}

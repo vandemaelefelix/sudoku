@@ -1,5 +1,5 @@
 import { Skia } from '@shopify/react-native-skia'
-import type { Quad } from '../../../scanner'
+import type { Quad } from '@/scanner'
 import { drawDim } from './dim'
 
 const grid: Quad = [

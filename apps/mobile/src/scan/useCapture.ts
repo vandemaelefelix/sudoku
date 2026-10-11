@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSharedValue } from 'react-native-reanimated'
 import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
-import { createScanner, type Quad, type RecogniseResult, type Scanner } from '../scanner'
+import { createScanner, type Quad, type RecogniseResult, type Scanner } from '@/scanner'
 import { sameAspect, uprightAspect } from './previewMapping'
 import { photoToSkImage } from './transition/photoImage'
 

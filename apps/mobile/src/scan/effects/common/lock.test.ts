@@ -1,4 +1,4 @@
-import { createScene } from '../scene'
+import { createScene } from '@/scan/effects/scene'
 import { lockTime } from './lock'
 
 const scene = () => createScene({ width: 402, height: 874 })

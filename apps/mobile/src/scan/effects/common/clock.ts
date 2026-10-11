@@ -1,4 +1,4 @@
-import type { Scene } from '../scene'
+import type { Scene } from '@/scan/effects/scene'
 
 /** start: seconds on the frame clock when the effect was created. */
 export type Clock = { start: number }

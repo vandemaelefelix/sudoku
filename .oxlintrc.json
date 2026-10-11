@@ -3,7 +3,8 @@
   "plugins": ["typescript", "unicorn", "import", "react", "jest", "vitest"],
   "categories": {
     "correctness": "error",
-    "suspicious": "warn"
+    "suspicious": "warn",
+    "perf": "warn"
   },
   "env": {
     "builtin": true,
@@ -26,10 +27,20 @@
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
     "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "oxc/no-barrel-file": ["error", { "threshold": 0 }],
     "no-warning-comments": ["error", { "terms": ["todo", "fixme", "xxx", "hack"] }],
     "unicorn/no-abusive-eslint-disable": "error",
     "react/react-in-jsx-scope": "off",
     "react/style-prop-object": "off",
     "unicorn/require-module-specifiers": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["apps/mobile/**"],
+      "rules": {
+        "import/no-relative-parent-imports": "error"
+      }
+    }
+  ]
 }

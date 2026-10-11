@@ -1,4 +1,4 @@
-import type { CellResult } from '../../scanner'
+import type { CellResult } from '@/scanner'
 import { cellLook, cellsToCheck, REVIEW_CONFIDENCE } from './cells'
 
 const cell = (over: Partial<CellResult>): CellResult => ({

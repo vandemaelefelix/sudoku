@@ -1,5 +1,5 @@
 import { PaintStyle, Skia, type SkCanvas, type SkPaint } from '@shopify/react-native-skia'
-import { project, type Homography } from '../effects/common/geometry'
+import { project, type Homography } from '@/scan/effects/common/geometry'
 
 const BOX_WIDTH = 2
 const CELL_WIDTH = 1

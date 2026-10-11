@@ -1,4 +1,4 @@
-import type { Quad } from '../scanner'
+import type { Quad } from '@/scanner'
 import { sameAspect, toPreview, uprightAspect } from './previewMapping'
 
 const corners: Quad = [

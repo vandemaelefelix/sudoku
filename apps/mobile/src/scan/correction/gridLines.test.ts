@@ -1,6 +1,6 @@
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
 import { drawGridLines } from './gridLines'
-import type { Homography } from '../effects/common/geometry'
+import type { Homography } from '@/scan/effects/common/geometry'
 
 const scale90: Homography = [90, 0, 0, 0, 90, 0, 0, 0]
 

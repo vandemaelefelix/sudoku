@@ -1,6 +1,6 @@
-import type { Quad } from '../../scanner'
-import { invert, unitToQuad } from '../effects/common/geometry'
-import type { Rect } from '../correction/layout'
+import type { Quad } from '@/scanner'
+import { invert, unitToQuad } from '@/scan/effects/common/geometry'
+import type { Rect } from '@/scan/correction/layout'
 import type { Channels } from './timeline'
 
 /**

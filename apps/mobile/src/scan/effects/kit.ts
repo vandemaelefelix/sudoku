@@ -1,5 +1,5 @@
 import { PaintStyle, type SkRuntimeEffect, Skia, StrokeCap, StrokeJoin } from '@shopify/react-native-skia'
-import { LIGHT } from '../../theme/colors'
+import { LIGHT } from '@/theme/colors'
 import { makeStarSprite, SPRITE_SIZE } from './common/sprite'
 import type { AnyEffect, DrawKit } from './types'
 

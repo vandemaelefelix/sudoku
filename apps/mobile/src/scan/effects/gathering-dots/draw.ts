@@ -1,8 +1,8 @@
 import { BlendMode, type SkCanvas, Skia } from '@shopify/react-native-skia'
-import { drawDim } from '../common/dim'
-import { SPRITE_SIZE } from '../common/sprite'
-import type { Scene } from '../scene'
-import type { DrawKit } from '../types'
+import { drawDim } from '@/scan/effects/common/dim'
+import { SPRITE_SIZE } from '@/scan/effects/common/sprite'
+import type { Scene } from '@/scan/effects/scene'
+import type { DrawKit } from '@/scan/effects/types'
 import { DIM, type FieldState } from './field'
 
 /** The width of a drawn star as a multiple of the dot radius. */

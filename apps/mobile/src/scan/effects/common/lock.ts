@@ -1,4 +1,4 @@
-import type { Scene } from '../scene'
+import type { Scene } from '@/scan/effects/scene'
 
 /** Seconds since lock-on, or -1: the prototype's uLockT. */
 export function lockTime(scene: Scene): number {
