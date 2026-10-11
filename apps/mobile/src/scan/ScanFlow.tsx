@@ -35,5 +35,6 @@ export function ScanFlow() {
       </>
     )
   }
-  return <CameraScreen key={scene} layout={layout} onDone={done} onRetake={retake} />
+  // Only the first scene arms at once. After a Retake the same puzzle is often still in view.
+  return <CameraScreen key={scene} layout={layout} onDone={done} onRetake={retake} armed={scene === 0} />
 }

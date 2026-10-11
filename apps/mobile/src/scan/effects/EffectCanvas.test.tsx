@@ -257,6 +257,26 @@ describe('lock-on', () => {
     expect(onLock).toHaveBeenCalledWith(NORMALISED)
     log.mockRestore()
   })
+
+  it('never calls onLock while the scene is not armed and the grid stays in view', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const onLock = jest.fn()
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(NORMALISED)}
+        onLock={onLock}
+        armed={false}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    for (let ms = 0; ms <= 5000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(onLock).not.toHaveBeenCalled()
+    log.mockRestore()
+  })
 })
 
 // The spy comes before render: the frame worklet captures advanceCapture when it is created.
