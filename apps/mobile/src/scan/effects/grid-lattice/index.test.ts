@@ -32,14 +32,14 @@ beforeEach(() => jest.clearAllMocks())
 
 describe('latticeUniforms', () => {
   it('gives the 14 floats in the order of the shader uniforms', () => {
-    const scene = found()
+    const scene = { ...found(), lockProgress: 0.6 }
     const u = latticeUniforms(scene, scene.inverse!, 2.5)
     expect(u).toHaveLength(14)
     expect(u.slice(0, 9)).toEqual(toColumnMajor(scene.inverse!))
     expect(u[9]).toBe(prototypePixel(402))
     expect(u[10]).toBe(2.5)
     expect(u[11]).toBe(scene.presence)
-    expect(u[12]).toBe(scene.presence * (1 - scene.motion))
+    expect(u[12]).toBe(scene.lockProgress)
     expect(u[13]).toBe(-1)
   })
 
