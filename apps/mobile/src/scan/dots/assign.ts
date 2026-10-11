@@ -40,7 +40,10 @@ export function assignNearest(dots: Point[], targets: Point[]): number[] {
     }
     for (let k = 0; k < best.length; k++) pairs.push(best[k])
   }
-  pairs.sort((a, b) => a.distance - b.distance)
+  pairs.sort((a, b) => {
+    'worklet'
+    return a.distance - b.distance
+  })
   const taken: boolean[] = []
   for (let i = 0; i < dots.length; i++) taken.push(false)
   const owner: number[] = []
