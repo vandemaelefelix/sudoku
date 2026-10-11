@@ -5,6 +5,28 @@ import type { SettingsRepository } from '../../settings/SettingsRepository'
 import { EFFECT_KEY, EffectPicker } from './EffectPicker'
 import { DEFAULT_INDEX, EFFECTS, effectIndex } from './index'
 
+// Test effects stand in for the registry, so removing a real effect cannot break these tests.
+jest.mock('./index', () => {
+  const effects = [
+    ['alpha', 'Alpha', 'simulation'],
+    ['beta', 'Beta', 'path'],
+    ['gamma', 'Gamma', 'shader'],
+    ['delta', 'Delta', 'screen'],
+  ].map(([id, name, family]) => ({
+    id,
+    name,
+    family,
+    create: () => ({}),
+    step: (state: unknown) => state,
+    draw: () => {},
+  }))
+  return {
+    EFFECTS: effects,
+    DEFAULT_INDEX: 0,
+    effectIndex: (id: string | null) => Math.max(0, effects.findIndex((effect) => effect.id === id)),
+  }
+})
+
 /** A shared value stand-in that the picker writes with set(). */
 function shared(value: number) {
   const holder = {
@@ -28,7 +50,7 @@ async function renderPicker(settings: SettingsRepository) {
 describe('EffectPicker', () => {
   it('shows the name of the default effect', async () => {
     await renderPicker(createMemorySettings())
-    expect(screen.getByText('Gathering dots')).toBeTruthy()
+    expect(screen.getByText('Alpha')).toBeTruthy()
     expect(screen.queryByTestId('effect-list')).toBeNull()
   })
 
@@ -42,31 +64,31 @@ describe('EffectPicker', () => {
   it('switches at once and closes the list', async () => {
     const effect = await renderPicker(createMemorySettings())
     fireEvent.press(screen.getByTestId('effect-pill'))
-    fireEvent.press(screen.getByTestId('effect-ripples'))
-    expect(effect.get()).toBe(effectIndex('ripples'))
+    fireEvent.press(screen.getByTestId('effect-beta'))
+    expect(effect.get()).toBe(effectIndex('beta'))
     expect(screen.queryByTestId('effect-list')).toBeNull()
-    expect(screen.getByText('Ripples')).toBeTruthy()
+    expect(screen.getByText('Beta')).toBeTruthy()
   })
 
   it('saves the choice', async () => {
     const settings = createMemorySettings()
     await renderPicker(settings)
     fireEvent.press(screen.getByTestId('effect-pill'))
-    fireEvent.press(screen.getByTestId('effect-grid-lattice'))
+    fireEvent.press(screen.getByTestId('effect-gamma'))
     await act(async () => {})
-    await expect(settings.get(EFFECT_KEY)).resolves.toBe('grid-lattice')
+    await expect(settings.get(EFFECT_KEY)).resolves.toBe('gamma')
   })
 
   it('restores the saved choice on start', async () => {
-    const effect = await renderPicker(createMemorySettings({ [EFFECT_KEY]: 'grid-lattice' }))
-    expect(effect.get()).toBe(effectIndex('grid-lattice'))
-    expect(screen.getByText('Grid lattice')).toBeTruthy()
+    const effect = await renderPicker(createMemorySettings({ [EFFECT_KEY]: 'gamma' }))
+    expect(effect.get()).toBe(effectIndex('gamma'))
+    expect(screen.getByText('Gamma')).toBeTruthy()
   })
 
   it('runs the default effect for an unknown saved id', async () => {
     const effect = await renderPicker(createMemorySettings({ [EFFECT_KEY]: 'deleted-effect' }))
     expect(effect.get()).toBe(DEFAULT_INDEX)
-    expect(screen.getByText('Gathering dots')).toBeTruthy()
+    expect(screen.getByText('Alpha')).toBeTruthy()
   })
 
   it('runs the default effect and logs when the store fails', async () => {
@@ -78,9 +100,9 @@ describe('EffectPicker', () => {
     const effect = await renderPicker(failing)
     expect(effect.get()).toBe(DEFAULT_INDEX)
     fireEvent.press(screen.getByTestId('effect-pill'))
-    fireEvent.press(screen.getByTestId('effect-ripples'))
+    fireEvent.press(screen.getByTestId('effect-beta'))
     await act(async () => {})
-    expect(effect.get()).toBe(effectIndex('ripples'))
+    expect(effect.get()).toBe(effectIndex('beta'))
     expect(log).toHaveBeenCalledWith('[fx] settings failed: disk')
     log.mockRestore()
   })
@@ -97,11 +119,11 @@ describe('EffectPicker', () => {
     const effect = shared(DEFAULT_INDEX)
     render(<EffectPicker effect={effect} settings={slow} />)
     fireEvent.press(screen.getByTestId('effect-pill'))
-    fireEvent.press(screen.getByTestId('effect-ripples'))
+    fireEvent.press(screen.getByTestId('effect-beta'))
     await act(async () => {
-      resolve?.('grid-lattice')
+      resolve?.('gamma')
     })
-    expect(effect.get()).toBe(effectIndex('ripples'))
-    expect(screen.getByText('Ripples')).toBeTruthy()
+    expect(effect.get()).toBe(effectIndex('beta'))
+    expect(screen.getByText('Beta')).toBeTruthy()
   })
 })
