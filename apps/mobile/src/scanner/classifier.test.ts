@@ -33,7 +33,8 @@ function fakeModel(digit: Float32Array, kind: Float32Array, order: 'digit-first'
   const model: TfliteModel & { received: ArrayBuffer[]; next: (d: Float32Array, k: Float32Array) => void } = {
     received,
     inputs: [{ shape: [81, 32, 32, 1], dataType: 'float32' }],
-    outputs: order === 'digit-first' ? [{ shape: [81, 10] }, { shape: [81, 4] }] : [{ shape: [81, 4] }, { shape: [81, 10] }],
+    outputs:
+      order === 'digit-first' ? [{ shape: [81, 10] }, { shape: [81, 4] }] : [{ shape: [81, 4] }, { shape: [81, 10] }],
     runSync: (inputs) => {
       received.push(inputs[0])
       return order === 'digit-first' ? [digitBuffer, kindBuffer] : [kindBuffer, digitBuffer]

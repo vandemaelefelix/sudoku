@@ -41,7 +41,10 @@ export function searchRect(quad: Quad, width: number, height: number, grow: numb
 /** quad: normalised to the rect. Returns it normalised to the whole width × height image. */
 export function fromCrop(quad: Quad, rect: Rect, width: number, height: number): Quad {
   'worklet'
-  const map = (p: Point): Point => ({ x: (p.x * rect.width + rect.x) / width, y: (p.y * rect.height + rect.y) / height })
+  const map = (p: Point): Point => ({
+    x: (p.x * rect.width + rect.x) / width,
+    y: (p.y * rect.height + rect.y) / height,
+  })
   return [map(quad[0]), map(quad[1]), map(quad[2]), map(quad[3])]
 }
 

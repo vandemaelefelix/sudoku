@@ -23,7 +23,11 @@ jest.mock('./index', () => {
   return {
     EFFECTS: effects,
     DEFAULT_INDEX: 0,
-    effectIndex: (id: string | null) => Math.max(0, effects.findIndex((effect) => effect.id === id)),
+    effectIndex: (id: string | null) =>
+      Math.max(
+        0,
+        effects.findIndex((effect) => effect.id === id),
+      ),
   }
 })
 

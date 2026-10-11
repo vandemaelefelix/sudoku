@@ -1,10 +1,6 @@
 {
   "name": "sudoku",
   "private": true,
-  "packageManager": "pnpm@12.10.1",
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
@@ -17,5 +13,9 @@
     "dependency-cruiser": "18.5.0",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0"
-  }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.10.1"
 }

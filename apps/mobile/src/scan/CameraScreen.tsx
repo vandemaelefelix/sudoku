@@ -1,7 +1,12 @@
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState, Button, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { useAnimatedReaction, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated'
+import Animated, {
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+} from 'react-native-reanimated'
 import {
   Camera,
   CommonResolutions,
@@ -142,7 +147,8 @@ export function CameraScreen({
   const finish = useCallback(() => {
     const done = latestResult.current
     if (done == null || !done.ok) return
-    if (__DEV__ && lockedAt.current != null) console.log(`[scan] transition done in ${Date.now() - lockedAt.current} ms`)
+    if (__DEV__ && lockedAt.current != null)
+      console.log(`[scan] transition done in ${Date.now() - lockedAt.current} ms`)
     onDone(done)
   }, [onDone])
 
@@ -166,7 +172,8 @@ export function CameraScreen({
         }
         const counted = countFrame(frameWindow.getBlocking(), frame.timestamp, Date.now() - started)
         frameWindow.setBlocking(counted.window)
-        if (__DEV__ && counted.report !== null) scheduleOnRN(logFrameRate, counted.report.fps, counted.report.detectionMs)
+        if (__DEV__ && counted.report !== null)
+          scheduleOnRN(logFrameRate, counted.report.fps, counted.report.detectionMs)
         detection.set({
           quad: grid == null ? null : grid.quad,
           timestamp: frame.timestamp,
@@ -305,7 +312,9 @@ export function CameraScreen({
           {__DEV__ ? <EffectPicker effect={effect} settings={kvSettings} /> : null}
         </>
       )}
-      {capturing != null && <Animated.View testID="capture-flash" pointerEvents="none" style={[styles.flash, flashStyle]} />}
+      {capturing != null && (
+        <Animated.View testID="capture-flash" pointerEvents="none" style={[styles.flash, flashStyle]} />
+      )}
     </View>
   )
 }

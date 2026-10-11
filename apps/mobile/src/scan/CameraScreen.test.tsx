@@ -356,7 +356,9 @@ describe('capture', () => {
 
   /** Runs UI frames of 1/60 s for the given seconds. */
   function runFrames(seconds: number) {
-    const callback = jest.mocked(useFrameCallback).mock.calls.at(-1)![0] as unknown as (frame: { timestamp: number }) => void
+    const callback = jest.mocked(useFrameCallback).mock.calls.at(-1)![0] as unknown as (frame: {
+      timestamp: number
+    }) => void
     for (let i = 0; i <= Math.round(seconds * 60); i++) {
       callback({ timestamp: frameTime * 1000 })
       frameTime += 1 / 60

@@ -23,7 +23,16 @@ export function unitToQuad(quad: Quad): Homography | null {
   if (!(Math.abs(den) >= 1e-9)) return null
   const g = (dx3 * dy2 - dx2 * dy3) / den
   const h = (dx1 * dy3 - dx3 * dy1) / den
-  const m: Homography = [p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x, p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y, g, h]
+  const m: Homography = [
+    p1.x - p0.x + g * p1.x,
+    p3.x - p0.x + h * p3.x,
+    p0.x,
+    p1.y - p0.y + g * p1.y,
+    p3.y - p0.y + h * p3.y,
+    p0.y,
+    g,
+    h,
+  ]
   // A NaN or an Infinity in any corner shows in the sum.
   return Number.isFinite(m[0] + m[1] + m[2] + m[3] + m[4] + m[5] + m[6] + m[7]) ? m : null
 }

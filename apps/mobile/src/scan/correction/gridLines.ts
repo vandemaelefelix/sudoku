@@ -5,7 +5,14 @@ const BOX_WIDTH = 2
 const CELL_WIDTH = 1
 
 /** Draws the 20 lines of the grid that m maps the unit square onto. grow 0..1: each line grows from its middle. Box lines 2 pt in ink, cell lines 1 pt in the line colour. */
-export function drawGridLines(canvas: SkCanvas, paint: SkPaint, m: Homography, grow: number, ink: string, line: string): void {
+export function drawGridLines(
+  canvas: SkCanvas,
+  paint: SkPaint,
+  m: Homography,
+  grow: number,
+  ink: string,
+  line: string,
+): void {
   'worklet'
   if (grow <= 0) return
   const from = 0.5 - grow / 2

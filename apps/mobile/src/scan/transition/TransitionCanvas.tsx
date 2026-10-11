@@ -1,4 +1,13 @@
-import { Canvas, FillType, Picture, Skia, createPicture, type SkCanvas, type SkImage, type SkPath } from '@shopify/react-native-skia'
+import {
+  Canvas,
+  FillType,
+  Picture,
+  Skia,
+  createPicture,
+  type SkCanvas,
+  type SkImage,
+  type SkPath,
+} from '@shopify/react-native-skia'
 import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
@@ -32,7 +41,12 @@ function insetUnit(m: Homography, inset: number, side: number): Homography {
 
 function addQuad(path: SkPath, quad: Quad): SkPath {
   'worklet'
-  return path.moveTo(quad[0].x, quad[0].y).lineTo(quad[1].x, quad[1].y).lineTo(quad[2].x, quad[2].y).lineTo(quad[3].x, quad[3].y).close()
+  return path
+    .moveTo(quad[0].x, quad[0].y)
+    .lineTo(quad[1].x, quad[1].y)
+    .lineTo(quad[2].x, quad[2].y)
+    .lineTo(quad[3].x, quad[3].y)
+    .close()
 }
 
 /** Runs on the JS thread. A picture records a copy of a paint at each draw call, so one paint per layer is enough. */
@@ -88,7 +102,12 @@ export function TransitionCanvas({
         if (crossFade || locked == null) {
           // The preview cover mapping (previewMapping.ts): the photo has the field of view of the frames.
           const scale = Math.max(size.width / width, size.height / height)
-          const dest = Skia.XYWHRect((size.width - width * scale) / 2, (size.height - height * scale) / 2, width * scale, height * scale)
+          const dest = Skia.XYWHRect(
+            (size.width - width * scale) / 2,
+            (size.height - height * scale) / 2,
+            width * scale,
+            height * scale,
+          )
           canvas.drawImageRect(shown, Skia.XYWHRect(0, 0, width, height), dest, paints.photo)
         } else {
           const matrix = photoMatrix(width, height, locked, quad)
@@ -102,7 +121,12 @@ export function TransitionCanvas({
       }
       if (channels.dim > 0) {
         // The warp keeps a hole for the grid, so only the grid of the photo shows on the light background.
-        const path = Skia.Path.Make().moveTo(0, 0).lineTo(size.width, 0).lineTo(size.width, size.height).lineTo(0, size.height).close()
+        const path = Skia.Path.Make()
+          .moveTo(0, 0)
+          .lineTo(size.width, 0)
+          .lineTo(size.width, size.height)
+          .lineTo(0, size.height)
+          .close()
         if (!crossFade) addQuad(path, grid).setFillType(FillType.EvenOdd)
         paints.background.setAlphaf(channels.dim)
         canvas.drawPath(path, paints.background)

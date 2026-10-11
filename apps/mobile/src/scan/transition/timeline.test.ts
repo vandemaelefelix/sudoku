@@ -41,7 +41,18 @@ describe('transitionAt', () => {
     expect(c.flash).toBe(1)
     expect(c.pulse).toBe(0)
     expect(c.photo).toBe(1)
-    for (const key of ['flatten', 'freeDrift', 'dim', 'ink', 'cells', 'lines', 'shrink', 'title', 'rings', 'panel'] as const) {
+    for (const key of [
+      'flatten',
+      'freeDrift',
+      'dim',
+      'ink',
+      'cells',
+      'lines',
+      'shrink',
+      'title',
+      'rings',
+      'panel',
+    ] as const) {
       expect(c[key]).toBe(0)
     }
   })

@@ -1,12 +1,4 @@
-import {
-  BorderTypes,
-  DataTypes,
-  InterpolationFlags,
-  Mat,
-  OpenCV,
-  Scalar,
-  Size,
-} from 'react-native-fast-opencv'
+import { BorderTypes, DataTypes, InterpolationFlags, Mat, OpenCV, Scalar, Size } from 'react-native-fast-opencv'
 import { bytesPerPixel, type RawPixels, rowBytes } from './pixels'
 import { perspectiveTransform } from './photoGeometry'
 import type { Point } from './quad'
@@ -30,7 +22,9 @@ export function warpGrid(raw: RawPixels, corners: Point[], side: number): RawPix
     const row = rowBytes(raw)
     if (row % channels !== 0) throw new RangeError(`a row of ${row} bytes is not whole ${raw.pixelFormat} pixels`)
     // A padded row becomes extra columns on the right. The warp reads only inside the grid, so they never show.
-    const src = own(Mat.createFromBuffer('uint8', raw.height, row / channels, channels as 3 | 4, new Uint8Array(raw.buffer)))
+    const src = own(
+      Mat.createFromBuffer('uint8', raw.height, row / channels, channels as 3 | 4, new Uint8Array(raw.buffer)),
+    )
     // Pixel centres are on integers, so the edges of the square are at -0.5 and side - 0.5.
     const edge = side - 0.5
     const squareCorners = [

@@ -54,7 +54,13 @@ it('plays the haptic, takes a photo and recognises it with the quad', async () =
   expect(recognise).toHaveBeenCalledWith(photo, QUAD)
   expect(photo.dispose).toHaveBeenCalledTimes(1)
   expect(photoToSkImage).toHaveBeenCalledWith(photo, 1600)
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, imageFailed: false, result: OK })
+  expect(hook.result.current.state).toEqual({
+    phase: 'capturing',
+    quad: QUAD,
+    image: IMAGE,
+    imageFailed: false,
+    result: OK,
+  })
 })
 
 it('drops the quad when the frame aspect does not fit the photo', async () => {
@@ -62,7 +68,13 @@ it('drops the quad when the frame aspect does not fit the photo', async () => {
   jest.spyOn(console, 'warn').mockImplementation(() => undefined)
   await act(async () => hook.result.current.capture(QUAD, 3 / 4))
   expect(recognise).toHaveBeenCalledWith(photo, null)
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: null, image: IMAGE, imageFailed: false, result: OK })
+  expect(hook.result.current.state).toEqual({
+    phase: 'capturing',
+    quad: null,
+    image: IMAGE,
+    imageFailed: false,
+    result: OK,
+  })
 })
 
 it('goes from capturing to the image to the result, and disposes the photo once, after both', async () => {
@@ -71,13 +83,31 @@ it('goes from capturing to the image to the result, and disposes the photo once,
   jest.mocked(photoToSkImage).mockImplementationOnce(() => new Promise((resolve) => (pending.image = resolve)))
   recognise.mockImplementationOnce(() => new Promise<RecogniseResult>((resolve) => (pending.result = resolve)))
   act(() => hook.result.current.capture(QUAD, FRAME_ASPECT))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: null, imageFailed: false, result: null })
+  expect(hook.result.current.state).toEqual({
+    phase: 'capturing',
+    quad: QUAD,
+    image: null,
+    imageFailed: false,
+    result: null,
+  })
   await waitFor(() => expect(pending.image).toBeDefined())
   await act(async () => pending.image?.(IMAGE))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, imageFailed: false, result: null })
+  expect(hook.result.current.state).toEqual({
+    phase: 'capturing',
+    quad: QUAD,
+    image: IMAGE,
+    imageFailed: false,
+    result: null,
+  })
   expect(photo.dispose).not.toHaveBeenCalled()
   await act(async () => pending.result?.(OK))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, imageFailed: false, result: OK })
+  expect(hook.result.current.state).toEqual({
+    phase: 'capturing',
+    quad: QUAD,
+    image: IMAGE,
+    imageFailed: false,
+    result: OK,
+  })
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
 
@@ -86,7 +116,13 @@ it('keeps the image null and still gives the result when the conversion fails', 
   jest.mocked(photoToSkImage).mockRejectedValueOnce(new Error('no pixels'))
   jest.spyOn(console, 'warn').mockImplementation(() => undefined)
   await act(async () => hook.result.current.capture(QUAD, FRAME_ASPECT))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: null, imageFailed: true, result: OK })
+  expect(hook.result.current.state).toEqual({
+    phase: 'capturing',
+    quad: QUAD,
+    image: null,
+    imageFailed: true,
+    result: OK,
+  })
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
 
@@ -160,7 +196,12 @@ it('gives a failure without a photo when the model did not load', async () => {
   jest.mocked(createScanner).mockRejectedValue(new Error('the scanner does not implement model contract 2.0'))
   await act(async () => hook.result.current.capture(QUAD, FRAME_ASPECT))
   expect(output.capturePhoto).not.toHaveBeenCalled()
-  expect(hook.result.current.state).toMatchObject({ phase: 'capturing', image: null, imageFailed: true, result: { ok: false } })
+  expect(hook.result.current.state).toMatchObject({
+    phase: 'capturing',
+    image: null,
+    imageFailed: true,
+    result: { ok: false },
+  })
   expect(photoToSkImage).not.toHaveBeenCalled()
 })
 

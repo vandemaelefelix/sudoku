@@ -31,15 +31,32 @@ describe('CorrectionScreen in review', () => {
   })
 
   it('draws a dashed ring only on the uncertain cells', () => {
-    render(<CorrectionScreen result={okResult({ 0: { ...given, confidence: 0.5 }, 1: entry, 2: { validPair: false } })} layout={layout} onRetake={jest.fn()} />)
+    render(
+      <CorrectionScreen
+        result={okResult({ 0: { ...given, confidence: 0.5 }, 1: entry, 2: { validPair: false } })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
     expect(screen.getByTestId('correction-ring-0')).toBeTruthy()
     expect(screen.getByTestId('correction-ring-2')).toBeTruthy()
     expect(screen.queryByTestId('correction-ring-1')).toBeNull()
-    expect(style('correction-ring-0')).toMatchObject({ borderStyle: 'dashed', borderWidth: 1.5, borderColor: LIGHT.warning, borderRadius: 6 })
+    expect(style('correction-ring-0')).toMatchObject({
+      borderStyle: 'dashed',
+      borderWidth: 1.5,
+      borderColor: LIGHT.warning,
+      borderRadius: 6,
+    })
   })
 
   it('shows the count of cells to check', () => {
-    render(<CorrectionScreen result={okResult({ 0: { confidence: 0.1 }, 1: { confidence: 0.1 } })} layout={layout} onRetake={jest.fn()} />)
+    render(
+      <CorrectionScreen
+        result={okResult({ 0: { confidence: 0.1 }, 1: { confidence: 0.1 } })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
     expect(screen.getByText('● 2 cells to check')).toBeTruthy()
   })
 
@@ -81,25 +98,48 @@ describe('CorrectionScreen in review', () => {
   })
 
   it('shows a spinner while it waits for the result', () => {
-    render(<CorrectionScreen result={null} layout={layout} onRetake={jest.fn()} waiting={{ value: true } as SharedValue<boolean>} />)
+    render(
+      <CorrectionScreen
+        result={null}
+        layout={layout}
+        onRetake={jest.fn()}
+        waiting={{ value: true } as SharedValue<boolean>}
+      />,
+    )
     expect(style('correction-waiting').opacity).toBe(1)
     expect(screen.queryByTestId('correction-panel')).toBeNull()
   })
 
   it('hides the spinner when it does not wait', () => {
-    render(<CorrectionScreen result={null} layout={layout} onRetake={jest.fn()} waiting={{ value: false } as SharedValue<boolean>} />)
+    render(
+      <CorrectionScreen
+        result={null}
+        layout={layout}
+        onRetake={jest.fn()}
+        waiting={{ value: false } as SharedValue<boolean>}
+      />,
+    )
     expect(style('correction-waiting').opacity).toBe(0)
   })
 })
 
 const failureUi = (shared: SharedValue<number>, reduceMotion = false) => (
-  <CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={shared} reduceMotion={reduceMotion} />
+  <CorrectionScreen
+    result={{ ok: false, reason: 'x' }}
+    layout={layout}
+    onRetake={jest.fn()}
+    clock={shared}
+    reduceMotion={reduceMotion}
+  />
 )
 const HIDDEN = layout.panel.height * 1.4
 
 /** The failure slide reaction of the last render: its condition and its handler. The mock runs neither. */
 function slideReaction() {
-  const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls.at(-1)! as unknown as [() => boolean, (go: boolean, previous: boolean | null) => void]
+  const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls.at(-1)! as unknown as [
+    () => boolean,
+    (go: boolean, previous: boolean | null) => void,
+  ]
   return { prepare, react }
 }
 
@@ -111,7 +151,14 @@ describe('CorrectionScreen with a clock', () => {
   })
 
   it('shows everything at the end of the transition', () => {
-    render(<CorrectionScreen result={okResult({ 0: { ...given, confidence: 0.2 }, 80: entry })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    render(
+      <CorrectionScreen
+        result={okResult({ 0: { ...given, confidence: 0.2 }, 80: entry })}
+        layout={layout}
+        onRetake={jest.fn()}
+        clock={clock(1.5)}
+      />,
+    )
     expect(style('correction-cell-0').opacity).toBe(1)
     expect(style('correction-cell-80').opacity).toBe(1)
     expect(style('correction-ring-0').opacity).toBe(1)
@@ -119,7 +166,14 @@ describe('CorrectionScreen with a clock', () => {
   })
 
   it('hides everything at the start', () => {
-    render(<CorrectionScreen result={okResult({ 0: { ...given, confidence: 0.2 } })} layout={layout} onRetake={jest.fn()} clock={clock(0)} />)
+    render(
+      <CorrectionScreen
+        result={okResult({ 0: { ...given, confidence: 0.2 } })}
+        layout={layout}
+        onRetake={jest.fn()}
+        clock={clock(0)}
+      />,
+    )
     expect(style('correction-cell-0').opacity).toBe(0)
     expect(style('correction-ring-0').opacity).toBe(0)
     expect(style('correction-panel').transform).toEqual([{ translateY: layout.panel.height * 1.4 }])
@@ -148,13 +202,17 @@ describe('CorrectionScreen with a clock', () => {
   })
 
   it('keeps the failure panel down before the results gate', () => {
-    render(<CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={clock(0.5)} />)
+    render(
+      <CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={clock(0.5)} />,
+    )
     expect(style('correction-panel').transform).toEqual([{ translateY: HIDDEN }])
   })
 
   it('raises each digit 3 pt while it fades in', () => {
     const result = okResult({ 0: given })
-    const { rerender } = render(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0)} />)
+    const { rerender } = render(
+      <CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0)} />,
+    )
     expect(style('correction-cell-0').transform).toEqual([{ translateY: 3 }])
     const alpha = digitAlpha(0.6, 0, 0, false)
     rerender(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0.6)} />)

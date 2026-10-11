@@ -46,7 +46,10 @@ function compareHead(got: Float32Array, expected: number[][], width: number) {
   return { maxDiff, mismatches }
 }
 
-export function compareOutputs(raw: RawOutputs, reference: ReferenceOutputs): Omit<ParityReport, 'medianMs' | 'run' | 'runMatches'> {
+export function compareOutputs(
+  raw: RawOutputs,
+  reference: ReferenceOutputs,
+): Omit<ParityReport, 'medianMs' | 'run' | 'runMatches'> {
   const digit = compareHead(raw.digit, reference.digit, DIGIT_CLASSES)
   const kind = compareHead(raw.kind, reference.kind, KIND_CLASSES.length)
   return {

@@ -1,13 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "unicorn",
-    "import",
-    "react",
-    "jest",
-    "vitest"
-  ],
+  "plugins": ["typescript", "unicorn", "import", "react", "jest", "vitest"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -21,12 +14,7 @@
       "version": "19.2"
     }
   },
-  "ignorePatterns": [
-    "**/dist/**",
-    "**/.expo/**",
-    "ml/**",
-    ".superpowers/**"
-  ],
+  "ignorePatterns": ["**/dist/**", "**/.expo/**", "ml/**", ".superpowers/**"],
   "rules": {
     "no-unused-vars": [
       "error",

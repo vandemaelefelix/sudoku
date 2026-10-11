@@ -60,7 +60,9 @@ function denseReference(cells: Uint8Array): Float32Array {
 }
 
 describe('preprocessCells', () => {
-  const pngs = readdirSync(FIXTURES).filter((f) => f.endsWith('.cell.png')).toSorted()
+  const pngs = readdirSync(FIXTURES)
+    .filter((f) => f.endsWith('.cell.png'))
+    .toSorted()
 
   it('has all 81 reference pairs', () => {
     expect(pngs).toHaveLength(CELLS)

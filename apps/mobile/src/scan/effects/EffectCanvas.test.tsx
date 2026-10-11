@@ -43,7 +43,12 @@ jest.mock('./index', () => {
     sksl: 'half4 main(float2 p) { return half4(1); }',
     create: () => ({}),
     step: (state: unknown) => state,
-    draw: (canvas: { drawRect: (...args: unknown[]) => void }, _state: unknown, _scene: unknown, kit: { shaders: { [id: string]: unknown } }) => {
+    draw: (
+      canvas: { drawRect: (...args: unknown[]) => void },
+      _state: unknown,
+      _scene: unknown,
+      kit: { shaders: { [id: string]: unknown } },
+    ) => {
       'worklet'
       if (kit.shaders.gamma != null) canvas.drawRect()
     },
@@ -57,7 +62,11 @@ jest.mock('./index', () => {
       'worklet'
       return Number.isInteger(index) && index >= 0 && index < EFFECTS.length ? EFFECTS[index] : alpha
     },
-    effectIndex: (id: string | null) => Math.max(0, EFFECTS.findIndex((effect) => effect.id === id)),
+    effectIndex: (id: string | null) =>
+      Math.max(
+        0,
+        EFFECTS.findIndex((effect) => effect.id === id),
+      ),
   }
 })
 

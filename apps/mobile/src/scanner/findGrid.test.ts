@@ -178,14 +178,11 @@ describe('findGrid', () => {
     expect(mockCreated.every((object) => object.released)).toBe(true)
   })
 
-  it.each(['cvtColor', 'adaptiveThreshold', 'findContours'])(
-    'releases every OpenCV object when %s fails',
-    (name) => {
-      mockContours = [rect(72, 128, 288, 512)]
-      mockFailure = name
-      expect(() => findGrid(pixels, width, height)).toThrow(`${name} failed`)
-      expect(mockCreated.length).toBeGreaterThan(0)
-      expect(mockCreated.every((object) => object.released)).toBe(true)
-    },
-  )
+  it.each(['cvtColor', 'adaptiveThreshold', 'findContours'])('releases every OpenCV object when %s fails', (name) => {
+    mockContours = [rect(72, 128, 288, 512)]
+    mockFailure = name
+    expect(() => findGrid(pixels, width, height)).toThrow(`${name} failed`)
+    expect(mockCreated.length).toBeGreaterThan(0)
+    expect(mockCreated.every((object) => object.released)).toBe(true)
+  })
 })

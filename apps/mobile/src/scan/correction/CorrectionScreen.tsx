@@ -1,7 +1,13 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
 import { memo, useMemo } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
+import Animated, {
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated'
 import type { RecogniseResult } from '../../scanner'
 import { useColors, type Colors } from '../../theme/colors'
 import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '../transition/timeline'
@@ -52,7 +58,13 @@ const Ring = memo(function Ring({ n, size, left, top, color, clock, resultsAt, r
       pointerEvents="none"
       style={[
         styles.ring,
-        { left: left + RING_INSET, top: top + RING_INSET, width: size - 2 * RING_INSET, height: size - 2 * RING_INSET, borderColor: color },
+        {
+          left: left + RING_INSET,
+          top: top + RING_INSET,
+          width: size - 2 * RING_INSET,
+          height: size - 2 * RING_INSET,
+          borderColor: color,
+        },
         style,
       ]}
     />
@@ -93,13 +105,30 @@ const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, resul
         {look.digit}
       </Animated.Text>
       {look.uncertain && (
-        <Ring n={n} size={size} left={left} top={top} color={colors.warning} clock={clock} resultsAt={resultsAt} reduceMotion={reduceMotion} />
+        <Ring
+          n={n}
+          size={size}
+          left={left}
+          top={top}
+          color={colors.warning}
+          clock={clock}
+          resultsAt={resultsAt}
+          reduceMotion={reduceMotion}
+        />
       )}
     </>
   )
 })
 
-export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion = false, waiting, resultsAt }: CorrectionProps) {
+export function CorrectionScreen({
+  result,
+  layout,
+  onRetake,
+  clock,
+  reduceMotion = false,
+  waiting,
+  resultsAt,
+}: CorrectionProps) {
   const colors = useColors()
   const { title, grid, panel } = layout
   const failed = result != null && !result.ok
@@ -144,7 +173,10 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
   const waitingStyle = useAnimatedStyle(() => ({ opacity: waiting?.value ? 1 : 0 }))
 
   return (
-    <View testID="correction-screen" style={[StyleSheet.absoluteFill, !clock && { backgroundColor: colors.background }]}>
+    <View
+      testID="correction-screen"
+      style={[StyleSheet.absoluteFill, !clock && { backgroundColor: colors.background }]}
+    >
       {!clock && (
         <Canvas style={{ position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height }}>
           <Picture picture={board} />
@@ -185,7 +217,14 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
           testID="correction-panel"
           style={[
             styles.panel,
-            { left: panel.x, top: panel.y, width: panel.width, height: panel.height, backgroundColor: colors.surface, shadowColor: colors.shadow },
+            {
+              left: panel.x,
+              top: panel.y,
+              width: panel.width,
+              height: panel.height,
+              backgroundColor: colors.surface,
+              shadowColor: colors.shadow,
+            },
             panelStyle,
           ]}
         >
@@ -196,7 +235,9 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
             </View>
           ) : toCheck > 0 ? (
             <View style={[styles.chip, { backgroundColor: colors.warningSurface }]}>
-              <Text style={[styles.chipText, { color: colors.warningText }]}>{`● ${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
+              <Text
+                style={[styles.chipText, { color: colors.warningText }]}
+              >{`● ${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
             </View>
           ) : (
             <Text style={[styles.sure, { color: colors.muted }]}>All cells look sure</Text>

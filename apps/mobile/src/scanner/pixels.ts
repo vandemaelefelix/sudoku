@@ -40,7 +40,9 @@ export function rowBytes(raw: RawPixels): number {
   'worklet'
   const row = raw.buffer.byteLength / raw.height
   if (!Number.isInteger(row) || row < raw.width * bytesPerPixel(raw.pixelFormat)) {
-    throw new RangeError(`${raw.buffer.byteLength} bytes do not hold ${raw.height} rows of ${raw.width} ${raw.pixelFormat} pixels`)
+    throw new RangeError(
+      `${raw.buffer.byteLength} bytes do not hold ${raw.height} rows of ${raw.width} ${raw.pixelFormat} pixels`,
+    )
   }
   return row
 }

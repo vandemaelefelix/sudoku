@@ -1,7 +1,15 @@
 import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import type { Quad } from '../../scanner'
-import { advanceClock, GATE_RESULTS, type Gates, SPINNER_DELAY, sweepShift, transitionAt, transitionEnd } from './timeline'
+import {
+  advanceClock,
+  GATE_RESULTS,
+  type Gates,
+  SPINNER_DELAY,
+  sweepShift,
+  transitionAt,
+  transitionEnd,
+} from './timeline'
 import { type CaptureFrame, lerpQuad } from './warp'
 
 /**

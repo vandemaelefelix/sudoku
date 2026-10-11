@@ -14,7 +14,13 @@ import { photoToSkImage } from './transition/photoImage'
  */
 export type CaptureState =
   | { phase: 'live' }
-  | { phase: 'capturing'; quad: Quad | null; image: SkImage | null; imageFailed: boolean; result: RecogniseResult | null }
+  | {
+      phase: 'capturing'
+      quad: Quad | null
+      image: SkImage | null
+      imageFailed: boolean
+      result: RecogniseResult | null
+    }
 
 /** 1600 px is enough for a 3x screen. */
 const IMAGE_MAX_SIDE = 1600
@@ -79,8 +85,9 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
     const attempt = ++generation.current
     // An unmount makes the attempt stale. A stale attempt must not write state.
     const current = () => generation.current === attempt
-    const update = (change: { image: SkImage } | { imageFailed: true } | { result: RecogniseResult } | { quad: null }) =>
-      setState((previous) => (previous.phase === 'capturing' ? { ...previous, ...change } : previous))
+    const update = (
+      change: { image: SkImage } | { imageFailed: true } | { result: RecogniseResult } | { quad: null },
+    ) => setState((previous) => (previous.phase === 'capturing' ? { ...previous, ...change } : previous))
     setState({ phase: 'capturing', quad, image: null, imageFailed: false, result: null })
     const started = Date.now()
     impactAsync(ImpactFeedbackStyle.Light).catch(() => undefined)
@@ -123,7 +130,8 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
       let locked = quad
       if (quad != null && !sameAspect(uprightAspect(photo.width, photo.height, photo.orientation), frameAspect)) {
         locked = null
-        if (__DEV__) console.warn('[scan] the photo and the frame differ in aspect, so the locked quad does not fit the photo')
+        if (__DEV__)
+          console.warn('[scan] the photo and the frame differ in aspect, so the locked quad does not fit the photo')
         if (current()) update({ quad: null })
       }
       try {
