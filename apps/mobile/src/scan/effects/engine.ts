@@ -1,6 +1,8 @@
 import type { Quad } from '../../scanner'
 import type { ViewSize } from '../previewMapping'
-import { createScene, type Scene, stepScene } from './scene'
+import type { Channels } from '../transition/timeline'
+import { invert, unitToQuad } from './common/geometry'
+import { createScene, MAX_STEP, type Scene, stepScene } from './scene'
 import type { AnyEffect } from './types'
 
 /** id: the effect that state belongs to. */
@@ -25,6 +27,30 @@ export function advance(
     return { id: effect.id, scene, state: effect.step(effect.create(scene), scene) }
   }
   const scene = stepScene(engine.scene, quad, t, reduceMotion)
+  const state = engine.id === effect.id ? engine.state : effect.create(scene)
+  return { id: effect.id, scene, state: effect.step(state, scene) }
+}
+
+/**
+ * One frame of the capture phase. quad: the grid in view points as the transition moves it; it replaces the locked quad.
+ * The latch, the motion and the presence of the scene stay as they were at lock-on. Mutates the scene.
+ */
+export function advanceCapture(engine: Engine, effect: AnyEffect, quad: Quad, t: number, channels: Channels): Engine {
+  'worklet'
+  const scene = engine.scene
+  scene.dt = scene.t < 0 ? 0 : Math.min(MAX_STEP, Math.max(0, t - scene.t))
+  scene.t = t
+  const m = unitToQuad(quad)
+  const inverse = m == null ? null : invert(m)
+  // A degenerate quad keeps the last usable one, so the dots do not fall back to the live phase.
+  if (m != null && inverse != null) {
+    scene.quad = quad
+    scene.lastQuad = quad
+    scene.m = m
+    scene.inverse = inverse
+  }
+  scene.capture = channels
+  scene.event = 'none'
   const state = engine.id === effect.id ? engine.state : effect.create(scene)
   return { id: effect.id, scene, state: effect.step(state, scene) }
 }

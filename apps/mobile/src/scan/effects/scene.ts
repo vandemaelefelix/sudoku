@@ -1,6 +1,7 @@
 import type { Quad } from '../../scanner'
 import { type Homography, invert, unitToQuad } from './common/geometry'
 import type { ViewSize } from '../previewMapping'
+import type { Channels } from '../transition/timeline'
 
 // Times are seconds. Speeds are points per second.
 /** Corners slower than this count as slow. The lock-on threshold. Tuned on the device, see the scan-pipeline concept. */
@@ -25,6 +26,7 @@ export type GridEvent = 'found' | 'lost' | 'none'
  * event is for this frame only. A jump to another grid gives 'found', with lostAt and foundAt both at t.
  * presence and motion: 0..1. steadyAt: the time the scene last became steady. speed and changedAt belong to stepScene.
  * lockProgress: 0..1, see LOCK_DWELL. lockedAt: the time of lock-on, or -1. From lock-on, the scene keeps the locked quad and ignores new detections.
+ * capture: the transition channels in the capture phase, where advanceCapture moves the quad; null in the live phase.
  */
 export type Scene = {
   t: number
@@ -47,6 +49,7 @@ export type Scene = {
   lockedAt: number
   speed: number
   changedAt: number
+  capture: Channels | null
 }
 
 /** Moves value toward target by at most step, so a fade over T seconds uses step = dt / T. */
@@ -90,6 +93,7 @@ export function createScene(view: ViewSize): Scene {
     lockedAt: -1,
     speed: STEADY_SPEED,
     changedAt: -1,
+    capture: null,
   }
 }
 
@@ -99,6 +103,7 @@ export function stepScene(scene: Scene, detected: Quad | null, t: number, reduce
   scene.dt = scene.t < 0 ? 0 : Math.min(MAX_STEP, Math.max(0, t - scene.t))
   scene.t = t
   scene.reduceMotion = reduceMotion
+  scene.capture = null
   const quad = scene.lockedAt >= 0 ? scene.quad : detected
   const m = quad == null ? null : unitToQuad(quad)
   const inverse = m == null ? null : invert(m)

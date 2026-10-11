@@ -1,4 +1,5 @@
 import type { Quad } from '../../../scanner'
+import { type Channels, TRANSITION_END, transitionAt } from '../../transition/timeline'
 import { intersections, invert, project, pushOutside, unitToQuad } from '../common/geometry'
 import { spreadStep } from '../common/spread'
 import { createScene, type Scene, stepScene } from '../scene'
@@ -317,5 +318,106 @@ describe('lock-on progress', () => {
   it('brightens the dots under Reduce Motion too', () => {
     const w = run(world(), gridAt(50, 300), 0, 2.5, true)
     for (const d of gathered(w)) expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
+  })
+})
+
+const STILL: Channels = {
+  flash: 0,
+  pulse: 0,
+  flatten: 0,
+  freeDrift: 0,
+  dim: 0,
+  ink: 0,
+  cells: 0,
+  lines: 0,
+  photo: 1,
+  shrink: 0,
+  title: 0,
+  rings: 0,
+  panel: 0,
+}
+
+/** One capture frame, as advanceCapture runs it: the scene keeps its quad and carries the channels. */
+function captureFrame(w: World, t: number, channels: Partial<Channels>) {
+  w.scene.t = t
+  w.scene.capture = { ...STILL, ...channels }
+  stepField(w.field, w.scene)
+  return w
+}
+
+const locked = () => run(world(), gridAt(50, 300), 0, 2.5)
+const free = (w: World) => w.field.dots.filter((d) => d.target < 0)
+
+describe('the capture phase', () => {
+  const centre = { x: 200, y: 450 }
+
+  it('puts every gathered dot exactly on its intersection, at full opacity', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    const targets = intersections(unitToQuad(gridAt(50, 300))!)
+    for (const d of gathered(w)) {
+      expect(d.x).toBeCloseTo(targets[d.target].x, 6)
+      expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+      expect(d.alpha).toBe(1)
+    }
+  })
+
+  it('makes a dot still in flight jump to the end of its flight', () => {
+    const w = run(world(), gridAt(50, 300), 0, 0.2)
+    captureFrame(w, 0.21, {})
+    const targets = intersections(unitToQuad(gridAt(50, 300))!)
+    const d = gathered(w)[0]
+    expect(d.x).toBeCloseTo(targets[d.target].x, 6)
+    expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+    expect(d.radius).toBeGreaterThan(d.size)
+  })
+
+  it('grows a gathered dot to 1.6 × its radius at the top of the pulse', () => {
+    const w = locked()
+    const radii = gathered(w).map((d) => d.radius)
+    captureFrame(w, 2.6, { pulse: 1 })
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(1.6 * radii[i], 6))
+  })
+
+  it('shrinks the gathered dots to nothing at the end of the transition', () => {
+    const w = captureFrame(locked(), 4, transitionAt(TRANSITION_END, false))
+    for (const d of gathered(w)) {
+      expect(d.radius).toBe(0)
+      expect(d.alpha).toBe(0)
+    }
+  })
+
+  it('moves every free dot 40 pt away from the grid centre and fades it at freeDrift 1', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    const start = free(w).map((d) => Math.hypot(d.x - centre.x, d.y - centre.y))
+    captureFrame(w, 2.7, { freeDrift: 1 })
+    free(w).forEach((d, i) => {
+      expect(Math.hypot(d.x - centre.x, d.y - centre.y)).toBeCloseTo(start[i] + 40, 4)
+      expect(d.alpha).toBe(0)
+    })
+  })
+
+  it('starts the drift from where each free dot was in the first capture frame', () => {
+    const w = locked()
+    const before = free(w).map((d) => ({ x: d.x, y: d.y }))
+    captureFrame(w, 2.6, {})
+    captureFrame(w, 3.4, {})
+    free(w).forEach((d, i) => {
+      expect(d.x).toBeCloseTo(before[i].x, 6)
+      expect(d.y).toBeCloseTo(before[i].y, 6)
+    })
+  })
+
+  it('follows the moving quad', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    const moved = gridAt(20, 100, 360)
+    w.scene.quad = moved
+    w.scene.m = unitToQuad(moved)
+    w.scene.inverse = invert(w.scene.m!)
+    captureFrame(w, 2.7, {})
+    const targets = intersections(w.scene.m!)
+    for (const d of gathered(w)) {
+      expect(d.x).toBeCloseTo(targets[d.target].x, 6)
+      expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+    }
   })
 })

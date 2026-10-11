@@ -38,6 +38,10 @@ describe('makeDrawKit', () => {
     expect(stroke.setStrokeJoin).toHaveBeenCalledWith(StrokeJoin.Round)
   })
 
+  it('gives the ink colour of the light theme as RGB from 0 to 1', () => {
+    expect(makeDrawKit([]).ink).toEqual([0x1d / 255, 0x23 / 255, 0x30 / 255])
+  })
+
   it('makes the star sprite once', () => {
     makeDrawKit([])
     expect(jest.mocked(Skia.Surface.Make)).toHaveBeenCalledTimes(1)
