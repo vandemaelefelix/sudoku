@@ -9,8 +9,14 @@ export const STEADY_SPEED = 30
 export const MOTION_TIME = 0.3
 /** The scene is steady while motion is below this value. The lock-on threshold. Tuned on the device, see the scan-pipeline concept. */
 export const STEADY_MOTION = 0.5
-/** Seconds the grid must stay steady before the scan locks on. Tuned on the device: 0.7 s needed no change, see the scan-pipeline concept. */
-export const LOCK_DWELL = 0.7
+/** Seconds the grid must stay steady before the scan locks on. To tune on the device, see the scan-pipeline concept. */
+export const LOCK_DWELL = 1.0
+/** Seconds after the first frame of a scene with no lock-on, so the camera settles first. To tune on the device, see the scan-pipeline concept. */
+export const WARMUP = 1.0
+/** Seconds without a grid that arm a scene that is not armed. To tune on the device, see the scan-pipeline concept. */
+export const REARM_LOST = 0.5
+/** The smallest grid width, as a share of the view width, that can lock on. To tune on the device, see the scan-pipeline concept. */
+export const MIN_GRID_WIDTH = 0.35
 /** A corner step in one frame larger than this share of the grid diagonal means another grid. */
 export const JUMP = 0.25
 /** The longest step the scene takes, so a pause does not make an effect jump. */
@@ -26,6 +32,9 @@ export type GridEvent = 'found' | 'lost' | 'none'
  * event is for this frame only. A jump to another grid gives 'found', with lostAt and foundAt both at t.
  * presence and motion: 0..1. steadyAt: the time the scene last became steady. speed and changedAt belong to stepScene.
  * lockProgress: 0..1, see LOCK_DWELL. lockedAt: the time of lock-on, or -1. From lock-on, the scene keeps the locked quad and ignores new detections.
+ * armed: lock-on can happen. A scene that is not armed arms after REARM_LOST without a grid, or on a jump (scan-pipeline concept).
+ * startedAt: the time of the first frame, or -1. lostSince: the time the grid was last lost, or -1 while a grid is in view or before the first loss.
+ * bigSince: the time the grid became at least MIN_GRID_WIDTH wide, or -1 while there is no such grid.
  * capture: the transition channels in the capture phase, where advanceCapture moves the quad; null in the live phase.
  */
 export type Scene = {
@@ -47,6 +56,10 @@ export type Scene = {
   steadyAt: number
   lockProgress: number
   lockedAt: number
+  armed: boolean
+  startedAt: number
+  lostSince: number
+  bigSince: number
   speed: number
   changedAt: number
   capture: Channels | null
@@ -70,7 +83,14 @@ export function diagonal(quad: Quad): number {
   return Math.hypot(quad[2].x - quad[0].x, quad[2].y - quad[0].y)
 }
 
-export function createScene(view: ViewSize): Scene {
+/** The mean length of the top and bottom edges, in view points. */
+function gridWidth(quad: Quad): number {
+  'worklet'
+  return (Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) + Math.hypot(quad[2].x - quad[3].x, quad[2].y - quad[3].y)) / 2
+}
+
+/** armed: false after a scan or a Retake, so the scene does not lock on again on the same puzzle. */
+export function createScene(view: ViewSize, armed = true): Scene {
   'worklet'
   return {
     t: -1,
@@ -91,6 +111,10 @@ export function createScene(view: ViewSize): Scene {
     steadyAt: -1,
     lockProgress: 0,
     lockedAt: -1,
+    armed,
+    startedAt: -1,
+    lostSince: -1,
+    bigSince: -1,
     speed: STEADY_SPEED,
     changedAt: -1,
     capture: null,
@@ -102,6 +126,7 @@ export function stepScene(scene: Scene, detected: Quad | null, t: number, reduce
   'worklet'
   scene.dt = scene.t < 0 ? 0 : Math.min(MAX_STEP, Math.max(0, t - scene.t))
   scene.t = t
+  if (scene.startedAt < 0) scene.startedAt = t
   scene.reduceMotion = reduceMotion
   scene.capture = null
   const quad = scene.lockedAt >= 0 ? scene.quad : detected
@@ -132,10 +157,21 @@ export function stepScene(scene: Scene, detected: Quad | null, t: number, reduce
   const steady = grid != null && scene.motion < STEADY_MOTION
   if (steady && !scene.steady) scene.steadyAt = t
   scene.steady = steady
+  if (grid == null) {
+    if (scene.event === 'lost') scene.lostSince = t
+    scene.bigSince = -1
+  } else {
+    scene.lostSince = -1
+    const big = gridWidth(grid) >= MIN_GRID_WIDTH * scene.width
+    if (!big) scene.bigSince = -1
+    else if (scene.bigSince < 0) scene.bigSince = t
+  }
+  if (!scene.armed && (jumped || (scene.lostSince >= 0 && t - scene.lostSince >= REARM_LOST))) scene.armed = true
   if (scene.lockedAt < 0) {
     // foundAt also moves on a jump, so a switch to another grid starts the dwell again.
-    const since = Math.max(scene.steadyAt, scene.foundAt)
-    scene.lockProgress = steady ? Math.min(1, Math.max(0, (t - since) / LOCK_DWELL)) : 0
+    const since = Math.max(scene.steadyAt, scene.foundAt, scene.startedAt + WARMUP, scene.bigSince)
+    const ready = scene.armed && steady && scene.bigSince >= 0
+    scene.lockProgress = ready ? Math.min(1, Math.max(0, (t - since) / LOCK_DWELL)) : 0
     if (scene.lockProgress >= 1) scene.lockedAt = t
   }
   scene.quad = grid

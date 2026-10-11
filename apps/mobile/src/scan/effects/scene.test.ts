@@ -1,5 +1,15 @@
 import type { Quad } from '../../scanner'
-import { createScene, LOCK_DWELL, MAX_STEP, PRESENCE_TIME, type Scene, stepScene } from './scene'
+import {
+  createScene,
+  LOCK_DWELL,
+  MAX_STEP,
+  MIN_GRID_WIDTH,
+  PRESENCE_TIME,
+  REARM_LOST,
+  type Scene,
+  stepScene,
+  WARMUP,
+} from './scene'
 
 const VIEW = { width: 402, height: 874 }
 
@@ -149,39 +159,50 @@ describe('stepScene', () => {
 
 describe('lock-on', () => {
   const FRAME = 1 / 60
+  // The grid comes into view after the warm-up, so the dwell counts from steadyAt.
+  const AFTER = WARMUP + 0.5
+
+  /** A scene that sees no grid until AFTER. */
+  function warm(armed = true) {
+    return run(createScene(VIEW, armed), null, 0, AFTER - FRAME)
+  }
 
   it('grows the progress from the time the scene becomes steady', () => {
-    const scene = run(createScene(VIEW), gridAt(50, 300), 0, 0.5)
+    const scene = run(warm(), gridAt(50, 300), AFTER, AFTER + 0.5)
     expect(scene.steady).toBe(true)
+    expect(scene.steadyAt).toBeGreaterThan(AFTER)
     expect(scene.lockProgress).toBeCloseTo((scene.t - scene.steadyAt) / LOCK_DWELL, 6)
     expect(scene.lockProgress).toBeGreaterThan(0)
     expect(scene.lockedAt).toBe(-1)
   })
 
   it('locks on LOCK_DWELL after the scene becomes steady', () => {
-    const scene = run(createScene(VIEW), gridAt(50, 300), 0, 2)
+    const scene = run(warm(), gridAt(50, 300), AFTER, AFTER + 3)
     expect(scene.lockProgress).toBe(1)
     expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
   })
 
   it('resets the progress when the grid is lost', () => {
-    const scene = run(createScene(VIEW), gridAt(50, 300), 0, 0.5)
-    stepScene(scene, null, 0.5 + FRAME, false)
+    const scene = run(warm(), gridAt(50, 300), AFTER, AFTER + 0.5)
+    expect(scene.lockProgress).toBeGreaterThan(0)
+    stepScene(scene, null, AFTER + 0.5 + FRAME, false)
     expect(scene.lockProgress).toBe(0)
   })
 
   it('restarts the progress when the grid jumps to another grid', () => {
-    const scene = run(createScene(VIEW), gridAt(50, 100, 200), 0, 0.5)
-    stepScene(scene, gridAt(50, 550, 200), 0.5 + FRAME, false)
+    const scene = run(warm(), gridAt(50, 100, 200), AFTER, AFTER + 0.5)
+    expect(scene.lockProgress).toBeGreaterThan(0)
+    stepScene(scene, gridAt(50, 550, 200), AFTER + 0.5 + FRAME, false)
     expect(scene.lockProgress).toBe(0)
   })
 
   it('keeps the locked quad and ignores new detections after lock-on', () => {
     const locked = gridAt(50, 300)
-    const scene = run(createScene(VIEW), locked, 0, 2)
+    const scene = run(warm(), locked, AFTER, AFTER + 3)
     const lockedAt = scene.lockedAt
-    stepScene(scene, gridAt(50, 100, 200), 2 + FRAME, false)
-    stepScene(scene, null, 2 + 2 * FRAME, false)
+    expect(lockedAt).toBeGreaterThan(0)
+    stepScene(scene, gridAt(50, 100, 200), AFTER + 3 + FRAME, false)
+    stepScene(scene, null, AFTER + 3 + 2 * FRAME, false)
     expect(scene.quad).toEqual(locked)
     expect(scene.event).toBe('none')
     expect(scene.lockedAt).toBe(lockedAt)
@@ -192,5 +213,126 @@ describe('lock-on', () => {
     const scene = createScene(VIEW)
     expect(scene.lockProgress).toBe(0)
     expect(scene.lockedAt).toBe(-1)
+  })
+
+  describe('settle time', () => {
+    it('keeps the progress at 0 during the warm-up, then locks on after WARMUP and LOCK_DWELL', () => {
+      const scene = createScene(VIEW)
+      for (let t = 0; t < WARMUP - 1e-9; t += FRAME) {
+        stepScene(scene, detection(gridAt(50, 300)), t, false)
+        expect(scene.lockProgress).toBe(0)
+      }
+      expect(scene.steady).toBe(true)
+      run(scene, gridAt(50, 300), WARMUP, WARMUP + LOCK_DWELL - 2 * FRAME)
+      expect(scene.lockedAt).toBe(-1)
+      run(scene, gridAt(50, 300), WARMUP + LOCK_DWELL - FRAME, 5)
+      expect(Math.abs(scene.lockedAt - (WARMUP + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+
+    it('counts the warm-up from the first frame of the scene', () => {
+      const scene = run(createScene(VIEW), gridAt(50, 300), 10, 10 + WARMUP + LOCK_DWELL + 0.5)
+      expect(Math.abs(scene.lockedAt - (10 + WARMUP + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+  })
+
+  describe('minimum grid size', () => {
+    // 120 pt and 150 pt in a view 402 pt wide: below and above MIN_GRID_WIDTH.
+    const small = gridAt(140, 300, 120)
+    const big = gridAt(130, 295, 150)
+
+    it('uses test grids on both sides of the limit', () => {
+      expect(120 / VIEW.width).toBeLessThan(MIN_GRID_WIDTH)
+      expect(150 / VIEW.width).toBeGreaterThan(MIN_GRID_WIDTH)
+    })
+
+    it('never locks on a grid smaller than MIN_GRID_WIDTH of the view', () => {
+      const scene = createScene(VIEW)
+      for (let t = 0; t <= 5; t += FRAME) {
+        stepScene(scene, detection(small), t, false)
+        expect(scene.lockProgress).toBe(0)
+      }
+      expect(scene.steady).toBe(true)
+      expect(scene.lockedAt).toBe(-1)
+    })
+
+    it('counts the dwell from the time the grid becomes big enough', () => {
+      const scene = run(createScene(VIEW), small, 0, 3)
+      const grown = 3 + FRAME
+      // A step this small is not a jump, so foundAt stays at 0.
+      run(scene, big, grown, grown + LOCK_DWELL - 2 * FRAME)
+      expect(scene.foundAt).toBe(0)
+      expect(scene.lockedAt).toBe(-1)
+      expect(scene.lockProgress).toBeGreaterThan(0)
+      run(scene, big, grown + LOCK_DWELL - FRAME, grown + LOCK_DWELL + 0.5)
+      expect(Math.abs(scene.lockedAt - (grown + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+
+    it('uses the mean width of the top and bottom edges', () => {
+      // Top edge 100 pt, bottom edge 200 pt: the mean is 150 pt, above the limit.
+      const trapezoid: Quad = [
+        { x: 150, y: 300 },
+        { x: 250, y: 300 },
+        { x: 300, y: 500 },
+        { x: 100, y: 500 },
+      ]
+      expect(150 / VIEW.width).toBeGreaterThan(MIN_GRID_WIDTH)
+      expect(100 / VIEW.width).toBeLessThan(MIN_GRID_WIDTH)
+      const scene = run(createScene(VIEW), trapezoid, 0, 3)
+      expect(scene.lockedAt).toBeGreaterThan(0)
+    })
+  })
+
+  describe('a scene that starts not armed', () => {
+    it('starts armed by default', () => {
+      expect(createScene(VIEW).armed).toBe(true)
+      expect(createScene(VIEW, false).armed).toBe(false)
+    })
+
+    it('never locks on the grid that is in view from the start', () => {
+      const scene = createScene(VIEW, false)
+      for (let t = 0; t <= 5; t += FRAME) {
+        stepScene(scene, detection(gridAt(50, 300)), t, false)
+        expect(scene.lockProgress).toBe(0)
+      }
+      expect(scene.steady).toBe(true)
+      expect(scene.armed).toBe(false)
+      expect(scene.lockedAt).toBe(-1)
+    })
+
+    it('arms after the grid is lost for REARM_LOST, then locks on after the dwell', () => {
+      const grid = gridAt(50, 300)
+      const scene = run(createScene(VIEW, false), grid, 0, 2)
+      run(scene, null, 2 + FRAME, 2 + 0.6)
+      expect(scene.armed).toBe(true)
+      const back = 2 + 0.6 + FRAME
+      run(scene, grid, back, back + 3)
+      expect(scene.lockedAt).toBeGreaterThan(back + LOCK_DWELL)
+      expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+
+    it('does not arm when the grid is lost for less than REARM_LOST', () => {
+      expect(0.3).toBeLessThan(REARM_LOST)
+      const grid = gridAt(50, 300)
+      const scene = run(createScene(VIEW, false), grid, 0, 2)
+      run(scene, null, 2 + FRAME, 2 + 0.3)
+      const back = 2 + 0.3 + FRAME
+      run(scene, grid, back, back + 3)
+      expect(scene.armed).toBe(false)
+      expect(scene.lockProgress).toBe(0)
+      expect(scene.lockedAt).toBe(-1)
+    })
+
+    it('arms when the grid jumps to another place, then locks on after the dwell', () => {
+      const scene = run(createScene(VIEW, false), gridAt(50, 100, 200), 0, 2)
+      expect(scene.armed).toBe(false)
+      const jump = 2 + FRAME
+      stepScene(scene, gridAt(50, 550, 200), jump, false)
+      expect(scene.event).toBe('found')
+      expect(scene.armed).toBe(true)
+      run(scene, gridAt(50, 550, 200), jump + FRAME, jump + 3)
+      // The scene stays steady through the jump, so the dwell counts from foundAt.
+      expect(scene.foundAt).toBe(jump)
+      expect(Math.abs(scene.lockedAt - (jump + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
   })
 })
