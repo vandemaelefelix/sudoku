@@ -55,6 +55,7 @@ reference pairs in `fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image
 | Input and output dtype | `float32` |
 | Softmax | Inside the model. Outputs are probabilities |
 | Output identification | By index. The phone runtime returns outputs in tensor order. Their names are not reliable identifiers. `manifest.json` records the index of `digit` and of `kind`, taken from the exported file. The scanner reads that map and checks the shapes `[81, 10]` and `[81, 4]` before it uses the outputs. The tensor names also contain `digit` and `kind`, for tools |
+| Reference outputs | `reference-outputs.json`, written by the export next to the model. It holds the 81 reference cells as one input batch (base64, little-endian float32) and the PyTorch probabilities of both heads. The app compares the phone's outputs with it (ADR-005) |
 
 ## Outputs
 
