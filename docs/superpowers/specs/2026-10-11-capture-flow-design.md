@@ -299,9 +299,9 @@ screen replaces the flatten. All digits show at the end of the fade. The gates s
 
 | Question | Decided by |
 | --- | --- |
-| `LOCK_DWELL`, `STEADY_SPEED` and `STEADY_MOTION` final values | #6, on the device |
-| The photo and the video frames have the same field of view at 16:9 | #6, on the device. If not, `recognise()` maps through the crop |
-| Nitro objects (the photo, the image) can pass into the scanner runtime | #6, a first task on the device. If not, the photo crosses as raw pixels |
+| `LOCK_DWELL`, `STEADY_SPEED` and `STEADY_MOTION` final values | Decided in #6: 0.7 s, 30 pt/s and 0.5. No tuning was needed |
+| The photo and the video frames have the same field of view at 16:9 | Decided in #6: yes. The re-detection found the corners within 0.5 to 3.4 % of the grid side. No crop mapping is needed |
+| Nitro objects (the photo, the image) can pass into the scanner runtime | Decided in #6: yes. The photo, the image and the model pass as plain arguments of `runOnRuntimeAsync` |
 | `REVIEW_CONFIDENCE` final value | The first real fixture set |
 | Dark-mode colours of the correction screen | The developer |
 
