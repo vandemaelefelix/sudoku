@@ -17,6 +17,8 @@ export const WARMUP = 1.0
 export const REARM_LOST = 0.5
 /** The smallest grid width, as a share of the view width, that can lock on. To tune on the device, see the scan-pipeline concept. */
 export const MIN_GRID_WIDTH = 0.35
+/** A big grid stays big down to MIN_GRID_WIDTH minus this share, so a grid near the limit does not flicker the progress. To tune on the device, see the scan-pipeline concept. */
+export const GRID_WIDTH_HYSTERESIS = 0.03
 /** A corner step in one frame larger than this share of the grid diagonal means another grid. */
 export const JUMP = 0.25
 /** The longest step the scene takes, so a pause does not make an effect jump. */
@@ -32,9 +34,10 @@ export type GridEvent = 'found' | 'lost' | 'none'
  * event is for this frame only. A jump to another grid gives 'found', with lostAt and foundAt both at t.
  * presence and motion: 0..1. steadyAt: the time the scene last became steady. speed and changedAt belong to stepScene.
  * lockProgress: 0..1, see LOCK_DWELL. lockedAt: the time of lock-on, or -1. From lock-on, the scene keeps the locked quad and ignores new detections.
- * armed: lock-on can happen. A scene that is not armed arms on a jump, or after REARM_LOST without a grid counted from the end of the warm-up at the earliest (scan-pipeline concept).
+ * armed: lock-on can happen. A scene that is not armed arms on a jump, or after REARM_LOST without a grid.
+ * That time without a grid counts from the end of the warm-up at the earliest (scan-pipeline concept).
  * startedAt: the time of the first frame, or -1. lostSince: the time the grid was last lost, or the first frame when it has no grid; -1 while a grid is in view.
- * bigSince: the time the grid became at least MIN_GRID_WIDTH wide, or -1 while there is no such grid.
+ * bigSince: the time the grid became at least MIN_GRID_WIDTH wide, or -1 while there is no such grid. See GRID_WIDTH_HYSTERESIS.
  * capture: the transition channels in the capture phase, where advanceCapture moves the quad; null in the live phase.
  */
 export type Scene = {
@@ -162,7 +165,8 @@ export function stepScene(scene: Scene, detected: Quad | null, t: number, reduce
     scene.bigSince = -1
   } else {
     scene.lostSince = -1
-    const big = gridWidth(grid) >= MIN_GRID_WIDTH * scene.width
+    const limit = scene.bigSince >= 0 ? MIN_GRID_WIDTH - GRID_WIDTH_HYSTERESIS : MIN_GRID_WIDTH
+    const big = gridWidth(grid) >= limit * scene.width
     if (!big) scene.bigSince = -1
     else if (scene.bigSince < 0) scene.bigSince = t
   }

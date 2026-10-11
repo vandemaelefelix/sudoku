@@ -1,6 +1,7 @@
 import type { Quad } from '../../scanner'
 import {
   createScene,
+  GRID_WIDTH_HYSTERESIS,
   LOCK_DWELL,
   MAX_STEP,
   MIN_GRID_WIDTH,
@@ -265,6 +266,61 @@ describe('lock-on', () => {
       expect(scene.lockProgress).toBeGreaterThan(0)
       run(scene, big, grown + LOCK_DWELL - FRAME, grown + LOCK_DWELL + 0.5)
       expect(Math.abs(scene.lockedAt - (grown + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+
+    /** A square grid with its centre at (200, 450), so a change of size is a small step and not a jump. */
+    const square = (size: number) => gridAt(200 - size / 2, 450 - size / 2, size)
+
+    it('drops the progress to 0 when the grid shrinks below the limit, and counts the dwell again from the regrowth', () => {
+      const scene = run(createScene(VIEW), null, 0, AFTER - FRAME)
+      run(scene, square(200), AFTER, AFTER + 0.5)
+      expect(scene.lockProgress).toBeGreaterThan(0)
+      // Two steps of 40 pt, each a small step, so the scene stays steady and sees no jump.
+      run(scene, square(160), AFTER + 0.5 + FRAME, AFTER + 0.6)
+      run(scene, square(120), AFTER + 0.6 + FRAME, AFTER + 1.6)
+      expect(120 / VIEW.width).toBeLessThan(MIN_GRID_WIDTH - GRID_WIDTH_HYSTERESIS)
+      expect(scene.steady).toBe(true)
+      expect(scene.lockProgress).toBe(0)
+      const regrown = AFTER + 1.6 + FRAME
+      run(scene, square(160), regrown, regrown + LOCK_DWELL - 2 * FRAME)
+      expect(scene.lockedAt).toBe(-1)
+      expect(scene.lockProgress).toBeGreaterThan(0)
+      run(scene, square(160), regrown + LOCK_DWELL - FRAME, regrown + LOCK_DWELL + 0.5)
+      expect(Math.abs(scene.lockedAt - (regrown + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+
+    describe('hysteresis', () => {
+      // 145 pt and 135 pt in a view 402 pt wide: just above MIN_GRID_WIDTH, and inside the hysteresis band below it.
+      it('uses test grids on both sides of the limit and inside the band', () => {
+        expect(145 / VIEW.width).toBeGreaterThan(MIN_GRID_WIDTH)
+        expect(135 / VIEW.width).toBeLessThan(MIN_GRID_WIDTH)
+        expect(135 / VIEW.width).toBeGreaterThan(MIN_GRID_WIDTH - GRID_WIDTH_HYSTERESIS)
+      })
+
+      it('keeps a big grid big while it shrinks into the band, so the progress does not flicker', () => {
+        const scene = run(createScene(VIEW), null, 0, AFTER - FRAME)
+        run(scene, square(145), AFTER, AFTER + 0.3)
+        const bigSince = scene.bigSince
+        expect(bigSince).toBe(AFTER)
+        let progress = scene.lockProgress
+        for (let t = AFTER + 0.3 + FRAME, i = 0; t < AFTER + 0.8; t += FRAME, i++) {
+          // The size flips every quarter second; a flip every frame would make the grid unsteady.
+          stepScene(scene, detection(square(Math.floor(i / 15) % 2 === 0 ? 135 : 145)), t, false)
+          expect(scene.lockProgress).toBeGreaterThanOrEqual(progress)
+          progress = scene.lockProgress
+        }
+        expect(scene.bigSince).toBe(bigSince)
+        expect(scene.steady).toBe(true)
+        run(scene, square(135), AFTER + 0.8, AFTER + 3)
+        expect(scene.lockedAt).toBeGreaterThan(0)
+      })
+
+      it('does not make a grid in the band big', () => {
+        const scene = run(createScene(VIEW), square(135), 0, 5)
+        expect(scene.bigSince).toBe(-1)
+        expect(scene.lockProgress).toBe(0)
+        expect(scene.lockedAt).toBe(-1)
+      })
     })
 
     it('uses the mean width of the top and bottom edges', () => {
