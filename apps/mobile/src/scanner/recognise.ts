@@ -3,8 +3,9 @@ import { findGrid } from './findGrid'
 import { cornerOffset, downscaleSize, fromCrop, searchRect, toPhotoPixels } from './photoGeometry'
 import { cropRgb, FLAT_SIZE, type RawPixels, sliceCells, toRgb } from './pixels'
 import { preprocessCells } from './preprocess'
-import type { Quad } from './quad'
 import { warpGrid } from './warp'
+import type { Quad } from '@/utils/geometry.utils'
+import { errorMessage } from '@/utils/log.utils'
 
 // Scan-pipeline concept, "Threads and coordinates". Every function here runs on the scanner runtime.
 
@@ -109,7 +110,7 @@ export function recognise(
       timings: { imageMs, detectMs, flattenMs, classifyMs },
     }
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+    return { ok: false, reason: errorMessage(error) }
   } finally {
     for (const image of images) image.dispose()
   }

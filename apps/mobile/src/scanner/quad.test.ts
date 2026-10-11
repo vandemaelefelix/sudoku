@@ -1,4 +1,5 @@
-import { isConvex, orderCorners, type Point, type Quad, quadArea, toGridDetection, turnHalf } from './quad'
+import { isConvex, orderCorners, quadArea, toGridDetection, turnHalf } from './quad'
+import type { Point, Quad } from '@/utils/geometry.utils'
 
 const square: Quad = [
   { x: 0.2, y: 0.2 },

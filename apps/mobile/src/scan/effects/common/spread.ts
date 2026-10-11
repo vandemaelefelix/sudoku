@@ -1,4 +1,4 @@
-import type { Point } from '@/scanner'
+import type { Point } from '@/utils/geometry.utils'
 
 function pushPair(
   points: Point[],

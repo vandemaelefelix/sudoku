@@ -1,6 +1,5 @@
-import type { Quad } from '@/scanner'
 import { type Channels, TRANSITION_END, transitionAt } from '@/scan/transition/timeline'
-import { intersections, invert, isBoxCorner, project, pushOutside, unitToQuad } from '@/scan/effects/common/geometry'
+import { intersections, isBoxCorner, pushOutside } from '@/scan/effects/common/geometry'
 import { spreadStep } from '@/scan/effects/common/spread'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import {
@@ -24,6 +23,8 @@ import {
   stepField,
   type FieldState,
 } from './field'
+import type { Quad } from '@/utils/geometry.utils'
+import { invert, project, unitToQuad } from '@/utils/homography.utils'
 
 function itemAt<T>(items: readonly T[], index: number): T {
   const item = items[index]

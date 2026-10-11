@@ -1,11 +1,11 @@
 import { createPicture, type SkImage } from '@shopify/react-native-skia'
 import { render, screen } from '@testing-library/react-native'
 import { useSharedValue } from 'react-native-reanimated'
-import type { Quad } from '@/scanner'
 import { LIGHT } from '@/theme/colors'
 import { TransitionCanvas } from './TransitionCanvas'
 import type { CaptureFrame } from './warp'
 import { transitionAt } from './timeline'
+import type { Quad } from '@/utils/geometry.utils'
 
 const QUAD: Quad = [
   { x: 40, y: 100 },

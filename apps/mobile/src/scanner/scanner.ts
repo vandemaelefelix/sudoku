@@ -2,8 +2,9 @@ import type { Photo } from 'react-native-vision-camera'
 import { createWorkletRuntime, runOnRuntimeAsync, type WorkletRuntime } from 'react-native-worklets'
 import { ModelContractError } from './classifier'
 import { loadClassifier } from './model'
-import type { Quad } from './quad'
 import { recognise, type RecogniseResult } from './recognise'
+import type { Quad } from '@/utils/geometry.utils'
+import { errorMessage } from '@/utils/log.utils'
 
 /** recognise never rejects: a failure is a result with ok false. */
 export type Scanner = { recognise(photo: Photo, quad: Quad | null): Promise<RecogniseResult> }
@@ -40,7 +41,7 @@ async function loadScanner(): Promise<Scanner> {
       runOnRuntimeAsync(scannerRuntime(), recognise, photo, quad, model, outputs).catch(
         (error: unknown): RecogniseResult => ({
           ok: false,
-          reason: error instanceof Error ? error.message : String(error),
+          reason: errorMessage(error),
         }),
       ),
   }

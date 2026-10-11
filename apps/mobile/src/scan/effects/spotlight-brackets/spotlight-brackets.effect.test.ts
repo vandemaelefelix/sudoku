@@ -1,4 +1,3 @@
-import type { Quad } from '@/scanner'
 import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import {
@@ -10,6 +9,7 @@ import {
   DIM_STEADY,
   spotlightBrackets,
 } from './spotlight-brackets.effect'
+import type { Quad } from '@/utils/geometry.utils'
 
 const VIEW = { width: 402, height: 874 }
 

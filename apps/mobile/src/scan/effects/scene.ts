@@ -1,7 +1,6 @@
-import type { Quad } from '@/scanner'
-import { type Homography, invert, unitToQuad } from './common/geometry'
-import type { ViewSize } from '@/scan/previewMapping'
 import type { Channels } from '@/scan/transition/timeline'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { type Homography, invert, unitToQuad } from '@/utils/homography.utils'
 
 // Times are seconds. Speeds are points per second.
 /** Corners slower than this count as slow. The lock-on threshold. Tuned on the device, see the scan-pipeline concept. */

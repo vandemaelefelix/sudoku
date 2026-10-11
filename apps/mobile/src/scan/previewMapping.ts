@@ -1,7 +1,5 @@
 import type { CameraOrientation } from 'react-native-vision-camera'
-import type { Quad } from '@/scanner'
-
-export type ViewSize = { width: number; height: number }
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
 
 /** Two aspects that differ by at most this share count as the same field of view. */
 export const ASPECT_TOLERANCE = 0.01

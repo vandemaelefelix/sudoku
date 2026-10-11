@@ -2,9 +2,10 @@ import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { impactAsync } from 'expo-haptics'
 import type { SkImage } from '@shopify/react-native-skia'
 import type { Photo } from 'react-native-vision-camera'
-import { createScanner, type Quad, type RecogniseResult } from '@/scanner'
+import { createScanner, type RecogniseResult } from '@/scanner'
 import { photoToSkImage } from './transition/photoImage'
 import { formatScanLog, useCapture } from './useCapture'
+import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), createScanner: jest.fn() }))
 jest.mock('./transition/photoImage', () => ({ photoToSkImage: jest.fn() }))

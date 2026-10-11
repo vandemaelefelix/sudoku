@@ -1,7 +1,7 @@
-import type { Quad } from '@/scanner'
 import { createScene, stepScene } from '@/scan/effects/scene'
-import { invert, project, unitToQuad } from './geometry'
 import { gridInverse, IDENTITY, prototypePixel, prototypeScale, toColumnMajor } from './shaderMatrix'
+import type { Quad } from '@/utils/geometry.utils'
+import { invert, project, unitToQuad } from '@/utils/homography.utils'
 
 const skewed: Quad = [
   { x: 100, y: 200 },

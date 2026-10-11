@@ -1,11 +1,11 @@
-import type { Point, Quad } from '@/scanner'
-import type { ViewSize } from '@/scan/previewMapping'
 import type { Channels } from '@/scan/transition/timeline'
 import { assignNearest } from '@/scan/effects/common/assign'
-import { type Homography, intersections, isBoxCorner, project, pushOutside } from '@/scan/effects/common/geometry'
+import { intersections, isBoxCorner, pushOutside } from '@/scan/effects/common/geometry'
 import { createDots, type Dot, DOT_SPACING, twinkle, wander } from '@/scan/effects/common/layout'
 import { spreadStep } from '@/scan/effects/common/spread'
 import { diagonal, type Scene } from '@/scan/effects/scene'
+import type { Point, Quad, ViewSize } from '@/utils/geometry.utils'
+import { type Homography, project } from '@/utils/homography.utils'
 
 // Stage 1 of the scan experience design. Opacities are 0..1, times are seconds, sizes are points.
 export const DIM = 0.3

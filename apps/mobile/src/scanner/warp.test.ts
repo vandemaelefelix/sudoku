@@ -1,5 +1,6 @@
 import { Mat, OpenCV } from 'react-native-fast-opencv'
 import { warpGrid } from './warp'
+import type { Quad } from '@/utils/geometry.utils'
 
 type Fake = { release: jest.Mock }
 const created: Fake[] = []
@@ -22,7 +23,7 @@ jest.mock('react-native-fast-opencv', () => ({
   OpenCV: { warpPerspective: jest.fn() },
 }))
 
-const corners = [
+const corners: Quad = [
   { x: 10, y: 10 },
   { x: 90, y: 10 },
   { x: 90, y: 90 },

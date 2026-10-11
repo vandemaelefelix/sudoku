@@ -1,5 +1,5 @@
-import type { Quad } from '@/scanner'
 import { EMPTY_JITTER, type JitterReport, type JitterWindow, trackJitter } from './jitter'
+import type { Quad } from '@/utils/geometry.utils'
 
 function at(x: number): Quad {
   return [

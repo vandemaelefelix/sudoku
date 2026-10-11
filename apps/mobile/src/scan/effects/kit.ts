@@ -2,9 +2,10 @@ import { PaintStyle, type SkRuntimeEffect, Skia, StrokeCap, StrokeJoin } from '@
 import { LIGHT } from '@/theme/colors'
 import { makeStarSprite, SPRITE_SIZE } from './common/sprite'
 import type { AnyEffect, DrawKit } from './types'
+import { devLog, errorMessage } from '@/utils/log.utils'
 
 function logShaderError(id: string, error: unknown) {
-  if (__DEV__) console.log(`[fx] ${id} shader failed: ${error instanceof Error ? error.message : String(error)}`)
+  devLog('fx', `${id} shader failed: ${errorMessage(error)}`)
 }
 
 /** Null when the source does not compile. Skia throws on a compile error. */

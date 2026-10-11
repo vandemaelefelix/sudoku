@@ -1,13 +1,12 @@
 import { createPicture, Skia } from '@shopify/react-native-skia'
 import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
-import type { Quad } from '@/scanner'
-import type { ViewSize } from '@/scan/previewMapping'
 import { transitionAt } from '@/scan/transition/timeline'
 import type { CaptureFrame } from '@/scan/transition/warp'
 import { EffectCanvas } from './EffectCanvas'
 import * as engine from './engine'
 import { DEFAULT_INDEX, effectIndex } from './registry'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
 
 // Test effects stand in for the registry, so removing a real effect cannot break these tests.
 jest.mock('./registry', () => {

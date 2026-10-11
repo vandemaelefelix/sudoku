@@ -1,9 +1,8 @@
-import type { Quad } from '@/scanner'
-import type { ViewSize } from '@/scan/previewMapping'
 import type { Channels } from '@/scan/transition/timeline'
-import { invert, unitToQuad } from './common/geometry'
 import { createScene, MAX_STEP, type Scene, stepScene } from './scene'
 import type { AnyEffect } from './types'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { invert, unitToQuad } from '@/utils/homography.utils'
 
 /** id: the effect that state belongs to. */
 export type Engine = { id: string; scene: Scene; state: unknown }

@@ -1,13 +1,7 @@
-import type { Point, Quad } from '@/scanner'
 import { toPreview } from '@/scan/previewMapping'
-import { lerpQuad, photoMatrix, quadToQuad, rectQuad } from './warp'
+import { photoMatrix } from './warp'
+import type { Point, Quad } from '@/utils/geometry.utils'
 
-const trapezoid: Quad = [
-  { x: 120, y: 80 },
-  { x: 300, y: 100 },
-  { x: 340, y: 360 },
-  { x: 90, y: 330 },
-]
 const square: Quad = [
   { x: 16, y: 134 },
   { x: 386, y: 134 },
@@ -29,54 +23,6 @@ function corners(a: Quad, b: Quad): [Point, Point][] {
     [a[3], b[3]],
   ]
 }
-
-describe('lerpQuad', () => {
-  it('returns the ends and the middle', () => {
-    expect(lerpQuad(trapezoid, square, 0)).toEqual(trapezoid)
-    expect(lerpQuad(trapezoid, square, 1)).toEqual(square)
-    const mid = lerpQuad(trapezoid, square, 0.5)
-    expect(mid[0]).toEqual({ x: 68, y: 107 })
-    expect(mid[2]).toEqual({ x: 363, y: 432 })
-  })
-})
-
-describe('rectQuad', () => {
-  it('lists the corners clockwise from the top left', () => {
-    expect(rectQuad({ x: 16, y: 134, width: 370, height: 370 })).toEqual(square)
-  })
-})
-
-describe('quadToQuad', () => {
-  it('maps each corner of a onto b', () => {
-    const h = quadToQuad(trapezoid, square)
-    expect(h).not.toBeNull()
-    expect(h).toHaveLength(9)
-    expect(h?.[8]).toBeCloseTo(1, 12)
-    for (const [from, to] of corners(trapezoid, square)) {
-      const p = apply(h as number[], from)
-      expect(p.x).toBeCloseTo(to.x, 6)
-      expect(p.y).toBeCloseTo(to.y, 6)
-    }
-  })
-
-  it('maps a quad onto itself as the identity', () => {
-    const h = quadToQuad(trapezoid, trapezoid) as number[]
-    const p = apply(h, { x: 200, y: 200 })
-    expect(p.x).toBeCloseTo(200, 6)
-    expect(p.y).toBeCloseTo(200, 6)
-  })
-
-  it('returns null for a degenerate quad', () => {
-    const line: Quad = [
-      { x: 0, y: 0 },
-      { x: 1, y: 1 },
-      { x: 2, y: 2 },
-      { x: 3, y: 3 },
-    ]
-    expect(quadToQuad(line, square)).toBeNull()
-    expect(quadToQuad(square, line)).toBeNull()
-  })
-})
 
 describe('photoMatrix', () => {
   const locked: Quad = [

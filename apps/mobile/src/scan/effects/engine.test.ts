@@ -1,8 +1,8 @@
-import type { Quad } from '@/scanner'
 import { transitionAt } from '@/scan/transition/timeline'
-import { project } from './common/geometry'
 import { advance, advanceCapture } from './engine'
 import type { AnyEffect } from './types'
+import type { Quad } from '@/utils/geometry.utils'
+import { project } from '@/utils/homography.utils'
 
 const VIEW = { width: 402, height: 874 }
 
