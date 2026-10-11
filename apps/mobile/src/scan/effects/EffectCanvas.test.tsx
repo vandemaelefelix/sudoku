@@ -1,4 +1,4 @@
-import { createPicture } from '@shopify/react-native-skia'
+import { createPicture, Skia } from '@shopify/react-native-skia'
 import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
 import type { Quad } from '../../scanner'
@@ -117,5 +117,25 @@ describe('EffectCanvas', () => {
     const canvas = lastFrame()
     expect(canvas.drawAtlas).not.toHaveBeenCalled()
     expect(canvas.drawPath).toHaveBeenCalledTimes(2)
+  })
+
+  it('fills the view with the lattice once a grid is found', () => {
+    renderCanvas(VIEW, effectIndex('grid-lattice'), grid)
+    tick(1)
+    tick(1 + 1 / 60)
+    expect(lastFrame().drawRect).toHaveBeenCalledTimes(1)
+  })
+
+  it('draws nothing for an effect whose shader did not compile, and logs the error', () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    jest.mocked(Skia.RuntimeEffect.Make).mockImplementationOnce(() => {
+      throw new Error('Error in sksl: bad')
+    })
+    renderCanvas(VIEW, effectIndex('grid-lattice'), grid)
+    tick(1)
+    tick(1 + 1 / 60)
+    expect(lastFrame().drawRect).not.toHaveBeenCalled()
+    expect(log).toHaveBeenCalledWith('[fx] grid-lattice shader failed: Error in sksl: bad')
+    log.mockRestore()
   })
 })
