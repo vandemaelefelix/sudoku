@@ -57,3 +57,36 @@ export function cornerOffset(a: Quad, b: Quad, width: number, height: number): n
   }
   return largest / (sides / 4)
 }
+
+/**
+ * The 3 × 3 homography, row-major with h[8] = 1, that maps each from[i] to to[i]. Takes 4 points each.
+ * Throws when the points give no unique transform, for example three collinear points.
+ */
+export function perspectiveTransform(from: Point[], to: Point[]): number[] {
+  'worklet'
+  // Rows of [a | b]: for each pair, h0 x + h1 y + h2 - X (h6 x + h7 y) = X and h3 x + h4 y + h5 - Y (h6 x + h7 y) = Y.
+  const rows: number[][] = []
+  for (let i = 0; i < 4; i++) {
+    const { x, y } = from[i]
+    const { x: u, y: v } = to[i]
+    rows.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u])
+    rows.push([0, 0, 0, x, y, 1, -v * x, -v * y, v])
+  }
+  for (let col = 0; col < 8; col++) {
+    let pivot = col
+    for (let r = col + 1; r < 8; r++) if (Math.abs(rows[r][col]) > Math.abs(rows[pivot][col])) pivot = r
+    if (Math.abs(rows[pivot][col]) < 1e-9) throw new Error('the corners do not give a perspective transform')
+    const swap = rows[col]
+    rows[col] = rows[pivot]
+    rows[pivot] = swap
+    for (let r = 0; r < 8; r++) {
+      if (r === col) continue
+      const factor = rows[r][col] / rows[col][col]
+      for (let c = col; c < 9; c++) rows[r][c] -= factor * rows[col][c]
+    }
+  }
+  const h: number[] = []
+  for (let r = 0; r < 8; r++) h.push(rows[r][8] / rows[r][r])
+  h.push(1)
+  return h
+}

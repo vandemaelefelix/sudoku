@@ -22,12 +22,16 @@ const LOCKED: Quad = [
   { x: 0.2, y: 0.65 },
 ]
 
-function image(width: number, height: number, disposed: string[]): ImageSource {
+/** Like the device: the raw pixels of a photo image are sideways, a resized image is upright. */
+function image(width: number, height: number, disposed: string[], upright = false): ImageSource {
   return {
     width,
     height,
-    resize: (w, h) => image(w, h, disposed),
-    toRawPixelData: () => ({ buffer: new ArrayBuffer(width * height * 4), width, height, pixelFormat: 'BGRA' }),
+    resize: (w, h) => image(w, h, disposed, true),
+    toRawPixelData: () => {
+      const [w, h] = upright ? [width, height] : [height, width]
+      return { buffer: new ArrayBuffer(w * h * 4), width: w, height: h, pixelFormat: 'BGRA' }
+    },
     dispose: () => disposed.push(`${width}x${height}`),
   }
 }
@@ -133,6 +137,12 @@ it('fails when there is no quad and no grid in the photo', () => {
   expect(recognise(photo(), null, model(), OUTPUTS)).toEqual({ ok: false, reason: 'no grid in the photo' })
 })
 
+it('reads the full pixels upright', () => {
+  find.mockReturnValue(null)
+  recognise(photo(), LOCKED, model(), OUTPUTS)
+  expect(warp.mock.calls[0][0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
+})
+
 it('fails with the reason when a step throws, and disposes every image', () => {
   find.mockReturnValue(null)
   warp.mockImplementation(() => {
@@ -140,7 +150,9 @@ it('fails with the reason when a step throws, and disposes every image', () => {
   })
   const disposed: string[] = []
   expect(recognise(photo(disposed), LOCKED, model(), OUTPUTS)).toEqual({ ok: false, reason: 'warp failed' })
-  expect(disposed.toSorted()).toEqual([`${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].toSorted())
+  expect(disposed.toSorted()).toEqual(
+    [`${PHOTO.width}x${PHOTO.height}`, `${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].toSorted(),
+  )
 })
 
 it('gives the time of each step', () => {
