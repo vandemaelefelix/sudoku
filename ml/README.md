@@ -11,8 +11,11 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just export <run>`: export a run to TFLite. The run path is relative to `ml/`, for example `just export artifacts/<run>`.
 - `just preprocess-fixtures`: regenerate the synthetic reference pairs in `fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
 - `just dataset-manifest`: rewrite `ml/datasets/cells.csv` from the folders.
-- `just suspects`: rank the cells whose label the model doubts most.
-- `just relabel [file]`: apply the reviewed labels from a file to the cells.
+- `just suspects`: rank the cells whose digit or kind label the model doubts most. The Review screen shows them.
+- `just group-cells [run]`: group similar cells per digit folder for the labelling page.
+- `just label-cells`: open the labelling page on 127.0.0.1.
+- `just label-rollback <session>`: reverse every change of one labelling session.
+- `just relabel [file]`: apply the labels from a relabel CSV to the cells.
 
 Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
 stays private (ADR-013).
@@ -32,8 +35,10 @@ ml/data/
 │   └── unlabeled/             cells that still need a label
 └── photos/                    full sudoku photos
 ml/datasets/
-├── cells.csv                  id, label
-└── photos.csv                 id, file, origin
+├── cells.csv                  id, label, kind
+├── photos.csv                 id, file, origin
+├── kind-log.jsonl             every kind and digit change, append-only
+└── kind-check.jsonl           blind check answers
 ```
 
 - The `id` of an image is the SHA-256 of the text `<width>x<height>` followed by the image's
@@ -41,18 +46,19 @@ ml/datasets/
   hold each image once.
 - The label of a cell is the folder it is in. `cells.csv` must match the folders.
 - `origin` in `photos.csv` is `phone` or `web` (see DATA_SOURCES.md).
-- Cells carry a digit label only. The kind (printed, handwritten, notes) gets a label later
-  (ADR-006).
+- The kind of a cell comes from `kind-log.jsonl` (ADR-009, amendment). `printed` means made by
+  a printer or a screen. `handwritten` means written by a person. Undecidable cells are `unsure`.
 
 The dataset holds 16,277 cells and 253 photos. 71 cells have no label yet: 67 hold notes or other
 marks, and 4 need a check by hand.
 
-## Review suspect labels
+## Label the kind
 
-1. Run `just suspects`. It writes `ml/data/review/`: `suspects.csv`, `relabels.csv` and `sheet-NN.png`.
-2. Look at each sheet. The number under a cell is its row in `relabels.csv`, counted from 0.
-3. Fill the `new_label` column. A valid value is empty (keep the label), `empty`, `1` to `9`, or `unlabeled`.
-4. Save the file as CSV with comma separators.
-5. Run `just relabel`.
+1. Run `just group-cells`. It groups the cells of each digit folder.
+2. Run `just label-cells`. The page opens in the browser.
+3. On the Groups screen, press P or H for the whole screen. Click the exceptions. Press Enter.
+4. After a labelling pass, run `just suspects`. Then work through the Review screen.
+5. At least 7 days later, run the Check screen. It shows how often you agree with your labels.
 
-Do not run `just suspects` again before step 5. It refuses to overwrite a `relabels.csv` that has a filled `new_label`. Move the file first.
+Stop the server with Ctrl-C. `just label-cells` rewrites `cells.csv` before and after.
+Commit `ml/datasets/kind-log.jsonl`, `kind-check.jsonl` and `cells.csv` after a session.
