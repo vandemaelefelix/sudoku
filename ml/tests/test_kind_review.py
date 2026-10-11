@@ -18,27 +18,33 @@ def kind(second: int, cell: str, new: str, screen: str = "groups", old=None) -> 
 
 def test_near_duplicates_with_different_kinds_both_go_to_review():
     lines = [kind(1, A, "printed"), kind(2, B, "handwritten"), kind(3, C, "printed")]
-    items = near_duplicate_items({A: 1, B: 1, C: 2}, lines)
+    items = near_duplicate_items([(A, B)], lines)
     assert sorted(i.cell for i in items) == [A, B]
     assert items[0].since == "2026-10-12T09:00:02Z"
     assert items[0].evidence["group"] == [A, B]
 
 
+def test_only_a_direct_pair_counts_not_a_chain_of_pairs():
+    lines = [kind(1, A, "printed"), kind(2, B, "printed"), kind(3, C, "handwritten")]
+    items = near_duplicate_items([(A, B), (B, C)], lines)
+    assert sorted(i.cell for i in items) == [B, C]
+
+
 def test_unsure_does_not_count_as_a_disagreement():
     lines = [kind(1, A, "printed"), kind(2, B, "unsure")]
-    assert near_duplicate_items({A: 1, B: 1}, lines) == []
+    assert near_duplicate_items([(A, B)], lines) == []
 
 
 def test_a_review_line_after_the_evidence_closes_the_item():
     lines = [kind(1, A, "printed"), kind(2, B, "handwritten")]
-    items = near_duplicate_items({A: 1, B: 1}, lines)
+    items = near_duplicate_items([(A, B)], lines)
     lines += [kind(5, A, "printed", "review", "printed")]
     assert [i.cell for i in open_items(items, lines)] == [B]
 
 
 def test_a_review_line_before_the_evidence_does_not_close_the_item():
     lines = [kind(1, A, "printed", "review"), kind(2, A, "printed"), kind(3, B, "handwritten")]
-    items = near_duplicate_items({A: 1, B: 1}, lines)
+    items = near_duplicate_items([(A, B)], lines)
     assert len(open_items(items, lines)) == 2
 
 
