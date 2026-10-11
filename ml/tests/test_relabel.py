@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from sudoku_ml.relabel import apply_relabels
+from sudoku_ml.relabel import apply_relabels, move_cells
 
 
 def tree(tmp_path: Path) -> Path:
@@ -105,3 +105,16 @@ def test_accepts_a_csv_with_an_excel_bom(tmp_path: Path):
     path = tmp_path / "relabels.csv"
     path.write_bytes("file,new_label\naaaaaaaaaaaaaaaa,3\n".encode("utf-8-sig"))
     assert apply_relabels(cells, path) == 1
+
+
+def test_move_cells_moves_one_cell(tmp_path: Path):
+    cells = tree(tmp_path)
+    assert move_cells(cells, {"aaaaaaaaaaaaaaaa": "empty"}) == 1
+    assert (cells / "empty" / "aaaaaaaaaaaaaaaa.png").exists()
+
+
+def test_move_cells_checks_everything_before_it_moves(tmp_path: Path):
+    cells = tree(tmp_path)
+    with pytest.raises(ValueError, match="unknown label"):
+        move_cells(cells, {"aaaaaaaaaaaaaaaa": "3", "bbbbbbbbbbbbbbbb": "10"})
+    assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
