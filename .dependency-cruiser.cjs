@@ -33,7 +33,8 @@ module.exports = {
       name: 'no-unresolvable',
       severity: 'error',
       from: {},
-      to: { couldNotResolve: true },
+      // The model file is git-ignored (ADR-007, amendment), so CI cannot resolve it.
+      to: { couldNotResolve: true, pathNot: '\\.tflite$' },
     },
   ],
   options: {
