@@ -11,12 +11,11 @@ import {
 import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
-import type { Quad } from '@/scanner'
 import type { Colors } from '@/theme/colors'
 import { drawGridLines } from '@/scan/correction/gridLines'
-import { type Homography, unitToQuad } from '@/scan/effects/common/geometry'
-import type { ViewSize } from '@/scan/previewMapping'
 import { type CaptureFrame, photoMatrix } from './warp'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { type Homography, unitToQuad } from '@/utils/homography.utils'
 
 /** The static board draws its lines 1 pt inside the grid square, so the 2 pt outer line is not clipped (correction screen). */
 const LINE_INSET = 1

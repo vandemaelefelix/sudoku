@@ -4,7 +4,7 @@ import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-nati
 import { useAnimatedReaction, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
 import type { SkImage } from '@shopify/react-native-skia'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { type GridDetector, type Quad, type RecogniseResult, useGridDetector } from '@/scanner'
+import { type GridDetector, type RecogniseResult, useGridDetector } from '@/scanner'
 import { CameraScreen, type FrameDetection } from './CameraScreen'
 import { CorrectionScreen } from './correction/CorrectionScreen'
 import { correctionLayout } from './correction/layout'
@@ -15,6 +15,7 @@ import { EffectPicker } from './effects/EffectPicker'
 import { GATE_PHOTO, GATE_RESULTS, REDUCED_END, TRANSITION_END } from './transition/timeline'
 import { TransitionCanvas } from './transition/TransitionCanvas'
 import { useCapture } from './useCapture'
+import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('@/scanner', () => ({
   ...jest.requireActual('@/scanner'),

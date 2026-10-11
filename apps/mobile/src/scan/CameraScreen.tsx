@@ -17,7 +17,7 @@ import {
 } from 'react-native-vision-camera'
 import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { type Quad, type RecogniseResult, useGridDetector } from '@/scanner'
+import { type RecogniseResult, useGridDetector } from '@/scanner'
 import { useColors } from '@/theme/colors'
 import { CorrectionScreen } from './correction/CorrectionScreen'
 import type { CorrectionLayout } from './correction/layout'
@@ -26,13 +26,15 @@ import { DEFAULT_INDEX } from './effects/registry'
 import { EffectCanvas } from './effects/EffectCanvas'
 import { EffectPicker } from './effects/EffectPicker'
 import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
-import { toPreview, uprightAspect, type ViewSize } from './previewMapping'
+import { toPreview, uprightAspect } from './previewMapping'
 import { type Smoothing, smoothQuad } from './smoothing'
 import type { Gates } from './transition/timeline'
 import { TransitionCanvas } from './transition/TransitionCanvas'
 import { TransitionClock, type TransitionPlan } from './transition/TransitionClock'
-import { type CaptureFrame, rectQuad } from './transition/warp'
+import type { CaptureFrame } from './transition/warp'
 import { useCapture } from './useCapture'
+import { type Quad, type ViewSize, rectQuad } from '@/utils/geometry.utils'
+import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
 
 /** One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame. */
 export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number }
@@ -44,16 +46,17 @@ const DARK_BAR_DIM = 0.5
 const MEASURE_JITTER = __DEV__
 
 function logFrameRate(fps: number, detectionMs: number) {
-  console.log(`[camera] ${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)
+  devLog('camera', `${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)
 }
 
 function warnDetector(message: string) {
-  console.warn(`[camera] grid detection failed: ${message}`)
+  devWarn('camera', `grid detection failed: ${message}`)
 }
 
 function logJitter(report: JitterReport) {
-  console.log(
-    `[outline] max corner step ${report.maxStep.toFixed(2)} pt over ${report.frames} frames (${report.seconds.toFixed(1)} s)`,
+  devLog(
+    'outline',
+    `max corner step ${report.maxStep.toFixed(2)} pt over ${report.frames} frames (${report.seconds.toFixed(1)} s)`,
   )
 }
 
@@ -147,8 +150,7 @@ export function CameraScreen({
   const finish = useCallback(() => {
     const done = latestResult.current
     if (done == null || !done.ok) return
-    if (__DEV__ && lockedAt.current != null)
-      console.log(`[scan] transition done in ${Date.now() - lockedAt.current} ms`)
+    if (lockedAt.current != null) devLog('scan', `transition done in ${Date.now() - lockedAt.current} ms`)
     onDone(done)
   }, [onDone])
 
@@ -164,7 +166,7 @@ export function CameraScreen({
         try {
           grid = detectGrid == null ? null : detectGrid(frame)
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
+          const message = errorMessage(error)
           if (__DEV__ && lastWarned.getBlocking() !== message) {
             lastWarned.setBlocking(message)
             scheduleOnRN(warnDetector, message)

@@ -2,8 +2,9 @@ import { renderHook } from '@testing-library/react-native'
 import type { Frame } from 'react-native-vision-camera'
 import { useResizer } from 'react-native-vision-camera-resizer'
 import { findGrid } from './findGrid'
-import { type Quad, turnHalf } from './quad'
+import { turnHalf } from './quad'
 import { DETECT_HEIGHT, DETECT_WIDTH, useGridDetector } from './useGridDetector'
+import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('./findGrid', () => ({ findGrid: jest.fn(() => null) }))
 

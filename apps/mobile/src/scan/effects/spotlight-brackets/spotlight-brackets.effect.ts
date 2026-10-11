@@ -1,9 +1,9 @@
 import { type SkCanvas, type SkPath, Skia } from '@shopify/react-native-skia'
-import type { Point, Quad } from '@/scanner'
 import { drawDim } from '@/scan/effects/common/dim'
 import { prototypeScale } from '@/scan/effects/common/shaderMatrix'
 import type { Scene } from '@/scan/effects/scene'
 import type { DrawKit, Effect } from '@/scan/effects/types'
+import type { Point, Quad } from '@/utils/geometry.utils'
 
 // Prototype section 1, "Spotlight and brackets". p is scene.lockProgress.
 /** Dim outside the grid: presence × (DIM_BASE + DIM_STEADY × p). */

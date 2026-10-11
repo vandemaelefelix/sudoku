@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSharedValue } from 'react-native-reanimated'
 import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
-import { createScanner, type Quad, type RecogniseResult, type Scanner } from '@/scanner'
+import { createScanner, type RecogniseResult, type Scanner } from '@/scanner'
 import { sameAspect, uprightAspect } from './previewMapping'
 import { photoToSkImage } from './transition/photoImage'
+import type { Quad } from '@/utils/geometry.utils'
+import { devWarn, errorMessage } from '@/utils/log.utils'
 
 /**
  * image: the upright photo for the transition, null until it is ready. imageFailed: no image will come, because the photo or its
@@ -34,10 +36,6 @@ export function formatScanLog(photoMs: number, totalMs: number, result: Recognis
     `[scan] photo ${photoMs} ms, image ${t.imageMs} ms, detect ${t.detectMs} ms (${result.corners}${offset}), ` +
     `flatten ${t.flattenMs} ms, classify ${t.classifyMs} ms, total ${totalMs} ms`
   )
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 /**
@@ -106,7 +104,7 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
           image.dispose()
         }
       } catch (error) {
-        if (__DEV__) console.warn(`[scan] photo conversion failed: ${reasonOf(error)}`)
+        devWarn('scan', `photo conversion failed: ${errorMessage(error)}`)
         if (current()) update({ imageFailed: true })
       }
     }
@@ -122,7 +120,7 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
         photoMs = Date.now() - started
       } catch (error) {
         if (current()) update({ imageFailed: true })
-        settle(photoMs, { ok: false, reason: reasonOf(error) })
+        settle(photoMs, { ok: false, reason: errorMessage(error) })
         return
       }
       // The quad is normalised to the frame. It fits the photo only when both have the same field of view (ADR-002). Without it,
@@ -130,15 +128,14 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
       let locked = quad
       if (quad != null && !sameAspect(uprightAspect(photo.width, photo.height, photo.orientation), frameAspect)) {
         locked = null
-        if (__DEV__)
-          console.warn('[scan] the photo and the frame differ in aspect, so the locked quad does not fit the photo')
+        devWarn('scan', 'the photo and the frame differ in aspect, so the locked quad does not fit the photo')
         if (current()) update({ quad: null })
       }
       try {
         await Promise.all([
           scanner.recognise(photo, locked).then(
             (result) => settle(photoMs, result),
-            (error) => settle(photoMs, { ok: false, reason: reasonOf(error) }),
+            (error) => settle(photoMs, { ok: false, reason: errorMessage(error) }),
           ),
           convert(photo),
         ])

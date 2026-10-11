@@ -1,4 +1,5 @@
-import { correctionLayout, type Rect } from './layout'
+import { correctionLayout } from './layout'
+import type { Rect } from '@/utils/geometry.utils'
 
 const insets = { top: 62, bottom: 34, left: 0, right: 0 }
 const bottom = (r: Rect) => r.y + r.height

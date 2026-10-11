@@ -1,10 +1,10 @@
 import type { TfliteModel } from './classifier'
 import { findGrid } from './findGrid'
 import { downscaleSize, searchRect, toPhotoPixels } from './photoGeometry'
-import { FLAT_SIZE, type Rect } from './pixels'
-import type { Quad } from './quad'
+import { FLAT_SIZE } from './pixels'
 import { CORNER_TOLERANCE, type ImageSource, recognise, SEARCH_GROW } from './recognise'
 import { warpGrid } from './warp'
+import type { Rect, Quad } from '@/utils/geometry.utils'
 
 jest.mock('./findGrid', () => ({ findGrid: jest.fn() }))
 jest.mock('./warp', () => ({ warpGrid: jest.fn() }))

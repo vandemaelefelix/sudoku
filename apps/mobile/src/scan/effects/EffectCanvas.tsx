@@ -3,16 +3,16 @@ import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
-import type { Quad } from '@/scanner'
 import { countFrame, EMPTY_WINDOW } from '@/scan/frameRate'
-import type { ViewSize } from '@/scan/previewMapping'
 import type { CaptureFrame } from '@/scan/transition/warp'
 import { advance, advanceCapture, type Engine } from './engine'
 import { DEFAULT_EFFECT, EFFECTS, effectAt } from './registry'
 import { makeDrawKit } from './kit'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { devLog } from '@/utils/log.utils'
 
 function logOverlay(id: string, fps: number, overlayMs: number) {
-  if (__DEV__) console.log(`[fx] ${id} ${fps.toFixed(1)} fps, overlay ${overlayMs.toFixed(2)} ms`)
+  devLog('fx', `${id} ${fps.toFixed(1)} fps, overlay ${overlayMs.toFixed(2)} ms`)
 }
 
 /**

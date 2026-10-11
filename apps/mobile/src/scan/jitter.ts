@@ -1,5 +1,5 @@
-import type { Quad } from '@/scanner'
 import { MAX_GAP } from './frameRate'
+import type { Quad } from '@/utils/geometry.utils'
 
 /** Seconds of outline without a gap per report (QR-06). */
 export const JITTER_WINDOW = 5

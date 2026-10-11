@@ -1,10 +1,10 @@
-import type { Quad } from '@/scanner'
 import { IDENTITY, prototypePixel, prototypeScale, toColumnMajor } from '@/scan/effects/common/shaderMatrix'
 import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import { ripples } from './ripples.effect'
 import { RIPPLES_SKSL } from './shader'
 import { rippleUniforms } from './uniforms'
+import type { Quad } from '@/utils/geometry.utils'
 
 const VIEW = { width: 402, height: 874 }
 

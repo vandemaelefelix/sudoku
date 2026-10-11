@@ -1,6 +1,6 @@
 import { Skia } from '@shopify/react-native-skia'
-import type { Quad } from '@/scanner'
 import { drawDim } from './dim'
+import type { Quad } from '@/utils/geometry.utils'
 
 const grid: Quad = [
   { x: 50, y: 300 },

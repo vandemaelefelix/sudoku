@@ -4,6 +4,7 @@ import type { SharedValue } from 'react-native-reanimated'
 import type { SettingsRepository } from '@/settings/SettingsRepository'
 import { DEFAULT_INDEX, EFFECTS, effectIndex } from './registry'
 import type { EffectFamily } from './types'
+import { devLog, errorMessage } from '@/utils/log.utils'
 
 /** The settings key of the saved effect id. */
 export const EFFECT_KEY = 'lab.effect'
@@ -16,7 +17,7 @@ const FAMILIES: { family: EffectFamily; title: string }[] = [
 ]
 
 function logSettingsError(error: unknown) {
-  if (__DEV__) console.log(`[fx] settings failed: ${error instanceof Error ? error.message : String(error)}`)
+  devLog('fx', `settings failed: ${errorMessage(error)}`)
 }
 
 /** The dev pill and the list of effects. Render it only in a development build. effect: the index that EffectCanvas reads. */

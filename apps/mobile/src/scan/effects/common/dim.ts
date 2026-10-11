@@ -1,5 +1,5 @@
 import { FillType, type SkCanvas, type SkPaint, Skia } from '@shopify/react-native-skia'
-import type { Quad } from '@/scanner'
+import type { Quad } from '@/utils/geometry.utils'
 
 function viewPath(width: number, height: number) {
   'worklet'

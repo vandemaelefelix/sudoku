@@ -1,6 +1,5 @@
 import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
-import type { Quad } from '@/scanner'
 import {
   advanceClock,
   GATE_RESULTS,
@@ -10,7 +9,8 @@ import {
   transitionAt,
   transitionEnd,
 } from './timeline'
-import { type CaptureFrame, lerpQuad } from './warp'
+import type { CaptureFrame } from './warp'
+import { type Quad, lerpQuad } from '@/utils/geometry.utils'
 
 /**
  * from: the locked grid in view points. to: the grid square of the correction screen. version: changes with each new plan.

@@ -1,10 +1,8 @@
+import type { Rect } from '@/utils/geometry.utils'
 import { CELL_SIZE, CELLS } from './preprocess'
 
 /** Raw pixels as nitro-image gives them. A row may end in padding: the row length is byteLength / height. */
 export type RawPixels = { buffer: ArrayBuffer; width: number; height: number; pixelFormat: string }
-
-/** Integer pixels. */
-export type Rect = { x: number; y: number; width: number; height: number }
 
 /** The side of the rough flatten: 9 cells of CELL_SIZE. */
 export const FLAT_SIZE = 9 * CELL_SIZE

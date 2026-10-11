@@ -1,4 +1,3 @@
-import type { Quad } from '@/scanner'
 import {
   createScene,
   GRID_WIDTH_HYSTERESIS,
@@ -11,6 +10,7 @@ import {
   stepScene,
   WARMUP,
 } from './scene'
+import type { Quad } from '@/utils/geometry.utils'
 
 const VIEW = { width: 402, height: 874 }
 

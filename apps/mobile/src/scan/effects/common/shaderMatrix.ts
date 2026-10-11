@@ -1,5 +1,5 @@
 import type { Scene } from '@/scan/effects/scene'
-import { type Homography, invert, unitToQuad } from './geometry'
+import { type Homography, invert, unitToQuad } from '@/utils/homography.utils'
 
 /** Points. The width of the phone that the prototype draws. */
 export const PROTOTYPE_WIDTH = 220

@@ -3,6 +3,7 @@ import type { Frame } from 'react-native-vision-camera'
 import { useResizer } from 'react-native-vision-camera-resizer'
 import { findGrid } from './findGrid'
 import { type GridDetection, turnHalf } from './quad'
+import { devWarn } from '@/utils/log.utils'
 
 // 9:16 is the upright shape of the HD 16:9 frames that useFrameOutput delivers by default.
 export const DETECT_WIDTH = 360
@@ -24,7 +25,7 @@ export function useGridDetector(): GridDetector | undefined {
   })
 
   useEffect(() => {
-    if (error != null) console.warn(`[scanner] the frame resizer failed: ${error.message}`)
+    if (error != null) devWarn('scanner', `the frame resizer failed: ${error.message}`)
   }, [error])
 
   return useMemo(() => {

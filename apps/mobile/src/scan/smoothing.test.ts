@@ -1,5 +1,5 @@
-import type { Quad } from '@/scanner'
 import { HOLD, type Smoothing, smoothQuad } from './smoothing'
+import type { Quad } from '@/utils/geometry.utils'
 
 const FRAME = 1 / 30
 

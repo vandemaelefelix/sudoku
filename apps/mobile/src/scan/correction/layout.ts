@@ -1,6 +1,5 @@
-import type { ViewSize } from '@/scan/previewMapping'
+import type { Rect, ViewSize } from '@/utils/geometry.utils'
 
-export type Rect = { x: number; y: number; width: number; height: number }
 export type Insets = { top: number; bottom: number; left: number; right: number }
 export type CorrectionLayout = { title: Rect; grid: Rect; panel: Rect }
 

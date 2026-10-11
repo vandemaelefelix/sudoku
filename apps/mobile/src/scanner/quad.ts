@@ -1,7 +1,4 @@
-export type Point = { x: number; y: number }
-
-/** Normalised to 0..1 of the upright frame. Order: top-left, top-right, bottom-right, bottom-left. */
-export type Quad = [Point, Point, Point, Point]
+import type { Point, Quad } from '@/utils/geometry.utils'
 
 /** score: the share of the frame that the quad covers, 0..1. */
 export type GridDetection = { quad: Quad; score: number }
