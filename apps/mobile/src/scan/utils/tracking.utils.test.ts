@@ -1,5 +1,4 @@
 import {
-  HOLD,
   type Smoothing,
   smoothQuad,
   EMPTY_JITTER,
@@ -11,6 +10,7 @@ import {
   type FrameWindow,
 } from './tracking.utils'
 import type { Quad } from '@/utils/geometry.utils'
+import { HOLD } from '@/scan/constants/tracking.constants'
 
 const FRAME = 1 / 30
 

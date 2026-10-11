@@ -4,8 +4,9 @@ import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import type { CellResult, RecogniseResult } from '@/scanner'
 import { LIGHT } from '@/theme/colors'
 import { CorrectionScreen } from './CorrectionScreen'
-import { GATE_RESULTS, digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
+import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
+import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
 const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true })

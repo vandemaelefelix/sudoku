@@ -1,16 +1,14 @@
+import { createScene, type Scene, stepScene } from './scene'
+import type { Quad } from '@/utils/geometry.utils'
 import {
-  createScene,
   GRID_WIDTH_HYSTERESIS,
   LOCK_DWELL,
   MAX_STEP,
   MIN_GRID_WIDTH,
   PRESENCE_TIME,
   REARM_LOST,
-  type Scene,
-  stepScene,
   WARMUP,
-} from './scene'
-import type { Quad } from '@/utils/geometry.utils'
+} from './scene.constants'
 
 const VIEW = { width: 402, height: 874 }
 

@@ -9,6 +9,7 @@ import { sameAspect, uprightAspect } from '@/scan/utils/preview.utils'
 import { photoToSkImage } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
+import { IMAGE_MAX_SIDE } from './useCapture.constants'
 
 /**
  * image: the upright photo for the transition, null until it is ready. imageFailed: no image will come, because the photo or its
@@ -23,9 +24,6 @@ export type CaptureState =
       imageFailed: boolean
       result: RecogniseResult | null
     }
-
-/** 1600 px is enough for a 3x screen. */
-const IMAGE_MAX_SIDE = 1600
 
 /** photoMs: from capture to the photo. totalMs: from capture to the result. */
 export function formatScanLog(photoMs: number, totalMs: number, result: RecogniseResult): string {

@@ -1,8 +1,6 @@
 import type { CameraOrientation } from 'react-native-vision-camera'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
-
-/** Two aspects that differ by at most this share count as the same field of view. */
-export const ASPECT_TOLERANCE = 0.01
+import { ASPECT_TOLERANCE } from '@/scan/constants/preview.constants'
 
 /** False when either aspect is not a positive number. */
 export function sameAspect(a: number, b: number): boolean {

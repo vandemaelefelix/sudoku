@@ -12,10 +12,10 @@ import * as frameRate from '@/scan/utils/tracking.utils'
 import { DEFAULT_INDEX } from '@/scan/effects/registry'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { EffectPicker } from '@/scan/effects/components/EffectPicker'
-import { GATE_PHOTO, GATE_RESULTS, REDUCED_END, TRANSITION_END } from '@/scan/utils/transition.utils'
 import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { useCapture } from '@/scan/hooks/useCapture'
 import type { Quad } from '@/utils/geometry.utils'
+import { GATE_PHOTO, GATE_RESULTS, REDUCED_END, TRANSITION_END } from '@/scan/constants/transition.constants'
 
 jest.mock('@/scanner', () => ({
   ...jest.requireActual('@/scanner'),

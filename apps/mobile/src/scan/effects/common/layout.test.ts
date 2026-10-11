@@ -1,4 +1,5 @@
-import { createDots, DOT_SPACING, twinkle, wander, WANDER_MAX } from './layout'
+import { createDots, twinkle, wander } from './layout'
+import { DOT_SPACING, WANDER_MAX } from './common.constants'
 
 function itemAt<T>(items: readonly T[], index: number): T {
   const item = items[index]

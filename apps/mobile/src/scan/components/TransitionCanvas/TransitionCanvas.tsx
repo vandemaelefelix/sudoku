@@ -16,9 +16,7 @@ import { drawGridLines } from '@/scan/utils/correction.utils'
 import { type CaptureFrame, photoMatrix } from '@/scan/utils/transition.utils'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { type Homography, unitToQuad } from '@/utils/homography.utils'
-
-/** The static board draws its lines 1 pt inside the grid square, so the 2 pt outer line is not clipped (correction screen). */
-const LINE_INSET = 1
+import { LINE_INSET } from './TransitionCanvas.constants'
 
 /** m with the unit square shrunk by inset points on each side of a square of side points, so the last frame matches the board. */
 function insetUnit(m: Homography, inset: number, side: number): Homography {

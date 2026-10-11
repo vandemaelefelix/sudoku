@@ -2,6 +2,7 @@ import type { Rect, ViewSize } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import { PaintStyle, Skia, type SkCanvas, type SkPaint } from '@shopify/react-native-skia'
 import { project, type Homography } from '@/utils/homography.utils'
+import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 
 export type Insets = { top: number; bottom: number; left: number; right: number }
 export type CorrectionLayout = { title: Rect; grid: Rect; panel: Rect }
@@ -31,9 +32,6 @@ export function correctionLayout(view: ViewSize, insets: Insets): CorrectionLayo
   const grid: Rect = { x: contentLeft + (contentWidth - side) / 2, y: gridTop, width: side, height: side }
   return { title, grid, panel }
 }
-
-/** Provisional: the dev set has not yet fixed a threshold. */
-export const REVIEW_CONFIDENCE = 0.9
 
 export type CellLook = { digit: string; style: 'given' | 'entry' | 'empty'; uncertain: boolean }
 

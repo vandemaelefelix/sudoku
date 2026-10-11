@@ -1,4 +1,5 @@
 import type { Point, Quad } from '@/utils/geometry.utils'
+import { MAX_GAP, MIN_CUTOFF, BETA, DERIVATIVE_CUTOFF, HOLD, JITTER_WINDOW } from '@/scan/constants/tracking.constants'
 
 // Counts camera frames in windows of at least one second. Runs as a worklet on the camera thread.
 
@@ -6,9 +7,6 @@ import type { Point, Quad } from '@/utils/geometry.utils'
 export type FrameWindow = { start: number; last: number; frames: number; detectionMs: number }
 
 export const EMPTY_WINDOW: FrameWindow = { start: -1, last: -1, frames: 0, detectionMs: 0 }
-
-/** The longest time in seconds between two frames inside one window. A longer gap means a pause. */
-export const MAX_GAP = 0.5
 
 /** detectionMs: the grid detection time of this frame. The report gives the mean of the window. */
 export function countFrame(
@@ -34,15 +32,6 @@ export function countFrame(
 
 // One Euro filter (Casiez et al., CHI 2012): strong smoothing when still, little lag when moving.
 // Units: normalised frame coordinates and seconds. Targets QR-06.
-
-/** Hz. The cutoff of a still corner. Lower is steadier. */
-export const MIN_CUTOFF = 0.5
-/** Hz per (normalised unit per second). Higher follows fast moves with less lag. */
-export const BETA = 120
-/** Hz. The cutoff of the speed estimate. */
-export const DERIVATIVE_CUTOFF = 1
-/** Seconds. The outline stays this long after the last detection. */
-export const HOLD = 0.25
 
 /** velocity: per corner, in normalised units per second. timestamp: the last detection. */
 export type Smoothing = { quad: Quad; velocity: Quad; timestamp: number }
@@ -99,9 +88,6 @@ export function smoothQuad(state: Smoothing | null, quad: Quad | null, timestamp
     timestamp,
   }
 }
-
-/** Seconds of outline without a gap per report (QR-06). */
-export const JITTER_WINDOW = 5
 
 export type JitterWindow = { start: number; last: number; previous: Quad | null; maxStep: number; frames: number }
 

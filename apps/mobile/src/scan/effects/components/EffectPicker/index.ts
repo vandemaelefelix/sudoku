@@ -1,1 +1,2 @@
-export { EFFECT_KEY, EffectPicker } from './EffectPicker'
+export { EffectPicker } from './EffectPicker'
+export { EFFECT_KEY } from './EffectPicker.constants'

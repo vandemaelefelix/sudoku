@@ -1,8 +1,9 @@
-import { correctionLayout, cellLook, cellsToCheck, REVIEW_CONFIDENCE, drawGridLines } from './correction.utils'
+import { correctionLayout, cellLook, cellsToCheck, drawGridLines } from './correction.utils'
 import type { Rect } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
 import type { Homography } from '@/utils/homography.utils'
+import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 
 const insets = { top: 62, bottom: 34, left: 0, right: 0 }
 const bottom = (r: Rect) => r.y + r.height

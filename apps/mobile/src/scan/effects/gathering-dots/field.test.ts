@@ -1,9 +1,12 @@
-import { type Channels, TRANSITION_END, transitionAt } from '@/scan/utils/transition.utils'
+import { type Channels, transitionAt } from '@/scan/utils/transition.utils'
 import { intersections, isBoxCorner, pushOutside } from '@/scan/effects/common/geometry'
 import { spreadStep } from '@/scan/effects/common/spread'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
+import { createField, selectSpreadDots, spreadHomes, stepField, type FieldState } from './field'
+import type { Quad } from '@/utils/geometry.utils'
+import { invert, project, unitToQuad } from '@/utils/homography.utils'
+import { TRANSITION_END } from '@/scan/constants/transition.constants'
 import {
-  createField,
   FLIGHT,
   FREE_ALPHA,
   GATHER_ALPHA_END,
@@ -15,16 +18,10 @@ import {
   MAX_DELAY,
   NEAR,
   RELEASE_TIME,
-  selectSpreadDots,
   SPREAD_PUSH,
   SPREAD_RADIUS,
   SPREAD_TIME,
-  spreadHomes,
-  stepField,
-  type FieldState,
-} from './field'
-import type { Quad } from '@/utils/geometry.utils'
-import { invert, project, unitToQuad } from '@/utils/homography.utils'
+} from './gathering-dots.constants'
 
 function itemAt<T>(items: readonly T[], index: number): T {
   const item = items[index]
