@@ -253,6 +253,7 @@ function render() {
       div.append(reason);
     }
     div.onclick = (event) => {
+      if (cell.folder === "empty") return say("An empty cell has no kind. Press a digit if it shows one.");
       local[cell.id] = event.altKey ? "unsure" : (local[cell.id] === "printed" ? "handwritten" : "printed");
       render();
     };
@@ -297,7 +298,7 @@ async function reload() {
 }
 
 function setAll(kind) {
-  for (const c of cellsOnScreen()) local[c.id] = kind;
+  for (const c of cellsOnScreen()) if (c.folder !== "empty") local[c.id] = kind;
   render();
   say("Now click the cells of the other kind, then press Enter.");
 }
@@ -334,7 +335,8 @@ async function save() {
     await loadGroups(screen);
     say(`${before} ${$("message").textContent}`);
   } else if (mode === "review" && screen) {
-    const kindCells = cells.filter((c) => c.field === "kind" || (local[c.id] && local[c.id] !== c.kind));
+    const kindCells = cells.filter((c) => c.folder !== "empty" &&
+      (c.field === "kind" || (local[c.id] && local[c.id] !== c.kind)));
     const result = await api("/api/save", {
       screen: "review",
       cells: kindCells.map((c) => ({ id: c.id, kind: local[c.id] })),
