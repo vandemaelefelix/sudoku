@@ -6,7 +6,7 @@ import { preprocessCells } from './preprocess'
 import type { Quad } from './quad'
 import { warpGrid } from './warp'
 
-// Capture flow design, "recognise(photo, quad)". Every function here runs on the scanner runtime.
+// Scan-pipeline concept, "Threads and coordinates". Every function here runs on the scanner runtime.
 
 /** The part of a nitro-image Image that recognise uses. */
 export type ImageSource = {

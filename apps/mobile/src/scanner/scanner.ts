@@ -10,7 +10,7 @@ export type Scanner = { recognise(photo: Photo, quad: Quad | null): Promise<Reco
 let runtime: WorkletRuntime | null = null
 let scanner: Promise<Scanner> | null = null
 
-/** The scanner runtime: one per app, made at the first scan (capture flow design, "Architecture"). */
+/** The scanner runtime: one per app, made at the first scan (scan-pipeline concept, "Capture thread"). */
 function scannerRuntime(): WorkletRuntime {
   if (runtime == null) runtime = createWorkletRuntime({ name: 'scanner' })
   return runtime

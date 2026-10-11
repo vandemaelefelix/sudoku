@@ -46,7 +46,7 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
       let result: RecogniseResult
       try {
         const scanner = await createScanner()
-        // The haptic is the feedback. The developer chose no shutter sound.
+        // The haptic is the feedback. No shutter sound (ADR-002).
         const photo = await output.current.capturePhoto({ enableShutterSound: false }, {})
         photoMs = Date.now() - started
         try {
