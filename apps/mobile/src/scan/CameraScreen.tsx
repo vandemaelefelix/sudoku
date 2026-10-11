@@ -1,14 +1,7 @@
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState, Button, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, {
-  type SharedValue,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useFrameCallback,
-  useReducedMotion,
-  useSharedValue,
-} from 'react-native-reanimated'
+import Animated, { useAnimatedReaction, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import {
   Camera,
   CommonResolutions,
@@ -30,30 +23,18 @@ import { EffectPicker } from './effects/EffectPicker'
 import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
 import { toPreview, uprightAspect, type ViewSize } from './previewMapping'
 import { type Smoothing, smoothQuad } from './smoothing'
-import {
-  advanceClock,
-  GATE_RESULTS,
-  type Gates,
-  SPINNER_DELAY,
-  transitionAt,
-  transitionEnd,
-} from './transition/timeline'
-import { type CaptureFrame, TransitionCanvas } from './transition/TransitionCanvas'
-import { lerpQuad, rectQuad } from './transition/warp'
+import type { Gates } from './transition/timeline'
+import { TransitionCanvas } from './transition/TransitionCanvas'
+import { TransitionClock, type TransitionPlan } from './transition/TransitionClock'
+import { type CaptureFrame, rectQuad } from './transition/warp'
 import { useCapture } from './useCapture'
 
 /** One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame. */
 export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number }
 
-/**
- * The path of the grid in view points: from the locked grid in the preview to the grid square of the correction screen.
- * crossFade: no warp. The grid stays on the square, and the Reduce Motion channels fade the layers.
- */
-type TransitionPlan = { from: Quad; to: Quad; crossFade: boolean }
-
-/** Seconds. A stall of the UI thread must not skip a part of the transition. */
-const MAX_CLOCK_STEP = 0.05
 const FLASH_PEAK = 0.25
+/** The status bar turns dark when the light background is half in. */
+const DARK_BAR_DIM = 0.5
 
 const MEASURE_JITTER = __DEV__
 
@@ -69,53 +50,6 @@ function logJitter(report: JitterReport) {
   console.log(
     `[outline] max corner step ${report.maxStep.toFixed(2)} pt over ${report.frames} frames (${report.seconds.toFixed(1)} s)`,
   )
-}
-
-/**
- * Advances the transition clock once per UI frame and publishes the moving grid with its channels.
- * This is a component before EffectCanvas, not a hook of CameraScreen. Frame callbacks run in the order of registration, and
- * React registers the effects of siblings in tree order. So the dots read the grid of this frame, not the grid of the last frame.
- */
-function TransitionClock({
-  plan,
-  gates,
-  clock,
-  waiting,
-  capture,
-  onEnd,
-}: {
-  plan: SharedValue<TransitionPlan | null>
-  gates: SharedValue<Gates>
-  clock: SharedValue<number>
-  waiting: SharedValue<boolean>
-  capture: SharedValue<CaptureFrame | null>
-  onEnd: () => void
-}) {
-  const lastFrame = useSharedValue(-1)
-  const held = useSharedValue(0)
-  const ended = useSharedValue(false)
-  useFrameCallback((frame) => {
-    'worklet'
-    const path = plan.get()
-    if (path == null) return
-    const now = frame.timestamp / 1000
-    const previous = lastFrame.get()
-    lastFrame.set(now)
-    const dt = previous < 0 ? 0 : Math.min(MAX_CLOCK_STEP, Math.max(0, now - previous))
-    const open = gates.get()
-    const t = advanceClock(clock.get(), dt, open, path.crossFade)
-    clock.set(t)
-    const resultsGate = path.crossFade ? 0 : GATE_RESULTS
-    held.set(!open.results && t >= resultsGate ? held.get() + dt : 0)
-    waiting.set(held.get() > SPINNER_DELAY)
-    const channels = transitionAt(t, path.crossFade)
-    capture.set({ quad: path.crossFade ? path.to : lerpQuad(path.from, path.to, channels.flatten), channels })
-    if (t >= transitionEnd(path.crossFade) && !ended.get()) {
-      ended.set(true)
-      scheduleOnRN(onEnd)
-    }
-  })
-  return null
 }
 
 /**
@@ -150,7 +84,7 @@ export function CameraScreen({
     // 'speed' throws on a device without it (VisionCamera, PhotoOutputOptions).
     qualityPrioritization: device?.supportsSpeedQualityPrioritization === true ? 'speed' : 'balanced',
   })
-  const { state, capture } = useCapture(photoOutput)
+  const { state, capture, sharedImage } = useCapture(photoOutput)
   const colors = useColors()
   const reduceMotion = useReducedMotion()
   const clock = useSharedValue(0)
@@ -161,6 +95,8 @@ export function CameraScreen({
   const [lockedView, setLockedView] = useState<Quad | null>(null)
   const lockedAt = useRef<number | null>(null)
   const latestResult = useRef<RecogniseResult | null>(null)
+  const planVersion = useRef(0)
+  const [darkBar, setDarkBar] = useState(false)
 
   // capture keeps its identity, so this does too: the UI thread holds it as onLock from the first frame.
   const startCapture = useCallback(
@@ -187,7 +123,8 @@ export function CameraScreen({
   useEffect(() => {
     if (!isCapturing) return
     const to = rectQuad(layout.grid)
-    plan.set({ from: lockedView ?? to, to, crossFade })
+    planVersion.current++
+    plan.set({ from: lockedView ?? to, to, crossFade, version: planVersion.current })
   }, [isCapturing, crossFade, lockedView, layout.grid, plan])
 
   useEffect(() => {
@@ -236,6 +173,13 @@ export function CameraScreen({
       }
     },
   })
+
+  useAnimatedReaction(
+    () => (captureFrame.value?.channels.dim ?? 0) > DARK_BAR_DIM,
+    (dark, previous) => {
+      if (dark !== previous) scheduleOnRN(setDarkBar, dark)
+    },
+  )
 
   useAnimatedReaction(
     () => detection.value,
@@ -295,7 +239,7 @@ export function CameraScreen({
         viewSize.set({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })
       }}
     >
-      <StatusBar style={capturing == null ? 'light' : 'dark'} />
+      <StatusBar style={darkBar ? 'dark' : 'light'} />
       {/* When the photo draws, the camera stops. The photo covers the last preview frame. */}
       <Camera
         style={StyleSheet.absoluteFill}
@@ -308,7 +252,7 @@ export function CameraScreen({
         <TransitionCanvas
           capture={captureFrame}
           view={viewSize}
-          image={capturing.image}
+          image={sharedImage}
           locked={capturing.quad}
           crossFade={crossFade}
           side={layout.grid.width}

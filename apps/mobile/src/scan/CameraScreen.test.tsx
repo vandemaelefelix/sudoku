@@ -44,7 +44,7 @@ const device = jest.mocked(useCameraDevice)
 const frameOutput = jest.mocked(useFrameOutput)
 const captureHook = jest.mocked(useCapture)
 const capture = jest.fn()
-const retake = jest.fn()
+const sharedImage = { value: null } as unknown as ReturnType<typeof useCapture>['sharedImage']
 const LAYOUT = correctionLayout({ width: 402, height: 874 }, { top: 0, bottom: 0, left: 0, right: 0 })
 const onDone = jest.fn()
 const onRetake = jest.fn()
@@ -54,7 +54,7 @@ function props() {
 }
 
 function givenPhase(state: ReturnType<typeof useCapture>['state']) {
-  captureHook.mockReturnValue({ state, capture, retake })
+  captureHook.mockReturnValue({ state, capture, sharedImage })
 }
 
 function givenPermission(status: 'authorized' | 'denied' | 'not-determined') {
@@ -470,6 +470,36 @@ describe('capture', () => {
     expect(correction().reduceMotion).toBe(true)
     runFrames(0.5)
     expect(correction().clock!.value).toBe(REDUCED_END)
+  })
+
+  it('keeps the dots on the locked grid in the cross-fade, and puts the cells on the grid square', () => {
+    jest.mocked(useReducedMotion).mockReturnValue(true)
+    lockOn(quad, { quad, image: IMAGE, result: OK })
+    runFrames(0.2)
+    const frame = effectCanvas.mock.calls.at(-1)![0].capture!.value!
+    expect(frame.quad[0].x).toBeCloseTo(-44.8 + 0.2 * 491.6, 0)
+    expect(frame.grid[0]).toEqual({ x: LAYOUT.grid.x, y: LAYOUT.grid.y })
+  })
+
+  it('writes nothing while a gate holds the clock', () => {
+    lockOn(quad, { quad, image: null, result: null })
+    runFrames(0.5)
+    const moving = effectCanvas.mock.calls.at(-1)![0].capture!
+    const held = moving.value
+    runFrames(0.5)
+    expect(moving.value).toBe(held)
+  })
+
+  it('turns the status bar dark when the light background is half in', async () => {
+    lockOn(quad, { quad, image: IMAGE, result: null })
+    expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('light')
+    // The status bar reaction comes just before the detection reaction.
+    const [prepare, react] = reaction.mock.calls.at(-2)! as unknown as [() => boolean, (dark: boolean, previous: boolean | null) => void]
+    expect(prepare()).toBe(false)
+    runFrames(0.4)
+    expect(prepare()).toBe(true)
+    await act(async () => react(true, false))
+    expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('dark')
   })
 
   it('cross-fades with Reduce Motion, and the gates still hold the clock', () => {

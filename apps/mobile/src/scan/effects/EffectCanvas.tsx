@@ -6,7 +6,7 @@ import { scheduleOnRN } from 'react-native-worklets'
 import type { Quad } from '../../scanner'
 import { countFrame, EMPTY_WINDOW } from '../frameRate'
 import type { ViewSize } from '../previewMapping'
-import type { Channels } from '../transition/timeline'
+import type { CaptureFrame } from '../transition/warp'
 import { advance, advanceCapture, type Engine } from './engine'
 import { DEFAULT_EFFECT, EFFECTS, effectAt } from './index'
 import { makeDrawKit } from './kit'
@@ -19,7 +19,7 @@ function logOverlay(id: string, fps: number, overlayMs: number) {
  * outline: the smoothed grid in view points, or null. view: the size of the camera view in points.
  * effect: an index into EFFECTS. Only the JS thread writes it, and only when the developer picks an effect.
  * frameQuad: the same grid, normalised to the upright frame. onLock: called once per scene, on the JS thread, with frameQuad at lock-on.
- * capture: the moving grid in view points and the transition channels, or null in the live phase. While it is set, outline is ignored and onLock is not called.
+ * capture: the transition frame (the dots follow its quad), or null in the live phase. While it is set, outline is ignored and onLock is not called.
  */
 export function EffectCanvas({
   outline,
@@ -34,7 +34,7 @@ export function EffectCanvas({
   effect: SharedValue<number>
   frameQuad: SharedValue<Quad | null>
   onLock: (quad: Quad) => void
-  capture?: SharedValue<{ quad: Quad; channels: Channels } | null>
+  capture?: SharedValue<CaptureFrame | null>
 }) {
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()

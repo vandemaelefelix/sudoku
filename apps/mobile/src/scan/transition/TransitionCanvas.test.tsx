@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react-native'
 import { useSharedValue } from 'react-native-reanimated'
 import type { Quad } from '../../scanner'
 import { LIGHT } from '../../theme/colors'
-import { TransitionCanvas, type CaptureFrame } from './TransitionCanvas'
+import { TransitionCanvas } from './TransitionCanvas'
+import type { CaptureFrame } from './warp'
 import { transitionAt } from './timeline'
 
 const QUAD: Quad = [
@@ -14,13 +15,14 @@ const QUAD: Quad = [
 ]
 
 function Harness({ crossFade }: { crossFade: boolean }) {
-  const capture = useSharedValue<CaptureFrame | null>({ quad: QUAD, channels: transitionAt(0.4, crossFade) })
+  const capture = useSharedValue<CaptureFrame | null>({ quad: QUAD, grid: QUAD, channels: transitionAt(0.4, crossFade) })
+  const image = useSharedValue<SkImage | null>({ width: () => 900, height: () => 1600 } as unknown as SkImage)
   const view = useSharedValue({ width: 402, height: 874 })
   return (
     <TransitionCanvas
       capture={capture}
       view={view}
-      image={{ width: () => 900, height: () => 1600 } as unknown as SkImage}
+      image={image}
       locked={[
         { x: 0.2, y: 0.2 },
         { x: 0.8, y: 0.2 },

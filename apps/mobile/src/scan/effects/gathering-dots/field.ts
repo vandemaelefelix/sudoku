@@ -275,7 +275,8 @@ function stepCapture(state: FieldState, scene: Scene, capture: Channels): FieldS
     }
     let x = d.fromX
     let y = d.fromY
-    if (centre != null) {
+    // Under Reduce Motion the free dots fade in place.
+    if (centre != null && !scene.reduceMotion) {
       const dx = x - centre.x
       const dy = y - centre.y
       const length = Math.hypot(dx, dy) || 1

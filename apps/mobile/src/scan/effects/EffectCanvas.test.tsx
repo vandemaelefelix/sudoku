@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
 import type { Quad } from '../../scanner'
 import type { ViewSize } from '../previewMapping'
-import { type Channels, transitionAt } from '../transition/timeline'
+import { transitionAt } from '../transition/timeline'
+import type { CaptureFrame } from '../transition/warp'
 import { EffectCanvas } from './EffectCanvas'
 import * as engine from './engine'
 import { DEFAULT_INDEX, effectIndex } from './index'
@@ -274,7 +275,7 @@ describe('the capture phase', () => {
     const capture = advanceCaptureSpy()
     const onLock = jest.fn()
     const channels = transitionAt(0.2, false)
-    const value = shared<{ quad: Quad; channels: Channels } | null>(null)
+    const value = shared<CaptureFrame | null>(null)
     render(
       <EffectCanvas
         outline={fresh(grid)}
@@ -287,7 +288,7 @@ describe('the capture phase', () => {
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
     callback({ timestamp: 0 } as never)
-    Object.assign(value, { value: { quad: flat, channels } })
+    Object.assign(value, { value: { quad: flat, grid: flat, channels } })
     for (let ms = 1000 / 60; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
     await new Promise((resolve) => setImmediate(resolve))
     expect(onLock).not.toHaveBeenCalled()
@@ -308,7 +309,7 @@ describe('the capture phase', () => {
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
         onLock={jest.fn()}
-        capture={constant<{ quad: Quad; channels: Channels } | null>(null)}
+        capture={constant<CaptureFrame | null>(null)}
       />,
     )
     tick(1)

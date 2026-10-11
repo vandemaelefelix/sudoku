@@ -49,7 +49,11 @@ const OK: RecogniseResult = {
 }
 
 function givenPhase(state: ReturnType<typeof useCapture>['state']) {
-  jest.mocked(useCapture).mockReturnValue({ state, capture: jest.fn(), retake: jest.fn() })
+  jest.mocked(useCapture).mockReturnValue({
+    state,
+    capture: jest.fn(),
+    sharedImage: { value: null } as unknown as ReturnType<typeof useCapture>['sharedImage'],
+  })
 }
 
 function lastCanvas() {
