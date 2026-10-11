@@ -77,3 +77,9 @@ def test_a_bad_request_gets_a_400_with_a_reason(served):
     body = {"screen": "groups", "cells": [{"id": ids["7"][0], "kind": "notes"}]}
     status, data = request(port, "POST", "/api/save", body)
     assert status == 400 and "unknown kind" in json.loads(data)["error"]
+
+
+def test_the_page_is_served(served):
+    port, _, _ = served
+    status, data = request(port, "GET", "/")
+    assert status == 200 and b"<title>Cell labels</title>" in data
