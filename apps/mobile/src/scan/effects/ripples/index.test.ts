@@ -41,20 +41,20 @@ beforeEach(() => jest.clearAllMocks())
 
 describe('rippleUniforms', () => {
   it('gives the 15 floats in the order of the shader uniforms', () => {
-    const scene = found()
+    const scene = { ...found(), lockProgress: 0.6 }
     const u = rippleUniforms(scene, scene.inverse!, 2.5)
     expect(u).toHaveLength(15)
     expect(u.slice(0, 9)).toEqual(toColumnMajor(scene.inverse!))
     expect(u[9]).toBe(prototypePixel(402))
     expect(u[10]).toBe(2.5)
     expect(u[11]).toBe(scene.presence)
-    expect(u[12]).toBe(scene.presence * (1 - scene.motion))
+    expect(u[12]).toBe(scene.lockProgress)
     expect(u[13]).toBe(-1)
     expect(u[14]).toBe(prototypeScale(402))
   })
 
   it('stops the burst ring under Reduce Motion', () => {
-    const scene = { ...found(), reduceMotion: true, steady: true, steadyAt: 0.25 }
+    const scene = { ...found(), reduceMotion: true, lockedAt: 0.25 }
     expect(rippleUniforms(scene, IDENTITY, 0)[13]).toBe(-1)
   })
 })

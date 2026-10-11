@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
 import type { Quad } from '../../scanner'
 import type { ViewSize } from '../previewMapping'
+import { transitionAt } from '../transition/timeline'
+import type { CaptureFrame } from '../transition/warp'
 import { EffectCanvas } from './EffectCanvas'
+import * as engine from './engine'
 import { DEFAULT_INDEX, effectIndex } from './index'
 
 // Test effects stand in for the registry, so removing a real effect cannot break these tests.
@@ -98,7 +101,13 @@ function lastFrame() {
 }
 
 function renderCanvas(view: ViewSize, effect = DEFAULT_INDEX, outline: Quad | null = null) {
-  const props = { outline: shared(outline), view: shared(view), effect: shared(effect) }
+  const props = {
+    outline: shared(outline),
+    view: shared(view),
+    effect: shared(effect),
+    frameQuad: shared<Quad | null>(null),
+    onLock: jest.fn(),
+  }
   render(<EffectCanvas {...props} />)
   return props
 }
@@ -208,5 +217,124 @@ describe('EffectCanvas', () => {
       renderCanvas(VIEW)
       expect(Skia.RuntimeEffect.Make).not.toHaveBeenCalled()
     })
+  })
+})
+
+/** A shared value that gives a new quad object per read, as the camera gives one per detection. */
+function fresh(quad: Quad): SharedValue<Quad | null> {
+  const copy = () => quad.map((p) => ({ ...p })) as Quad
+  return { get: copy, value: copy() } as unknown as SharedValue<Quad | null>
+}
+function constant<T>(value: T): SharedValue<T> {
+  return { get: () => value, value } as unknown as SharedValue<T>
+}
+
+describe('lock-on', () => {
+  const NORMALISED: Quad = [
+    { x: 0.2, y: 0.3 },
+    { x: 0.8, y: 0.3 },
+    { x: 0.8, y: 0.65 },
+    { x: 0.2, y: 0.65 },
+  ]
+  it('calls onLock once, with the normalised quad, when the scene locks on', async () => {
+    // Three seconds of frames make the development frame-rate log fire.
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const onLock = jest.fn()
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(NORMALISED)}
+        onLock={onLock}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    for (let ms = 0; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    // The worklets mock runs scheduleOnRN in a microtask.
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(onLock).toHaveBeenCalledTimes(1)
+    expect(onLock).toHaveBeenCalledWith(NORMALISED)
+    log.mockRestore()
+  })
+
+  it('never calls onLock while the scene is not armed and the grid stays in view', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const onLock = jest.fn()
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(NORMALISED)}
+        onLock={onLock}
+        armed={false}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    for (let ms = 0; ms <= 5000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(onLock).not.toHaveBeenCalled()
+    log.mockRestore()
+  })
+})
+
+// The spy comes before render: the frame worklet captures advanceCapture when it is created.
+const advanceCaptureSpy = () => jest.spyOn(engine, 'advanceCapture')
+
+describe('the capture phase', () => {
+  const flat: Quad = [
+    { x: 16, y: 120 },
+    { x: 386, y: 120 },
+    { x: 386, y: 490 },
+    { x: 16, y: 490 },
+  ]
+
+  it('rides the capture quad and never calls onLock while capture is set', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const capture = advanceCaptureSpy()
+    const onLock = jest.fn()
+    const channels = transitionAt(0.2, false)
+    const value = shared<CaptureFrame | null>(null)
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(grid)}
+        onLock={onLock}
+        capture={value}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    callback({ timestamp: 0 } as never)
+    Object.assign(value, { value: { quad: flat, grid: flat, channels } })
+    for (let ms = 1000 / 60; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(onLock).not.toHaveBeenCalled()
+    expect(capture).toHaveBeenCalled()
+    const [, , quad, , passed] = capture.mock.calls.at(-1)!
+    expect(quad).toBe(flat)
+    expect(passed).toBe(channels)
+    capture.mockRestore()
+    log.mockRestore()
+  })
+
+  it('runs the live phase while capture is null', () => {
+    const capture = advanceCaptureSpy()
+    render(
+      <EffectCanvas
+        outline={constant<Quad | null>(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(null)}
+        onLock={jest.fn()}
+        capture={constant<CaptureFrame | null>(null)}
+      />,
+    )
+    tick(1)
+    tick(1 + 1 / 60)
+    expect(capture).not.toHaveBeenCalled()
+    capture.mockRestore()
   })
 })

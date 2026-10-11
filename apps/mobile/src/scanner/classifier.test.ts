@@ -138,6 +138,13 @@ describe('createClassifier', () => {
   it('refuses an output of the wrong size', () => {
     const model = fakeModel(rows(10, 2), rows(4, 1))
     model.runSync = () => [new ArrayBuffer(8), new ArrayBuffer(8)]
-    expect(() => createClassifier(model, MANIFEST).run(new Float32Array(INPUT_LENGTH))).toThrow(ModelContractError)
+    expect(() => createClassifier(model, MANIFEST).run(new Float32Array(INPUT_LENGTH))).toThrow(
+      'the digit output has 8 bytes, expected 3240',
+    )
+  })
+
+  it('exposes the model, so the scanner runtime can call it', () => {
+    const model = fakeModel(rows(10, 2), rows(4, 1))
+    expect(createClassifier(model, MANIFEST).model).toBe(model)
   })
 })

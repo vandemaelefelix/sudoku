@@ -120,8 +120,11 @@ instead of digits (model contract, "Versioning").
 | Rule | Value |
 | --- | --- |
 | Steady | The existing scene rule: a grid is present and `motion < STEADY_MOTION`, with `STEADY_SPEED` = 30 pt/s. These two values become the lock-on threshold. Tune them on the device |
-| Progress | `(t − steadyAt) / LOCK_DWELL` while steady, else 0. Clamped to 0..1 |
-| Dwell | `LOCK_DWELL` = 0.7 s to start. Tune between 0.6 and 0.8 s on the device |
+| Progress | `(t − since) / LOCK_DWELL` while armed, steady and big enough, else 0. `since` is the latest of `steadyAt`, `foundAt`, `startedAt + WARMUP` and the time the grid became big enough. Clamped to 0..1 |
+| Dwell | `LOCK_DWELL` = 1.0 s (was 0.7 s; added 2026-10-11, developer). The dwell counts from the latest of `steadyAt`, `foundAt`, the end of the settle time and the time the grid became big enough |
+| Re-arm | The first scene after the app opens is armed. A scene after a Retake starts not armed. It arms when the grid jumps to another place, or after `REARM_LOST` = 0.5 s without a grid. That time counts from the end of the settle time at the earliest, so camera start-up frames do not arm it. While not armed, the progress stays 0 (added 2026-10-11, developer) |
+| Settle time | No lock-on in the first `WARMUP` = 1.0 s after the first frame of the scene. The progress stays 0 (added 2026-10-11, developer) |
+| Minimum size | The grid width (the mean of the top and bottom edges) is at least `MIN_GRID_WIDTH` = 0.35 of the view width. While smaller, the progress stays 0. A big grid stays big down to `MIN_GRID_WIDTH − GRID_WIDTH_HYSTERESIS` = 0.32, so the progress does not flicker near the limit (added 2026-10-11, developer) |
 | Reset | The progress goes to 0 when the grid is lost, found again or jumps to another grid |
 | Latch | At progress 1, the scene sets `lockedAt` once. From then on, it ignores new detections. The dots stay on the locked quad |
 | Shutter | Captures at any time. It uses the current outline quad, or `null` when there is no grid |
@@ -212,6 +215,14 @@ times are the ones in the scan experience design, stage 2.
 | Rings on uncertain cells | 1.20–1.40 |
 | Panel slides up | 1.20–1.50 |
 
+As built (2026-10-11):
+
+- The title fades in at 0.20–0.50 s. This follows the prototype. The table has no title row.
+- The digit sweep, the rings and the panel shift later by the wait for the results: shift = max(0,
+  the clock time when the results arrived − 0.55 s).
+- The cross-fade path has no movement. It runs with Reduce Motion, after a shutter press without a
+  grid, and when the photo conversion fails.
+
 The timeline has two gates. At a closed gate, the clock holds.
 
 | Gate | At (s) | Opens when | While closed |
@@ -299,11 +310,12 @@ screen replaces the flatten. All digits show at the end of the fade. The gates s
 
 | Question | Decided by |
 | --- | --- |
-| `LOCK_DWELL`, `STEADY_SPEED` and `STEADY_MOTION` final values | #6, on the device |
-| The photo and the video frames have the same field of view at 16:9 | #6, on the device. If not, `recognise()` maps through the crop |
-| Nitro objects (the photo, the image) can pass into the scanner runtime | #6, a first task on the device. If not, the photo crosses as raw pixels |
+| `LOCK_DWELL`, `STEADY_SPEED` and `STEADY_MOTION` final values | Decided in #6: 0.7 s, 30 pt/s and 0.5. No tuning was needed |
+| The photo and the video frames have the same field of view at 16:9 | Decided in #6: yes. The re-detection found the corners within 0.5 to 3.4 % of the grid side. No crop mapping is needed |
+| Nitro objects (the photo, the image) can pass into the scanner runtime | Decided in #6: yes. The photo, the image and the model pass as plain arguments of `runOnRuntimeAsync` |
 | `REVIEW_CONFIDENCE` final value | The first real fixture set |
 | Dark-mode colours of the correction screen | The developer |
+| QR-07 budget (1.5 s) against the time to the photo gate: the photo takes about 120 ms, and the conversion follows | The developer, after the iPhone measure: a faster photo path, a compressed timeline, or a revised budget |
 
 ## Delivery
 
