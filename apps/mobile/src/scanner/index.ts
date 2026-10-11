@@ -9,6 +9,7 @@ export {
   SUPPORTED_CONTRACTS,
 } from './classifier'
 export { loadClassifier } from './model'
+export { checkModelParity, formatParity, type ParityReport, type ReferenceOutputs } from './parity'
 export { INPUT_LENGTH, preprocessCells } from './preprocess'
 export type { GridDetection, Point, Quad } from './quad'
 export { type GridDetector, useGridDetector } from './useGridDetector'
