@@ -15,7 +15,7 @@ const QUAD: Quad = [
 ]
 
 function Harness({ crossFade }: { crossFade: boolean }) {
-  const capture = useSharedValue<CaptureFrame | null>({ quad: QUAD, grid: QUAD, channels: transitionAt(0.4, crossFade) })
+  const capture = useSharedValue<CaptureFrame | null>({ quad: QUAD, grid: QUAD, channels: transitionAt(0.4, crossFade), crossFade })
   const image = useSharedValue<SkImage | null>({ width: () => 900, height: () => 1600 } as unknown as SkImage)
   const view = useSharedValue({ width: 402, height: 874 })
   return (

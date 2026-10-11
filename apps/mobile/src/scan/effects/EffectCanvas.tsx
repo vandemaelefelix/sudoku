@@ -63,7 +63,7 @@ export function EffectCanvas({
     const captured = capture == null ? null : capture.get()
     engine.modify((current) => {
       'worklet'
-      if (captured != null && current != null) return advanceCapture(current, active, captured.quad, t, captured.channels)
+      if (captured != null && current != null) return advanceCapture(current, active, captured.quad, t, captured.channels, captured.crossFade)
       return advance(current, active, size, quad, t, reduceMotion)
     }, true)
     const now = engine.get()

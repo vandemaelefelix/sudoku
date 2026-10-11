@@ -47,6 +47,8 @@ const capture = jest.fn()
 const sharedImage = { value: null } as unknown as ReturnType<typeof useCapture>['sharedImage']
 const LAYOUT = correctionLayout({ width: 402, height: 874 }, { top: 0, bottom: 0, left: 0, right: 0 })
 const onDone = jest.fn()
+/** The start of the digit sweep in the timeline. */
+const SWEEP_START = 0.55
 const onRetake = jest.fn()
 
 function props() {
@@ -433,13 +435,58 @@ describe('capture', () => {
     runFrames(1)
     show({ quad, image: IMAGE, result: OK })
     runFrames(1.5)
-    expect(correction().clock!.value).toBe(TRANSITION_END)
+    // The results came at the gate, 0.15 s after the sweep start, so the end moves 0.15 s later.
+    expect(correction().resultsAt!.value).toBeCloseTo(GATE_RESULTS)
+    expect(correction().clock!.value).toBeCloseTo(TRANSITION_END + GATE_RESULTS - SWEEP_START)
     expect(correction().reduceMotion).toBe(false)
     runFrames(0.5)
     await act(async () => undefined)
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(onDone).toHaveBeenCalledWith(OK)
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/^\[scan\] transition done in \d+ ms$/))
+  })
+
+  it('does not move the end when the results come before the sweep start', async () => {
+    jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    const show = lockOn(quad, { quad, image: IMAGE, result: null })
+    runFrames(0.2)
+    show({ quad, image: IMAGE, result: OK })
+    runFrames(0.05)
+    expect(correction().resultsAt!.value).toBeGreaterThan(0)
+    expect(correction().resultsAt!.value).toBeLessThan(SWEEP_START)
+    runFrames(1.5)
+    expect(correction().clock!.value).toBe(TRANSITION_END)
+    await act(async () => undefined)
+    expect(onDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('reaches review when the photo conversion fails after lock-on and the results come later', async () => {
+    jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    const show = lockOn(quad, { quad, image: null, result: null })
+    runFrames(0.5)
+    expect(correction().clock!.value).toBeCloseTo(GATE_PHOTO)
+    show({ quad, image: null, imageFailed: true, result: null })
+    runFrames(1)
+    expect(correction().clock!.value).toBeCloseTo(GATE_PHOTO)
+    await act(async () => undefined)
+    expect(onDone).not.toHaveBeenCalled()
+    show({ quad, image: null, imageFailed: true, result: OK })
+    runFrames(0.5)
+    expect(correction().clock!.value).toBe(REDUCED_END)
+    runFrames(0.5)
+    await act(async () => undefined)
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(onDone).toHaveBeenCalledWith(OK)
+  })
+
+  it('tells the effect canvas about the cross-fade, so the free dots do not drift', () => {
+    const show = lockOn(quad, { quad, image: null, result: null })
+    runFrames(0.1)
+    const moving = effectCanvas.mock.calls.at(-1)![0].capture!
+    expect(moving.value!.crossFade).toBe(false)
+    show({ quad, image: null, imageFailed: true, result: OK })
+    runFrames(0.1)
+    expect(moving.value!.crossFade).toBe(true)
   })
 
   it('keeps the clock at the results gate on a failure, and shows the failure with Retake', () => {
@@ -493,11 +540,11 @@ describe('capture', () => {
   it('turns the status bar dark when the light background is half in', async () => {
     lockOn(quad, { quad, image: IMAGE, result: null })
     expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('light')
-    // The status bar reaction comes just before the detection reaction.
-    const [prepare, react] = reaction.mock.calls.at(-2)! as unknown as [() => boolean, (dark: boolean, previous: boolean | null) => void]
-    expect(prepare()).toBe(false)
+    const calls = reaction.mock.calls as unknown as [() => unknown, (dark: boolean, previous: boolean | null) => void][]
+    const falseBefore = new Set(calls.filter(([prepare]) => prepare() === false))
     runFrames(0.4)
-    expect(prepare()).toBe(true)
+    // The status bar reaction is the one whose condition the dim turns from false to true.
+    const [, react] = calls.findLast((call) => falseBefore.has(call) && call[0]() === true)!
     await act(async () => react(true, false))
     expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('dark')
   })

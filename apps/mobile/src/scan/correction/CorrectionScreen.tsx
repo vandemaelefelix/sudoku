@@ -1,10 +1,10 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
+import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
 import type { RecogniseResult } from '../../scanner'
 import { useColors, type Colors } from '../../theme/colors'
-import { GATE_RESULTS, digitAlpha, transitionAt } from '../transition/timeline'
+import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '../transition/timeline'
 import { cellLook, cellsToCheck, type CellLook } from './cells'
 import { drawGridLines } from './gridLines'
 import type { CorrectionLayout } from './layout'
@@ -18,20 +18,34 @@ export type CorrectionProps = {
   reduceMotion?: boolean
   /** True while the results gate holds longer than SPINNER_DELAY. */
   waiting?: SharedValue<boolean>
+  /** The clock value when the results gate opened, or -1 before (see sweepShift). */
+  resultsAt?: SharedValue<number>
 }
 
 const PANEL_HIDDEN = 1.4
 /** Milliseconds a failure panel needs to slide up. */
 const FAILURE_SLIDE_MS = 300
 const RING_INSET = 1.5
+/** Points that a digit rises while it fades in. */
+const DIGIT_RISE = 3
 
-type CellProps = { n: number; look: CellLook; size: number; left: number; top: number; colors: Colors; clock?: SharedValue<number>; reduceMotion: boolean }
+type Timing = { clock?: SharedValue<number>; resultsAt?: SharedValue<number>; reduceMotion: boolean }
 
-type RingProps = { n: number; size: number; left: number; top: number; color: string; clock?: SharedValue<number>; reduceMotion: boolean }
+type CellProps = Timing & { n: number; look: CellLook; size: number; left: number; top: number; colors: Colors }
 
-// Only uncertain cells mount a ring, so the other cells do not run transitionAt every frame.
-const Ring = memo(function Ring({ n, size, left, top, color, clock, reduceMotion }: RingProps) {
-  const style = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).rings : 1 }))
+type RingProps = Timing & { n: number; size: number; left: number; top: number; color: string }
+
+function shiftOf(t: number, resultsAt: SharedValue<number> | undefined, reduceMotion: boolean): number {
+  'worklet'
+  return resultsAt ? sweepShift(resultsAt.value, t, reduceMotion) : 0
+}
+
+const Ring = memo(function Ring({ n, size, left, top, color, clock, resultsAt, reduceMotion }: RingProps) {
+  const style = useAnimatedStyle(() => {
+    if (!clock) return { opacity: 1 }
+    const t = clock.value
+    return { opacity: ringsAt(t, reduceMotion, shiftOf(t, resultsAt, reduceMotion)) }
+  })
   return (
     <Animated.View
       testID={`correction-ring-${n}`}
@@ -45,10 +59,17 @@ const Ring = memo(function Ring({ n, size, left, top, color, clock, reduceMotion
   )
 })
 
-const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, reduceMotion }: CellProps) {
+const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, resultsAt, reduceMotion }: CellProps) {
   const row = Math.floor(n / 9)
   const col = n % 9
-  const digitStyle = useAnimatedStyle(() => ({ opacity: clock ? digitAlpha(clock.value, row, col, reduceMotion) : 1 }))
+  const digitStyle = useAnimatedStyle(() => {
+    let alpha = 1
+    if (clock) {
+      const t = clock.value
+      alpha = digitAlpha(t, row, col, reduceMotion, shiftOf(t, resultsAt, reduceMotion))
+    }
+    return { opacity: alpha, transform: [{ translateY: (1 - alpha) * DIGIT_RISE }] }
+  })
   const entry = look.style === 'entry'
   return (
     <>
@@ -71,12 +92,14 @@ const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, reduc
       >
         {look.digit}
       </Animated.Text>
-      {look.uncertain && <Ring n={n} size={size} left={left} top={top} color={colors.warning} clock={clock} reduceMotion={reduceMotion} />}
+      {look.uncertain && (
+        <Ring n={n} size={size} left={left} top={top} color={colors.warning} clock={clock} resultsAt={resultsAt} reduceMotion={reduceMotion} />
+      )}
     </>
   )
 })
 
-export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion = false, waiting }: CorrectionProps) {
+export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion = false, waiting, resultsAt }: CorrectionProps) {
   const colors = useColors()
   const { title, grid, panel } = layout
   const failed = result != null && !result.ok
@@ -100,21 +123,21 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
   }, [grid.width, colors])
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
-  // A failure keeps the results gate closed, so the clock holds at GATE_RESULTS (at 0 with Reduce Motion) and never reaches the
-  // panel ramp. The failure panel slides in on its own timing instead.
+  // A failure keeps the results gate closed, so the clock never reaches the panel ramp. The failure panel slides in on its own
+  // timing instead, from the moment the clock reaches the results gate (any held clock with Reduce Motion).
   const failureSlide = useSharedValue(0)
-  useEffect(() => {
-    failureSlide.set(failed ? withTiming(1, { duration: FAILURE_SLIDE_MS }) : 0)
-  }, [failed, failureSlide])
+  useAnimatedReaction(
+    () => failed && (clock == null || reduceMotion || clock.value >= GATE_RESULTS - 1e-6),
+    (go, previous) => {
+      if (go === previous) return
+      failureSlide.set(go ? withTiming(1, { duration: FAILURE_SLIDE_MS }) : 0)
+    },
+  )
   const panelStyle = useAnimatedStyle(() => {
     let slide = 1
     if (clock) {
-      if (failed) {
-        const open = reduceMotion || clock.value >= GATE_RESULTS - 1e-6
-        slide = open ? failureSlide.value : 0
-      } else {
-        slide = transitionAt(clock.value, reduceMotion).panel
-      }
+      const t = clock.value
+      slide = failed ? failureSlide.value : panelAt(t, reduceMotion, shiftOf(t, resultsAt, reduceMotion))
     }
     return { transform: [{ translateY: (1 - slide) * PANEL_HIDDEN * panel.height }] }
   })
@@ -144,6 +167,7 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
           top={grid.y + Math.floor(n / 9) * cellSize}
           colors={colors}
           clock={clock}
+          resultsAt={resultsAt}
           reduceMotion={reduceMotion}
         />
       ))}

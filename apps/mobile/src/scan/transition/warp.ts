@@ -6,8 +6,9 @@ import type { Channels } from './timeline'
 /**
  * One frame of the transition, in view points. quad: the grid of the dots and the photo. grid: the grid of the cells and the lines.
  * They are the same quad in the warp. In the cross-fade the dots stay on the locked grid, and the cells and lines are on the square.
+ * crossFade: true when the Reduce Motion channels fade the layers, also without Reduce Motion (see TransitionPlan).
  */
-export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels }
+export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels; crossFade: boolean }
 
 export function lerpQuad(a: Quad, b: Quad, u: number): Quad {
   'worklet'

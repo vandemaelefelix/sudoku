@@ -113,7 +113,7 @@ describe('advanceCapture', () => {
     const engine = lockedEngine(a)
     const channels = transitionAt(0.3, false)
     const previous = engine.scene.t
-    const next = advanceCapture(engine, a, flat, 2.55, channels)
+    const next = advanceCapture(engine, a, flat, 2.55, channels, false)
     expect(next.scene.quad).toBe(flat)
     expect(next.scene.lastQuad).toBe(flat)
     expect(project(next.scene.m!, 1, 1).x).toBeCloseTo(386, 6)
@@ -128,14 +128,22 @@ describe('advanceCapture', () => {
     const a = fakeEffect('a')
     const engine = lockedEngine(a)
     const before = engine.state
-    const next = advanceCapture(engine, a, flat, 2.6, transitionAt(0.3, false))
+    const next = advanceCapture(engine, a, flat, 2.6, transitionAt(0.3, false), false)
     expect(a.step).toHaveBeenLastCalledWith(before, next.scene)
     expect(next.state).toBe(before)
   })
 
+  it('steps the effect as under Reduce Motion in the cross-fade', () => {
+    const a = fakeEffect('a')
+    const warp = advanceCapture(lockedEngine(a), a, flat, 2.6, transitionAt(0.3, false), false)
+    expect(warp.scene.reduceMotion).toBe(false)
+    const crossFade = advanceCapture(lockedEngine(a), a, flat, 2.6, transitionAt(0.1, true), true)
+    expect(crossFade.scene.reduceMotion).toBe(true)
+  })
+
   it('leaves the capture phase on the next live frame', () => {
     const a = fakeEffect('a')
-    const captured = advanceCapture(lockedEngine(a), a, flat, 2.6, transitionAt(0.3, false))
+    const captured = advanceCapture(lockedEngine(a), a, flat, 2.6, transitionAt(0.3, false), false)
     expect(advance(captured, a, VIEW, grid, 2.7, false).scene.capture).toBeNull()
   })
 })
