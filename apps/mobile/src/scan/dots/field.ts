@@ -53,7 +53,7 @@ export type FieldDot = Dot & {
   alpha: number
 }
 
-/** presence: 0..1, how far the dim has moved to "grid found". motion: 0..1, the corner speed relative to STEADY_SPEED. */
+/** presence: 0..1, how far the dim has moved to "grid found". motion: 0..1, the corner speed relative to STEADY_SPEED. speed: pt/s, the corner speed measured at the last quad change. changedAt: time of the last change of the quad object. */
 export type FieldState = {
   width: number
   height: number
@@ -64,6 +64,8 @@ export type FieldState = {
   t: number
   presence: number
   motion: number
+  speed: number
+  changedAt: number
 }
 
 function smooth(x: number): number {
@@ -107,7 +109,19 @@ export function createField(view: ViewSize): FieldState {
     radius: dot.size,
     alpha: FREE_ALPHA,
   }))
-  return { width: view.width, height: view.height, dots, quad: null, lastQuad: null, foundAt: -1, t: -1, presence: 0, motion: 1 }
+  return {
+    width: view.width,
+    height: view.height,
+    dots,
+    quad: null,
+    lastQuad: null,
+    foundAt: -1,
+    t: -1,
+    presence: 0,
+    motion: 1,
+    speed: STEADY_SPEED,
+    changedAt: -1,
+  }
 }
 
 function gather(state: FieldState, m: Homography, t: number) {
@@ -116,12 +130,14 @@ function gather(state: FieldState, m: Homography, t: number) {
   const positions: Point[] = []
   for (let i = 0; i < state.dots.length; i++) positions.push({ x: state.dots[i].x, y: state.dots[i].y })
   const owner = assignNearest(positions, targets)
+  // Each flight starts where the dot is drawn, so a re-gather does not jump.
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
     d.target = -1
     d.releasing = false
-    d.homeX = d.origX
-    d.homeY = d.origY
+    d.fromX = d.x
+    d.fromY = d.y
+    d.since = t
   }
   let longest = 0
   for (let j = 0; j < owner.length; j++) {
@@ -134,7 +150,6 @@ function gather(state: FieldState, m: Homography, t: number) {
     const d = state.dots[owner[j]]
     const p = positions[owner[j]]
     d.target = j
-    d.since = t
     d.delay = longest > 0 ? (Math.hypot(p.x - targets[j].x, p.y - targets[j].y) / longest) * MAX_DELAY : 0
   }
   state.foundAt = t
@@ -193,14 +208,15 @@ function placeGathered(state: FieldState, d: FieldDot, t: number, m: Homography,
     return
   }
   const w = wander(d, t)
+  const w0 = wander(d, d.since)
   const u = smooth((t - d.since - d.delay) / FLIGHT)
-  const fx = d.homeX + w.x
-  const fy = d.homeY + w.y
+  const sx = d.fromX + w.x - w0.x
+  const sy = d.fromY + w.y - w0.y
   const ex = at.x + w.x * WOBBLE * state.motion
   const ey = at.y + w.y * WOBBLE * state.motion
   const arc = Math.sin(u * Math.PI) * ARC * (d.px / (2 * Math.PI) - 0.5)
-  d.x = fx + (ex - fx) * u - (ey - fy) * arc
-  d.y = fy + (ey - fy) * u + (ex - fx) * arc
+  d.x = sx + (ex - sx) * u - (ey - sy) * arc
+  d.y = sy + (ey - sy) * u + (ex - sx) * arc
   d.radius = d.size * (1 + (grow - 1) * u)
   d.alpha = (GATHER_ALPHA_START + (GATHER_ALPHA_END - GATHER_ALPHA_START) * u) * (u >= 1 ? 1 : twinkle(d, t))
 }
@@ -219,16 +235,22 @@ function placeFree(
   let y = d.homeY + w.y
   if (m != null && inverse != null) {
     const out = pushOutside({ x, y }, m, inverse, MARGIN)
-    const share = reduceMotion ? 1 : smooth((t - state.foundAt) / SPREAD_TIME)
-    x += (out.x - x) * share
-    y += (out.y - y) * share
+    x = out.x
+    y = out.y
   }
-  if (d.releasing) {
-    const u = reduceMotion ? 1 : smooth((t - d.since) / RELEASE_TIME)
-    x = d.fromX + (x - d.fromX) * u
-    y = d.fromY + (y - d.fromY) * u
-    if (u >= 1) d.releasing = false
+  // A release or a spread starts where the dot is drawn, and keeps its wander.
+  const start = d.releasing ? d.since : state.foundAt
+  const span = d.releasing ? RELEASE_TIME : SPREAD_TIME
+  const moving = d.releasing || (m != null && inverse != null)
+  const u = reduceMotion || !moving ? 1 : smooth((t - start) / span)
+  if (u < 1) {
+    const w0 = wander(d, start)
+    const sx = d.fromX + w.x - w0.x
+    const sy = d.fromY + w.y - w0.y
+    x = sx + (x - sx) * u
+    y = sy + (y - sy) * u
   }
+  if (d.releasing && u >= 1) d.releasing = false
   d.x = x
   d.y = y
   d.radius = d.size
@@ -244,12 +266,21 @@ export function stepField(state: FieldState, quad: Quad | null, t: number, reduc
   const inverse = m == null ? null : invert(m)
   const grid = m != null && inverse != null ? quad : null
   const previous = state.quad
+  // The camera sends a new quad object per detection, so speed is measured only at those changes.
+  const changed = grid !== previous
   const step = grid != null && previous != null ? largestCornerStep(grid, previous) : 0
   const jumped = grid != null && previous != null && step > JUMP * diagonal(previous)
-  if (grid != null && m != null && (previous == null || jumped)) gather(state, m, t)
-  else if (grid == null && previous != null) release(state, t)
-  const speed = grid != null && previous != null && !jumped && dt > 0 ? step / dt : STEADY_SPEED
-  state.motion = toward(state.motion, Math.min(1, speed / STEADY_SPEED), dt / MOTION_TIME)
+  if (grid != null && m != null && (previous == null || jumped)) {
+    gather(state, m, t)
+    state.speed = STEADY_SPEED
+  } else if (grid == null && previous != null) {
+    release(state, t)
+    state.speed = STEADY_SPEED
+  } else if (changed && grid != null && previous != null && t > state.changedAt) {
+    state.speed = step / (t - state.changedAt)
+  }
+  if (changed) state.changedAt = t
+  state.motion = toward(state.motion, Math.min(1, state.speed / STEADY_SPEED), dt / MOTION_TIME)
   state.presence = toward(state.presence, grid != null ? 1 : 0, dt / DIM_FADE)
   state.quad = grid
   if (grid != null) state.lastQuad = grid
