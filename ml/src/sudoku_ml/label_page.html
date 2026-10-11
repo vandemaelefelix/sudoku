@@ -160,26 +160,31 @@ function cellsOnScreen() {
 }
 
 function reasonText(cell) {
-  return `in ${cell.folder}/ · ${cell.reasons.map((r) => r.reason).join(", ")}`;
+  return `in ${cell.folder}/ · ${[...new Set(cell.reasons.map((r) => r.reason))].join(", ")}`;
 }
 
 function detailText(cell) {
   if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
-  return `This cell is in folder ${cell.folder}/. ` + cell.reasons.map((r) => {
+  const twins = nearDuplicates(cell);
+  const near = twins.length ? [`Its near-duplicates (below) have the other kind.`] : [];
+  return `This cell is in folder ${cell.folder}/. ` + near.concat(cell.reasons.filter((r) => r.reason !== "near-duplicate").map((r) => {
     if (r.reason === "check") return `Your check answer: ${r.answer}. The label: ${r.label}.`;
-    if (r.reason === "near-duplicate") return `Near-duplicates (below) have these kinds: ${Object.values(r.kinds).join(", ")}.`;
     return `The model says ${r.predicted} (${Math.round(r.p_predicted * 100)} %). The label: ${r.label}.`;
-  }).join(" ");
+  })).join(" ");
+}
+
+function nearDuplicates(cell) {
+  if (mode !== "review") return [];
+  const ids = cell.reasons.filter((r) => r.reason === "near-duplicate").flatMap((r) => r.group);
+  return [...new Set(ids)].filter((id) => id !== cell.id);
 }
 
 function showDetail(cell) {
   hovered = cell;
   $("preview").src = `/cell/${cell.stem}.png`;
   $("detail").textContent = detailText(cell);
-  const near = mode === "review" ? cell.reasons.find((r) => r.reason === "near-duplicate") : null;
-  $("related").innerHTML = near
-    ? near.group.map((id) => `<img class="small" alt="" src="/cell/${id.slice(0, 16)}.png">`).join("")
-    : "";
+  $("related").innerHTML = nearDuplicates(cell)
+    .map((id) => `<img class="small" alt="" src="/cell/${id.slice(0, 16)}.png">`).join("");
 }
 
 function title() {
