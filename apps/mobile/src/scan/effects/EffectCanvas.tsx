@@ -17,15 +17,20 @@ function logOverlay(id: string, fps: number, overlayMs: number) {
 /**
  * outline: the smoothed grid in view points, or null. view: the size of the camera view in points.
  * effect: an index into EFFECTS. Only the JS thread writes it, and only when the developer picks an effect.
+ * frameQuad: the same grid, normalised to the upright frame. onLock: called once per scene, on the JS thread, with frameQuad at lock-on.
  */
 export function EffectCanvas({
   outline,
   view,
   effect,
+  frameQuad,
+  onLock,
 }: {
   outline: SharedValue<Quad | null>
   view: SharedValue<ViewSize>
   effect: SharedValue<number>
+  frameQuad: SharedValue<Quad | null>
+  onLock: (quad: Quad) => void
 }) {
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
@@ -57,6 +62,11 @@ export function EffectCanvas({
     }, true)
     const now = engine.get()
     if (now == null) return
+    // lockedAt equals t only in the frame of lock-on, so the quad crosses to the JS thread once.
+    if (now.scene.lockedAt === t) {
+      const locked = frameQuad.get()
+      if (locked != null) scheduleOnRN(onLock, locked)
+    }
     picture.set(
       createPicture((canvas) => {
         'worklet'

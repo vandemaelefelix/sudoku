@@ -1,8 +1,15 @@
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useMemo, useState } from 'react'
-import { AppState, Button, Linking, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, AppState, Button, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated'
-import { Camera, useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
+import {
+  Camera,
+  CommonResolutions,
+  useCameraDevice,
+  useCameraPermission,
+  useFrameOutput,
+  usePhotoOutput,
+} from 'react-native-vision-camera'
 import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
 import { kvSettings } from '../settings/SettingsRepository'
 import { type Quad, useGridDetector } from '../scanner'
@@ -12,7 +19,9 @@ import { EffectCanvas } from './effects/EffectCanvas'
 import { EffectPicker } from './effects/EffectPicker'
 import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
 import { toPreview, uprightAspect, type ViewSize } from './previewMapping'
+import { ResultView } from './ResultView'
 import { type Smoothing, smoothQuad } from './smoothing'
+import { useCapture } from './useCapture'
 
 /** One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame. */
 export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number }
@@ -46,6 +55,13 @@ export function CameraScreen() {
   const jitter = useSharedValue(EMPTY_JITTER)
   const outline = useSharedValue<Quad | null>(null)
   const effect = useSharedValue(DEFAULT_INDEX)
+  const frameQuad = useSharedValue<Quad | null>(null)
+  const photoOutput = usePhotoOutput({
+    targetResolution: CommonResolutions.UHD_16_9,
+    // 'speed' throws on a device without it (VisionCamera, PhotoOutputOptions).
+    qualityPrioritization: device?.supportsSpeedQualityPrioritization === true ? 'speed' : 'balanced',
+  })
+  const { state, capture, retake } = useCapture(photoOutput)
 
   const frameOutput = useFrameOutput({
     pixelFormat: 'yuv',
@@ -83,6 +99,7 @@ export function CameraScreen() {
       if (current == null) return
       const smoothed = smoothQuad(smoothing.value, current.quad, current.timestamp)
       smoothing.set(smoothed)
+      frameQuad.set(smoothed == null ? null : smoothed.quad)
       const shown = smoothed == null ? null : toPreview(smoothed.quad, current.aspect, viewSize.value)
       outline.set(shown)
       if (MEASURE_JITTER) {
@@ -94,7 +111,7 @@ export function CameraScreen() {
   )
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => setIsActive(state === 'active'))
+    const subscription = AppState.addEventListener('change', (next) => setIsActive(next === 'active'))
     return () => subscription.remove()
   }, [])
 
@@ -126,6 +143,7 @@ export function CameraScreen() {
       </View>
     )
   }
+  if (state.phase === 'result') return <ResultView result={state.result} onRetake={retake} />
   return (
     <View
       testID="camera-screen"
@@ -139,10 +157,23 @@ export function CameraScreen() {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={isActive}
-        outputs={[frameOutput]}
+        outputs={[frameOutput, photoOutput]}
         orientationSource="interface"
       />
-      <EffectCanvas outline={outline} view={viewSize} effect={effect} />
+      <EffectCanvas outline={outline} view={viewSize} effect={effect} frameQuad={frameQuad} onLock={capture} />
+      <View style={styles.bottom} pointerEvents="box-none">
+        {state.phase === 'recognising' ? (
+          <ActivityIndicator testID="recognising" color="white" size="large" />
+        ) : (
+          <Pressable
+            testID="shutter"
+            accessibilityRole="button"
+            accessibilityLabel="Take photo"
+            style={styles.shutter}
+            onPress={() => capture(frameQuad.get())}
+          />
+        )}
+      </View>
       {__DEV__ ? <EffectPicker effect={effect} settings={kvSettings} /> : null}
     </View>
   )
@@ -151,4 +182,13 @@ export function CameraScreen() {
 const styles = StyleSheet.create({
   message: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
   text: { fontSize: 17, textAlign: 'center' },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 48, alignItems: 'center' },
+  shutter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: 'white',
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
 })

@@ -9,6 +9,8 @@ import * as frameRate from './frameRate'
 import { DEFAULT_INDEX } from './effects'
 import { EffectCanvas } from './effects/EffectCanvas'
 import { EffectPicker } from './effects/EffectPicker'
+import { ResultView } from './ResultView'
+import { useCapture } from './useCapture'
 
 jest.mock('../scanner', () => ({
   ...jest.requireActual('../scanner'),
@@ -17,6 +19,8 @@ jest.mock('../scanner', () => ({
 
 jest.mock('./effects/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
 jest.mock('./effects/EffectPicker', () => ({ EffectPicker: jest.fn(() => null) }))
+jest.mock('./useCapture', () => ({ useCapture: jest.fn() }))
+jest.mock('./ResultView', () => ({ ResultView: jest.fn(() => null) }))
 
 jest.mock('expo-status-bar', () => {
   const { View } = jest.requireActual('react-native')
@@ -28,6 +32,13 @@ jest.mock('expo-status-bar', () => {
 const permission = jest.mocked(useCameraPermission)
 const device = jest.mocked(useCameraDevice)
 const frameOutput = jest.mocked(useFrameOutput)
+const captureHook = jest.mocked(useCapture)
+const capture = jest.fn()
+const retake = jest.fn()
+
+function givenPhase(state: ReturnType<typeof useCapture>['state']) {
+  captureHook.mockReturnValue({ state, capture, retake })
+}
 
 function givenPermission(status: 'authorized' | 'denied' | 'not-determined') {
   const requestPermission = jest.fn(async () => true)
@@ -82,6 +93,7 @@ function lastReaction() {
 beforeEach(() => {
   jest.clearAllMocks()
   detector.mockReturnValue(undefined)
+  givenPhase({ phase: 'live' })
   device.mockReturnValue({ id: 'back' } as unknown as ReturnType<typeof useCameraDevice>)
 })
 
@@ -276,5 +288,43 @@ describe('CameraScreen', () => {
       expect(effectPicker).not.toHaveBeenCalled()
       expect(effectCanvas.mock.calls.at(-1)![0].effect.value).toBe(DEFAULT_INDEX)
     })
+  })
+})
+
+describe('capture', () => {
+  it('passes capture to the canvas as onLock', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    expect(jest.mocked(EffectCanvas).mock.calls.at(-1)![0]).toMatchObject({ onLock: capture })
+  })
+
+  it('captures the current frame quad on a shutter press', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    fireEvent.press(screen.getByTestId('shutter'))
+    expect(capture).toHaveBeenCalledWith(null)
+  })
+
+  it('shows a spinner instead of the shutter while it recognises', () => {
+    givenPermission('authorized')
+    givenPhase({ phase: 'recognising' })
+    render(<CameraScreen />)
+    expect(screen.getByTestId('recognising')).toBeTruthy()
+    expect(screen.queryByTestId('shutter')).toBeNull()
+  })
+
+  it('shows the result view with retake after a scan', () => {
+    givenPermission('authorized')
+    const result = { ok: false as const, reason: 'no grid in the photo' }
+    givenPhase({ phase: 'result', result })
+    render(<CameraScreen />)
+    expect(screen.queryByTestId('camera')).toBeNull()
+    expect(jest.mocked(ResultView).mock.calls.at(-1)![0]).toEqual({ result, onRetake: retake })
+  })
+
+  it('adds the photo output to the camera', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    expect(screen.getByTestId('camera').props.outputs).toHaveLength(2)
   })
 })
