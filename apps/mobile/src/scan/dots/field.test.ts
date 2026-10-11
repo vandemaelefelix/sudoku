@@ -23,13 +23,28 @@ function gridAt(x: number, y: number, size = 300): Quad {
   ]
 }
 
-/** Advances the field at 60 fps from t0 to t1 with the same quad. */
+/** A new quad object with the same corners, as the camera gives one per detection. */
+function detection(quad: Quad | null): Quad | null {
+  if (quad == null) return null
+  return [{ ...quad[0] }, { ...quad[1] }, { ...quad[2] }, { ...quad[3] }]
+}
+
+/** Advances the field at 60 fps from t0 to t1 with the same corners, one detection per frame. */
 function run(state: FieldState, quad: Quad | null, t0: number, t1: number, reduce = false) {
-  for (let t = t0; t <= t1 + 1e-9; t += 1 / 60) stepField(state, quad, t, reduce)
+  for (let t = t0; t <= t1 + 1e-9; t += 1 / 60) stepField(state, detection(quad), t, reduce)
   return state
 }
 
 const gathered = (state: FieldState) => state.dots.filter((d) => d.target >= 0)
+
+const positions = (state: FieldState) => state.dots.map((d) => ({ x: d.x, y: d.y }))
+
+/** The largest distance that any dot moved between two frames. */
+function largestMove(before: { x: number; y: number }[], after: { x: number; y: number }[]) {
+  let most = 0
+  for (let i = 0; i < before.length; i++) most = Math.max(most, Math.hypot(after[i].x - before[i].x, after[i].y - before[i].y))
+  return most
+}
 
 describe('stepField', () => {
   it('lets all dots float while there is no grid', () => {
@@ -142,5 +157,47 @@ describe('stepField', () => {
     const before = state.dots.map((d) => ({ x: d.x, y: d.y }))
     stepField(state, null, 5, true)
     expect(state.dots.map((d) => ({ x: d.x, y: d.y }))).toEqual(before)
+  })
+
+  it('does not jump a dot when the grid jumps', () => {
+    const state = run(createField(VIEW), null, 0, 1)
+    run(state, gridAt(50, 100, 200), 1, 3)
+    const before = positions(state)
+    stepField(state, detection(gridAt(50, 550, 200)), 3 + 1 / 60, false)
+    expect(largestMove(before, positions(state))).toBeLessThanOrEqual(3)
+  })
+
+  it('does not jump a dot when the grid comes back 0.2 s after it was lost', () => {
+    const state = run(createField(VIEW), null, 0, 1)
+    run(state, gridAt(50, 300), 1, 3)
+    const lost = 3 + 1 / 60
+    stepField(state, null, lost, false)
+    const back = lost + 0.2
+    run(state, null, lost + 1 / 60, back - 1 / 60)
+    const before = positions(state)
+    stepField(state, detection(gridAt(50, 300)), back, false)
+    expect(largestMove(before, positions(state))).toBeLessThanOrEqual(3)
+  })
+
+  it('keeps the wobble while the grid moves at 60 pt/s and is seen every 4th frame', () => {
+    const state = run(createField(VIEW), null, 0, 1)
+    let quad: Quad | null = null
+    let i = 0
+    for (let t = 1; t < 3; t += 1 / 60, i++) {
+      if (i % 4 === 0) quad = gridAt(50 + 60 * (t - 1), 300)
+      stepField(state, quad, t, false)
+    }
+    expect(state.motion).toBeGreaterThan(0.9)
+  })
+
+  it('drives the wobble to 0 when a still grid is seen again and again', () => {
+    const state = run(createField(VIEW), null, 0, 1)
+    let quad: Quad | null = null
+    let i = 0
+    for (let t = 1; t < 3; t += 1 / 60, i++) {
+      if (i % 4 === 0) quad = gridAt(50, 300)
+      stepField(state, quad, t, false)
+    }
+    expect(state.motion).toBeLessThan(0.1)
   })
 })
