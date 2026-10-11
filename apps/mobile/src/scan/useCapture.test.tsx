@@ -50,7 +50,7 @@ it('plays the haptic, takes a photo and recognises it with the quad', async () =
   expect(recognise).toHaveBeenCalledWith(photo, QUAD)
   expect(photo.dispose).toHaveBeenCalledTimes(1)
   expect(photoToSkImage).toHaveBeenCalledWith(photo, 1600)
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, result: OK })
+  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, imageFailed: false, result: OK })
 })
 
 it('goes from capturing to the image to the result, and disposes the photo once, after both', async () => {
@@ -59,13 +59,13 @@ it('goes from capturing to the image to the result, and disposes the photo once,
   jest.mocked(photoToSkImage).mockImplementationOnce(() => new Promise((resolve) => (pending.image = resolve)))
   recognise.mockImplementationOnce(() => new Promise<RecogniseResult>((resolve) => (pending.result = resolve)))
   act(() => hook.result.current.capture(QUAD))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: null, result: null })
+  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: null, imageFailed: false, result: null })
   await waitFor(() => expect(pending.image).toBeDefined())
   await act(async () => pending.image?.(IMAGE))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, result: null })
+  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, imageFailed: false, result: null })
   expect(photo.dispose).not.toHaveBeenCalled()
   await act(async () => pending.result?.(OK))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, result: OK })
+  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: IMAGE, imageFailed: false, result: OK })
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
 
@@ -74,7 +74,7 @@ it('keeps the image null and still gives the result when the conversion fails', 
   jest.mocked(photoToSkImage).mockRejectedValueOnce(new Error('no pixels'))
   jest.spyOn(console, 'warn').mockImplementation(() => undefined)
   await act(async () => hook.result.current.capture(QUAD))
-  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: null, result: OK })
+  expect(hook.result.current.state).toEqual({ phase: 'capturing', quad: QUAD, image: null, imageFailed: true, result: OK })
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
 
@@ -96,6 +96,24 @@ it('disposes an image that arrives after retake', async () => {
   await act(async () => pending.image?.(IMAGE))
   expect(IMAGE.dispose).toHaveBeenCalledTimes(1)
   expect(hook.result.current.state).toEqual({ phase: 'live' })
+})
+
+it('disposes the Skia image on unmount', async () => {
+  const { hook } = setup()
+  await act(async () => hook.result.current.capture(QUAD))
+  hook.unmount()
+  expect(IMAGE.dispose).toHaveBeenCalledTimes(1)
+})
+
+it('disposes an image that arrives after unmount', async () => {
+  const { hook } = setup()
+  const pending: { image?: (image: SkImage) => void } = {}
+  jest.mocked(photoToSkImage).mockImplementationOnce(() => new Promise((resolve) => (pending.image = resolve)))
+  act(() => hook.result.current.capture(QUAD))
+  await waitFor(() => expect(pending.image).toBeDefined())
+  hook.unmount()
+  await act(async () => pending.image?.(IMAGE))
+  expect(IMAGE.dispose).toHaveBeenCalledTimes(1)
 })
 
 it('takes one photo when capture comes twice', async () => {
@@ -129,6 +147,7 @@ it('gives a failure with the reason when the photo fails', async () => {
   expect(hook.result.current.state).toMatchObject({
     phase: 'capturing',
     image: null,
+    imageFailed: true,
     result: { ok: false, reason: 'the camera is not ready' },
   })
 })
@@ -138,7 +157,7 @@ it('gives a failure without a photo when the model did not load', async () => {
   jest.mocked(createScanner).mockRejectedValue(new Error('the scanner does not implement model contract 2.0'))
   await act(async () => hook.result.current.capture(QUAD))
   expect(output.capturePhoto).not.toHaveBeenCalled()
-  expect(hook.result.current.state).toMatchObject({ phase: 'capturing', image: null, result: { ok: false } })
+  expect(hook.result.current.state).toMatchObject({ phase: 'capturing', image: null, imageFailed: true, result: { ok: false } })
   expect(photoToSkImage).not.toHaveBeenCalled()
 })
 

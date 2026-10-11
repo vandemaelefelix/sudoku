@@ -1,0 +1,136 @@
+import { Canvas, FillType, Picture, Skia, createPicture, type SkCanvas, type SkImage, type SkPath } from '@shopify/react-native-skia'
+import { useMemo } from 'react'
+import { StyleSheet } from 'react-native'
+import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
+import type { Quad } from '../../scanner'
+import type { Colors } from '../../theme/colors'
+import { drawGridLines } from '../correction/gridLines'
+import { type Homography, unitToQuad } from '../effects/common/geometry'
+import type { ViewSize } from '../previewMapping'
+import type { Channels } from './timeline'
+import { photoMatrix } from './warp'
+
+/** The grid in view points as the transition moves it, and the channels of this frame. Null before the transition starts. */
+export type CaptureFrame = { quad: Quad; channels: Channels }
+
+/** The static board draws its lines 1 pt inside the grid square, so the 2 pt outer line is not clipped (correction screen). */
+const LINE_INSET = 1
+
+/** m with the unit square shrunk by inset points on each side of a square of side points, so the last frame matches the board. */
+function insetUnit(m: Homography, inset: number, side: number): Homography {
+  'worklet'
+  const a = (side - 2 * inset) / side
+  const b = inset / side
+  const c = (m[6] + m[7]) * b + 1
+  return [
+    (m[0] * a) / c,
+    (m[1] * a) / c,
+    ((m[0] + m[1]) * b + m[2]) / c,
+    (m[3] * a) / c,
+    (m[4] * a) / c,
+    ((m[3] + m[4]) * b + m[5]) / c,
+    (m[6] * a) / c,
+    (m[7] * a) / c,
+  ]
+}
+
+function addQuad(path: SkPath, quad: Quad): SkPath {
+  'worklet'
+  return path.moveTo(quad[0].x, quad[0].y).lineTo(quad[1].x, quad[1].y).lineTo(quad[2].x, quad[2].y).lineTo(quad[3].x, quad[3].y).close()
+}
+
+/** Runs on the JS thread. A picture records a copy of a paint at each draw call, so one paint per layer is enough. */
+function makePaints(colors: Colors) {
+  const photo = Skia.Paint()
+  const background = Skia.Paint()
+  background.setColor(Skia.Color(colors.background))
+  const cells = Skia.Paint()
+  cells.setColor(Skia.Color(colors.surface))
+  const lines = Skia.Paint()
+  lines.setAntiAlias(true)
+  const layer = Skia.Paint()
+  return { photo, background, cells, lines, layer }
+}
+
+/**
+ * The layers under the dots: the photo, the light background and the white cell area with its grid lines.
+ * image: the upright photo, or null. locked: the grid at lock-on, normalised to the upright frame, or null.
+ * crossFade: no warp; the photo stays in place under the preview cover mapping and every layer fades (Reduce Motion).
+ * side: the side of the grid square of the correction screen, in points.
+ */
+export function TransitionCanvas({
+  capture,
+  view,
+  image,
+  locked,
+  crossFade,
+  side,
+  colors,
+}: {
+  capture: SharedValue<CaptureFrame | null>
+  view: SharedValue<ViewSize>
+  image: SkImage | null
+  locked: Quad | null
+  crossFade: boolean
+  side: number
+  colors: Colors
+}) {
+  const paints = useMemo(() => makePaints(colors), [colors])
+
+  const picture = useDerivedValue(() => {
+    const frame = capture.value
+    const size = view.value
+    return createPicture((canvas: SkCanvas) => {
+      'worklet'
+      if (frame == null) return
+      const { quad, channels } = frame
+      if (image != null && channels.photo > 0) {
+        paints.photo.setAlphaf(channels.photo)
+        const width = image.width()
+        const height = image.height()
+        if (crossFade || locked == null) {
+          // The preview cover mapping (previewMapping.ts): the photo has the field of view of the frames.
+          const scale = Math.max(size.width / width, size.height / height)
+          const dest = Skia.XYWHRect((size.width - width * scale) / 2, (size.height - height * scale) / 2, width * scale, height * scale)
+          canvas.drawImageRect(image, Skia.XYWHRect(0, 0, width, height), dest, paints.photo)
+        } else {
+          const matrix = photoMatrix(width, height, locked, quad)
+          if (matrix != null) {
+            canvas.save()
+            canvas.concat(matrix)
+            canvas.drawImage(image, 0, 0, paints.photo)
+            canvas.restore()
+          }
+        }
+      }
+      if (channels.dim > 0) {
+        // The warp keeps a hole for the grid, so only the grid of the photo shows on the light background.
+        const path = Skia.Path.Make().moveTo(0, 0).lineTo(size.width, 0).lineTo(size.width, size.height).lineTo(0, size.height).close()
+        if (!crossFade) addQuad(path, quad).setFillType(FillType.EvenOdd)
+        paints.background.setAlphaf(channels.dim)
+        canvas.drawPath(path, paints.background)
+      }
+      if (channels.cells > 0) {
+        paints.cells.setAlphaf(channels.cells)
+        canvas.drawPath(addQuad(Skia.Path.Make(), quad), paints.cells)
+      }
+      const m = unitToQuad(quad)
+      if (m == null || channels.lines <= 0) return
+      const lines = insetUnit(m, LINE_INSET, side)
+      if (crossFade) {
+        paints.layer.setAlphaf(channels.lines)
+        canvas.saveLayer(paints.layer)
+        drawGridLines(canvas, paints.lines, lines, 1, colors.ink, colors.line)
+        canvas.restore()
+      } else {
+        drawGridLines(canvas, paints.lines, lines, channels.lines, colors.ink, colors.line)
+      }
+    })
+  })
+
+  return (
+    <Canvas testID="transition-canvas" style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Picture picture={picture} />
+    </Canvas>
+  )
+}

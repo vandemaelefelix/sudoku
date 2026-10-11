@@ -5,10 +5,13 @@ import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { createScanner, type Quad, type RecogniseResult, type Scanner } from '../scanner'
 import { photoToSkImage } from './transition/photoImage'
 
-/** image: the upright photo for the transition, null until it is ready or when the conversion failed. result: null until recognise settles. */
+/**
+ * image: the upright photo for the transition, null until it is ready. imageFailed: no image will come, because the photo or its
+ * conversion failed. result: null until recognise settles.
+ */
 export type CaptureState =
   | { phase: 'live' }
-  | { phase: 'capturing'; quad: Quad | null; image: SkImage | null; result: RecogniseResult | null }
+  | { phase: 'capturing'; quad: Quad | null; image: SkImage | null; imageFailed: boolean; result: RecogniseResult | null }
 
 /** 1600 px is enough for a 3x screen. */
 const IMAGE_MAX_SIDE = 1600
@@ -45,15 +48,25 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
     createScanner().catch(() => undefined)
   }, [])
 
+  // A retake remounts the camera screen, so the unmount must free the image like retake does.
+  useEffect(
+    () => () => {
+      generation.current++
+      shownImage.current?.dispose()
+      shownImage.current = null
+    },
+    [],
+  )
+
   const capture = useCallback((quad: Quad | null) => {
     if (busy.current) return
     busy.current = true
     const attempt = ++generation.current
     // A retake makes the attempt stale. A stale attempt must not write state.
     const current = () => generation.current === attempt
-    const update = (change: { image: SkImage } | { result: RecogniseResult }) =>
+    const update = (change: { image: SkImage } | { imageFailed: true } | { result: RecogniseResult }) =>
       setState((previous) => (previous.phase === 'capturing' ? { ...previous, ...change } : previous))
-    setState({ phase: 'capturing', quad, image: null, result: null })
+    setState({ phase: 'capturing', quad, image: null, imageFailed: false, result: null })
     const started = Date.now()
     impactAsync(ImpactFeedbackStyle.Light).catch(() => undefined)
 
@@ -72,6 +85,7 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
         }
       } catch (error) {
         if (__DEV__) console.warn(`[scan] photo conversion failed: ${reasonOf(error)}`)
+        if (current()) update({ imageFailed: true })
       }
     }
 
@@ -85,6 +99,7 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
         photo = await output.current.capturePhoto({ enableShutterSound: false }, {})
         photoMs = Date.now() - started
       } catch (error) {
+        if (current()) update({ imageFailed: true })
         settle(photoMs, { ok: false, reason: reasonOf(error) })
         return
       }
