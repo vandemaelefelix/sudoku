@@ -1,5 +1,5 @@
 import type { Quad } from '../../scanner'
-import { type Homography, invert, unitToQuad } from '../dots/geometry'
+import { type Homography, invert, unitToQuad } from './common/geometry'
 import type { ViewSize } from '../previewMapping'
 
 // Times are seconds. Speeds are points per second.

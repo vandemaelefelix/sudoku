@@ -1,37 +1,11 @@
-import { BlendMode, FillType, type SkCanvas, type SkImage, Skia, TileMode } from '@shopify/react-native-skia'
+import { BlendMode, FillType, type SkCanvas, type SkImage, Skia } from '@shopify/react-native-skia'
 import type { Quad } from '../../scanner'
+import { SPRITE_SIZE } from '../effects/common/sprite'
 import type { Scene } from '../effects/scene'
 import { DIM_OUTSIDE, DIM_SEARCH, type FieldState } from './field'
 
 /** The width of a drawn star as a multiple of the dot radius. */
 export const STAR_SCALE = 9
-/** Pixels. Sharp at 3x density for the largest dot: radius 1.25 × 1.7 pt gives a star of about 19 pt. */
-export const SPRITE_SIZE = 64
-
-/** A white core with a soft halo that fades out at the image edge, which is 4.5 radii from the centre. */
-export function makeStarSprite(): SkImage {
-  'worklet'
-  const surface = Skia.Surface.Make(SPRITE_SIZE, SPRITE_SIZE)
-  if (surface == null) throw new Error('Cannot make the star sprite surface')
-  const half = SPRITE_SIZE / 2
-  const paint = Skia.Paint()
-  paint.setShader(
-    Skia.Shader.MakeRadialGradient(
-      { x: half, y: half },
-      half,
-      [
-        Skia.Color('rgba(255,255,255,1)'),
-        Skia.Color('rgba(255,255,255,1)'),
-        Skia.Color('rgba(255,255,255,0.3)'),
-        Skia.Color('rgba(255,255,255,0)'),
-      ],
-      [0, 0.2, 0.45, 1],
-      TileMode.Clamp,
-    ),
-  )
-  surface.getCanvas().drawPaint(paint)
-  return surface.makeImageSnapshot()
-}
 
 function viewPath(width: number, height: number) {
   'worklet'
