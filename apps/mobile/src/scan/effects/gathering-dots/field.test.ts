@@ -1,14 +1,21 @@
 import type { Quad } from '../../../scanner'
-import { intersections, invert, project, unitToQuad } from '../common/geometry'
+import { intersections, invert, project, pushOutside, unitToQuad } from '../common/geometry'
+import { spreadStep } from '../common/spread'
 import { createScene, type Scene, stepScene } from '../scene'
 import {
   createField,
   FLIGHT,
   FREE_ALPHA,
   GATHER_ALPHA_END,
+  MARGIN,
   MAX_DELAY,
+  NEAR,
   RELEASE_TIME,
+  selectSpreadDots,
+  SPREAD_PUSH,
+  SPREAD_RADIUS,
   SPREAD_TIME,
+  spreadHomes,
   stepField,
   type FieldState,
 } from './field'
@@ -231,6 +238,48 @@ describe('stepField', () => {
 
     it('keeps free dots out of the margin', () => {
       expect(pan().inMargin).toBe(0)
+    })
+  })
+
+  describe('spreading the homes', () => {
+    const grid = gridAt(50, 300)
+    const m = unitToQuad(grid)!
+    const centre = project(m, 0.5, 0.5)
+    const reach = Math.hypot(grid[2].x - grid[0].x, grid[2].y - grid[0].y) * NEAR
+
+    it('spreads only the free dots near the grid', () => {
+      const state = createField(VIEW)
+      // A grid of 300 pt reaches the whole view, so the test uses a small grid in a corner.
+      const small = gridAt(20, 40, 100)
+      const at = project(unitToQuad(small)!, 0.5, 0.5)
+      const chosen = selectSpreadDots(state, at, Math.hypot(100, 100) * NEAR)
+      expect(chosen.length).toBeGreaterThan(0)
+      expect(chosen.length).toBeLessThan(state.dots.length / 3)
+    })
+
+    it('keeps the same spread result as a full pass', () => {
+      const state = createField(VIEW)
+      // Gathered dots do not spread, so the test needs some.
+      for (let i = 0; i < 100; i++) state.dots[i * 2].target = i
+      const free = state.dots.map((_, i) => i).filter((i) => state.dots[i].target < 0)
+      const homes = free.map((i) => ({ x: state.dots[i].homeX, y: state.dots[i].homeY }))
+      const movable = homes.map((h) => Math.hypot(h.x - centre.x, h.y - centre.y) < reach)
+      const next = spreadStep(homes, movable, SPREAD_RADIUS, SPREAD_PUSH)
+      const inverse = invert(m)!
+      const expected = new Map<number, { x: number; y: number }>()
+      free.forEach((i, k) => {
+        if (!movable[k]) return
+        const leaves = next[k].x < 0 || next[k].x > VIEW.width || next[k].y < 0 || next[k].y > VIEW.height
+        expected.set(i, pushOutside(leaves ? homes[k] : next[k], m, inverse, MARGIN))
+      })
+      expect(expected.size).toBeGreaterThan(10)
+
+      spreadHomes(state, createScene(VIEW), grid, m, inverse)
+
+      for (const [i, home] of expected) {
+        expect(state.dots[i].homeX).toBe(home.x)
+        expect(state.dots[i].homeY).toBe(home.y)
+      }
     })
   })
 })
