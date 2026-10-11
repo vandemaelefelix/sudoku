@@ -4,7 +4,7 @@ import { SPRITE_SIZE } from '../common/sprite'
 import { makeDrawKit } from '../kit'
 import { createScene, stepScene } from '../scene'
 import { drawField, STAR_SCALE } from './draw'
-import { createField, DIM_OUTSIDE, DIM_SEARCH, stepField } from './field'
+import { createField, DIM, stepField } from './field'
 
 const VIEW = { width: 402, height: 874 }
 
@@ -75,10 +75,10 @@ describe('drawField', () => {
     drawField(canvas as never, w.field, w.scene, w.kit)
     expect(canvas.drawPath).toHaveBeenCalledTimes(1)
     expect(canvas.drawPath.mock.calls[0][1]).toBe(w.kit.fill)
-    expect(fillOf(w.kit).setAlphaf).toHaveBeenCalledWith(DIM_SEARCH)
+    expect(fillOf(w.kit).setAlphaf).toHaveBeenCalledWith(DIM)
   })
 
-  it('dims only outside the grid once the grid is found', () => {
+  it('keeps the same even dim over the grid once the grid is found', () => {
     const w = world()
     for (let t = 0; t <= 1; t += 1 / 60) {
       stepScene(w.scene, grid, t, false)
@@ -87,20 +87,8 @@ describe('drawField', () => {
     const canvas = fakeCanvas()
     drawField(canvas as never, w.field, w.scene, w.kit)
     expect(canvas.drawPath).toHaveBeenCalledTimes(1)
-    expect(canvas.drawPath.mock.calls[0][0].calls).toContainEqual(['setFillType', 1])
-    expect(fillOf(w.kit).setAlphaf).toHaveBeenCalledWith(DIM_OUTSIDE)
-  })
-
-  it('dims both the view and the outside of the grid while the grid fades in', () => {
-    const w = world()
-    w.scene.presence = 0.5
-    w.scene.lastQuad = grid
-    const canvas = fakeCanvas()
-    drawField(canvas as never, w.field, w.scene, w.kit)
-    expect(canvas.drawPath).toHaveBeenCalledTimes(2)
     expect(canvas.drawPath.mock.calls[0][0].calls).not.toContainEqual(['setFillType', 1])
-    expect(canvas.drawPath.mock.calls[1][0].calls).toContainEqual(['setFillType', 1])
-    expect(fillOf(w.kit).setAlphaf.mock.calls).toEqual([[DIM_SEARCH * 0.5], [DIM_OUTSIDE * 0.5]])
+    expect(fillOf(w.kit).setAlphaf.mock.calls).toEqual([[DIM]])
   })
 })
 
@@ -122,12 +110,11 @@ const gatheredIndex = (w: ReturnType<typeof world>) => w.field.dots.findIndex((d
 const freeIndex = (w: ReturnType<typeof world>) => w.field.dots.findIndex((d) => d.target < 0)
 
 describe('drawField in the capture phase', () => {
-  it('fades both dims by 1 − dim', () => {
+  it('fades the dim by 1 − dim', () => {
     const { w } = captured({ ...transitionAt(0, false), dim: 0.75 })
     const alphas = fillOf(w.kit).setAlphaf.mock.calls.map((call) => call[0] as number)
-    expect(alphas).toHaveLength(2)
-    expect(alphas[0]).toBeCloseTo(DIM_SEARCH * 0.5 * 0.25, 9)
-    expect(alphas[1]).toBeCloseTo(DIM_OUTSIDE * 0.5 * 0.25, 9)
+    expect(alphas).toHaveLength(1)
+    expect(alphas[0]).toBeCloseTo(DIM * 0.25, 9)
   })
 
   it('draws no dim and no visible dot at the end of the transition', () => {
