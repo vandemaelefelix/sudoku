@@ -2,11 +2,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { AppState, Linking } from 'react-native'
 import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
 import { useAnimatedReaction } from 'react-native-reanimated'
+import { kvSettings } from '../settings/SettingsRepository'
 import { type GridDetector, type Quad, useGridDetector } from '../scanner'
 import { CameraScreen, type FrameDetection } from './CameraScreen'
 import * as frameRate from './frameRate'
 import { DEFAULT_INDEX } from './effects'
 import { EffectCanvas } from './effects/EffectCanvas'
+import { EffectPicker } from './effects/EffectPicker'
 
 jest.mock('../scanner', () => ({
   ...jest.requireActual('../scanner'),
@@ -14,6 +16,7 @@ jest.mock('../scanner', () => ({
 }))
 
 jest.mock('./effects/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
+jest.mock('./effects/EffectPicker', () => ({ EffectPicker: jest.fn(() => null) }))
 
 jest.mock('expo-status-bar', () => {
   const { View } = jest.requireActual('react-native')
@@ -58,6 +61,7 @@ function frameAt(timestamp: number, dispose: () => void = jest.fn()): FakeFrame 
 const detector = jest.mocked(useGridDetector)
 const reaction = jest.mocked(useAnimatedReaction)
 const effectCanvas = jest.mocked(EffectCanvas)
+const effectPicker = jest.mocked(EffectPicker)
 
 const quad: Quad = [
   { x: 0.2, y: 0.2 },
@@ -251,5 +255,26 @@ describe('CameraScreen', () => {
     givenPermission('authorized')
     render(<CameraScreen />)
     expect(effectCanvas.mock.calls.at(-1)![0].effect.value).toBe(DEFAULT_INDEX)
+  })
+
+  it('shows the effect lab in a development build, on the same effect index as the canvas', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    const props = effectPicker.mock.calls.at(-1)![0]
+    expect(props.effect).toBe(effectCanvas.mock.calls.at(-1)![0].effect)
+    expect(props.settings).toBe(kvSettings)
+  })
+
+  describe('in a release build', () => {
+    const dev = __DEV__
+    beforeEach(() => Object.assign(globalThis, { __DEV__: false }))
+    afterEach(() => Object.assign(globalThis, { __DEV__: dev }))
+
+    it('shows no effect lab and runs the default effect', () => {
+      givenPermission('authorized')
+      render(<CameraScreen />)
+      expect(effectPicker).not.toHaveBeenCalled()
+      expect(effectCanvas.mock.calls.at(-1)![0].effect.value).toBe(DEFAULT_INDEX)
+    })
   })
 })
