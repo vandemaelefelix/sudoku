@@ -70,11 +70,54 @@ pins the exact versions.
 
 ## The transition
 
-The transition starts at lock-on. The photo flattens into the grid square, the grid lines grow
-through the gathered dots and the digits appear. A filled correction screen shows within the QR-07
-budget of 1.5 s. `recognise()` still supplies the flattened image, the 100 intersections and the 81
-results. See the [scan experience
-design](../../superpowers/specs/2026-10-11-scan-experience-design.md).
+Lock-on, or a shutter press, starts the transition at once. The photo flattens into the grid square.
+The grid lines grow through the gathered dots. The digits appear. A clock on the UI thread drives
+every layer. `recognise()` still supplies the flattened image, the 100 intersections and the 81
+results. See the [capture flow design](../../superpowers/specs/2026-10-11-capture-flow-design.md).
+
+### Gates
+
+The clock holds at two gates.
+
+| Gate | At (s) | Opens when | While closed |
+| --- | --- | --- | --- |
+| Photo | 0.05 | The photo is a Skia image: `photo.toImageAsync()`, then a nitro-image `resize` to a long side of 1600 px (it also makes the pixels upright), then `Skia.Image.MakeImage` | The preview stays visible |
+| Results | 0.70 | `recognise()` returns ok | A spinner shows after 1 s. On a failure the gate stays closed. The panel slides up with the failure and Retake |
+
+### Layers
+
+The layers are listed from the bottom to the top.
+
+| Layer | Content |
+| --- | --- |
+| Camera preview | Stops when the photo draws |
+| Transition canvas | Light background, the photo warped by a homography from the locked quad to a quad that moves into the grid square, the white cells, the growing lines |
+| Overlay, capture phase | The gathered dots ride the same quad, pulse, turn to ink and shrink into the crossings. The free dots drift 40 pt out and fade. The dim fades |
+| Correction screen views | Title, digits, rings and panel, driven by the clock |
+| Flash | A white flash |
+
+### Sweep shift
+
+The digit sweep, the rings and the panel start later by the wait for the results:
+shift = max(0, the clock time when the results arrived − 0.55 s). The lines still finish while the
+results gate holds. A slow `recognise()` ends the transition later than 1.5 s by the wait. The
+title fades in at 0.20–0.50 s. This follows the prototype. The spec table has no title row.
+
+### Cross-fade path
+
+The cross-fade path has no movement. It runs with Reduce Motion, after a shutter press without a
+grid, and when the photo conversion fails. The dots and the free dots fade in place. The photo fades
+out with the preview mapping. The correction screen fades in over 0.3 s once both gates are open.
+
+### The end
+
+At the end the phase becomes `review`. `ScanFlow` shows the static `CorrectionScreen` with the same
+`correctionLayout`. Retake remounts the camera screen. The overlay gets a new scene, so the
+lock-on latch is fresh.
+
+The QR-07 budget is 1.5 s from lock-on to a filled screen. The time to the photo gate probably
+misses it: the photo takes about 120 ms, and the conversion follows. The code logs
+`[scan] transition done in N ms`. The measure on the iPhone is still open.
 
 ## Loading the result
 
@@ -96,6 +139,7 @@ loads. If they have none or several, the correction screen says so and does not 
 | Lock-on rule: final values of `LOCK_DWELL`, `STEADY_SPEED` and `STEADY_MOTION` | Decided in issue #6: 0.7 s, 30 pt/s and 0.5. No tuning was needed |
 | Window size for the intersection search, and when a cell falls back to the rough flatten | First book-page fixtures |
 | Confidence threshold for "review this cell" | First real fixture set |
+| QR-07 budget (lock-on to a filled screen in 1.5 s) against the time to the photo gate. Options: a faster photo path, a compressed timeline, or a revised budget | The developer, after the iPhone measure |
 
 ## Constraints
 
