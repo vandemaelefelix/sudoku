@@ -20,10 +20,17 @@ function logOverlay(fps: number, overlayMs: number) {
 
 /** outline: the smoothed grid in view points, or null. view: the size of the camera view in points. */
 export function DotField({ outline, view }: { outline: SharedValue<Quad | null>; view: SharedValue<ViewSize> }) {
+  // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
   // The sprite is made once on the JS thread. A Skia image is a host object, so the frame worklet can capture it.
   const sprite = useMemo(() => makeStarSprite(), [])
-  const empty = useMemo(() => createPicture(() => {}), [])
+  const empty = useMemo(
+    () =>
+      createPicture(() => {
+        'worklet'
+      }),
+    [],
+  )
   const field = useSharedValue<FieldState | null>(null)
   const picture = useSharedValue(empty)
   const timing = useSharedValue(EMPTY_WINDOW)
@@ -41,7 +48,14 @@ export function DotField({ outline, view }: { outline: SharedValue<Quad | null>;
       return stepField(current, outline.value, t, reduceMotion)
     }, true)
     const state = field.get()
-    if (state != null) picture.set(createPicture((canvas) => drawField(canvas, state, sprite)))
+    if (state != null) {
+      picture.set(
+        createPicture((canvas) => {
+          'worklet'
+          drawField(canvas, state, sprite)
+        }),
+      )
+    }
     if (__DEV__) {
       const result = countFrame(timing.get(), t, Date.now() - started)
       timing.set(result.window)

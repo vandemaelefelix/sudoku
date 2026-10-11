@@ -46,6 +46,34 @@ function largestMove(before: { x: number; y: number }[], after: { x: number; y: 
   return most
 }
 
+/** Gathers a grid, then pans it for 3 s with a new quad object every 2nd frame. Returns the largest free-dot move and the margin check. */
+function pan() {
+  const state = run(createField(VIEW), null, 0, 1)
+  run(state, gridAt(50, 300), 1, 2.5)
+  let quad: Quad | null = null
+  let before = positions(state)
+  let most = 0
+  let inMargin = 0
+  let i = 0
+  for (let t = 2.5; t < 5.5; t += 1 / 60, i++) {
+    const x = 50 + 60 * (t - 2.5)
+    if (i % 2 === 0) quad = gridAt(x, 300)
+    stepField(state, quad, t, false)
+    const after = positions(state)
+    for (let k = 0; k < after.length; k++) {
+      if (state.dots[k].target >= 0) continue
+      most = Math.max(most, Math.hypot(after[k].x - before[k].x, after[k].y - before[k].y))
+    }
+    before = after
+    const inverse = invert(unitToQuad(quad!)!)!
+    for (const d of state.dots.filter((dot) => dot.target < 0)) {
+      const q = project(inverse, d.x, d.y)
+      if (q.x > -0.08 + 1e-6 && q.x < 1.08 - 1e-6 && q.y > -0.08 + 1e-6 && q.y < 1.08 - 1e-6) inMargin++
+    }
+  }
+  return { most, inMargin }
+}
+
 describe('stepField', () => {
   it('lets all dots float while there is no grid', () => {
     const state = run(createField(VIEW), null, 0, 2)
@@ -199,5 +227,15 @@ describe('stepField', () => {
       stepField(state, quad, t, false)
     }
     expect(state.motion).toBeLessThan(0.1)
+  })
+
+  describe('while the grid pans at 60 pt/s', () => {
+    it('does not jump a free dot', () => {
+      expect(pan().most).toBeLessThan(6)
+    })
+
+    it('keeps free dots out of the margin', () => {
+      expect(pan().inMargin).toBe(0)
+    })
   })
 })
