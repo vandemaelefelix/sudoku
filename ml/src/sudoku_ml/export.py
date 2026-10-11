@@ -1,5 +1,6 @@
 """Export a run to TFLite. Check it against PyTorch and against the TFLite 2.17 runtime."""
 
+import base64
 import json
 import sys
 from pathlib import Path
@@ -81,6 +82,22 @@ def check_same_argmax(outputs: dict[str, np.ndarray], expected: dict[str, np.nda
             raise ValueError(f"TFLite and PyTorch disagree on the {name} of cells {wrong.tolist()}")
 
 
+def write_reference_outputs(run: Path, inputs: np.ndarray, expected: dict[str, np.ndarray]) -> Path:
+    """The PyTorch probabilities for the reference cells.
+
+    The app compares the phone's outputs with them.
+    """
+    target = run / "reference-outputs.json"
+    payload = {
+        "run": run.name,
+        "inputs": base64.b64encode(inputs.astype("<f4").tobytes()).decode("ascii"),
+        "digit": expected["digit"].astype(float).tolist(),
+        "kind": expected["kind"].astype(float).tolist(),
+    }
+    target.write_text(json.dumps(payload))
+    return target
+
+
 def export(run: Path, fixture_dir: Path) -> Path:
     model = CellClassifier()
     model.load_state_dict(torch.load(run / "model.pt"))
@@ -113,6 +130,7 @@ def export(run: Path, fixture_dir: Path) -> Path:
         "ops": op_versions(target),
     }
     (run / "export.json").write_text(json.dumps(info, indent=2))
+    write_reference_outputs(run, inputs, {n: expected[n].detach().numpy() for n in index})
     return target
 
 
