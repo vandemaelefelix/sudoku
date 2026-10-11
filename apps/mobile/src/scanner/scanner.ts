@@ -1,5 +1,6 @@
 import type { Photo } from 'react-native-vision-camera'
 import { createWorkletRuntime, runOnRuntimeAsync, type WorkletRuntime } from 'react-native-worklets'
+import { ModelContractError } from './classifier'
 import { loadClassifier } from './model'
 import type { Quad } from './quad'
 import { recognise, type RecogniseResult } from './recognise'
@@ -16,9 +17,18 @@ function scannerRuntime(): WorkletRuntime {
   return runtime
 }
 
-/** Loads the model once per app. A model that breaks the contract rejects every call with the same ModelContractError. */
+/**
+ * Loads the model once per app. A model that breaks the contract rejects every call with the same ModelContractError. Any other
+ * load failure can be transient, so the next call tries again.
+ */
 export function createScanner(): Promise<Scanner> {
-  if (scanner == null) scanner = loadScanner()
+  if (scanner == null) {
+    const loading = loadScanner()
+    scanner = loading
+    loading.catch((error: unknown) => {
+      if (!(error instanceof ModelContractError) && scanner === loading) scanner = null
+    })
+  }
   return scanner
 }
 
