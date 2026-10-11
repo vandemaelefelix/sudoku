@@ -1,4 +1,4 @@
-import { CELLS, INPUT_LENGTH } from './preprocess'
+import { CELLS, INPUT_LENGTH, INPUT_SIZE } from './preprocess'
 
 // docs/architecture/00-concepts/model-contract.md: outputs, classes, valid pairs and versioning.
 
@@ -17,6 +17,7 @@ export type ModelManifest = {
   contract: string
   file: string
   outputs: { digit: number; kind: number }
+  run?: string
 }
 
 export class ModelContractError extends Error {
@@ -27,7 +28,11 @@ export class ModelContractError extends Error {
 export type RawOutputs = { digit: Float32Array; kind: Float32Array }
 
 /** The part of a fast-tflite TensorflowModel that the classifier uses. */
-export type TfliteModel = { outputs: { shape: number[] }[]; runSync(inputs: ArrayBuffer[]): ArrayBuffer[] }
+export type TfliteModel = {
+  inputs: { shape: number[]; dataType: string }[]
+  outputs: { shape: number[] }[]
+  runSync(inputs: ArrayBuffer[]): ArrayBuffer[]
+}
 
 export type Classifier = {
   manifest: ModelManifest
@@ -42,7 +47,7 @@ function isIndex(value: unknown): value is number {
 export function checkManifest(value: unknown): ModelManifest {
   const m = value as Partial<ModelManifest> | null
   if (m == null || typeof m !== 'object') throw new ModelContractError('the model manifest is missing')
-  const major = Number((m.contract ?? '').split('.')[0])
+  const major = typeof m.contract === 'string' ? Number(m.contract.split('.')[0]) : NaN
   if (!Number.isInteger(major) || !SUPPORTED_CONTRACTS.includes(major)) {
     throw new ModelContractError(`the scanner does not implement model contract ${String(m.contract)}`)
   }
@@ -89,6 +94,10 @@ function copyOutput(buffer: ArrayBuffer | undefined, length: number, name: strin
 
 export function createClassifier(model: TfliteModel, manifest: ModelManifest): Classifier {
   const { digit, kind } = manifest.outputs
+  const inputTensor = model.inputs[0]
+  if (!sameShape(inputTensor?.shape, [CELLS, INPUT_SIZE, INPUT_SIZE, 1]) || inputTensor.dataType !== 'float32') {
+    throw new ModelContractError('the model input is not float32 [81, 32, 32, 1]')
+  }
   if (!sameShape(model.outputs[digit]?.shape, [CELLS, DIGIT_CLASSES])) {
     throw new ModelContractError(`output ${digit} is not the digit head [81, 10]`)
   }
