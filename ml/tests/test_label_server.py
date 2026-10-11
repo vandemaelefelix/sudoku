@@ -96,6 +96,7 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "You cannot decide. Training ignores it.",
         "Run <code>just suspects</code>",
         "This cell is in folder",
+        "An empty cell has no kind.",
     ):
         assert text in page
 
