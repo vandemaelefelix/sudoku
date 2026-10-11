@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import type { CellResult, RecogniseResult } from '../scanner'
 import { ResultView } from './ResultView'
 
@@ -29,7 +29,7 @@ it('shows 81 cells with the digit and the kind', () => {
   expect(screen.getAllByTestId(/^result-cell-/)).toHaveLength(81)
   expect(screen.getByTestId('result-cell-0')).toHaveTextContent('5P')
   expect(screen.getByTestId('result-cell-1')).toHaveTextContent('7H')
-  expect(screen.getByTestId('result-cell-2')).toHaveTextContent('')
+  expect(within(screen.getByTestId('result-cell-2')).queryByText(/\d|P|H/)).toBeNull()
 })
 
 it('shows the reason of a failure', () => {

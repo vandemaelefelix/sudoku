@@ -55,12 +55,27 @@ it('shows the recognising phase while the scan runs', async () => {
 })
 
 it('takes one photo when capture comes twice', async () => {
-  const { hook, output } = setup()
+  const { hook, output, photo, recognise } = setup()
   await act(async () => {
     hook.result.current.capture(QUAD)
     hook.result.current.capture(null)
   })
   expect(output.capturePhoto).toHaveBeenCalledTimes(1)
+  expect(recognise).toHaveBeenCalledTimes(1)
+  expect(photo.dispose).toHaveBeenCalledTimes(1)
+})
+
+it('ignores a capture that comes in a later tick while the scan runs', async () => {
+  const { hook, output, recognise } = setup()
+  const pending: { finish?: (result: RecogniseResult) => void } = {}
+  recognise.mockImplementationOnce(() => new Promise<RecogniseResult>((resolve) => (pending.finish = resolve)))
+  await act(async () => hook.result.current.capture(QUAD))
+  expect(hook.result.current.state).toEqual({ phase: 'recognising' })
+  await act(async () => hook.result.current.capture(null))
+  await act(async () => pending.finish?.(OK))
+  expect(output.capturePhoto).toHaveBeenCalledTimes(1)
+  expect(recognise).toHaveBeenCalledTimes(1)
+  expect(hook.result.current.state).toEqual({ phase: 'result', result: OK })
 })
 
 it('gives a failure with the reason when the photo fails', async () => {
