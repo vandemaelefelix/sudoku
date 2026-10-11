@@ -322,6 +322,34 @@ describe('lock-on', () => {
       expect(scene.lockedAt).toBe(-1)
     })
 
+    it('does not arm on start-up frames without a grid, longer than REARM_LOST but inside the warm-up', () => {
+      expect(0.8).toBeGreaterThan(REARM_LOST)
+      expect(0.8).toBeLessThan(WARMUP)
+      const scene = run(createScene(VIEW, false), null, 0, 0.8)
+      run(scene, gridAt(50, 300), 0.8 + FRAME, 5)
+      expect(scene.armed).toBe(false)
+      expect(scene.lockedAt).toBe(-1)
+    })
+
+    it('arms REARM_LOST after the warm-up when there is no grid from the start, then locks on a new grid', () => {
+      const scene = run(createScene(VIEW, false), null, 0, WARMUP + REARM_LOST - 2 * FRAME)
+      expect(scene.armed).toBe(false)
+      run(scene, null, WARMUP + REARM_LOST - FRAME, 2)
+      expect(scene.armed).toBe(true)
+      const found = 2 + FRAME
+      run(scene, gridAt(50, 300), found, found + 3)
+      expect(scene.lockedAt).toBeGreaterThan(found + LOCK_DWELL - FRAME)
+      expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    })
+
+    it('counts a loss inside the warm-up from the end of the warm-up', () => {
+      const scene = run(createScene(VIEW, false), gridAt(50, 300), 0, 0.3)
+      run(scene, null, 0.3 + FRAME, WARMUP + REARM_LOST - 2 * FRAME)
+      expect(scene.armed).toBe(false)
+      run(scene, null, WARMUP + REARM_LOST - FRAME, WARMUP + REARM_LOST + FRAME)
+      expect(scene.armed).toBe(true)
+    })
+
     it('arms when the grid jumps to another place, then locks on after the dwell', () => {
       const scene = run(createScene(VIEW, false), gridAt(50, 100, 200), 0, 2)
       expect(scene.armed).toBe(false)

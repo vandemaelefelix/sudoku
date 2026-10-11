@@ -32,7 +32,7 @@ status: DRAFT
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes` |
 | Lock-on | The moment the grid corners have been steady long enough, and the scan captures |
-| Armed (lock-on) | A scene that may lock on automatically. The first scene is armed. A scene after a Retake arms only after the grid is gone for 0.5 s or jumps to another place. The shutter does not need it. See the scan-pipeline concept |
+| Armed (lock-on) | A scene that may lock on automatically. The first scene is armed. A scene after a Retake arms only after the grid is gone for 0.5 s after the warm-up, or jumps to another place. The shutter does not need it. See the scan-pipeline concept |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
