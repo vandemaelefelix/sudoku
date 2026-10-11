@@ -1,5 +1,6 @@
 import { BlendMode, FillType, type SkCanvas, type SkImage, Skia, TileMode } from '@shopify/react-native-skia'
 import type { Quad } from '../../scanner'
+import type { Scene } from '../effects/scene'
 import { DIM_OUTSIDE, DIM_SEARCH, type FieldState } from './field'
 
 /** The width of a drawn star as a multiple of the dot radius. */
@@ -48,25 +49,25 @@ function withHole(width: number, height: number, quad: Quad) {
     .setFillType(FillType.EvenOdd)
 }
 
-/** Draws one frame: the dim as paths, the dots in one atlas call. Runs on the UI thread inside createPicture. sprite: from makeStarSprite. */
-export function drawField(canvas: SkCanvas, state: FieldState, sprite: SkImage): void {
+/** Draws the dim as paths, then every dot in one atlas call with the star sprite. Runs on the UI thread inside createPicture. sprite: from makeStarSprite. */
+export function drawField(canvas: SkCanvas, state: FieldState, scene: Scene, sprite: SkImage): void {
   'worklet'
   const dim = Skia.Paint()
   dim.setAntiAlias(true)
   dim.setColor(Skia.Color('#000000'))
-  if (state.presence > 0 && state.lastQuad != null) {
-    const search = DIM_SEARCH * (1 - state.presence)
+  if (scene.presence > 0 && scene.lastQuad != null) {
+    const search = DIM_SEARCH * (1 - scene.presence)
     if (search > 0) {
       const full = Skia.Paint()
       full.setColor(Skia.Color('#000000'))
       full.setAlphaf(search)
-      canvas.drawPath(viewPath(state.width, state.height), full)
+      canvas.drawPath(viewPath(scene.width, scene.height), full)
     }
-    dim.setAlphaf(DIM_OUTSIDE * state.presence)
-    canvas.drawPath(withHole(state.width, state.height, state.lastQuad), dim)
+    dim.setAlphaf(DIM_OUTSIDE * scene.presence)
+    canvas.drawPath(withHole(scene.width, scene.height, scene.lastQuad), dim)
   } else {
     dim.setAlphaf(DIM_SEARCH)
-    canvas.drawPath(viewPath(state.width, state.height), dim)
+    canvas.drawPath(viewPath(scene.width, scene.height), dim)
   }
 
   const whole = Skia.XYWHRect(0, 0, SPRITE_SIZE, SPRITE_SIZE)
