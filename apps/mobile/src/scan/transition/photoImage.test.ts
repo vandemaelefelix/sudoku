@@ -1,8 +1,8 @@
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia'
 import { photoToSkImage } from './photoImage'
 
-function setup(pixelFormat: string, size = { width: 2376, height: 4224 }) {
-  const buffer = new ArrayBuffer(16)
+function setup(pixelFormat: string, size = { width: 2376, height: 4224 }, rowBytes = 900 * 4) {
+  const buffer = new ArrayBuffer(rowBytes * 1600)
   const small = {
     dispose: jest.fn(),
     toRawPixelDataAsync: jest.fn(async () => ({ buffer, width: 900, height: 1600, pixelFormat })),
@@ -24,6 +24,33 @@ it('resizes to the long side before it reads the pixels, and builds a Skia image
     3600,
   )
   expect(image).toBe(jest.mocked(Skia.Image.MakeImage).mock.results[0]!.value)
+})
+
+it('reads the row bytes from the buffer, because a resize can pad the rows', async () => {
+  const { photo } = setup('BGRA', undefined, 3648)
+  await photoToSkImage(photo, 1600)
+  expect(jest.mocked(Skia.Image.MakeImage).mock.calls[0]![2]).toBe(3648)
+})
+
+it.each([
+  ['shorter than a row', 900 * 4 - 4],
+  ['not a whole number per row', 900 * 4 + 0.5],
+])('throws and disposes when the buffer is %s', async (_name, rowBytes) => {
+  const { photo, full, small } = setup('BGRA', undefined, rowBytes)
+  await expect(photoToSkImage(photo, 1600)).rejects.toThrow('row')
+  expect(full.dispose).toHaveBeenCalledTimes(1)
+  expect(small.dispose).toHaveBeenCalledTimes(1)
+})
+
+it.each([
+  ['BGRA', AlphaType.Premul],
+  ['BGRX', AlphaType.Opaque],
+  ['RGBA', AlphaType.Premul],
+  ['RGBX', AlphaType.Opaque],
+])('picks the alpha type from the pixel format %s', async (pixelFormat, alphaType) => {
+  const { photo } = setup(pixelFormat)
+  await photoToSkImage(photo, 1600)
+  expect(jest.mocked(Skia.Image.MakeImage).mock.calls[0]![0]).toMatchObject({ alphaType })
 })
 
 it('does not enlarge a small photo', async () => {

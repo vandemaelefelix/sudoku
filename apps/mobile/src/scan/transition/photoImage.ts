@@ -13,8 +13,14 @@ export async function photoToSkImage(photo: Pick<Photo, 'toImageAsync'>, maxSide
     try {
       const { buffer, width, height, pixelFormat } = await small.toRawPixelDataAsync()
       const colorType = colorTypeOf(pixelFormat)
+      // The resize can pad each row, so the buffer gives the row length, not the width.
+      const rowBytes = buffer.byteLength / height
+      if (!Number.isInteger(rowBytes) || rowBytes < width * 4) {
+        throw new Error(`the photo has ${buffer.byteLength} bytes for ${height} rows of ${width} pixels`)
+      }
+      const alphaType = pixelFormat.endsWith('X') ? AlphaType.Opaque : AlphaType.Premul
       const data = Skia.Data.fromBytes(new Uint8Array(buffer))
-      const image = Skia.Image.MakeImage({ width, height, colorType, alphaType: AlphaType.Premul }, data, width * 4)
+      const image = Skia.Image.MakeImage({ width, height, colorType, alphaType }, data, rowBytes)
       if (image == null) throw new Error('Skia could not make an image of the photo')
       return image
     } finally {
