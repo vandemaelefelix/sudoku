@@ -40,11 +40,17 @@ status: DRAFT
 | Review rate | The share of cells that the correction screen marks as uncertain. Reports give the accuracy at a review rate, for example 99.7 % at 5 % |
 | Suspect | A training cell whose label is probably wrong, found by `just suspects` |
 | Quad | The four outer corners of the detected grid |
-| Skia | `react-native-skia`, a 2D drawing library used for the dot field and the transition |
+| Skia | `react-native-skia`, a 2D drawing library used for the overlay effects and the transition |
 | VisionCamera | `react-native-vision-camera`, the camera library with frame processors |
 | Frame resizer | `react-native-vision-camera-resizer`. It turns a camera frame and scales it on the GPU before fast-opencv sees it. Version 5.2.3 turns a sideways frame upside down |
 | One Euro filter | A smoothing filter whose cutoff rises with speed. It keeps a still outline steady and lets a moving outline follow with little lag. Used for corner smoothing |
-| Outline | The smoothed quad in view points. The camera screen gives it to the dot field |
-| Dot field | The live overlay on the camera screen: faint dots that float, and gather on the grid intersections when a grid is found |
+| Outline | The smoothed quad in view points. The camera screen gives it to the effect engine |
+| Dot field | The simulation of the Gathering dots effect, the default effect: faint dots that float, and gather on the grid intersections when a grid is found |
 | Free dot | A dot of the dot field that floats. It stays out of the grid and its margin |
 | Gathered dot | A dot of the dot field that sits on one grid intersection and follows it |
+| Effect | One way to draw the live overlay on the camera screen. A module with `create`, `step` and `draw` in `src/scan/effects/` (ADR-014) |
+| Scene | The facts about the grid that the engine gives to every effect in each frame: the grid, its matrices, found and lost, presence, motion and the steady state |
+| Steady state | The grid corners move slower than the steady threshold. The overlay then shows its lock-on reaction |
+| Effect lab | The switch between effects in a development build: the dev pill and its list. A release build does not have it |
+| Dev pill | The button at the top of the camera screen in a development build. It shows the active effect and opens the list of effects |
+| Draw kit | The paints, the star sprite and the compiled runtime shaders that the engine makes once and gives to every effect |

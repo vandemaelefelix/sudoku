@@ -68,7 +68,7 @@ dots is the default effect.
 ### Spotlight and brackets
 
 The prototype, section 1, "Spotlight and brackets". A black dim outside the grid, as in #18, and a
-corner bracket on each of the four grid corners. The brackets get brighter in the steady state.
+corner bracket on each of the four grid corners. In the steady state the brackets grow from 12 % to 50 % of each edge and the dim deepens from 30 % to 52 %. The bracket opacity follows presence.
 
 ### Grid lattice
 
