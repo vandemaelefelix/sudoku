@@ -20,9 +20,9 @@ const grid: Quad = [
   { x: 50, y: 600 },
 ]
 
-/** A scene with the grid found, at the given presence and motion. */
-function sceneWith(presence: number, motion: number): Scene {
-  return { ...stepScene(createScene(VIEW), grid, 0, false), presence, motion }
+/** A scene with the grid found, at the given presence and lock-on progress. */
+function sceneWith(presence: number, lockProgress: number): Scene {
+  return { ...stepScene(createScene(VIEW), grid, 0, false), presence, lockProgress }
 }
 
 function fakeCanvas() {
@@ -33,7 +33,7 @@ const mocked = (paint: unknown) => paint as Record<string, jest.Mock>
 
 describe('spotlightBrackets', () => {
   it('is the path effect with a stable id and no state', () => {
-    const scene = sceneWith(1, 1)
+    const scene = sceneWith(1, 0)
     expect(spotlightBrackets.id).toBe('spotlight-brackets')
     expect(spotlightBrackets.name).toBe('Spotlight and brackets')
     expect(spotlightBrackets.family).toBe('path')
@@ -51,7 +51,7 @@ describe('spotlightBrackets', () => {
   it('dims outside the grid and draws short brackets while the corners move', () => {
     const kit = makeDrawKit([])
     const canvas = fakeCanvas()
-    spotlightBrackets.draw(canvas as never, null, sceneWith(1, 1), kit)
+    spotlightBrackets.draw(canvas as never, null, sceneWith(1, 0), kit)
     expect(canvas.drawPath).toHaveBeenCalledTimes(2)
     const [hole, fill] = canvas.drawPath.mock.calls[0]
     expect(fill).toBe(kit.fill)
@@ -63,10 +63,10 @@ describe('spotlightBrackets', () => {
     expect(brackets.calls[0]).toEqual(['moveTo', 50, 300 + 300 * BRACKET_BASE])
   })
 
-  it('deepens the dim and grows the brackets when the corners hold still', () => {
+  it('deepens the dim and grows the brackets when the scan locks on', () => {
     const kit = makeDrawKit([])
     const canvas = fakeCanvas()
-    spotlightBrackets.draw(canvas as never, null, sceneWith(1, 0), kit)
+    spotlightBrackets.draw(canvas as never, null, sceneWith(1, 1), kit)
     expect(mocked(kit.fill).setAlphaf).toHaveBeenCalledWith(DIM_BASE + DIM_STEADY)
     const brackets = canvas.drawPath.mock.calls[1][0]
     expect(brackets.calls[0]).toEqual(['moveTo', 50, 300 + 300 * (BRACKET_BASE + BRACKET_STEADY)])
@@ -74,14 +74,14 @@ describe('spotlightBrackets', () => {
 
   it('fades the dim and the brackets in with the presence', () => {
     const kit = makeDrawKit([])
-    spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(0.5, 1), kit)
+    spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(0.5, 0), kit)
     expect(mocked(kit.fill).setAlphaf).toHaveBeenCalledWith(0.5 * DIM_BASE)
     expect(mocked(kit.stroke).setAlphaf).toHaveBeenCalledWith(0.5)
   })
 
   it('scales the bracket stroke from the prototype phone to the view', () => {
     const kit = makeDrawKit([])
-    spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(1, 1), kit)
+    spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(1, 0), kit)
     expect(mocked(kit.stroke).setStrokeWidth.mock.calls[0][0]).toBeCloseTo((BRACKET_WIDTH * 402) / 220, 9)
   })
 })

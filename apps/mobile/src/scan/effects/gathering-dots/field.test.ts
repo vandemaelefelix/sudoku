@@ -1,5 +1,6 @@
 import type { Quad } from '../../../scanner'
-import { intersections, invert, project, pushOutside, unitToQuad } from '../common/geometry'
+import { type Channels, TRANSITION_END, transitionAt } from '../../transition/timeline'
+import { intersections, invert, isBoxCorner, project, pushOutside, unitToQuad } from '../common/geometry'
 import { spreadStep } from '../common/spread'
 import { createScene, type Scene, stepScene } from '../scene'
 import {
@@ -7,6 +8,10 @@ import {
   FLIGHT,
   FREE_ALPHA,
   GATHER_ALPHA_END,
+  GROW,
+  GROW_BOX,
+  INK_RADIUS,
+  LOCK_BRIGHTEN,
   MARGIN,
   MAX_DELAY,
   NEAR,
@@ -70,14 +75,15 @@ function largestMove(before: { x: number; y: number }[], after: { x: number; y: 
 /** Gathers a grid, then pans it for 3 s with a new quad object every 2nd frame. Returns the largest free-dot move and the margin check. */
 function pan() {
   const w = run(world(), null, 0, 1)
-  run(w, gridAt(50, 300), 1, 2.5)
+  // The grid creeps at 35 pt/s while the dots gather. A still grid would lock the scene, and a locked scene ignores the pan.
+  for (let t = 1; t <= 2.5 + 1e-9; t += 1 / 60) frame(w, gridAt(50 + 35 * (t - 1), 300), t)
   let quad: Quad | null = null
   let before = positions(w)
   let most = 0
   let inMargin = 0
   let i = 0
   for (let t = 2.5; t < 5.5; t += 1 / 60, i++) {
-    const x = 50 + 60 * (t - 2.5)
+    const x = 50 + 35 * 1.5 + 60 * (t - 2.5)
     if (i % 2 === 0) quad = gridAt(x, 300)
     frame(w, quad, t)
     const after = positions(w)
@@ -127,7 +133,7 @@ describe('stepField', () => {
     const points = intersections(unitToQuad(grid)!)
     for (const d of gathered(w)) {
       expect(Math.hypot(d.x - points[d.target].x, d.y - points[d.target].y)).toBeLessThan(0.01)
-      expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END, 6)
+      expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
     }
   })
 
@@ -155,19 +161,19 @@ describe('stepField', () => {
 
   it('frees the gathered dots when the grid is lost', () => {
     const w = run(world(), null, 0, 1)
-    run(w, gridAt(50, 300), 1, 3)
-    frame(w, null, 3 + 1 / 60)
+    run(w, gridAt(50, 300), 1, 1.5)
+    frame(w, null, 1.5 + 1 / 60)
     expect(gathered(w)).toHaveLength(0)
     expect(w.field.holding).toBe(false)
-    run(w, null, 3 + 2 / 60, 3 + RELEASE_TIME + 0.1)
+    run(w, null, 1.5 + 2 / 60, 1.5 + RELEASE_TIME + 0.1)
     expect(w.field.dots.every((d) => !d.releasing)).toBe(true)
   })
 
   it('reassigns when the grid jumps', () => {
     const w = run(world(), null, 0, 1)
-    run(w, gridAt(50, 100, 200), 1, 3)
-    frame(w, gridAt(50, 550, 200), 3 + 1 / 60)
-    expect(w.field.gatheredAt).toBeCloseTo(3 + 1 / 60, 9)
+    run(w, gridAt(50, 100, 200), 1, 1.5)
+    frame(w, gridAt(50, 550, 200), 1.5 + 1 / 60)
+    expect(w.field.gatheredAt).toBeCloseTo(1.5 + 1 / 60, 9)
     expect(gathered(w)).toHaveLength(100)
   })
 
@@ -200,7 +206,8 @@ describe('stepField', () => {
       expect(d.alpha).toBe(0)
     }
     run(w, grid, 1 + 1 / 60, 1.3, true)
-    expect(gathered(w).every((d) => d.alpha === GATHER_ALPHA_END)).toBe(true)
+    const bright = GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN * w.scene.lockProgress)
+    expect(gathered(w).every((d) => d.alpha === bright)).toBe(true)
   })
 
   it('does not move the free dots under Reduce Motion', () => {
@@ -281,5 +288,161 @@ describe('stepField', () => {
         expect(state.dots[i].homeY).toBe(home.y)
       }
     })
+  })
+})
+
+describe('lock-on progress', () => {
+  it('brightens the landed dots to full opacity at lock-on', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5)
+    expect(w.scene.lockProgress).toBe(1)
+    for (const d of gathered(w)) expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
+    expect(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN)).toBeCloseTo(1, 6)
+  })
+
+  it('puts the landed dots exactly on the intersections at lock-on', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5)
+    const m = w.scene.m!
+    for (const d of gathered(w)) {
+      const at = project(m, (d.target % 10) / 9, Math.floor(d.target / 10) / 9)
+      expect(d.x).toBeCloseTo(at.x, 6)
+      expect(d.y).toBeCloseTo(at.y, 6)
+    }
+  })
+
+  it('keeps the brightness at GATHER_ALPHA_END without progress', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5)
+    w.scene.lockProgress = 0
+    stepField(w.field, w.scene)
+    for (const d of gathered(w).filter((dot) => w.scene.t - dot.since - dot.delay >= FLIGHT)) {
+      expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END, 6)
+    }
+  })
+
+  it('brightens the dots under Reduce Motion too', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5, true)
+    for (const d of gathered(w)) expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
+  })
+})
+
+const STILL: Channels = {
+  flash: 0,
+  pulse: 0,
+  flatten: 0,
+  freeDrift: 0,
+  dim: 0,
+  ink: 0,
+  cells: 0,
+  lines: 0,
+  photo: 1,
+  shrink: 0,
+  title: 0,
+  rings: 0,
+  panel: 0,
+}
+
+/** One capture frame, as advanceCapture runs it: the scene keeps its quad and carries the channels. */
+function captureFrame(w: World, t: number, channels: Partial<Channels>) {
+  w.scene.t = t
+  w.scene.capture = { ...STILL, ...channels }
+  stepField(w.field, w.scene)
+  return w
+}
+
+const locked = () => run(world(), gridAt(50, 300), 0, 2.5)
+const free = (w: World) => w.field.dots.filter((d) => d.target < 0)
+
+describe('the capture phase', () => {
+  const centre = { x: 200, y: 450 }
+
+  it('puts every gathered dot exactly on its intersection, at full opacity', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    const targets = intersections(unitToQuad(gridAt(50, 300))!)
+    for (const d of gathered(w)) {
+      expect(d.x).toBeCloseTo(targets[d.target].x, 6)
+      expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+      expect(d.alpha).toBe(1)
+    }
+  })
+
+  it('makes a dot still in flight jump to the end of its flight', () => {
+    const w = run(world(), gridAt(50, 300), 0, 0.2)
+    captureFrame(w, 0.21, {})
+    const targets = intersections(unitToQuad(gridAt(50, 300))!)
+    const d = gathered(w)[0]
+    expect(d.x).toBeCloseTo(targets[d.target].x, 6)
+    expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+    expect(d.radius).toBeCloseTo(d.size * (isBoxCorner(d.target) ? GROW_BOX : GROW), 9)
+  })
+
+  it('grows a gathered dot to 1.6 × its radius at the top of the pulse', () => {
+    const w = locked()
+    const radii = gathered(w).map((d) => d.radius)
+    captureFrame(w, 2.6, { pulse: 1 })
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(1.6 * radii[i], 6))
+  })
+
+  it('shrinks an ink dot to 0.8 × the radius of the white dot', () => {
+    const w = locked()
+    const radii = gathered(w).map((d) => d.radius)
+    captureFrame(w, 2.6, { ink: 1 })
+    expect(INK_RADIUS).toBe(0.8)
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(INK_RADIUS * radii[i], 6))
+    captureFrame(w, 2.7, { ink: 0.5 })
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(0.9 * radii[i], 6))
+  })
+
+  it('shrinks the gathered dots to nothing at the end of the transition', () => {
+    const w = captureFrame(locked(), 4, transitionAt(TRANSITION_END, false))
+    for (const d of gathered(w)) {
+      expect(d.radius).toBe(0)
+      expect(d.alpha).toBe(0)
+    }
+  })
+
+  it('moves every free dot 40 pt away from the grid centre and fades it at freeDrift 1', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    const start = free(w).map((d) => Math.hypot(d.x - centre.x, d.y - centre.y))
+    captureFrame(w, 2.7, { freeDrift: 1 })
+    free(w).forEach((d, i) => {
+      expect(Math.hypot(d.x - centre.x, d.y - centre.y)).toBeCloseTo(start[i] + 40, 4)
+      expect(d.alpha).toBe(0)
+    })
+  })
+
+  it('fades the free dots in place under Reduce Motion', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    w.scene.reduceMotion = true
+    const before = free(w).map((d) => ({ x: d.x, y: d.y }))
+    captureFrame(w, 2.7, { freeDrift: 1 })
+    free(w).forEach((d, i) => {
+      expect(d.x).toBeCloseTo(before[i].x, 6)
+      expect(d.y).toBeCloseTo(before[i].y, 6)
+      expect(d.alpha).toBe(0)
+    })
+  })
+
+  it('starts the drift from where each free dot was in the first capture frame', () => {
+    const w = locked()
+    const before = free(w).map((d) => ({ x: d.x, y: d.y }))
+    captureFrame(w, 2.6, {})
+    captureFrame(w, 3.4, {})
+    free(w).forEach((d, i) => {
+      expect(d.x).toBeCloseTo(before[i].x, 6)
+      expect(d.y).toBeCloseTo(before[i].y, 6)
+    })
+  })
+
+  it('follows the moving quad', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    const moved = gridAt(20, 100, 360)
+    w.scene.quad = moved
+    w.scene.m = unitToQuad(moved)
+    w.scene.inverse = invert(w.scene.m!)
+    captureFrame(w, 2.7, {})
+    const targets = intersections(w.scene.m!)
+    for (const d of gathered(w)) {
+      expect(d.x).toBeCloseTo(targets[d.target].x, 6)
+      expect(d.y).toBeCloseTo(targets[d.target].y, 6)
+    }
   })
 })

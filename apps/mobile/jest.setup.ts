@@ -31,6 +31,8 @@ jest.mock('react-native-vision-camera', () => {
     })),
     useCameraDevice: jest.fn(() => ({ id: 'back' })),
     useFrameOutput: jest.fn(() => ({})),
+    usePhotoOutput: jest.fn(() => ({ capturePhoto: jest.fn() })),
+    CommonResolutions: { UHD_16_9: { width: 2160, height: 3840 } },
   }
 })
 
@@ -48,6 +50,14 @@ jest.mock('react-native-fast-tflite', () => ({
     runSync: () => [new ArrayBuffer(81 * 10 * 4), new ArrayBuffer(81 * 4 * 4)],
   })),
 }))
+
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: 'light' },
+}))
+
+// The library ships its own mock: a provider with zero insets and a 320 × 640 frame.
+jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default)
 
 jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
@@ -123,7 +133,11 @@ jest.mock('@shopify/react-native-skia', () => {
     StrokeJoin: { Miter: 0, Round: 1, Bevel: 2 },
     BlendMode: { Modulate: 13 },
     TileMode: { Clamp: 0 },
+    ColorType: { RGBA_8888: 4, BGRA_8888: 6 },
+    AlphaType: { Opaque: 1, Premul: 2 },
     Skia: {
+      Data: { fromBytes: jest.fn((bytes: Uint8Array) => ({ bytes, dispose: jest.fn() })) },
+      Image: { MakeImage: jest.fn(() => ({ dispose: jest.fn() })) },
       Color: (color: string) => color,
       Paint: () => ({
         setAntiAlias: jest.fn(),

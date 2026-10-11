@@ -45,7 +45,7 @@ Out of scope:
 | State | Starts when | What the player sees |
 | --- | --- | --- |
 | Searching | The camera starts | The camera image under a black dim of 30 %. All dots float freely |
-| Found | The first frame with a grid | The closest dots fly to the grid intersections. The free dots spread out and leave the grid clear. The dim outside the grid goes to 45 %. Inside the grid the dim goes to 0 % |
+| Found | The first frame with a grid | The closest dots fly to the grid intersections. The free dots spread out and leave the grid clear. The dim stays at 30 % over the whole view, also over the grid, so only the dots show the grid (changed on the device, 2026-10-11; it was 45 % outside and 0 % inside) |
 | Steady | The corners move less than the lock-on threshold | The lock-on progress runs from 0 to 1 in `LOCK_DWELL` (0.7 s to start). The gathered dots settle and brighten with it: their leftover wobble and their twinkle go to 0, and their opacity goes from 80 % to 100 % |
 | Lock-on | The progress reaches 1, or the player presses the shutter button | A light haptic plays. Stage 2 starts |
 
@@ -135,7 +135,7 @@ flowchart LR
 | State | The dot positions, the assignment and the free-dot targets live in shared values on the UI thread |
 | Assignment cost | 100 × 312 distances, once per new grid |
 | Free-dot spreading | A few push-apart steps per frame over the free dots, only near the grid |
-| Drawing | One Skia canvas: the dim as a path with a hole, the dots as images of a pre-drawn star sprite, and the lines in stage 2 |
+| Drawing | One Skia canvas: the dim as one even path, the dots as images of a pre-drawn star sprite, and the lines in stage 2 |
 | Frame budget | The overlay takes at most 4 ms per frame on the UI thread, so the UI stays at 60 fps |
 | Scanner boundary | The overlay gets corners only through `src/scanner/index.ts` (SUD-05) |
 

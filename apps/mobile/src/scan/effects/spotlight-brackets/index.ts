@@ -1,12 +1,11 @@
 import { type SkCanvas, Skia } from '@shopify/react-native-skia'
 import type { Quad } from '../../../scanner'
 import { drawDim } from '../common/dim'
-import { lockProgress } from '../common/lock'
 import { prototypeScale } from '../common/shaderMatrix'
 import type { Scene } from '../scene'
 import type { DrawKit, Effect } from '../types'
 
-// Prototype section 1, "Spotlight and brackets". p is lockProgress(scene).
+// Prototype section 1, "Spotlight and brackets". p is scene.lockProgress.
 /** Dim outside the grid: presence × (DIM_BASE + DIM_STEADY × p). */
 export const DIM_BASE = 0.3
 export const DIM_STEADY = 0.22
@@ -45,7 +44,7 @@ function draw(canvas: SkCanvas, _state: null, scene: Scene, kit: DrawKit): void 
   'worklet'
   const quad = scene.lastQuad
   if (quad == null || scene.presence <= 0) return
-  const p = lockProgress(scene)
+  const p = scene.lockProgress
   drawDim(canvas, kit.fill, scene.width, scene.height, quad, scene.presence * (DIM_BASE + DIM_STEADY * p))
   kit.stroke.setColor(Skia.Color('#ffffff'))
   kit.stroke.setAlphaf(scene.presence)

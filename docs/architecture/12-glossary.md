@@ -32,6 +32,7 @@ status: DRAFT
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes` |
 | Lock-on | The moment the grid corners have been steady long enough, and the scan captures |
+| Armed (lock-on) | A scene that may lock on automatically. The first scene is armed. A scene after a Retake arms only after the grid is gone for 0.5 s after the warm-up, or jumps to another place. The shutter does not need it. See the scan-pipeline concept |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
@@ -59,5 +60,7 @@ status: DRAFT
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
 | Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
+| Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
+| Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, and when the photo conversion fails |
 | Install (model) | `just install-model <run>`: copies an exported run into the app without the promote gate. M0 only (ADR-007) |
 | Reference outputs | `reference-outputs.json`: the PyTorch probabilities for the 81 reference cells. The phone's outputs must match them (ADR-005) |
