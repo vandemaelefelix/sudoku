@@ -1,4 +1,4 @@
-import { type Channels, TRANSITION_END, transitionAt } from '@/scan/transition/timeline'
+import { type Channels, TRANSITION_END, transitionAt } from '@/scan/utils/transition.utils'
 import { intersections, isBoxCorner, pushOutside } from '@/scan/effects/common/geometry'
 import { spreadStep } from '@/scan/effects/common/spread'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'

@@ -1,4 +1,4 @@
-import type { Channels } from '@/scan/transition/timeline'
+import type { Channels } from '@/scan/utils/transition.utils'
 import { assignNearest } from '@/scan/effects/common/assign'
 import { intersections, isBoxCorner, pushOutside } from '@/scan/effects/common/geometry'
 import { createDots, type Dot, DOT_SPACING, twinkle, wander } from '@/scan/effects/common/layout'

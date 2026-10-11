@@ -1,4 +1,4 @@
-import { type Channels, TRANSITION_END, transitionAt } from '@/scan/transition/timeline'
+import { type Channels, TRANSITION_END, transitionAt } from '@/scan/utils/transition.utils'
 import { SPRITE_SIZE } from '@/scan/effects/common/sprite'
 import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, stepScene } from '@/scan/effects/scene'

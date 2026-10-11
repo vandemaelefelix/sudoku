@@ -20,18 +20,23 @@ import { kvSettings } from '@/settings/SettingsRepository'
 import { type RecogniseResult, useGridDetector } from '@/scanner'
 import { useColors } from '@/theme/colors'
 import { CorrectionScreen } from './correction/CorrectionScreen'
-import type { CorrectionLayout } from './correction/layout'
-import { countFrame, EMPTY_WINDOW } from './frameRate'
+import type { CorrectionLayout } from '@/scan/utils/correction.utils'
+import {
+  countFrame,
+  EMPTY_WINDOW,
+  EMPTY_JITTER,
+  type JitterReport,
+  trackJitter,
+  type Smoothing,
+  smoothQuad,
+} from '@/scan/utils/tracking.utils'
 import { DEFAULT_INDEX } from './effects/registry'
 import { EffectCanvas } from './effects/EffectCanvas'
 import { EffectPicker } from './effects/EffectPicker'
-import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
-import { toPreview, uprightAspect } from './previewMapping'
-import { type Smoothing, smoothQuad } from './smoothing'
-import type { Gates } from './transition/timeline'
+import { toPreview, uprightAspect } from '@/scan/utils/preview.utils'
+import type { Gates, CaptureFrame } from '@/scan/utils/transition.utils'
 import { TransitionCanvas } from './transition/TransitionCanvas'
 import { TransitionClock, type TransitionPlan } from './transition/TransitionClock'
-import type { CaptureFrame } from './transition/warp'
 import { useCapture } from './useCapture'
 import { type Quad, type ViewSize, rectQuad } from '@/utils/geometry.utils'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'

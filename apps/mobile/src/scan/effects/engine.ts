@@ -1,4 +1,4 @@
-import type { Channels } from '@/scan/transition/timeline'
+import type { Channels } from '@/scan/utils/transition.utils'
 import { createScene, MAX_STEP, type Scene, stepScene } from './scene'
 import type { AnyEffect } from './types'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'

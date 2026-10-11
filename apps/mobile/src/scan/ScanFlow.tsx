@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { RecogniseResult } from '@/scanner'
 import { CameraScreen } from './CameraScreen'
 import { CorrectionScreen } from './correction/CorrectionScreen'
-import { correctionLayout } from './correction/layout'
+import { correctionLayout } from '@/scan/utils/correction.utils'
 
 type Phase = { phase: 'live' } | { phase: 'review'; result: RecogniseResult }
 
