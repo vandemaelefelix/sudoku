@@ -97,6 +97,8 @@ model file keeps a **stable name**, `cell-classifier.tflite`, because React Nati
 needs a static `require()`. The version lives in the manifest only. `metro.config.js` lists
 `tflite` in `assetExts`.
 
+Until M3, `just install-model` writes the manifest with the fields model, version, contract, file, outputs, run, metrics and installedAt (ADR-007, amendment).
+
 ```json
 {
   "model": "cell-classifier",

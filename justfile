@@ -64,6 +64,10 @@ train config="cell-classifier":
 export run:
     uv run --directory ml python -m sudoku_ml.export {{run}}
 
+# Copy an exported run into the app, without the promote gate (M0, ADR-007). The run path is relative to ml/
+install-model run version="1.0.0":
+    uv run --directory ml python -m sudoku_ml.install {{run}} ../apps/mobile/assets/models {{version}}
+
 # Rewrite ml/datasets/cells.csv from the folders in ml/data/cells/
 dataset-manifest:
     uv run --directory ml python -m sudoku_ml.manifest

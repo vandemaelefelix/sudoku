@@ -63,6 +63,18 @@ fixture photo. The capture stage is tested separately, on the device ([ADR-010](
    repeated choice of "the best run on dev" from fitting the gate.
 5. The promotion is a normal commit: `feat(model): cell-classifier 1.2.0, dev grid-exact 96 % → 97 %`.
 
+## Amendment: M0 install and private models (2026-10-11)
+
+- Until `just promote-model` exists (M3), `just install-model <run>` copies an exported run into
+  `apps/mobile/assets/models/` without the gate. It checks the contract major version (SUD-09)
+  and writes a reduced manifest: model, version, contract, file, outputs, run, metrics and
+  `installedAt`. Promote adds the fixture scores and the holdout.
+- A model trained on data that may not be published stays out of git (ADR-013). The `.tflite`
+  file is git-ignored. `manifest.json` and `reference-outputs.json` are in git. A clone without
+  the model file does not bundle. Run `just install-model` first.
+- Consequence: `git log apps/mobile/assets/models` shows the manifest history, not the model
+  bytes. The run name in the manifest points to the run in `ml/artifacts/`.
+
 ## Consequences
 
 - `git log apps/mobile/assets/models` is the model's release history.
