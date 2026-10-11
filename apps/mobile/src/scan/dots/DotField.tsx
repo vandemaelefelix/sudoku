@@ -12,6 +12,7 @@ import type { Quad } from '../../scanner'
 import { countFrame, EMPTY_WINDOW } from '../frameRate'
 import type { ViewSize } from '../previewMapping'
 import { drawField, makeStarSprite } from './draw'
+import { createScene, type Scene, stepScene } from '../effects/scene'
 import { createField, type FieldState, stepField } from './field'
 
 function logOverlay(fps: number, overlayMs: number) {
@@ -31,7 +32,7 @@ export function DotField({ outline, view }: { outline: SharedValue<Quad | null>;
       }),
     [],
   )
-  const field = useSharedValue<FieldState | null>(null)
+  const world = useSharedValue<{ scene: Scene; field: FieldState } | null>(null)
   const picture = useSharedValue(empty)
   const timing = useSharedValue(EMPTY_WINDOW)
 
@@ -41,18 +42,22 @@ export function DotField({ outline, view }: { outline: SharedValue<Quad | null>;
     if (size.width <= 0 || size.height <= 0) return
     const t = frame.timestamp / 1000
     const started = Date.now()
-    field.modify((state) => {
+    world.modify((current) => {
       'worklet'
-      const current =
-        state == null || state.width !== size.width || state.height !== size.height ? createField(size) : state
-      return stepField(current, outline.value, t, reduceMotion)
+      if (current == null || current.scene.width !== size.width || current.scene.height !== size.height) {
+        const scene = stepScene(createScene(size), outline.value, t, reduceMotion)
+        return { scene, field: stepField(createField(size), scene) }
+      }
+      stepScene(current.scene, outline.value, t, reduceMotion)
+      stepField(current.field, current.scene)
+      return current
     }, true)
-    const state = field.get()
-    if (state != null) {
+    const now = world.get()
+    if (now != null) {
       picture.set(
         createPicture((canvas) => {
           'worklet'
-          drawField(canvas, state, sprite)
+          drawField(canvas, now.field, now.scene, sprite)
         }),
       )
     }
