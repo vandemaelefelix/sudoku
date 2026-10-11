@@ -55,6 +55,7 @@ reference pairs in `fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image
 | Input and output dtype | `float32` |
 | Softmax | Inside the model. Outputs are probabilities |
 | Output identification | By index. The phone runtime returns outputs in tensor order. Their names are not reliable identifiers. `manifest.json` records the index of `digit` and of `kind`, taken from the exported file. The scanner reads that map and checks the shapes `[81, 10]` and `[81, 4]` before it uses the outputs. The tensor names also contain `digit` and `kind`, for tools |
+| Reference outputs | `reference-outputs.json`, written by the export next to the model. It holds the 81 reference cells as one input batch (base64, little-endian float32) and the PyTorch probabilities of both heads. The app compares the phone's outputs with it (ADR-005) |
 
 ## Outputs
 
@@ -91,8 +92,11 @@ straight into a dataset.
 
 ## Manifest
 
-`apps/mobile/assets/models/manifest.json`, written only by `just promote-model` (ADR-007). The
-model file keeps a **stable name**, `cell-classifier.tflite`, because React Native's bundler
+`apps/mobile/assets/models/manifest.json`. `just promote-model` writes it (ADR-007). Until M3,
+`just install-model` writes it, with the fields model, version, contract, file, outputs, run,
+metrics and installedAt (ADR-007, amendment).
+
+The model file keeps a **stable name**, `cell-classifier.tflite`, because React Native's bundler
 needs a static `require()`. The version lives in the manifest only. `metro.config.js` lists
 `tflite` in `assetExts`.
 
@@ -133,6 +137,6 @@ mismatch it disables scanning with a message instead of returning wrong digits.
 
 | ID | Constraint |
 | --- | --- |
-| SUD-06 | A model MUST reach the app only through `just promote-model`. |
+| SUD-06 | A model MUST reach the app only through `just promote-model`. Until M3, `just install-model` is the one exception (ADR-007, amendment). |
 | SUD-09 | Promote and the test suite MUST refuse a model whose contract major version the scanner does not implement. |
 | SUD-10 | Fixture cells MUST NOT appear in any training dataset. |

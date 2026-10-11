@@ -36,7 +36,7 @@ status: DRAFT
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
-| Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007) |
+| Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007). Until M3, Install is the one exception (ADR-007). |
 | Review rate | The share of cells that the correction screen marks as uncertain. Reports give the accuracy at a review rate, for example 99.7 % at 5 % |
 | Suspect | A training cell whose label is probably wrong, found by `just suspects` |
 | Quad | The four outer corners of the detected grid |
@@ -54,3 +54,10 @@ status: DRAFT
 | Effect lab | The switch between effects in a development build: the dev pill and its list. A release build does not have it |
 | Dev pill | The button at the top of the camera screen in a development build. It shows the active effect and opens the list of effects |
 | Draw kit | The paints, the star sprite and the compiled runtime shaders that the engine makes once and gives to every effect |
+| Lock-on progress | 0 to 1: how long the grid has been steady, divided by `LOCK_DWELL`. It resets when the grid is lost, found again or jumps. At 1 the scan locks on. The gathered dots show it |
+| Shutter | The button on the camera screen that captures at any time, also without lock-on |
+| Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
+| Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake |
+| Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
+| Install (model) | `just install-model <run>`: copies an exported run into the app without the promote gate. M0 only (ADR-007) |
+| Reference outputs | `reference-outputs.json`: the PyTorch probabilities for the 81 reference cells. The phone's outputs must match them (ADR-005) |

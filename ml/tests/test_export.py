@@ -1,3 +1,4 @@
+import base64
 import json
 from pathlib import Path
 
@@ -100,3 +101,16 @@ def test_check_same_argmax_rejects_a_different_digit():
         check_same_argmax(other, same)
     with pytest.raises(ValueError, match="kind"):
         check_same_argmax(same, {"digit": same["digit"], "kind": np.eye(4)[[3, 1, 2]]})
+
+
+def test_writes_reference_outputs(exported):
+    run, _ = exported
+    data = json.loads((run / "reference-outputs.json").read_text())
+    assert data["run"] == run.name
+    inputs = np.frombuffer(base64.b64decode(data["inputs"]), dtype="<f4").reshape(81, 32, 32, 1)
+    np.testing.assert_array_equal(inputs, load_reference_inputs(FIXTURES))
+    digit, kind = np.array(data["digit"]), np.array(data["kind"])
+    assert digit.shape == (81, 10)
+    assert kind.shape == (81, 4)
+    np.testing.assert_allclose(digit.sum(1), 1, atol=1e-5)
+    np.testing.assert_allclose(kind.sum(1), 1, atol=1e-5)

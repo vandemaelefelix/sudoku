@@ -5,7 +5,7 @@
 | Status | Draft, for review |
 | Date | 2026-10-11 |
 | Prototype | [Scan flow studies](https://claude.ai/artifact/QcWFdfZ8nQASvLDieeEcZV), section 1d "Gathering dots" and section 3 |
-| Related | [Scan pipeline](../../architecture/00-concepts/scan-pipeline.md), [ADR-002](../../architecture/adr/adr-002-react-native-and-scanner-engine.md), F-04, F-06, QR-05, QR-06, QR-07 |
+| Related | [Capture flow design](2026-10-11-capture-flow-design.md), [Scan pipeline](../../architecture/00-concepts/scan-pipeline.md), [ADR-002](../../architecture/adr/adr-002-react-native-and-scanner-engine.md), F-04, F-06, QR-05, QR-06, QR-07 |
 | Issues | [#18](https://github.com/vandemaelefelix/sudoku/issues/18) (dot field overlay), [#19](https://github.com/vandemaelefelix/sudoku/issues/19) (capture transition) |
 
 ## Goal
@@ -34,7 +34,7 @@ In scope:
 
 Out of scope:
 
-- The lock-on rule (N frames and the movement threshold). Issue #6 decides it.
+- The values of the lock-on rule. The [capture flow design](2026-10-11-capture-flow-design.md) defines the rule. Issue #6 tunes the values on the device.
 - How the player fixes a digit on the correction screen (F-06). This spec only defines how cells look.
 - The recognition pipeline itself. The scan-pipeline concept defines it.
 
@@ -46,8 +46,8 @@ Out of scope:
 | --- | --- | --- |
 | Searching | The camera starts | The camera image under a black dim of 30 %. All dots float freely |
 | Found | The first frame with a grid | The closest dots fly to the grid intersections. The free dots spread out and leave the grid clear. The dim outside the grid goes to 45 %. Inside the grid the dim goes to 0 % |
-| Steady | The corners move less than the lock-on threshold | The gathered dots stop their small wobble and sit exactly on the intersections |
-| Lock-on | The lock-on rule is met | Stage 2 starts |
+| Steady | The corners move less than the lock-on threshold | The lock-on progress runs from 0 to 1 in `LOCK_DWELL` (0.7 s to start). The gathered dots settle and brighten with it: their leftover wobble and their twinkle go to 0, and their opacity goes from 80 % to 100 % |
+| Lock-on | The progress reaches 1, or the player presses the shutter button | A light haptic plays. Stage 2 starts |
 
 ### The dots
 
@@ -177,14 +177,13 @@ When this design is built:
   - **dot field:** the live overlay of floating dots;
   - **gathered dot:** a dot that sits on a grid intersection;
   - **free dot:** a dot that floats.
-- F-04 asks for "a visible lock-on". The Steady state (the wobble stops) and the capture pulse meet it.
+- F-04 asks for "a visible lock-on". The lock-on progress (the dots settle and brighten), the haptic and the capture pulse meet it.
 
 ## Open questions
 
 | Question | Decided by |
 | --- | --- |
-| Lock-on rule: N frames and the movement threshold | Issue #6 |
-| A light haptic at lock-on | The developer, during the build |
+| Lock-on rule: final values | Issue #6, on the device |
 | Dark-mode colours of the correction screen | The developer, during the build |
 
 ## Delivery
