@@ -6,7 +6,8 @@ import { Camera, useCameraDevice, useCameraPermission, useFrameOutput } from 're
 import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
 import { type Quad, useGridDetector } from '../scanner'
 import { countFrame, EMPTY_WINDOW } from './frameRate'
-import { DotField } from './dots/DotField'
+import { DEFAULT_INDEX } from './effects'
+import { EffectCanvas } from './effects/EffectCanvas'
 import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
 import { toPreview, uprightAspect, type ViewSize } from './previewMapping'
 import { type Smoothing, smoothQuad } from './smoothing'
@@ -42,6 +43,7 @@ export function CameraScreen() {
   const smoothing = useSharedValue<Smoothing | null>(null)
   const jitter = useSharedValue(EMPTY_JITTER)
   const outline = useSharedValue<Quad | null>(null)
+  const effect = useSharedValue(DEFAULT_INDEX)
 
   const frameOutput = useFrameOutput({
     pixelFormat: 'yuv',
@@ -138,7 +140,7 @@ export function CameraScreen() {
         outputs={[frameOutput]}
         orientationSource="interface"
       />
-      <DotField outline={outline} view={viewSize} />
+      <EffectCanvas outline={outline} view={viewSize} effect={effect} />
     </View>
   )
 }

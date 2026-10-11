@@ -5,14 +5,15 @@ import { useAnimatedReaction } from 'react-native-reanimated'
 import { type GridDetector, type Quad, useGridDetector } from '../scanner'
 import { CameraScreen, type FrameDetection } from './CameraScreen'
 import * as frameRate from './frameRate'
-import { DotField } from './dots/DotField'
+import { DEFAULT_INDEX } from './effects'
+import { EffectCanvas } from './effects/EffectCanvas'
 
 jest.mock('../scanner', () => ({
   ...jest.requireActual('../scanner'),
   useGridDetector: jest.fn(() => undefined),
 }))
 
-jest.mock('./dots/DotField', () => ({ DotField: jest.fn(() => null) }))
+jest.mock('./effects/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
 
 jest.mock('expo-status-bar', () => {
   const { View } = jest.requireActual('react-native')
@@ -56,7 +57,7 @@ function frameAt(timestamp: number, dispose: () => void = jest.fn()): FakeFrame 
 
 const detector = jest.mocked(useGridDetector)
 const reaction = jest.mocked(useAnimatedReaction)
-const dotField = jest.mocked(DotField)
+const effectCanvas = jest.mocked(EffectCanvas)
 
 const quad: Quad = [
   { x: 0.2, y: 0.2 },
@@ -216,7 +217,7 @@ describe('CameraScreen', () => {
       nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
     })
     lastReaction().react({ quad, timestamp: 5, aspect: 0.5625 })
-    const shown = dotField.mock.calls.at(-1)![0].outline.value
+    const shown = effectCanvas.mock.calls.at(-1)![0].outline.value
     expect(shown).toEqual([
       { x: 72, y: 128 },
       { x: 288, y: 128 },
@@ -234,15 +235,21 @@ describe('CameraScreen', () => {
     const { react } = lastReaction()
     react({ quad, timestamp: 5, aspect: 0.5625 })
     react({ quad: null, timestamp: 6, aspect: 0.5625 })
-    expect(dotField.mock.calls.at(-1)![0].outline.value).toBeNull()
+    expect(effectCanvas.mock.calls.at(-1)![0].outline.value).toBeNull()
   })
 
-  it('gives the dot field the camera view size', () => {
+  it('gives the effect canvas the camera view size', () => {
     givenPermission('authorized')
     render(<CameraScreen />)
     fireEvent(screen.getByTestId('camera-screen'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 874 } },
     })
-    expect(dotField.mock.calls.at(-1)![0].view.value).toEqual({ width: 402, height: 874 })
+    expect(effectCanvas.mock.calls.at(-1)![0].view.value).toEqual({ width: 402, height: 874 })
+  })
+
+  it('starts the overlay on the default effect', () => {
+    givenPermission('authorized')
+    render(<CameraScreen />)
+    expect(effectCanvas.mock.calls.at(-1)![0].effect.value).toBe(DEFAULT_INDEX)
   })
 })

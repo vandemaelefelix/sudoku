@@ -1,5 +1,6 @@
-import type { Quad } from '../../scanner'
-import { createScene, type Scene, stepScene } from '../effects/scene'
+import type { Quad } from '../../../scanner'
+import { intersections, invert, project, unitToQuad } from '../common/geometry'
+import { createScene, type Scene, stepScene } from '../scene'
 import {
   createField,
   FLIGHT,
@@ -11,7 +12,6 @@ import {
   stepField,
   type FieldState,
 } from './field'
-import { intersections, invert, project, unitToQuad } from '../effects/common/geometry'
 
 const VIEW = { width: 402, height: 874 }
 
