@@ -18,6 +18,8 @@ export const GROW = 1.25
 export const GROW_BOX = 1.7
 /** The share of its wobble that a gathered dot keeps while the corners move. */
 export const WOBBLE = 0.15
+/** The share by which lock-on brightens a gathered dot: GATHER_ALPHA_END 0.8 goes to 1. */
+export const LOCK_BRIGHTEN = 0.25
 /** Grid coordinates. */
 export const MARGIN = 0.08
 export const SPREAD_TIME = 1.0
@@ -167,7 +169,7 @@ export function spreadHomes(state: FieldState, scene: Scene, quad: Quad, m: Homo
   }
 }
 
-function placeGathered(d: FieldDot, t: number, m: Homography, motion: number, reduceMotion: boolean) {
+function placeGathered(d: FieldDot, t: number, m: Homography, motion: number, lock: number, reduceMotion: boolean) {
   'worklet'
   const at = project(m, (d.target % 10) / 9, Math.floor(d.target / 10) / 9)
   const grow = isBoxCorner(d.target) ? GROW_BOX : GROW
@@ -175,7 +177,7 @@ function placeGathered(d: FieldDot, t: number, m: Homography, motion: number, re
     d.x = at.x
     d.y = at.y
     d.radius = d.size * grow
-    d.alpha = GATHER_ALPHA_END * Math.min(1, Math.max(0, (t - d.since) / REDUCED_FADE))
+    d.alpha = GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN * lock) * Math.min(1, Math.max(0, (t - d.since) / REDUCED_FADE))
     return
   }
   const w = wander(d, t)
@@ -183,13 +185,15 @@ function placeGathered(d: FieldDot, t: number, m: Homography, motion: number, re
   const u = smooth((t - d.since - d.delay) / FLIGHT)
   const sx = d.fromX + w.x - w0.x
   const sy = d.fromY + w.y - w0.y
-  const ex = at.x + w.x * WOBBLE * motion
-  const ey = at.y + w.y * WOBBLE * motion
+  const settle = WOBBLE * motion * (1 - lock)
+  const ex = at.x + w.x * settle
+  const ey = at.y + w.y * settle
   const arc = Math.sin(u * Math.PI) * ARC * (d.px / (2 * Math.PI) - 0.5)
   d.x = sx + (ex - sx) * u - (ey - sy) * arc
   d.y = sy + (ey - sy) * u + (ex - sx) * arc
   d.radius = d.size * (1 + (grow - 1) * u)
-  d.alpha = (GATHER_ALPHA_START + (GATHER_ALPHA_END - GATHER_ALPHA_START) * u) * (u >= 1 ? 1 : twinkle(d, t))
+  const flicker = u >= 1 ? 1 : twinkle(d, t) + (1 - twinkle(d, t)) * lock
+  d.alpha = (GATHER_ALPHA_START + (GATHER_ALPHA_END - GATHER_ALPHA_START) * u) * flicker * (1 + LOCK_BRIGHTEN * lock)
 }
 
 function placeFree(
@@ -255,7 +259,7 @@ export function stepField(state: FieldState, scene: Scene): FieldState {
   if (usable && !scene.reduceMotion && spreading) spreadHomes(state, scene, quad, m, inverse)
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
-    if (d.target >= 0 && m != null) placeGathered(d, t, m, scene.motion, scene.reduceMotion)
+    if (d.target >= 0 && m != null) placeGathered(d, t, m, scene.motion, scene.lockProgress, scene.reduceMotion)
     else placeFree(state, d, t, m, inverse, scene.reduceMotion)
   }
   return state
