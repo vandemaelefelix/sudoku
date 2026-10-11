@@ -110,7 +110,7 @@ export function CameraScreen({
       // The frame aspect at lock-on: the photo has the field of view of the frames.
       const aspect = detection.get()?.aspect ?? 0
       setLockedView(quad == null ? null : toPreview(quad, aspect, viewSize.get()))
-      capture(quad)
+      capture(quad, aspect)
     },
     [capture, detection, viewSize],
   )
