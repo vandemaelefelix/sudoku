@@ -20,6 +20,10 @@ function near(p: Point) {
 }
 
 describe('unitToQuad', () => {
+  it('returns null for a quad with a NaN corner', () => {
+    expect(unitToQuad([{ x: NaN, y: 0 }, square[1], square[2], square[3]])).toBeNull()
+  })
+
   it('maps the unit square corners onto the quad corners', () => {
     const m = unitToQuad(skewed)!
     expect(project(m, 0, 0)).toEqual(near(skewed[0]))
@@ -44,6 +48,10 @@ describe('unitToQuad', () => {
 })
 
 describe('invert', () => {
+  it('returns null for a matrix with a NaN entry', () => {
+    expect(invert([NaN, 0, 0, 0, 1, 0, 0, 0])).toBeNull()
+  })
+
   it('has no inverse when the first three corners lie on one line', () => {
     const flat: Quad = [
       { x: 0, y: 0 },

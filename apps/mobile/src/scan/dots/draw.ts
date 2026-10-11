@@ -48,7 +48,7 @@ function withHole(width: number, height: number, quad: Quad) {
     .setFillType(FillType.EvenOdd)
 }
 
-/** Draws the dim and the dots of one frame in one atlas call. Runs on the UI thread inside createPicture. sprite: from makeStarSprite. */
+/** Draws one frame: the dim as paths, the dots in one atlas call. Runs on the UI thread inside createPicture. sprite: from makeStarSprite. */
 export function drawField(canvas: SkCanvas, state: FieldState, sprite: SkImage): void {
   'worklet'
   const dim = Skia.Paint()

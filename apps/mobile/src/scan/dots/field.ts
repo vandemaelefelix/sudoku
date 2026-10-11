@@ -28,8 +28,10 @@ export const STEADY_SPEED = 30
 export const MOTION_TIME = 0.3
 /** A corner step in one frame larger than this share of the grid diagonal means another grid. */
 export const JUMP = 0.25
-/** The longest step the field takes, so a pause does not make the dots jump. */
+/** The longest step of the fades, so a pause does not snap the dim or the wobble. */
 export const MAX_STEP = 0.1
+/** Motion above which the homes keep spreading after the first SPREAD_TIME. */
+const SPREAD_MOTION = 0.5
 const SPREAD_RADIUS = 1.3 * DOT_SPACING
 const SPREAD_PUSH = 0.05 * DOT_SPACING
 /** Grid diagonals from the grid centre within which free dots spread. */
@@ -94,21 +96,24 @@ function diagonal(quad: Quad): number {
 
 export function createField(view: ViewSize): FieldState {
   'worklet'
-  const dots: FieldDot[] = createDots(view).map((dot) => ({
-    ...dot,
-    origX: dot.homeX,
-    origY: dot.homeY,
-    target: -1,
-    delay: 0,
-    since: -1,
-    releasing: false,
-    fromX: dot.homeX,
-    fromY: dot.homeY,
-    x: dot.homeX,
-    y: dot.homeY,
-    radius: dot.size,
-    alpha: FREE_ALPHA,
-  }))
+  const dots: FieldDot[] = createDots(view).map((dot) => {
+    'worklet'
+    return {
+      ...dot,
+      origX: dot.homeX,
+      origY: dot.homeY,
+      target: -1,
+      delay: 0,
+      since: -1,
+      releasing: false,
+      fromX: dot.homeX,
+      fromY: dot.homeY,
+      x: dot.homeX,
+      y: dot.homeY,
+      radius: dot.size,
+      alpha: FREE_ALPHA,
+    }
+  })
   return {
     width: view.width,
     height: view.height,
@@ -186,11 +191,9 @@ function spreadHomes(state: FieldState, quad: Quad, m: Homography, inverse: Homo
   const next = spreadStep(homes, movable, SPREAD_RADIUS, SPREAD_PUSH)
   for (let k = 0; k < free.length; k++) {
     if (!movable[k]) continue
-    const inView = {
-      x: Math.min(state.width, Math.max(0, next[k].x)),
-      y: Math.min(state.height, Math.max(0, next[k].y)),
-    }
-    const home = pushOutside(inView, m, inverse, MARGIN)
+    // A clamp to the view would pull a home that the grid pushed out of the view back into the grid, and it would jump to another side.
+    const leaves = next[k].x < 0 || next[k].x > state.width || next[k].y < 0 || next[k].y > state.height
+    const home = pushOutside(leaves ? homes[k] : next[k], m, inverse, MARGIN)
     state.dots[free[k]].homeX = home.x
     state.dots[free[k]].homeY = home.y
   }
@@ -231,6 +234,12 @@ function placeFree(
 ) {
   'worklet'
   const w = reduceMotion ? { x: 0, y: 0 } : wander(d, t)
+  if (m != null && inverse != null) {
+    // The home keeps the side it was pushed to. Without this write-back, the nearest side flips when the grid sweeps over the home.
+    const home = pushOutside({ x: d.homeX, y: d.homeY }, m, inverse, MARGIN)
+    d.homeX = home.x
+    d.homeY = home.y
+  }
   let x = d.homeX + w.x
   let y = d.homeY + w.y
   if (m != null && inverse != null) {
@@ -285,7 +294,9 @@ export function stepField(state: FieldState, quad: Quad | null, t: number, reduc
   state.quad = grid
   if (grid != null) state.lastQuad = grid
   const usable = grid != null && m != null && inverse != null
-  if (usable && !reduceMotion && t - state.foundAt < SPREAD_TIME) spreadHomes(state, grid, m, inverse)
+  // While the grid moves, homes that it sweeps along keep spreading, so they do not pile on the margin.
+  const spreading = t - state.foundAt < SPREAD_TIME || state.motion > SPREAD_MOTION
+  if (usable && !reduceMotion && spreading) spreadHomes(state, grid, m, inverse)
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
     if (d.target >= 0 && usable) placeGathered(state, d, t, m, reduceMotion)
