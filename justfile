@@ -46,6 +46,7 @@ typecheck:
 
 # Bundle the iOS app with Metro, without Xcode
 bundle:
+    test -f apps/mobile/assets/models/cell-classifier.tflite || { echo "The model is missing. Run: just install-model <run>" >&2; exit 1; }
     pnpm --filter mobile exec expo export --platform ios --output-dir dist
 
 # Check relative links in the docs
