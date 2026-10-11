@@ -40,15 +40,10 @@ import { TransitionClock, type TransitionPlan } from '@/scan/components/Transiti
 import { useCapture } from '@/scan/hooks/useCapture'
 import { type Quad, type ViewSize, rectQuad } from '@/utils/geometry.utils'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
+import { FLASH_PEAK, DARK_BAR_DIM, MEASURE_JITTER } from './CameraScreen.constants'
 
 /** One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame. */
 export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number }
-
-const FLASH_PEAK = 0.25
-/** The status bar turns dark when the light background is half in. */
-const DARK_BAR_DIM = 0.5
-
-const MEASURE_JITTER = __DEV__
 
 function logFrameRate(fps: number, detectionMs: number) {
   devLog('camera', `${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)

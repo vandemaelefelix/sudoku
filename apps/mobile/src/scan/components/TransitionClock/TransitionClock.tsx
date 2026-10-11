@@ -2,15 +2,15 @@ import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native
 import { scheduleOnRN } from 'react-native-worklets'
 import {
   advanceClock,
-  GATE_RESULTS,
   type Gates,
-  SPINNER_DELAY,
   sweepShift,
   transitionAt,
   transitionEnd,
   type CaptureFrame,
 } from '@/scan/utils/transition.utils'
 import { type Quad, lerpQuad } from '@/utils/geometry.utils'
+import { MAX_CLOCK_STEP } from './TransitionClock.constants'
+import { GATE_RESULTS, SPINNER_DELAY } from '@/scan/constants/transition.constants'
 
 /**
  * from: the locked grid in view points. to: the grid square of the correction screen. version: changes with each new plan.
@@ -18,9 +18,6 @@ import { type Quad, lerpQuad } from '@/utils/geometry.utils'
  * the layers.
  */
 export type TransitionPlan = { from: Quad; to: Quad; crossFade: boolean; version: number }
-
-/** Seconds. A stall of the UI thread must not skip a part of the transition. */
-const MAX_CLOCK_STEP = 0.05
 
 /**
  * Advances the transition clock once per UI frame and publishes the moving grid with its channels. Nothing changes while a gate

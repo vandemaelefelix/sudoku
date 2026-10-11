@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import type { RecogniseResult } from '@/scanner'
 import { useColors, type Colors } from '@/theme/colors'
-import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '@/scan/utils/transition.utils'
+import { digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '@/scan/utils/transition.utils'
 import {
   cellLook,
   cellsToCheck,
@@ -18,6 +18,8 @@ import {
   drawGridLines,
   type CorrectionLayout,
 } from '@/scan/utils/correction.utils'
+import { PANEL_HIDDEN, FAILURE_SLIDE_MS, RING_INSET, DIGIT_RISE } from './CorrectionScreen.constants'
+import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 
 export type CorrectionProps = {
   result: RecogniseResult | null
@@ -31,13 +33,6 @@ export type CorrectionProps = {
   /** The clock value when the results gate opened, or -1 before (see sweepShift). */
   resultsAt?: SharedValue<number>
 }
-
-const PANEL_HIDDEN = 1.4
-/** Milliseconds a failure panel needs to slide up. */
-const FAILURE_SLIDE_MS = 300
-const RING_INSET = 1.5
-/** Points that a digit rises while it fades in. */
-const DIGIT_RISE = 3
 
 type Timing = {
   clock?: SharedValue<number> | undefined

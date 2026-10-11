@@ -2,17 +2,9 @@ import { AlphaType, ColorType, Skia, type SkImage } from '@shopify/react-native-
 import type { Photo } from 'react-native-vision-camera'
 import type { Quad } from '@/utils/geometry.utils'
 import { quadToQuad } from '@/utils/homography.utils'
+import { TRANSITION_END, REDUCED_END, GATE_PHOTO, GATE_RESULTS } from '@/scan/constants/transition.constants'
 
 // Seconds from lock-on. docs/architecture/00-concepts/scan-pipeline.md describes the stages.
-
-export const TRANSITION_END = 1.5
-export const REDUCED_END = 0.3
-/** The clock waits here until the photo is a Skia image. */
-export const GATE_PHOTO = 0.05
-/** The clock waits here until `recognise()` returns. */
-export const GATE_RESULTS = 0.7
-/** Seconds the results gate may hold before a spinner shows. */
-export const SPINNER_DELAY = 1
 
 export type Gates = { photo: boolean; results: boolean }
 

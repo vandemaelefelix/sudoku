@@ -1,12 +1,10 @@
 import { BlendMode, type SkCanvas, Skia } from '@shopify/react-native-skia'
 import { drawDim } from '@/scan/effects/common/dim'
-import { SPRITE_SIZE } from '@/scan/effects/common/sprite'
 import type { Scene } from '@/scan/effects/scene'
 import type { DrawKit } from '@/scan/effects/types'
-import { DIM, type FieldState } from './field'
-
-/** The width of a drawn star as a multiple of the dot radius. */
-export const STAR_SCALE = 9
+import type { FieldState } from './field'
+import { DIM, STAR_SCALE } from './gathering-dots.constants'
+import { SPRITE_SIZE } from '@/scan/effects/common/common.constants'
 
 /** Draws the dim as paths, then every dot in one atlas call with kit.sprite. Runs on the UI thread inside createPicture. */
 export function drawField(canvas: SkCanvas, state: FieldState, scene: Scene, kit: DrawKit): void {

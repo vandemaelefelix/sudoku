@@ -2,13 +2,8 @@ import {
   advanceClock,
   type Channels,
   digitAlpha,
-  GATE_PHOTO,
-  GATE_RESULTS,
   panelAt,
-  REDUCED_END,
   ringsAt,
-  SPINNER_DELAY,
-  TRANSITION_END,
   transitionAt,
   sweepShift,
   transitionEnd,
@@ -18,6 +13,13 @@ import {
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia'
 import { toPreview } from './preview.utils'
 import type { Point, Quad } from '@/utils/geometry.utils'
+import {
+  GATE_PHOTO,
+  GATE_RESULTS,
+  REDUCED_END,
+  SPINNER_DELAY,
+  TRANSITION_END,
+} from '@/scan/constants/transition.constants'
 
 const open = { photo: true, results: true }
 const smooth = (x: number) => x * x * (3 - 2 * x)

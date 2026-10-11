@@ -1,8 +1,6 @@
 import type { Point } from '@/utils/geometry.utils'
 import { type Homography, project } from '@/utils/homography.utils'
-
-/** The lines of a sudoku grid in each direction, so 10 × 10 intersections. */
-export const GRID_POINTS = 10
+import { GRID_POINTS } from './common.constants'
 
 export function intersections(m: Homography): Point[] {
   'worklet'

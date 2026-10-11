@@ -1,14 +1,8 @@
 import type { Point, ViewSize } from '@/utils/geometry.utils'
+import { DOT_SPACING, WANDER_MIN, WANDER_MAX, TWINKLE } from './common.constants'
 
-/** Points between dot homes. The 402 × 874 pt reference view gets 12 × 26 = 312 dots. */
-export const DOT_SPACING = 33.5
 /** Share of a cell that a home may move from the cell centre. */
 const JITTER = 0.3
-/** Points. */
-export const WANDER_MIN = 5
-export const WANDER_MAX = 9
-/** Share of the opacity that the twinkle adds or removes. */
-export const TWINKLE = 0.28
 
 /** homeX, homeY: points. ax, ay: wander amplitude in points. fx, fy, tw: rad/s. px, py: phases in radians. size: radius in points. */
 export type Dot = {

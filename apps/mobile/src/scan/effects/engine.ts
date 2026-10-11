@@ -1,8 +1,9 @@
 import type { Channels } from '@/scan/utils/transition.utils'
-import { createScene, MAX_STEP, type Scene, stepScene } from './scene'
+import { createScene, type Scene, stepScene } from './scene'
 import type { AnyEffect } from './types'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { invert, unitToQuad } from '@/utils/homography.utils'
+import { MAX_STEP } from './scene.constants'
 
 /** id: the effect that state belongs to. */
 export type Engine = { id: string; scene: Scene; state: unknown }

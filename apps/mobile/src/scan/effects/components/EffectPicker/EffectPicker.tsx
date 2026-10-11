@@ -5,9 +5,7 @@ import type { SettingsRepository } from '@/settings/SettingsRepository'
 import { DEFAULT_INDEX, EFFECTS, effectIndex } from '@/scan/effects/registry'
 import type { EffectFamily } from '@/scan/effects/types'
 import { devLog, errorMessage } from '@/utils/log.utils'
-
-/** The settings key of the saved effect id. */
-export const EFFECT_KEY = 'lab.effect'
+import { EFFECT_KEY } from './EffectPicker.constants'
 
 const FAMILIES: { family: EffectFamily; title: string }[] = [
   { family: 'simulation', title: 'Simulation' },

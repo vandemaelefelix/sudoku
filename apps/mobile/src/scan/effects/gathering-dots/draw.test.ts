@@ -1,10 +1,12 @@
-import { type Channels, TRANSITION_END, transitionAt } from '@/scan/utils/transition.utils'
-import { SPRITE_SIZE } from '@/scan/effects/common/sprite'
+import { type Channels, transitionAt } from '@/scan/utils/transition.utils'
 import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, stepScene } from '@/scan/effects/scene'
-import { drawField, STAR_SCALE } from './draw'
-import { createField, DIM, stepField } from './field'
+import { drawField } from './draw'
+import { createField, stepField } from './field'
 import type { Quad } from '@/utils/geometry.utils'
+import { TRANSITION_END } from '@/scan/constants/transition.constants'
+import { DIM, STAR_SCALE } from './gathering-dots.constants'
+import { SPRITE_SIZE } from '@/scan/effects/common/common.constants'
 
 const VIEW = { width: 402, height: 874 }
 

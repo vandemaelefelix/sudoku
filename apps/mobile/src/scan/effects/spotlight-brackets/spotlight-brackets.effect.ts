@@ -4,16 +4,7 @@ import { prototypeScale } from '@/scan/effects/common/shaderMatrix'
 import type { Scene } from '@/scan/effects/scene'
 import type { DrawKit, Effect } from '@/scan/effects/types'
 import type { Point, Quad } from '@/utils/geometry.utils'
-
-// Prototype section 1, "Spotlight and brackets". p is scene.lockProgress.
-/** Dim outside the grid: presence × (DIM_BASE + DIM_STEADY × p). */
-export const DIM_BASE = 0.3
-export const DIM_STEADY = 0.22
-/** Bracket length as a share of each edge: BRACKET_BASE + BRACKET_STEADY × p². */
-export const BRACKET_BASE = 0.12
-export const BRACKET_STEADY = 0.38
-/** Prototype points. */
-export const BRACKET_WIDTH = 2.6
+import { DIM_BASE, DIM_STEADY, BRACKET_BASE, BRACKET_STEADY, BRACKET_WIDTH } from './spotlight-brackets.constants'
 
 /** a: the previous corner. c: the corner. b: the next corner. */
 function addBracket(path: SkPath, a: Point, c: Point, b: Point, share: number) {
