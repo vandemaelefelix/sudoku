@@ -7,6 +7,7 @@ import {
   FLIGHT,
   FREE_ALPHA,
   GATHER_ALPHA_END,
+  LOCK_BRIGHTEN,
   MARGIN,
   MAX_DELAY,
   NEAR,
@@ -128,7 +129,7 @@ describe('stepField', () => {
     const points = intersections(unitToQuad(grid)!)
     for (const d of gathered(w)) {
       expect(Math.hypot(d.x - points[d.target].x, d.y - points[d.target].y)).toBeLessThan(0.01)
-      expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END, 6)
+      expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
     }
   })
 
@@ -201,7 +202,8 @@ describe('stepField', () => {
       expect(d.alpha).toBe(0)
     }
     run(w, grid, 1 + 1 / 60, 1.3, true)
-    expect(gathered(w).every((d) => d.alpha === GATHER_ALPHA_END)).toBe(true)
+    const bright = GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN * w.scene.lockProgress)
+    expect(gathered(w).every((d) => d.alpha === bright)).toBe(true)
   })
 
   it('does not move the free dots under Reduce Motion', () => {
@@ -282,5 +284,38 @@ describe('stepField', () => {
         expect(state.dots[i].homeY).toBe(home.y)
       }
     })
+  })
+})
+
+describe('lock-on progress', () => {
+  it('brightens the landed dots to full opacity at lock-on', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5)
+    expect(w.scene.lockProgress).toBe(1)
+    for (const d of gathered(w)) expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
+    expect(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN)).toBeCloseTo(1, 6)
+  })
+
+  it('puts the landed dots exactly on the intersections at lock-on', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5)
+    const m = w.scene.m!
+    for (const d of gathered(w)) {
+      const at = project(m, (d.target % 10) / 9, Math.floor(d.target / 10) / 9)
+      expect(d.x).toBeCloseTo(at.x, 6)
+      expect(d.y).toBeCloseTo(at.y, 6)
+    }
+  })
+
+  it('keeps the brightness at GATHER_ALPHA_END without progress', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5)
+    w.scene.lockProgress = 0
+    stepField(w.field, w.scene)
+    for (const d of gathered(w).filter((dot) => w.scene.t - dot.since - dot.delay >= FLIGHT)) {
+      expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END, 6)
+    }
+  })
+
+  it('brightens the dots under Reduce Motion too', () => {
+    const w = run(world(), gridAt(50, 300), 0, 2.5, true)
+    for (const d of gathered(w)) expect(d.alpha).toBeCloseTo(GATHER_ALPHA_END * (1 + LOCK_BRIGHTEN), 6)
   })
 })
