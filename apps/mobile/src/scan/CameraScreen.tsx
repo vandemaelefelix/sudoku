@@ -6,7 +6,7 @@ import { Camera, useCameraDevice, useCameraPermission, useFrameOutput } from 're
 import { createSynchronizable, scheduleOnRN } from 'react-native-worklets'
 import { type Quad, useGridDetector } from '../scanner'
 import { countFrame, EMPTY_WINDOW } from './frameRate'
-import { GridOutline } from './GridOutline'
+import { DotField } from './dots/DotField'
 import { EMPTY_JITTER, type JitterReport, trackJitter } from './jitter'
 import { toPreview, uprightAspect, type ViewSize } from './previewMapping'
 import { type Smoothing, smoothQuad } from './smoothing'
@@ -138,7 +138,7 @@ export function CameraScreen() {
         outputs={[frameOutput]}
         orientationSource="interface"
       />
-      <GridOutline outline={outline} />
+      <DotField outline={outline} view={viewSize} />
     </View>
   )
 }
