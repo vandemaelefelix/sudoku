@@ -193,15 +193,20 @@ describe('CameraScreen', () => {
     expect(lastReaction().prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920 })
   })
 
-  it('disposes the frame when detection fails', () => {
+  it('publishes an empty detection and disposes the frame when detection fails', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
     givenPermission('authorized')
     detector.mockReturnValue((() => {
       throw new Error('detect failed')
     }) as unknown as GridDetector)
     render(<CameraScreen />)
     const dispose = jest.fn()
-    expect(() => onFrame()(frameAt(5, dispose))).toThrow('detect failed')
+    expect(() => onFrame()(frameAt(5, dispose))).not.toThrow()
+    expect(lastReaction().prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920 })
     expect(dispose).toHaveBeenCalledTimes(1)
+    onFrame()(frameAt(6))
+    await Promise.resolve()
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 
   it('turns a detection into an outline in view points', () => {
