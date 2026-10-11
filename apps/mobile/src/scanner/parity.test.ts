@@ -63,6 +63,7 @@ describe('measureParity', () => {
     const sent: Float32Array[] = []
     const classifier: Classifier = {
       manifest: { model: 'm', version: '1.0.0', contract: '1.0', file: 'f', outputs: { digit: 0, kind: 1 }, run: 'test-run' },
+      model: {} as Classifier["model"],
       run: (input) => (sent.push(input), raw(REFERENCE.digit, REFERENCE.kind)),
       classify: () => [],
     }
@@ -81,6 +82,7 @@ describe('measureParity', () => {
   it('reports a run that differs from the reference run', () => {
     const classifier: Classifier = {
       manifest: { model: 'm', version: '1.0.0', contract: '1.0', file: 'f', outputs: { digit: 0, kind: 1 }, run: 'other-run' },
+      model: {} as Classifier["model"],
       run: () => raw(REFERENCE.digit, REFERENCE.kind),
       classify: () => [],
     }

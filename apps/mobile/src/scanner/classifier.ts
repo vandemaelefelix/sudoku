@@ -11,12 +11,14 @@ export type Kind = (typeof KIND_CLASSES)[number]
 /** digit: 0 means empty. confidence: the lower top probability of the two heads, 0..1. */
 export type CellResult = { digit: number; kind: Kind; confidence: number; validPair: boolean }
 
+export type OutputIndex = { digit: number; kind: number }
+
 export type ModelManifest = {
   model: string
   version: string
   contract: string
   file: string
-  outputs: { digit: number; kind: number }
+  outputs: OutputIndex
   run?: string
 }
 
@@ -36,6 +38,7 @@ export type TfliteModel = {
 
 export type Classifier = {
   manifest: ModelManifest
+  model: TfliteModel
   run(input: Float32Array): RawOutputs
   classify(input: Float32Array): CellResult[]
 }
@@ -84,12 +87,24 @@ function sameShape(shape: number[] | undefined, expected: number[]): boolean {
   return shape != null && shape.length === expected.length && shape.every((v, i) => v === expected[i])
 }
 
-/** Copies an output: fast-tflite writes the next call into the same buffer. */
+/** Copies an output: fast-tflite writes the next call into the same buffer. Throws Error, not ModelContractError: it runs on the scanner runtime. */
 function copyOutput(buffer: ArrayBuffer | undefined, length: number, name: string): Float32Array {
+  'worklet'
   if (buffer == null || buffer.byteLength !== length * 4) {
-    throw new ModelContractError(`the ${name} output has ${buffer?.byteLength ?? 0} bytes, expected ${length * 4}`)
+    throw new Error(`the ${name} output has ${buffer?.byteLength ?? 0} bytes, expected ${length * 4}`)
   }
   return new Float32Array(buffer.slice(0))
+}
+
+/** Runs on the scanner runtime too. input: INPUT_LENGTH floats. */
+export function runModel(model: TfliteModel, outputs: OutputIndex, input: Float32Array): RawOutputs {
+  'worklet'
+  if (input.length !== INPUT_LENGTH) throw new RangeError(`expected ${INPUT_LENGTH} input values, got ${input.length}`)
+  const result = model.runSync([new Float32Array(input).buffer])
+  return {
+    digit: copyOutput(result[outputs.digit], CELLS * DIGIT_CLASSES, 'digit'),
+    kind: copyOutput(result[outputs.kind], CELLS * KIND_CLASSES.length, 'kind'),
+  }
 }
 
 export function createClassifier(model: TfliteModel, manifest: ModelManifest): Classifier {
@@ -104,13 +119,6 @@ export function createClassifier(model: TfliteModel, manifest: ModelManifest): C
   if (!sameShape(model.outputs[kind]?.shape, [CELLS, KIND_CLASSES.length])) {
     throw new ModelContractError(`output ${kind} is not the kind head [81, 4]`)
   }
-  const run = (input: Float32Array): RawOutputs => {
-    if (input.length !== INPUT_LENGTH) throw new RangeError(`expected ${INPUT_LENGTH} input values, got ${input.length}`)
-    const outputs = model.runSync([new Float32Array(input).buffer])
-    return {
-      digit: copyOutput(outputs[digit], CELLS * DIGIT_CLASSES, 'digit'),
-      kind: copyOutput(outputs[kind], CELLS * KIND_CLASSES.length, 'kind'),
-    }
-  }
-  return { manifest, run, classify: (input) => decodeOutputs(run(input)) }
+  const run = (input: Float32Array): RawOutputs => runModel(model, manifest.outputs, input)
+  return { manifest, model, run, classify: (input) => decodeOutputs(run(input)) }
 }
