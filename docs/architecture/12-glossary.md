@@ -31,7 +31,7 @@ status: DRAFT
 | Intersection | One of the 10 × 10 points where grid lines cross. Found on capture, used for per-cell flattening |
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes` |
-| Lock-on | The moment the live outline has been steady long enough, and the scan captures |
+| Lock-on | The moment the grid corners have been steady long enough, and the scan captures |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
@@ -40,11 +40,11 @@ status: DRAFT
 | Review rate | The share of cells that the correction screen marks as uncertain. Reports give the accuracy at a review rate, for example 99.7 % at 5 % |
 | Suspect | A training cell whose label is probably wrong, found by `just suspects` |
 | Quad | The four outer corners of the detected grid |
-| Skia | `react-native-skia`, a 2D drawing library used for the outline and the transition |
+| Skia | `react-native-skia`, a 2D drawing library used for the dot field and the transition |
 | VisionCamera | `react-native-vision-camera`, the camera library with frame processors |
 | Frame resizer | `react-native-vision-camera-resizer`. It turns a camera frame and scales it on the GPU before fast-opencv sees it. Version 5.2.3 turns a sideways frame upside down |
 | One Euro filter | A smoothing filter whose cutoff rises with speed. It keeps a still outline steady and lets a moving outline follow with little lag. Used for corner smoothing |
-| Outline | The four-sided line that Skia draws over the camera preview, on the smoothed quad |
+| Outline | The smoothed quad in view points. The camera screen gives it to the dot field |
 | Dot field | The live overlay on the camera screen: faint dots that float, and gather on the grid intersections when a grid is found |
 | Free dot | A dot of the dot field that floats. It stays out of the grid and its margin |
 | Gathered dot | A dot of the dot field that sits on one grid intersection and follows it |
