@@ -20,10 +20,12 @@ export function unitToQuad(quad: Quad): Homography | null {
   const dy2 = p3.y - p2.y
   const dy3 = p0.y - p1.y + p2.y - p3.y
   const den = dx1 * dy2 - dx2 * dy1
-  if (Math.abs(den) < 1e-9) return null
+  if (!(Math.abs(den) >= 1e-9)) return null
   const g = (dx3 * dy2 - dx2 * dy3) / den
   const h = (dx1 * dy3 - dx3 * dy1) / den
-  return [p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x, p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y, g, h]
+  const m: Homography = [p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x, p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y, g, h]
+  // A NaN or an Infinity in any corner shows in the sum.
+  return Number.isFinite(m[0] + m[1] + m[2] + m[3] + m[4] + m[5] + m[6] + m[7]) ? m : null
 }
 
 export function project(m: Homography, u: number, v: number): Point {
@@ -45,7 +47,7 @@ export function invert(m: Homography): Homography | null {
   const h = m[7]
   const det = a * (e - f * h) + b * (f * g - d) + c * (d * h - e * g)
   const last = a * e - b * d
-  if (Math.abs(det) < 1e-12 || Math.abs(last) < 1e-12) return null
+  if (!(Math.abs(det) >= 1e-12) || !(Math.abs(last) >= 1e-12)) return null
   return [
     (e - f * h) / last,
     (c * h - b) / last,
