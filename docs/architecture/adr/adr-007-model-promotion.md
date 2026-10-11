@@ -71,7 +71,8 @@ fixture photo. The capture stage is tested separately, on the device ([ADR-010](
   `installedAt`. Promote adds the fixture scores and the holdout.
 - A model trained on data that may not be published stays out of git (ADR-013). The `.tflite`
   file is git-ignored. `manifest.json` and `reference-outputs.json` are in git. A clone without
-  the model file does not bundle. Run `just install-model` first.
+  the model file does not bundle. Run `just install-model` first. CI bundles with an empty
+  placeholder model file.
 - Consequence: `git log apps/mobile/assets/models` shows the manifest history, not the model
   bytes. The run name in the manifest points to the run in `ml/artifacts/`.
 - SUD-06 has this M0 exception. The exception ends when `just promote-model` exists.

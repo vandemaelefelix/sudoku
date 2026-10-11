@@ -91,7 +91,8 @@ flowchart LR
 - `just install-model <run>` refuses a run whose contract major version the scanner does not
   implement (SUD-09). It copies the three files.
 - Metro needs a static `require()`. A clone without the model file does not bundle. The error
-  message names `just install-model`. Jest maps `.tflite` to a stub, so CI does not need the file.
+  message names `just install-model`. Jest maps `.tflite` to a stub. The CI bundle step uses an
+  empty placeholder file.
 
 ### Code
 
@@ -267,7 +268,7 @@ screen replaces the flatten. All digits show at the end of the fade. The gates s
 
 | Case | Behaviour |
 | --- | --- |
-| The model file is missing at build time | The bundle fails. The message names `just install-model` |
+| The model file is missing at build time | `just bundle` stops. The message names `just install-model` |
 | The manifest contract is not supported | The classifier refuses to load. The scan shows a message instead of digits |
 | The output shapes are wrong | The classifier refuses the output. `recognise()` returns a failure |
 | No grid in the photo (shutter without a grid) | `recognise()` returns a failure. The panel offers Retake |
