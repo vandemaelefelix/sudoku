@@ -37,6 +37,12 @@ describe('correctionLayout', () => {
     expect(grid.x).toBe((402 - grid.width) / 2)
   })
 
+  it('gives a grid side of 0, not below, when the view has no room for the grid', () => {
+    const { grid } = correctionLayout({ width: 402, height: 200 }, insets)
+    expect(grid.width).toBe(0)
+    expect(grid.height).toBe(0)
+  })
+
   it('adds the side insets to the margins', () => {
     const { title, panel } = correctionLayout({ width: 800, height: 400 }, { top: 0, bottom: 0, left: 20, right: 10 })
     expect(title.x).toBe(36)

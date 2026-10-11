@@ -136,7 +136,7 @@ jest.mock('@shopify/react-native-skia', () => {
     ColorType: { RGBA_8888: 4, BGRA_8888: 6 },
     AlphaType: { Opaque: 1, Premul: 2 },
     Skia: {
-      Data: { fromBytes: jest.fn((bytes: Uint8Array) => ({ bytes })) },
+      Data: { fromBytes: jest.fn((bytes: Uint8Array) => ({ bytes, dispose: jest.fn() })) },
       Image: { MakeImage: jest.fn(() => ({ dispose: jest.fn() })) },
       Color: (color: string) => color,
       Paint: () => ({

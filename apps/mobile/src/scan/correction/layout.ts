@@ -17,16 +17,15 @@ export function correctionLayout(view: ViewSize, insets: Insets): CorrectionLayo
   const contentLeft = insets.left + MARGIN
   const contentWidth = view.width - 2 * MARGIN - insets.left - insets.right
   const title: Rect = { x: contentLeft, y: insets.top + TITLE_TOP, width: contentWidth, height: TITLE_HEIGHT }
-  const panelHeight = PANEL_HEIGHT
-  const panelTop = view.height - insets.bottom - GAP - panelHeight
+  const panelTop = view.height - insets.bottom - GAP - PANEL_HEIGHT
   const panel: Rect = {
     x: PANEL_SIDE + insets.left,
     y: panelTop,
     width: view.width - 2 * PANEL_SIDE - insets.left - insets.right,
-    height: panelHeight,
+    height: PANEL_HEIGHT,
   }
   const gridTop = title.y + title.height + GAP
-  const side = Math.min(contentWidth, panelTop - GAP - gridTop)
+  const side = Math.max(0, Math.min(contentWidth, panelTop - GAP - gridTop))
   const grid: Rect = { x: contentLeft + (contentWidth - side) / 2, y: gridTop, width: side, height: side }
   return { title, grid, panel }
 }
