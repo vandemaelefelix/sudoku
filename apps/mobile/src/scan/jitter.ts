@@ -21,10 +21,15 @@ export function trackJitter(
   if (quad == null || window.previous == null || timestamp < window.last || timestamp - window.last > MAX_GAP) {
     return { window: { start: timestamp, last: timestamp, previous: quad, maxStep: 0, frames: 0 }, report: null }
   }
-  let step = 0
-  for (let i = 0; i < 4; i++) {
-    step = Math.max(step, Math.hypot(quad[i].x - window.previous[i].x, quad[i].y - window.previous[i].y))
-  }
+  const [q0, q1, q2, q3] = quad
+  const [p0, p1, p2, p3] = window.previous
+  const step = Math.max(
+    0,
+    Math.hypot(q0.x - p0.x, q0.y - p0.y),
+    Math.hypot(q1.x - p1.x, q1.y - p1.y),
+    Math.hypot(q2.x - p2.x, q2.y - p2.y),
+    Math.hypot(q3.x - p3.x, q3.y - p3.y),
+  )
   const maxStep = Math.max(window.maxStep, step)
   const frames = window.frames + 1
   const seconds = timestamp - window.start

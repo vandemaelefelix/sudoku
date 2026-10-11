@@ -76,9 +76,15 @@ function toward(value: number, target: number, step: number): number {
 
 function largestCornerStep(a: Quad, b: Quad): number {
   'worklet'
-  let step = 0
-  for (let i = 0; i < 4; i++) step = Math.max(step, Math.hypot(a[i].x - b[i].x, a[i].y - b[i].y))
-  return step
+  const [a0, a1, a2, a3] = a
+  const [b0, b1, b2, b3] = b
+  return Math.max(
+    0,
+    Math.hypot(a0.x - b0.x, a0.y - b0.y),
+    Math.hypot(a1.x - b1.x, a1.y - b1.y),
+    Math.hypot(a2.x - b2.x, a2.y - b2.y),
+    Math.hypot(a3.x - b3.x, a3.y - b3.y),
+  )
 }
 
 export function diagonal(quad: Quad): number {

@@ -29,7 +29,7 @@ function fakeCanvas() {
   return { drawPath: jest.fn() }
 }
 
-const mocked = (paint: unknown) => paint as Record<string, jest.Mock>
+const mocked = (paint: unknown) => paint as { setAlphaf: jest.Mock; setStrokeWidth: jest.Mock }
 
 describe('spotlightBrackets', () => {
   it('is the path effect with a stable id and no state', () => {
@@ -82,7 +82,7 @@ describe('spotlightBrackets', () => {
   it('scales the bracket stroke from the prototype phone to the view', () => {
     const kit = makeDrawKit([])
     spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(1, 0), kit)
-    expect(mocked(kit.stroke).setStrokeWidth.mock.calls[0][0]).toBeCloseTo((BRACKET_WIDTH * 402) / 220, 9)
+    expect(mocked(kit.stroke).setStrokeWidth.mock.calls[0]?.[0]).toBeCloseTo((BRACKET_WIDTH * 402) / 220, 9)
   })
 })
 

@@ -16,6 +16,12 @@ const MANIFEST: ModelManifest = {
   outputs: { digit: 0, kind: 1 },
 }
 
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 /** Every cell gets the same rows. One-hot rows unless a probability is given. */
 function rows(width: number, top: number, probability = 1): Float32Array {
   const out = new Float32Array(CELLS * width)
@@ -36,7 +42,7 @@ function fakeModel(digit: Float32Array, kind: Float32Array, order: 'digit-first'
     outputs:
       order === 'digit-first' ? [{ shape: [81, 10] }, { shape: [81, 4] }] : [{ shape: [81, 4] }, { shape: [81, 10] }],
     runSync: (inputs) => {
-      received.push(inputs[0])
+      received.push(at(inputs, 0))
       return order === 'digit-first' ? [digitBuffer, kindBuffer] : [kindBuffer, digitBuffer]
     },
     next: (d, k) => {
@@ -67,7 +73,7 @@ describe('checkManifest', () => {
 
 describe('decodeOutputs', () => {
   it('reads the top class and the lower probability as confidence', () => {
-    const [cell] = decodeOutputs({ digit: rows(10, 7, 0.9), kind: rows(4, 2, 0.8) })
+    const cell = at(decodeOutputs({ digit: rows(10, 7, 0.9), kind: rows(4, 2, 0.8) }), 0)
     expect(cell.digit).toBe(7)
     expect(cell.kind).toBe('handwritten')
     expect(cell.confidence).toBeCloseTo(0.8)
@@ -75,7 +81,7 @@ describe('decodeOutputs', () => {
   })
 
   it('marks a digit with kind none as an invalid pair', () => {
-    expect(decodeOutputs({ digit: rows(10, 3), kind: rows(4, 0) })[0].validPair).toBe(false)
+    expect(at(decodeOutputs({ digit: rows(10, 3), kind: rows(4, 0) }), 0).validPair).toBe(false)
   })
 
   it('accepts empty with notes', () => {
@@ -118,7 +124,7 @@ describe('createClassifier', () => {
     const first = classifier.run(new Float32Array(INPUT_LENGTH))
     model.next(rows(10, 9), rows(4, 2))
     classifier.run(new Float32Array(INPUT_LENGTH))
-    expect(decodeOutputs(first)[0].digit).toBe(2)
+    expect(at(decodeOutputs(first), 0).digit).toBe(2)
   })
 
   it('sends exactly the input floats when the input is a view with an offset', () => {
@@ -126,7 +132,7 @@ describe('createClassifier', () => {
     const big = new Float32Array(INPUT_LENGTH + 8)
     big[4] = 0.5
     createClassifier(model, MANIFEST).run(big.subarray(4, 4 + INPUT_LENGTH))
-    const sent = new Float32Array(model.received[0])
+    const sent = new Float32Array(at(model.received, 0))
     expect(sent).toHaveLength(INPUT_LENGTH)
     expect(sent[0]).toBe(0.5)
   })

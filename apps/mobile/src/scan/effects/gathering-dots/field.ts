@@ -100,11 +100,10 @@ function gather(state: FieldState, m: Homography, t: number) {
   'worklet'
   const targets = intersections(m)
   const positions: Point[] = []
-  for (let i = 0; i < state.dots.length; i++) positions.push({ x: state.dots[i].x, y: state.dots[i].y })
+  for (const d of state.dots) positions.push({ x: d.x, y: d.y })
   const owner = assignNearest(positions, targets)
   // Each flight starts where the dot is drawn, so a re-gather does not jump.
-  for (let i = 0; i < state.dots.length; i++) {
-    const d = state.dots[i]
+  for (const d of state.dots) {
     d.target = -1
     d.releasing = false
     d.fromX = d.x
@@ -113,16 +112,22 @@ function gather(state: FieldState, m: Homography, t: number) {
   }
   let longest = 0
   for (let j = 0; j < owner.length; j++) {
-    if (owner[j] < 0) continue
-    const p = positions[owner[j]]
-    longest = Math.max(longest, Math.hypot(p.x - targets[j].x, p.y - targets[j].y))
+    const dot = owner[j]
+    if (dot === undefined) continue
+    const p = positions[dot]
+    const target = targets[j]
+    if (p === undefined || target === undefined) continue
+    longest = Math.max(longest, Math.hypot(p.x - target.x, p.y - target.y))
   }
   for (let j = 0; j < owner.length; j++) {
-    if (owner[j] < 0) continue
-    const d = state.dots[owner[j]]
-    const p = positions[owner[j]]
+    const dot = owner[j]
+    if (dot === undefined) continue
+    const d = state.dots[dot]
+    const p = positions[dot]
+    const target = targets[j]
+    if (d === undefined || p === undefined || target === undefined) continue
     d.target = j
-    d.delay = longest > 0 ? (Math.hypot(p.x - targets[j].x, p.y - targets[j].y) / longest) * MAX_DELAY : 0
+    d.delay = longest > 0 ? (Math.hypot(p.x - target.x, p.y - target.y) / longest) * MAX_DELAY : 0
   }
   state.holding = true
   state.gatheredAt = t
@@ -130,8 +135,7 @@ function gather(state: FieldState, m: Homography, t: number) {
 
 function release(state: FieldState, t: number) {
   'worklet'
-  for (let i = 0; i < state.dots.length; i++) {
-    const d = state.dots[i]
+  for (const d of state.dots) {
     d.fromX = d.x
     d.fromY = d.y
     d.since = t
@@ -150,6 +154,7 @@ export function selectSpreadDots(state: FieldState, centre: Point, reach: number
   const limit = reach + SPREAD_RADIUS
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
+    if (d === undefined) continue
     if (d.target >= 0) continue
     if (Math.hypot(d.homeX - centre.x, d.homeY - centre.y) < limit) chosen.push(i)
   }
@@ -161,21 +166,28 @@ export function spreadHomes(state: FieldState, scene: Scene, quad: Quad, m: Homo
   const centre = project(m, 0.5, 0.5)
   const reach = diagonal(quad) * NEAR
   const chosen = selectSpreadDots(state, centre, reach)
+  const dots: FieldDot[] = []
   const homes: Point[] = []
   const movable: boolean[] = []
-  for (let k = 0; k < chosen.length; k++) {
-    const d = state.dots[chosen[k]]
+  for (const index of chosen) {
+    const d = state.dots[index]
+    if (d === undefined) continue
+    dots.push(d)
     homes.push({ x: d.homeX, y: d.homeY })
     movable.push(Math.hypot(d.homeX - centre.x, d.homeY - centre.y) < reach)
   }
   const next = spreadStep(homes, movable, SPREAD_RADIUS, SPREAD_PUSH)
-  for (let k = 0; k < chosen.length; k++) {
-    if (!movable[k]) continue
+  for (let k = 0; k < dots.length; k++) {
+    const d = dots[k]
+    if (d === undefined) continue
+    const from = homes[k]
+    const to = next[k]
+    if (!movable[k] || from === undefined || to === undefined) continue
     // A clamp to the view would pull a home that the grid pushed out of the view back into the grid, and it would jump to another side.
-    const leaves = next[k].x < 0 || next[k].x > scene.width || next[k].y < 0 || next[k].y > scene.height
-    const home = pushOutside(leaves ? homes[k] : next[k], m, inverse, MARGIN)
-    state.dots[chosen[k]].homeX = home.x
-    state.dots[chosen[k]].homeY = home.y
+    const leaves = to.x < 0 || to.x > scene.width || to.y < 0 || to.y > scene.height
+    const home = pushOutside(leaves ? from : to, m, inverse, MARGIN)
+    d.homeX = home.x
+    d.homeY = home.y
   }
 }
 
@@ -256,16 +268,15 @@ function stepCapture(state: FieldState, scene: Scene, capture: Channels): FieldS
   'worklet'
   const m = scene.m
   if (!state.capturing) {
-    for (let i = 0; i < state.dots.length; i++) {
-      state.dots[i].fromX = state.dots[i].x
-      state.dots[i].fromY = state.dots[i].y
+    for (const d of state.dots) {
+      d.fromX = d.x
+      d.fromY = d.y
     }
     state.capturing = true
   }
   const centre = m == null ? null : project(m, 0.5, 0.5)
   const scale = (1 + PULSE_GROW * capture.pulse) * (1 - capture.shrink) * (1 + (INK_RADIUS - 1) * capture.ink)
-  for (let i = 0; i < state.dots.length; i++) {
-    const d = state.dots[i]
+  for (const d of state.dots) {
     if (d.target >= 0 && m != null) {
       const at = project(m, (d.target % 10) / 9, Math.floor(d.target / 10) / 9)
       d.x = at.x
@@ -313,8 +324,7 @@ export function stepField(state: FieldState, scene: Scene): FieldState {
   // While the grid moves, homes that it sweeps along keep spreading, so they do not pile on the margin.
   const spreading = t - state.gatheredAt < SPREAD_TIME || scene.motion > SPREAD_MOTION
   if (usable && !scene.reduceMotion && spreading) spreadHomes(state, scene, quad, m, inverse)
-  for (let i = 0; i < state.dots.length; i++) {
-    const d = state.dots[i]
+  for (const d of state.dots) {
     if (d.target >= 0 && m != null) placeGathered(d, t, m, scene.motion, scene.lockProgress, scene.reduceMotion)
     else placeFree(state, d, t, m, inverse, scene.reduceMotion)
   }

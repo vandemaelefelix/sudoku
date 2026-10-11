@@ -7,6 +7,12 @@ const square: Quad = [
   { x: 0.2, y: 0.8 },
 ]
 
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 function turn(points: Point[], degrees: number): Point[] {
   const angle = (degrees * Math.PI) / 180
   return points.map((p) => ({
@@ -22,12 +28,12 @@ describe('orderCorners', () => {
 
   it('keeps the order for a grid turned by 20 degrees', () => {
     const turned = turn(square, 20)
-    expect(orderCorners([turned[3], turned[1], turned[0], turned[2]])).toEqual(turned)
+    expect(orderCorners([at(turned, 3), at(turned, 1), at(turned, 0), at(turned, 2)])).toEqual(turned)
   })
 
   it('runs clockwise from one corner of a grid turned by 45 degrees', () => {
     const diamond = turn(square, 45)
-    const ordered = orderCorners([diamond[2], diamond[0], diamond[1], diamond[3]])
+    const ordered = orderCorners([at(diamond, 2), at(diamond, 0), at(diamond, 1), at(diamond, 3)])
     const start = diamond.indexOf(ordered[0])
     expect(ordered).toEqual([0, 1, 2, 3].map((i) => diamond[(start + i) % 4]))
   })
@@ -67,8 +73,8 @@ describe('toGridDetection', () => {
     const detection = toGridDetection(pixels, width, height)
     expect(detection).not.toBeNull()
     detection!.quad.forEach((corner, i) => {
-      expect(corner.x).toBeCloseTo(square[i].x, 10)
-      expect(corner.y).toBeCloseTo(square[i].y, 10)
+      expect(corner.x).toBeCloseTo(at(square, i).x, 10)
+      expect(corner.y).toBeCloseTo(at(square, i).y, 10)
     })
     expect(detection!.score).toBeCloseTo(0.36, 10)
   })
@@ -89,12 +95,12 @@ describe('toGridDetection', () => {
   })
 
   it('rejects a concave quad', () => {
-    const concave = [pixels[1], pixels[3], { x: 150, y: 250 }, pixels[2]]
+    const concave = [at(pixels, 1), at(pixels, 3), { x: 150, y: 250 }, at(pixels, 2)]
     expect(toGridDetection(concave, width, height)).toBeNull()
   })
 
   it('rejects a quad that touches the frame border', () => {
-    const touching = [{ x: 0, y: 127.5 }, pixels[3], pixels[0], pixels[2]]
+    const touching = [{ x: 0, y: 127.5 }, at(pixels, 3), at(pixels, 0), at(pixels, 2)]
     expect(toGridDetection(touching, width, height)).toBeNull()
   })
 })

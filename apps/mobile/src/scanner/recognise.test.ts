@@ -12,6 +12,12 @@ jest.mock('./warp', () => ({ warpGrid: jest.fn() }))
 const find = jest.mocked(findGrid)
 const warp = jest.mocked(warpGrid)
 const OUTPUTS = { digit: 0, kind: 1 }
+
+function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
 // A 16:9 photo, smaller than the real one so the test stays fast.
 const PHOTO = { width: 720, height: 1280 }
 const SMALL = downscaleSize(PHOTO.width, PHOTO.height)
@@ -94,8 +100,8 @@ it('searches only the grown box around the locked quad', () => {
   find.mockReturnValue(null)
   recognise(photo(), LOCKED, model(), OUTPUTS)
   const rect = searchRect(LOCKED, SMALL.width, SMALL.height, SEARCH_GROW)
-  expect(find.mock.calls[0].slice(1)).toEqual([rect.width, rect.height])
-  expect(find.mock.calls[0][0]).toHaveLength(rect.width * rect.height * 3)
+  expect(at(find.mock.calls, 0).slice(1)).toEqual([rect.width, rect.height])
+  expect(at(find.mock.calls, 0)[0]).toHaveLength(rect.width * rect.height * 3)
 })
 
 it('keeps the locked quad when the found corners are too far', () => {
@@ -119,9 +125,9 @@ it('keeps the locked quad when the search finds nothing', () => {
 it('flattens the photo from the chosen corners in photo pixels', () => {
   find.mockReturnValue(null)
   recognise(photo(), LOCKED, model(), OUTPUTS)
-  expect(warp.mock.calls[0][0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
-  expect(warp.mock.calls[0][1]).toEqual(toPhotoPixels(LOCKED, PHOTO.width, PHOTO.height))
-  expect(warp.mock.calls[0][2]).toBe(FLAT_SIZE)
+  expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
+  expect(at(warp.mock.calls, 0)[1]).toEqual(toPhotoPixels(LOCKED, PHOTO.width, PHOTO.height))
+  expect(at(warp.mock.calls, 0)[2]).toBe(FLAT_SIZE)
 })
 
 it('searches the whole photo when there is no quad', () => {
@@ -129,7 +135,7 @@ it('searches the whole photo when there is no quad', () => {
   const result = recognise(photo(), null, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
   expect(result.corners).toBe('found')
-  expect(find.mock.calls[0].slice(1)).toEqual([SMALL.width, SMALL.height])
+  expect(at(find.mock.calls, 0).slice(1)).toEqual([SMALL.width, SMALL.height])
 })
 
 it('fails when there is no quad and no grid in the photo', () => {
@@ -140,7 +146,7 @@ it('fails when there is no quad and no grid in the photo', () => {
 it('reads the full pixels upright', () => {
   find.mockReturnValue(null)
   recognise(photo(), LOCKED, model(), OUTPUTS)
-  expect(warp.mock.calls[0][0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
+  expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
 })
 
 it('fails with the reason when a step throws, and disposes every image', () => {

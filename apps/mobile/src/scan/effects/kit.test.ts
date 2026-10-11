@@ -5,7 +5,15 @@ import type { AnyEffect } from './types'
 const make = jest.mocked(Skia.RuntimeEffect.Make)
 
 function fakeEffect(id: string, sksl?: string): AnyEffect {
-  return { id, name: id, family: 'shader', sksl, create: () => null, step: (state) => state, draw: () => undefined }
+  return {
+    id,
+    name: id,
+    family: 'shader',
+    ...(sksl === undefined ? {} : { sksl }),
+    create: () => null,
+    step: (state) => state,
+    draw: () => undefined,
+  }
 }
 
 beforeEach(() => jest.clearAllMocks())

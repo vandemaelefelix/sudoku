@@ -35,7 +35,11 @@ const RING_INSET = 1.5
 /** Points that a digit rises while it fades in. */
 const DIGIT_RISE = 3
 
-type Timing = { clock?: SharedValue<number>; resultsAt?: SharedValue<number>; reduceMotion: boolean }
+type Timing = {
+  clock?: SharedValue<number> | undefined
+  resultsAt?: SharedValue<number> | undefined
+  reduceMotion: boolean
+}
 
 type CellProps = Timing & { n: number; look: CellLook; size: number; left: number; top: number; colors: Colors }
 

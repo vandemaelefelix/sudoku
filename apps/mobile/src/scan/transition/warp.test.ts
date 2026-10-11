@@ -16,8 +16,18 @@ const square: Quad = [
 ]
 
 function apply(h: number[], p: Point): Point {
-  const w = h[6] * p.x + h[7] * p.y + h[8]
-  return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w }
+  const at = (i: number) => h[i] ?? Number.NaN
+  const w = at(6) * p.x + at(7) * p.y + at(8)
+  return { x: (at(0) * p.x + at(1) * p.y + at(2)) / w, y: (at(3) * p.x + at(4) * p.y + at(5)) / w }
+}
+
+function corners(a: Quad, b: Quad): [Point, Point][] {
+  return [
+    [a[0], b[0]],
+    [a[1], b[1]],
+    [a[2], b[2]],
+    [a[3], b[3]],
+  ]
 }
 
 describe('lerpQuad', () => {
@@ -42,10 +52,10 @@ describe('quadToQuad', () => {
     expect(h).not.toBeNull()
     expect(h).toHaveLength(9)
     expect(h?.[8]).toBeCloseTo(1, 12)
-    for (let i = 0; i < 4; i++) {
-      const p = apply(h as number[], trapezoid[i])
-      expect(p.x).toBeCloseTo(square[i].x, 6)
-      expect(p.y).toBeCloseTo(square[i].y, 6)
+    for (const [from, to] of corners(trapezoid, square)) {
+      const p = apply(h as number[], from)
+      expect(p.x).toBeCloseTo(to.x, 6)
+      expect(p.y).toBeCloseTo(to.y, 6)
     }
   })
 
@@ -78,10 +88,10 @@ describe('photoMatrix', () => {
 
   it('maps the locked corners in photo pixels onto the screen quad', () => {
     const h = photoMatrix(3000, 4000, locked, square) as number[]
-    for (let i = 0; i < 4; i++) {
-      const p = apply(h, { x: locked[i].x * 3000, y: locked[i].y * 4000 })
-      expect(p.x).toBeCloseTo(square[i].x, 6)
-      expect(p.y).toBeCloseTo(square[i].y, 6)
+    for (const [from, to] of corners(locked, square)) {
+      const p = apply(h, { x: from.x * 3000, y: from.y * 4000 })
+      expect(p.x).toBeCloseTo(to.x, 6)
+      expect(p.y).toBeCloseTo(to.y, 6)
     }
   })
 

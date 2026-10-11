@@ -39,24 +39,26 @@ export function EffectPicker({ effect, settings }: { effect: SharedValue<number>
     }
   }, [effect, settings])
 
-  function pick(next: number) {
+  function pick(next: number, id: string) {
     picked.current = true
     effect.set(next)
     setIndex(next)
     setOpen(false)
-    settings.set(EFFECT_KEY, EFFECTS[next].id).catch(logSettingsError)
+    settings.set(EFFECT_KEY, id).catch(logSettingsError)
   }
+
+  const current = EFFECTS[index] ?? EFFECTS[DEFAULT_INDEX]
 
   return (
     <View style={styles.layer} pointerEvents="box-none">
       <Pressable
         testID="effect-pill"
         accessibilityRole="button"
-        accessibilityLabel={`Effect: ${EFFECTS[index].name}`}
+        accessibilityLabel={`Effect: ${current.name}`}
         style={styles.pill}
         onPress={() => setOpen(!open)}
       >
-        <Text style={styles.pillText}>{EFFECTS[index].name}</Text>
+        <Text style={styles.pillText}>{current.name}</Text>
       </Pressable>
       {open ? (
         <View testID="effect-list" style={styles.list}>
@@ -71,7 +73,7 @@ export function EffectPicker({ effect, settings }: { effect: SharedValue<number>
                     accessibilityRole="button"
                     accessibilityState={{ selected: i === index }}
                     style={styles.row}
-                    onPress={() => pick(i)}
+                    onPress={() => pick(i, fx.id)}
                   >
                     <Text style={i === index ? styles.rowActive : styles.rowText}>{fx.name}</Text>
                   </Pressable>

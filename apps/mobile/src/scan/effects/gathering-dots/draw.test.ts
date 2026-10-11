@@ -8,6 +8,12 @@ import { createField, DIM, stepField } from './field'
 
 const VIEW = { width: 402, height: 874 }
 
+function itemAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) throw new RangeError(`no item at index ${index}`)
+  return item
+}
+
 function fakeCanvas() {
   return { drawAtlas: jest.fn(), drawPath: jest.fn() }
 }
@@ -44,7 +50,7 @@ describe('drawField', () => {
     const canvas = fakeCanvas()
     drawField(canvas as never, w.field, w.scene, w.kit)
     const dsts = canvas.drawAtlas.mock.calls[0][2]
-    const dot = w.field.dots[5]
+    const dot = itemAt(w.field.dots, 5)
     const { scos, ssin, tx, ty } = dsts[5]
     expect(STAR_SCALE).toBe(9)
     expect(ssin).toBe(0)
@@ -58,12 +64,12 @@ describe('drawField', () => {
     const canvas = fakeCanvas()
     drawField(canvas as never, w.field, w.scene, w.kit)
     const colors = canvas.drawAtlas.mock.calls[0][5]
-    expect(colors[7][3]).toBeCloseTo(w.field.dots[7].alpha)
+    expect(colors[7][3]).toBeCloseTo(itemAt(w.field.dots, 7).alpha)
   })
 
   it('clamps the dot alpha to 1', () => {
     const w = world()
-    w.field.dots[0].alpha = 1.4
+    itemAt(w.field.dots, 0).alpha = 1.4
     const canvas = fakeCanvas()
     drawField(canvas as never, w.field, w.scene, w.kit)
     expect(canvas.drawAtlas.mock.calls[0][5][0][3]).toBe(1)
@@ -125,13 +131,16 @@ describe('drawField in the capture phase', () => {
 
   it('draws the gathered dots white before the ink ramp', () => {
     const { w, colors } = captured(transitionAt(0, false))
-    expect(Array.from(colors[gatheredIndex(w)].slice(0, 3))).toEqual([1, 1, 1])
+    expect(Array.from(itemAt(colors, gatheredIndex(w)).slice(0, 3))).toEqual([1, 1, 1])
   })
 
   it('draws the gathered dots in ink at ink 1, and keeps the free dots white', () => {
     const { w, colors } = captured({ ...transitionAt(0, false), ink: 1 })
-    const c = colors[gatheredIndex(w)]
-    for (let k = 0; k < 3; k++) expect(c[k]).toBeCloseTo(w.kit.ink[k], 6)
-    expect(Array.from(colors[freeIndex(w)].slice(0, 3))).toEqual([1, 1, 1])
+    const c = itemAt(colors, gatheredIndex(w))
+    const [r, g, b] = w.kit.ink
+    expect(c[0]).toBeCloseTo(r, 6)
+    expect(c[1]).toBeCloseTo(g, 6)
+    expect(c[2]).toBeCloseTo(b, 6)
+    expect(Array.from(itemAt(colors, freeIndex(w)).slice(0, 3))).toEqual([1, 1, 1])
   })
 })

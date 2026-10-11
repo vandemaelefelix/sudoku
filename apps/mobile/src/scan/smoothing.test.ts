@@ -28,7 +28,7 @@ describe('smoothQuad', () => {
   it('keeps a still but noisy outline steady', () => {
     const inputs = Array.from({ length: 150 }, (_, i) => at(0.2 + (i % 2 === 0 ? 0.004 : -0.004)))
     const xs = run(inputs).map((state) => state!.quad[0].x)
-    const steps = xs.slice(31).map((x, i) => Math.abs(x - xs[30 + i]))
+    const steps = xs.slice(31).map((x, i) => Math.abs(x - (xs[30 + i] ?? Number.NaN)))
     expect(Math.max(...steps)).toBeLessThan(0.002)
   })
 

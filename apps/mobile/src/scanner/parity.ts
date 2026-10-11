@@ -31,7 +31,7 @@ export function decodeInputs(base64: string): Float32Array {
 
 function topIndex(row: ArrayLike<number>): number {
   let best = 0
-  for (let c = 1; c < row.length; c++) if (row[c] > row[best]) best = c
+  for (let c = 1; c < row.length; c++) if ((row[c] ?? 0) > (row[best] ?? 0)) best = c
   return best
 }
 
@@ -40,7 +40,8 @@ function compareHead(got: Float32Array, expected: number[][], width: number) {
   const mismatches: number[] = []
   expected.forEach((row, n) => {
     const gotRow = got.subarray(n * width, (n + 1) * width)
-    for (let c = 0; c < width; c++) maxDiff = Math.max(maxDiff, Math.abs(gotRow[c] - row[c]))
+    // NaN, not 0: a short row must fail the max diff check.
+    for (let c = 0; c < width; c++) maxDiff = Math.max(maxDiff, Math.abs((gotRow[c] ?? NaN) - (row[c] ?? NaN)))
     if (topIndex(gotRow) !== topIndex(row)) mismatches.push(n)
   })
   return { maxDiff, mismatches }
@@ -74,7 +75,7 @@ export function measureParity(
     times.push(now() - started)
   }
   times.sort((a, b) => a - b)
-  const medianMs = (times[PARITY_RUNS / 2 - 1] + times[PARITY_RUNS / 2]) / 2
+  const medianMs = ((times[PARITY_RUNS / 2 - 1] ?? NaN) + (times[PARITY_RUNS / 2] ?? NaN)) / 2
   const run = classifier.manifest.run ?? 'unknown'
   return { ...result, medianMs, run, runMatches: run === reference.run }
 }

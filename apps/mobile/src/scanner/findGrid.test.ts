@@ -33,7 +33,9 @@ jest.mock('react-native-fast-opencv', () => {
       return this.points.length
     }
     get(index: number) {
-      return new FakePoint(this.points[index].x, this.points[index].y)
+      const point = this.points[index]
+      if (point === undefined) throw new RangeError(`no point at index ${index}`)
+      return new FakePoint(point.x, point.y)
     }
   }
   class FakeContours extends Tracked {
@@ -85,6 +87,7 @@ function mockArea(points: Pt[]) {
     Math.abs(
       points.reduce((sum, a, i) => {
         const b = points[(i + 1) % points.length]
+        if (b === undefined) throw new RangeError('the contour has no next point')
         return sum + a.x * b.y - b.x * a.y
       }, 0),
     ) / 2
@@ -94,6 +97,7 @@ function mockArea(points: Pt[]) {
 function mockPerimeter(points: Pt[]) {
   return points.reduce((sum, a, i) => {
     const b = points[(i + 1) % points.length]
+    if (b === undefined) throw new RangeError('the contour has no next point')
     return sum + Math.hypot(b.x - a.x, b.y - a.y)
   }, 0)
 }
