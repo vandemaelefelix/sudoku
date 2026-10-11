@@ -1,6 +1,13 @@
 import type { Quad } from '../../scanner'
 import { invert, unitToQuad } from '../effects/common/geometry'
 import type { Rect } from '../correction/layout'
+import type { Channels } from './timeline'
+
+/**
+ * One frame of the transition, in view points. quad: the grid of the dots and the photo. grid: the grid of the cells and the lines.
+ * They are the same quad in the warp. In the cross-fade the dots stay on the locked grid, and the cells and lines are on the square.
+ */
+export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels }
 
 export function lerpQuad(a: Quad, b: Quad, u: number): Quad {
   'worklet'

@@ -1,7 +1,9 @@
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics'
 import type { SkImage } from '@shopify/react-native-skia'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSharedValue } from 'react-native-reanimated'
 import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
 import { createScanner, type Quad, type RecogniseResult, type Scanner } from '../scanner'
 import { photoToSkImage } from './transition/photoImage'
 
@@ -31,13 +33,17 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** capture keeps its identity, because the UI thread holds it from the first frame. A second capture before retake does nothing. */
+/**
+ * capture keeps its identity, because the UI thread holds it from the first frame. A second capture does nothing: a retake mounts a
+ * new camera screen with a new hook. sharedImage: the same image as state.image, for the UI thread. Only the UI thread reads it.
+ */
 export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>) {
   const [state, setState] = useState<CaptureState>({ phase: 'live' })
   const output = useRef(photoOutput)
   const busy = useRef(false)
   const generation = useRef(0)
   const shownImage = useRef<SkImage | null>(null)
+  const sharedImage = useSharedValue<SkImage | null>(null)
 
   useEffect(() => {
     output.current = photoOutput
@@ -48,21 +54,29 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
     createScanner().catch(() => undefined)
   }, [])
 
-  // A retake remounts the camera screen, so the unmount must free the image like retake does.
+  // A retake unmounts the camera screen. The UI thread can draw the image for one more frame, because its frame callbacks stop
+  // later. So the UI thread lets go of the image first, and the JS thread disposes it after that.
   useEffect(
     () => () => {
       generation.current++
-      shownImage.current?.dispose()
+      const image = shownImage.current
       shownImage.current = null
+      if (image == null) return
+      const dispose = () => image.dispose()
+      scheduleOnUI(() => {
+        'worklet'
+        sharedImage.set(null)
+        scheduleOnRN(dispose)
+      })
     },
-    [],
+    [sharedImage],
   )
 
   const capture = useCallback((quad: Quad | null) => {
     if (busy.current) return
     busy.current = true
     const attempt = ++generation.current
-    // A retake makes the attempt stale. A stale attempt must not write state.
+    // An unmount makes the attempt stale. A stale attempt must not write state.
     const current = () => generation.current === attempt
     const update = (change: { image: SkImage } | { imageFailed: true } | { result: RecogniseResult }) =>
       setState((previous) => (previous.phase === 'capturing' ? { ...previous, ...change } : previous))
@@ -117,13 +131,10 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
     })()
   }, [])
 
-  const retake = useCallback(() => {
-    busy.current = false
-    generation.current++
-    shownImage.current?.dispose()
-    shownImage.current = null
-    setState({ phase: 'live' })
-  }, [])
+  const image = state.phase === 'capturing' ? state.image : null
+  useEffect(() => {
+    if (image != null) sharedImage.set(image)
+  }, [image, sharedImage])
 
-  return { state, capture, retake }
+  return { state, capture, sharedImage }
 }

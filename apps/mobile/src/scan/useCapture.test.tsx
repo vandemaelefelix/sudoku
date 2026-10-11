@@ -9,7 +9,8 @@ import { formatScanLog, useCapture } from './useCapture'
 jest.mock('../scanner', () => ({ ...jest.requireActual('../scanner'), createScanner: jest.fn() }))
 jest.mock('./transition/photoImage', () => ({ photoToSkImage: jest.fn() }))
 
-const IMAGE = { dispose: jest.fn() } as unknown as SkImage
+// A new image per test: the automatic unmount after a test disposes the image of that test a little later.
+let IMAGE = { dispose: jest.fn() } as unknown as SkImage
 
 const QUAD: Quad = [
   { x: 0.2, y: 0.3 },
@@ -38,6 +39,7 @@ function setup(result: RecogniseResult = OK) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  IMAGE = { dispose: jest.fn() } as unknown as SkImage
   jest.spyOn(console, 'log').mockImplementation(() => undefined)
 })
 
@@ -78,31 +80,22 @@ it('keeps the image null and still gives the result when the conversion fails', 
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
 
-it('disposes the Skia image on retake', async () => {
+it('gives the image to the UI thread too', async () => {
   const { hook } = setup()
   await act(async () => hook.result.current.capture(QUAD))
-  expect(IMAGE.dispose).not.toHaveBeenCalled()
-  act(() => hook.result.current.retake())
-  expect(IMAGE.dispose).toHaveBeenCalledTimes(1)
+  expect(hook.result.current.sharedImage.value).toBe(IMAGE)
 })
 
-it('disposes an image that arrives after retake', async () => {
-  const { hook } = setup()
-  const pending: { image?: (image: SkImage) => void } = {}
-  jest.mocked(photoToSkImage).mockImplementationOnce(() => new Promise((resolve) => (pending.image = resolve)))
-  act(() => hook.result.current.capture(QUAD))
-  await waitFor(() => expect(pending.image).toBeDefined())
-  act(() => hook.result.current.retake())
-  await act(async () => pending.image?.(IMAGE))
-  expect(IMAGE.dispose).toHaveBeenCalledTimes(1)
-  expect(hook.result.current.state).toEqual({ phase: 'live' })
-})
-
-it('disposes the Skia image on unmount', async () => {
+it('on unmount, clears the image on the UI thread before it disposes the image', async () => {
   const { hook } = setup()
   await act(async () => hook.result.current.capture(QUAD))
+  const photo = hook.result.current.sharedImage
+  const seenAtDispose: unknown[] = []
+  jest.mocked(IMAGE.dispose).mockImplementationOnce(() => seenAtDispose.push(photo.value))
   hook.unmount()
-  expect(IMAGE.dispose).toHaveBeenCalledTimes(1)
+  expect(IMAGE.dispose).not.toHaveBeenCalled()
+  await waitFor(() => expect(IMAGE.dispose).toHaveBeenCalledTimes(1))
+  expect(seenAtDispose).toEqual([null])
 })
 
 it('disposes an image that arrives after unmount', async () => {
@@ -159,15 +152,6 @@ it('gives a failure without a photo when the model did not load', async () => {
   expect(output.capturePhoto).not.toHaveBeenCalled()
   expect(hook.result.current.state).toMatchObject({ phase: 'capturing', image: null, imageFailed: true, result: { ok: false } })
   expect(photoToSkImage).not.toHaveBeenCalled()
-})
-
-it('goes back to live on retake, and captures again', async () => {
-  const { hook, output } = setup()
-  await act(async () => hook.result.current.capture(QUAD))
-  act(() => hook.result.current.retake())
-  expect(hook.result.current.state).toEqual({ phase: 'live' })
-  await act(async () => hook.result.current.capture(QUAD))
-  expect(output.capturePhoto).toHaveBeenCalledTimes(2)
 })
 
 it('keeps capture the same function across renders', () => {

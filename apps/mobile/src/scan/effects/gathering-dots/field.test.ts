@@ -396,6 +396,18 @@ describe('the capture phase', () => {
     })
   })
 
+  it('fades the free dots in place under Reduce Motion', () => {
+    const w = captureFrame(locked(), 2.6, {})
+    w.scene.reduceMotion = true
+    const before = free(w).map((d) => ({ x: d.x, y: d.y }))
+    captureFrame(w, 2.7, { freeDrift: 1 })
+    free(w).forEach((d, i) => {
+      expect(d.x).toBeCloseTo(before[i].x, 6)
+      expect(d.y).toBeCloseTo(before[i].y, 6)
+      expect(d.alpha).toBe(0)
+    })
+  })
+
   it('starts the drift from where each free dot was in the first capture frame', () => {
     const w = locked()
     const before = free(w).map((d) => ({ x: d.x, y: d.y }))
