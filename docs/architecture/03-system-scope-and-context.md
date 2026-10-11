@@ -62,6 +62,6 @@ flowchart LR
 | Interface | Producer | Consumer | Format |
 | --- | --- | --- | --- |
 | Model contract | written by hand | `ml/` and the app's scanner module | Markdown spec, see [model-contract](00-concepts/model-contract.md) |
-| Promoted model | `ml/` via `just promote-model` | the app's scanner module | `.tflite` + `manifest.json` |
+| Promoted model | `ml/` via `just promote-model` | the app's scanner module | `.tflite` + `manifest.json` + `reference-outputs.json` |
 | Fixture scans | taken by hand, labelled once, cell images written by the fixture runner | promote gate (cell images), fixture runner (photos) | photo + `truth.json` + 81 cell images, see [ADR-007](adr/adr-007-model-promotion.md) |
 | Training-data export | the app's correction screen | `ml/` dataset | cell images + labels, see the model contract. Only on an explicit user action (SUD-02) |

@@ -36,7 +36,7 @@ status: DRAFT
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
 | Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
-| Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007) |
+| Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007). Until M3, Install is the one exception (ADR-007). |
 | Review rate | The share of cells that the correction screen marks as uncertain. Reports give the accuracy at a review rate, for example 99.7 % at 5 % |
 | Suspect | A training cell whose label is probably wrong, found by `just suspects` |
 | Quad | The four outer corners of the detected grid |

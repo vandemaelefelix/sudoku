@@ -66,8 +66,8 @@ fixture photo. The capture stage is tested separately, on the device ([ADR-010](
 ## Amendment: M0 install and private models (2026-10-11)
 
 - Until `just promote-model` exists (M3), `just install-model <run>` copies an exported run into
-  `apps/mobile/assets/models/` without the gate. It checks the contract major version (SUD-09)
-  and writes a reduced manifest: model, version, contract, file, outputs, run, metrics and
+  `apps/mobile/assets/models/` without the gate. It checks the contract major version (SUD-09).
+  It writes a reduced manifest: model, version, contract, file, outputs, run, metrics and
   `installedAt`. Promote adds the fixture scores and the holdout.
 - A model trained on data that may not be published stays out of git (ADR-013). The `.tflite`
   file is git-ignored. `manifest.json` and `reference-outputs.json` are in git. A clone without
