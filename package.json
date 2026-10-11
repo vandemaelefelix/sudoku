@@ -9,10 +9,13 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "oxlint --deny-warnings",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "boundaries": "depcruise apps/mobile/App.tsx apps/mobile/src packages/sudoku-core/src --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
     "dependency-cruiser": "18.5.0",
+    "oxfmt": "0.72.0",
     "oxlint": "1.87.0"
   }
 }
