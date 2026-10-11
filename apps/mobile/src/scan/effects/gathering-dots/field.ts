@@ -36,6 +36,8 @@ export const NEAR = 1.5
 const ARC = 0.18
 /** The capture transition (scan-pipeline concept). The radius of a gathered dot at the top of the pulse is 1 + PULSE_GROW times its radius. */
 export const PULSE_GROW = 0.6
+/** The radius of an ink dot as a share of the white dot: the ink dots fit the crossings of the lines. */
+export const INK_RADIUS = 0.8
 /** Points that a free dot moves away from the grid centre at freeDrift 1. */
 export const FREE_DRIFT = 40
 
@@ -262,7 +264,7 @@ function stepCapture(state: FieldState, scene: Scene, capture: Channels): FieldS
     state.capturing = true
   }
   const centre = m == null ? null : project(m, 0.5, 0.5)
-  const scale = (1 + PULSE_GROW * capture.pulse) * (1 - capture.shrink)
+  const scale = (1 + PULSE_GROW * capture.pulse) * (1 - capture.shrink) * (1 + (INK_RADIUS - 1) * capture.ink)
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
     if (d.target >= 0 && m != null) {

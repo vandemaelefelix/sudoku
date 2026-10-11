@@ -1,6 +1,6 @@
 import type { Quad } from '../../../scanner'
 import { type Channels, TRANSITION_END, transitionAt } from '../../transition/timeline'
-import { intersections, invert, project, pushOutside, unitToQuad } from '../common/geometry'
+import { intersections, invert, isBoxCorner, project, pushOutside, unitToQuad } from '../common/geometry'
 import { spreadStep } from '../common/spread'
 import { createScene, type Scene, stepScene } from '../scene'
 import {
@@ -8,6 +8,9 @@ import {
   FLIGHT,
   FREE_ALPHA,
   GATHER_ALPHA_END,
+  GROW,
+  GROW_BOX,
+  INK_RADIUS,
   LOCK_BRIGHTEN,
   MARGIN,
   MAX_DELAY,
@@ -368,7 +371,7 @@ describe('the capture phase', () => {
     const d = gathered(w)[0]
     expect(d.x).toBeCloseTo(targets[d.target].x, 6)
     expect(d.y).toBeCloseTo(targets[d.target].y, 6)
-    expect(d.radius).toBeGreaterThan(d.size)
+    expect(d.radius).toBeCloseTo(d.size * (isBoxCorner(d.target) ? GROW_BOX : GROW), 9)
   })
 
   it('grows a gathered dot to 1.6 × its radius at the top of the pulse', () => {
@@ -376,6 +379,16 @@ describe('the capture phase', () => {
     const radii = gathered(w).map((d) => d.radius)
     captureFrame(w, 2.6, { pulse: 1 })
     gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(1.6 * radii[i], 6))
+  })
+
+  it('shrinks an ink dot to 0.8 × the radius of the white dot', () => {
+    const w = locked()
+    const radii = gathered(w).map((d) => d.radius)
+    captureFrame(w, 2.6, { ink: 1 })
+    expect(INK_RADIUS).toBe(0.8)
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(INK_RADIUS * radii[i], 6))
+    captureFrame(w, 2.7, { ink: 0.5 })
+    gathered(w).forEach((d, i) => expect(d.radius).toBeCloseTo(0.9 * radii[i], 6))
   })
 
   it('shrinks the gathered dots to nothing at the end of the transition', () => {
