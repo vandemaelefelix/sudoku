@@ -121,7 +121,10 @@ instead of digits (model contract, "Versioning").
 | --- | --- |
 | Steady | The existing scene rule: a grid is present and `motion < STEADY_MOTION`, with `STEADY_SPEED` = 30 pt/s. These two values become the lock-on threshold. Tune them on the device |
 | Progress | `(t − steadyAt) / LOCK_DWELL` while steady, else 0. Clamped to 0..1 |
-| Dwell | `LOCK_DWELL` = 0.7 s to start. Tune between 0.6 and 0.8 s on the device |
+| Dwell | `LOCK_DWELL` = 1.0 s (was 0.7 s; added 2026-10-11, developer). The dwell counts from the latest of `steadyAt`, `foundAt`, the end of the settle time and the time the grid became big enough |
+| Re-arm | The first scene after the app opens is armed. A scene after a Retake starts not armed. It arms after `REARM_LOST` = 0.5 s without a grid, or when the grid jumps to another place. While not armed, the progress stays 0 (added 2026-10-11, developer) |
+| Settle time | No lock-on in the first `WARMUP` = 1.0 s after the first frame of the scene. The progress stays 0 (added 2026-10-11, developer) |
+| Minimum size | The grid width (the mean of the top and bottom edges) is at least `MIN_GRID_WIDTH` = 0.35 of the view width. While smaller, the progress stays 0 (added 2026-10-11, developer) |
 | Reset | The progress goes to 0 when the grid is lost, found again or jumps to another grid |
 | Latch | At progress 1, the scene sets `lockedAt` once. From then on, it ignores new detections. The dots stay on the locked quad |
 | Shutter | Captures at any time. It uses the current outline quad, or `null` when there is no grid |
