@@ -212,6 +212,14 @@ times are the ones in the scan experience design, stage 2.
 | Rings on uncertain cells | 1.20–1.40 |
 | Panel slides up | 1.20–1.50 |
 
+As built (2026-10-11):
+
+- The title fades in at 0.20–0.50 s. This follows the prototype. The table has no title row.
+- The digit sweep, the rings and the panel shift later by the wait for the results: shift = max(0,
+  the clock time when the results arrived − 0.55 s).
+- The cross-fade path has no movement. It runs with Reduce Motion, after a shutter press without a
+  grid, and when the photo conversion fails.
+
 The timeline has two gates. At a closed gate, the clock holds.
 
 | Gate | At (s) | Opens when | While closed |
@@ -304,6 +312,7 @@ screen replaces the flatten. All digits show at the end of the fade. The gates s
 | Nitro objects (the photo, the image) can pass into the scanner runtime | Decided in #6: yes. The photo, the image and the model pass as plain arguments of `runOnRuntimeAsync` |
 | `REVIEW_CONFIDENCE` final value | The first real fixture set |
 | Dark-mode colours of the correction screen | The developer |
+| QR-07 budget (1.5 s) against the time to the photo gate: the photo takes about 120 ms, and the conversion follows | The developer, after the iPhone measure: a faster photo path, a compressed timeline, or a revised budget |
 
 ## Delivery
 
