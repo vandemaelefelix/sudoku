@@ -89,3 +89,7 @@ relabel file="data/review/relabels.csv":
 # List the 150 most likely wrong labels in ml/data/review/ (contact sheets + relabels.csv)
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
+
+# Group the cells of each digit folder for the labelling page. The run path is relative to ml/
+group-cells run="":
+    uv run --directory ml python -m sudoku_ml.grouping {{run}}
