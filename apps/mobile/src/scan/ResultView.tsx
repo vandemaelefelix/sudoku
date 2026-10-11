@@ -2,8 +2,6 @@ import { StatusBar } from 'expo-status-bar'
 import { Button, StyleSheet, Text, View } from 'react-native'
 import type { Kind, RecogniseResult } from '../scanner'
 
-// Issue #19 replaces this view with the correction screen.
-
 const KIND_LABEL: { [kind in Kind]: string } = { none: '', notes: '', printed: 'P', handwritten: 'H' }
 
 export function ResultView({ result, onRetake }: { result: RecogniseResult; onRetake: () => void }) {
