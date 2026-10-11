@@ -101,7 +101,13 @@ it('goes back live with a new scene on Retake from the review', () => {
 })
 
 it('mounts a new camera screen and a new effect canvas on Retake from the transition', () => {
-  givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result: { ok: false, reason: 'no grid' } })
+  givenPhase({
+    phase: 'capturing',
+    quad: null,
+    image: null,
+    imageFailed: false,
+    result: { ok: false, reason: 'no grid' },
+  })
   render(<ScanFlow />)
   const before = lastCanvas()
   givenPhase({ phase: 'live' })

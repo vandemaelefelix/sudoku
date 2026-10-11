@@ -68,7 +68,8 @@ const positions = (w: World) => w.field.dots.map((d) => ({ x: d.x, y: d.y }))
 /** The largest distance that any dot moved between two frames. */
 function largestMove(before: { x: number; y: number }[], after: { x: number; y: number }[]) {
   let most = 0
-  for (let i = 0; i < before.length; i++) most = Math.max(most, Math.hypot(after[i].x - before[i].x, after[i].y - before[i].y))
+  for (let i = 0; i < before.length; i++)
+    most = Math.max(most, Math.hypot(after[i].x - before[i].x, after[i].y - before[i].y))
   return most
 }
 

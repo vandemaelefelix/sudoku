@@ -89,7 +89,11 @@ export function diagonal(quad: Quad): number {
 /** The mean length of the top and bottom edges, in view points. */
 function gridWidth(quad: Quad): number {
   'worklet'
-  return (Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) + Math.hypot(quad[2].x - quad[3].x, quad[2].y - quad[3].y)) / 2
+  return (
+    (Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) +
+      Math.hypot(quad[2].x - quad[3].x, quad[2].y - quad[3].y)) /
+    2
+  )
 }
 
 /** armed: false after a scan or a Retake, so the scene does not lock on again on the same puzzle. */

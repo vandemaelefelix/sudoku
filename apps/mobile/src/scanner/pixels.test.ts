@@ -5,8 +5,7 @@ describe('toRgb', () => {
   it('reads BGRA and skips the padding at the end of each row', () => {
     // 2 × 2 pixels, 12 bytes per row: 8 bytes of pixels and 4 bytes of padding.
     const bytes = new Uint8Array([
-      3, 2, 1, 255, 6, 5, 4, 255, 99, 99, 99, 99,
-      9, 8, 7, 255, 12, 11, 10, 255, 99, 99, 99, 99,
+      3, 2, 1, 255, 6, 5, 4, 255, 99, 99, 99, 99, 9, 8, 7, 255, 12, 11, 10, 255, 99, 99, 99, 99,
     ])
     const rgb = toRgb({ buffer: bytes.buffer, width: 2, height: 2, pixelFormat: 'BGRA' })
     expect(Array.from(rgb)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])

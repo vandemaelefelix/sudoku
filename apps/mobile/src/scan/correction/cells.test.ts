@@ -1,7 +1,13 @@
 import type { CellResult } from '../../scanner'
 import { cellLook, cellsToCheck, REVIEW_CONFIDENCE } from './cells'
 
-const cell = (over: Partial<CellResult>): CellResult => ({ digit: 5, kind: 'printed', confidence: 1, validPair: true, ...over })
+const cell = (over: Partial<CellResult>): CellResult => ({
+  digit: 5,
+  kind: 'printed',
+  confidence: 1,
+  validPair: true,
+  ...over,
+})
 
 describe('cellLook', () => {
   it('shows a printed digit as a given', () => {
@@ -29,13 +35,22 @@ describe('cellLook', () => {
   })
 
   it('keeps the ring on an uncertain empty cell', () => {
-    expect(cellLook(cell({ kind: 'none', digit: 0, confidence: 0.5 }))).toEqual({ digit: '', style: 'empty', uncertain: true })
+    expect(cellLook(cell({ kind: 'none', digit: 0, confidence: 0.5 }))).toEqual({
+      digit: '',
+      style: 'empty',
+      uncertain: true,
+    })
   })
 })
 
 describe('cellsToCheck', () => {
   it('counts the uncertain cells', () => {
-    const cells = [cell({}), cell({ confidence: 0.2 }), cell({ validPair: false }), cell({ kind: 'none', digit: 0, confidence: 0.1 })]
+    const cells = [
+      cell({}),
+      cell({ confidence: 0.2 }),
+      cell({ validPair: false }),
+      cell({ kind: 'none', digit: 0, confidence: 0.1 }),
+    ]
     expect(cellsToCheck(cells)).toBe(3)
     expect(cellsToCheck([])).toBe(0)
   })

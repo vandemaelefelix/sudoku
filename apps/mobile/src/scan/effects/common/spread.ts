@@ -1,6 +1,14 @@
 import type { Point } from '../../../scanner'
 
-function pushPair(points: Point[], next: Point[], movable: boolean[], a: number, b: number, radius: number, push: number) {
+function pushPair(
+  points: Point[],
+  next: Point[],
+  movable: boolean[],
+  a: number,
+  b: number,
+  radius: number,
+  push: number,
+) {
   'worklet'
   const dx = points[a].x - points[b].x
   const dy = points[a].y - points[b].y

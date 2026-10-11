@@ -35,7 +35,11 @@ beforeEach(() => {
 })
 
 it('returns side × side pixels in the source format', () => {
-  const out = warpGrid({ buffer: new ArrayBuffer(100 * 100 * 4), width: 100, height: 100, pixelFormat: 'BGRA' }, corners, 4)
+  const out = warpGrid(
+    { buffer: new ArrayBuffer(100 * 100 * 4), width: 100, height: 100, pixelFormat: 'BGRA' },
+    corners,
+    4,
+  )
   expect(out).toMatchObject({ width: 4, height: 4, pixelFormat: 'BGRA' })
   expect(new Uint8Array(out.buffer)).toHaveLength(64)
   expect(new Uint8Array(out.buffer)[0]).toBe(7)

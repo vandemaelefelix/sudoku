@@ -90,12 +90,30 @@ describe('photoMatrix', () => {
     const aspect = 3 / 4
     const screen = toPreview(locked, aspect, view) as Quad
     const h = photoMatrix(3000, 4000, locked, screen) as number[]
-    const corner = toPreview([{ x: 1, y: 1 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], aspect, view) as Quad
+    const corner = toPreview(
+      [
+        { x: 1, y: 1 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+      ],
+      aspect,
+      view,
+    ) as Quad
     const p = apply(h, { x: 3000, y: 4000 })
     expect(p.x).toBeCloseTo(corner[0].x, 6)
     expect(p.y).toBeCloseTo(corner[0].y, 6)
     const origin = apply(h, { x: 0, y: 0 })
-    const expected = toPreview([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], aspect, view) as Quad
+    const expected = toPreview(
+      [
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+      ],
+      aspect,
+      view,
+    ) as Quad
     expect(origin.x).toBeCloseTo(expected[0].x, 6)
     expect(origin.y).toBeCloseTo(expected[0].y, 6)
   })

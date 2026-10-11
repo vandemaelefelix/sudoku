@@ -29,7 +29,10 @@ export function trackJitter(
   const frames = window.frames + 1
   const seconds = timestamp - window.start
   if (seconds >= JITTER_WINDOW) {
-    return { window: { start: timestamp, last: timestamp, previous: quad, maxStep: 0, frames: 0 }, report: { maxStep, frames, seconds } }
+    return {
+      window: { start: timestamp, last: timestamp, previous: quad, maxStep: 0, frames: 0 },
+      report: { maxStep, frames, seconds },
+    }
   }
   return { window: { start: window.start, last: timestamp, previous: quad, maxStep, frames }, report: null }
 }

@@ -13,7 +13,10 @@ module.exports = {
       comment: 'SUD-04: @sudoku/core must not reach outside its own folder with a relative import.',
       severity: 'error',
       from: { path: '^packages/sudoku-core/src' },
-      to: { pathNot: '^packages/sudoku-core/', dependencyTypesNot: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'] },
+      to: {
+        pathNot: '^packages/sudoku-core/',
+        dependencyTypesNot: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
+      },
     },
     {
       name: 'sud-03-game-does-not-use-scanner',

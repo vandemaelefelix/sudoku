@@ -86,24 +86,54 @@ function expectMaps(from: Pt[], to: Pt[]): number[] {
 describe('perspectiveTransform', () => {
   it('maps a pure scale and shift', () => {
     const h = expectMaps(
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
-      [{ x: 5, y: 7 }, { x: 25, y: 7 }, { x: 25, y: 47 }, { x: 5, y: 47 }],
+      [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+      [
+        { x: 5, y: 7 },
+        { x: 25, y: 7 },
+        { x: 25, y: 47 },
+        { x: 5, y: 47 },
+      ],
     )
     expect(apply(h, { x: 0.5, y: 0.5 })).toEqual({ x: 15, y: 27 })
   })
 
   it('maps a real trapezoid to the 576 square', () => {
     const h = expectMaps(
-      [{ x: 1200, y: 800 }, { x: 3000, y: 900 }, { x: 3300, y: 2100 }, { x: 900, y: 2000 }],
-      [{ x: -0.5, y: -0.5 }, { x: 575.5, y: -0.5 }, { x: 575.5, y: 575.5 }, { x: -0.5, y: 575.5 }],
+      [
+        { x: 1200, y: 800 },
+        { x: 3000, y: 900 },
+        { x: 3300, y: 2100 },
+        { x: 900, y: 2000 },
+      ],
+      [
+        { x: -0.5, y: -0.5 },
+        { x: 575.5, y: -0.5 },
+        { x: 575.5, y: 575.5 },
+        { x: -0.5, y: 575.5 },
+      ],
     )
     expect(h).toHaveLength(9)
   })
 
   it('maps the centre of a square to the centre for an affine case', () => {
     const h = expectMaps(
-      [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
-      [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+      [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 },
+      ],
+      [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 },
+      ],
     )
     const centre = apply(h, { x: 5, y: 5 })
     expect(centre.x).toBeCloseTo(50, 6)
@@ -113,8 +143,18 @@ describe('perspectiveTransform', () => {
   it('throws for three collinear points', () => {
     expect(() =>
       perspectiveTransform(
-        [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }, { x: 0, y: 5 }],
-        [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
+        [
+          { x: 0, y: 0 },
+          { x: 1, y: 1 },
+          { x: 2, y: 2 },
+          { x: 0, y: 5 },
+        ],
+        [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+          { x: 1, y: 1 },
+          { x: 0, y: 1 },
+        ],
       ),
     ).toThrow('the corners do not give a perspective transform')
   })

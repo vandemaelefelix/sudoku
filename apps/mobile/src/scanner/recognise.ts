@@ -28,7 +28,14 @@ export type RecogniseTimings = { imageMs: number; detectMs: number; flattenMs: n
 
 /** quad: the corners used, normalised to the upright photo. cornerOffset: of the re-detected corners from the locked quad, as a share of the grid side, or null. */
 export type RecogniseResult =
-  | { ok: true; cells: CellResult[]; quad: Quad; corners: CornerSource; cornerOffset: number | null; timings: RecogniseTimings }
+  | {
+      ok: true
+      cells: CellResult[]
+      quad: Quad
+      corners: CornerSource
+      cornerOffset: number | null
+      timings: RecogniseTimings
+    }
   | { ok: false; reason: string }
 
 /** A re-detected corner farther than this share of the grid side from the locked corner belongs to another grid. */
