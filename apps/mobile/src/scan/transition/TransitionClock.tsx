@@ -1,7 +1,7 @@
 import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import type { Quad } from '../../scanner'
-import { advanceClock, GATE_RESULTS, type Gates, SPINNER_DELAY, transitionAt, transitionEnd } from './timeline'
+import { advanceClock, GATE_RESULTS, type Gates, SPINNER_DELAY, sweepShift, transitionAt, transitionEnd } from './timeline'
 import { type CaptureFrame, lerpQuad } from './warp'
 
 /**
@@ -27,6 +27,7 @@ export function TransitionClock({
   gates,
   clock,
   waiting,
+  resultsAt,
   capture,
   onEnd,
 }: {
@@ -34,6 +35,8 @@ export function TransitionClock({
   gates: SharedValue<Gates>
   clock: SharedValue<number>
   waiting: SharedValue<boolean>
+  /** The clock value when the results gate opened, or -1 before. This writes it once. */
+  resultsAt: SharedValue<number>
   capture: SharedValue<CaptureFrame | null>
   onEnd: () => void
 }) {
@@ -51,7 +54,9 @@ export function TransitionClock({
     const dt = previous < 0 ? 0 : Math.min(MAX_CLOCK_STEP, Math.max(0, now - previous))
     const open = gates.get()
     const before = clock.get()
-    const t = advanceClock(before, dt, open, path.crossFade)
+    if (open.results && resultsAt.get() < 0) resultsAt.set(before)
+    const shift = sweepShift(resultsAt.get(), before, path.crossFade)
+    const t = advanceClock(before, dt, open, path.crossFade, shift)
     const resultsGate = path.crossFade ? 0 : GATE_RESULTS
     held.set(!open.results && t >= resultsGate ? held.get() + dt : 0)
     const late = held.get() > SPINNER_DELAY
@@ -59,11 +64,12 @@ export function TransitionClock({
     if (t !== before || path.version !== shownVersion.get()) {
       clock.set(t)
       shownVersion.set(path.version)
-      const channels = transitionAt(t, path.crossFade)
+      const channels = transitionAt(t, path.crossFade, shift)
       const grid = path.crossFade ? path.to : lerpQuad(path.from, path.to, channels.flatten)
-      capture.set({ quad: path.crossFade ? path.from : grid, grid, channels })
+      capture.set({ quad: path.crossFade ? path.from : grid, grid, channels, crossFade: path.crossFade })
     }
-    if (t >= transitionEnd(path.crossFade) && !ended.get()) {
+    // onEnd finishes only with an ok result, so the latch waits for the open results gate.
+    if (open.results && t >= transitionEnd(path.crossFade, shift) && !ended.get()) {
       ended.set(true)
       scheduleOnRN(onEnd)
     }

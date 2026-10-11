@@ -89,6 +89,7 @@ export function CameraScreen({
   const reduceMotion = useReducedMotion()
   const clock = useSharedValue(0)
   const waiting = useSharedValue(false)
+  const resultsAt = useSharedValue(-1)
   const plan = useSharedValue<TransitionPlan | null>(null)
   const gates = useSharedValue<Gates>({ photo: false, results: false })
   const captureFrame = useSharedValue<CaptureFrame | null>(null)
@@ -259,7 +260,15 @@ export function CameraScreen({
           colors={colors}
         />
       )}
-      <TransitionClock plan={plan} gates={gates} clock={clock} waiting={waiting} capture={captureFrame} onEnd={finish} />
+      <TransitionClock
+        plan={plan}
+        gates={gates}
+        clock={clock}
+        waiting={waiting}
+        resultsAt={resultsAt}
+        capture={captureFrame}
+        onEnd={finish}
+      />
       <EffectCanvas
         outline={outline}
         view={viewSize}
@@ -276,6 +285,7 @@ export function CameraScreen({
           clock={clock}
           reduceMotion={crossFade}
           waiting={waiting}
+          resultsAt={resultsAt}
         />
       ) : (
         <>

@@ -33,11 +33,14 @@ export function advance(
 
 /**
  * One frame of the capture phase. quad: the grid in view points as the transition moves it; it replaces the locked quad.
- * The latch, the motion and the presence of the scene stay as they were at lock-on. Mutates the scene.
+ * The latch, the motion and the presence of the scene stay as they were at lock-on. crossFade: the transition fades the layers
+ * with the Reduce Motion channels. Mutates the scene.
  */
-export function advanceCapture(engine: Engine, effect: AnyEffect, quad: Quad, t: number, channels: Channels): Engine {
+export function advanceCapture(engine: Engine, effect: AnyEffect, quad: Quad, t: number, channels: Channels, crossFade: boolean): Engine {
   'worklet'
   const scene = engine.scene
+  // The cross-fade replaces the motion, so the effects draw as under Reduce Motion (scan-pipeline concept).
+  if (crossFade) scene.reduceMotion = true
   scene.dt = scene.t < 0 ? 0 : Math.min(MAX_STEP, Math.max(0, t - scene.t))
   scene.t = t
   const m = unitToQuad(quad)

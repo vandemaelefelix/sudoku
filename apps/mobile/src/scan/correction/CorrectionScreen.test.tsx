@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
-import type { SharedValue } from 'react-native-reanimated'
+import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import type { CellResult, RecogniseResult } from '../../scanner'
 import { LIGHT } from '../../theme/colors'
 import { CorrectionScreen } from './CorrectionScreen'
-import { GATE_RESULTS } from '../transition/timeline'
+import { GATE_RESULTS, digitAlpha, panelAt, ringsAt } from '../transition/timeline'
 import { correctionLayout } from './layout'
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
@@ -95,6 +95,13 @@ describe('CorrectionScreen in review', () => {
 const failureUi = (shared: SharedValue<number>, reduceMotion = false) => (
   <CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={shared} reduceMotion={reduceMotion} />
 )
+const HIDDEN = layout.panel.height * 1.4
+
+/** The failure slide reaction of the last render: its condition and its handler. The mock runs neither. */
+function slideReaction() {
+  const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls.at(-1)! as unknown as [() => boolean, (go: boolean, previous: boolean | null) => void]
+  return { prepare, react }
+}
 
 describe('CorrectionScreen with a clock', () => {
   it('draws no background and no board', () => {
@@ -118,22 +125,77 @@ describe('CorrectionScreen with a clock', () => {
     expect(style('correction-panel').transform).toEqual([{ translateY: layout.panel.height * 1.4 }])
   })
 
-  it('shows the failure panel with the clock held at the results gate', () => {
-    const { rerender } = render(failureUi(clock(GATE_RESULTS)))
-    // The mock does not react to the shared value, so the second render reads the value that the effect set.
+  it('starts the failure slide when the clock reaches the results gate, not when the failure comes', () => {
+    const { rerender } = render(failureUi(clock(0.5)))
+    expect(slideReaction().prepare()).toBe(false)
+    expect(style('correction-panel').transform).toEqual([{ translateY: HIDDEN }])
+    rerender(failureUi(clock(GATE_RESULTS)))
+    const { prepare, react } = slideReaction()
+    expect(prepare()).toBe(true)
+    react(true, false)
+    // The mock does not react to the shared value, so the next render reads the value that the reaction set.
     rerender(failureUi(clock(GATE_RESULTS)))
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
   })
 
-  it('shows the failure panel with Reduce Motion and the clock held at 0', () => {
+  it('starts the failure slide with Reduce Motion and the clock held at 0', () => {
     const { rerender } = render(failureUi(clock(0), true))
-    // The mock does not react to the shared value, so the second render reads the value that the effect set.
+    const { prepare, react } = slideReaction()
+    expect(prepare()).toBe(true)
+    react(true, null)
     rerender(failureUi(clock(0), true))
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
   })
 
   it('keeps the failure panel down before the results gate', () => {
     render(<CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={clock(0.5)} />)
-    expect(style('correction-panel').transform).toEqual([{ translateY: layout.panel.height * 1.4 }])
+    expect(style('correction-panel').transform).toEqual([{ translateY: HIDDEN }])
+  })
+
+  it('raises each digit 3 pt while it fades in', () => {
+    const result = okResult({ 0: given })
+    const { rerender } = render(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0)} />)
+    expect(style('correction-cell-0').transform).toEqual([{ translateY: 3 }])
+    const alpha = digitAlpha(0.6, 0, 0, false)
+    rerender(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0.6)} />)
+    expect(style('correction-cell-0').transform[0].translateY).toBeCloseTo((1 - alpha) * 3, 12)
+    rerender(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    expect(style('correction-cell-0').transform).toEqual([{ translateY: 0 }])
+  })
+})
+
+const late = (t: number, at: number) => (
+  <CorrectionScreen
+    result={okResult({ 0: { ...given, confidence: 0.2 } })}
+    layout={layout}
+    onRetake={jest.fn()}
+    clock={clock(t)}
+    resultsAt={clock(at)}
+  />
+)
+
+describe('CorrectionScreen with late results', () => {
+  it('starts the digit sweep when the results came, so no digit pops in', () => {
+    render(late(0.7, GATE_RESULTS))
+    expect(style('correction-cell-0').opacity).toBe(0)
+  })
+
+  it('takes the clock as the arrival while the UI thread has not written resultsAt', () => {
+    render(late(0.65, -1))
+    expect(style('correction-cell-0').opacity).toBe(0)
+  })
+
+  it('moves the rings and the panel later by the same shift', () => {
+    render(late(1.4, GATE_RESULTS))
+    expect(style('correction-ring-0').opacity).toBeCloseTo(ringsAt(1.4, false, 0.15), 12)
+    expect(style('correction-ring-0').opacity).toBeLessThan(1)
+    expect(style('correction-panel').transform[0].translateY).toBeCloseTo((1 - panelAt(1.4, false, 0.15)) * HIDDEN, 9)
+  })
+
+  it('shows everything at the moved end', () => {
+    render(late(1.65, GATE_RESULTS))
+    expect(style('correction-cell-0').opacity).toBe(1)
+    expect(style('correction-ring-0').opacity).toBe(1)
+    expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
   })
 })
