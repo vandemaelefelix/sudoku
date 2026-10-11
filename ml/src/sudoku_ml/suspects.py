@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw
 
 from sudoku_ml.augment import augment
 from sudoku_ml.contract import DIGIT_CLASSES
-from sudoku_ml.dataset import group_ids, load_cells, stack
+from sudoku_ml.dataset import cell_paths, group_ids, load_cells, stack
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.train import _device, _logits, loss
@@ -85,8 +85,8 @@ def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 15
     cells_dir = ml_root / "data" / "cells"
     out = ml_root / "data" / "review"
     refuse_reviewed(out / "relabels.csv")  # fail before the slow cross-validation
-    paths = [p for label in DIGIT_CLASSES for p in sorted((cells_dir / label).glob("*.png"))]
-    samples = load_cells(cells_dir)
+    paths = cell_paths(cells_dir)
+    samples = load_cells(cells_dir, ml_root / "datasets" / "cells.csv")
     if len(paths) != len(samples):
         raise ValueError(f"{len(paths)} files but {len(samples)} cells")
     images, digit, kind = stack(samples)

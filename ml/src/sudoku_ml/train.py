@@ -119,7 +119,7 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         missing = [c for c in DIGIT_CLASSES if not (cells_dir / c).is_dir()]
         if missing:
             raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
-        real = load_cells(cells_dir)
+        real = load_cells(cells_dir, ml_root / "datasets" / "cells.csv")
         if not real:
             raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
