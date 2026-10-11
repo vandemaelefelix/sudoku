@@ -83,3 +83,17 @@ def test_the_page_is_served(served):
     port, _, _ = served
     status, data = request(port, "GET", "/")
     assert status == 200 and b"<title>Cell labels</title>" in data
+
+
+def test_the_page_explains_each_screen_and_the_kinds(served):
+    port, _, _ = served
+    _, data = request(port, "GET", "/")
+    page = data.decode()
+    for text in (
+        "What to do",
+        "Made by a printer or a screen.",
+        "Written by a person with a pen or a pencil.",
+        "You cannot decide. Training ignores it.",
+        "Run <code>just suspects</code>",
+    ):
+        assert text in page
