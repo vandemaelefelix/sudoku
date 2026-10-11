@@ -1,7 +1,7 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
 import type { RecogniseResult } from '../../scanner'
 import { useColors, type Colors } from '../../theme/colors'
 import { GATE_RESULTS, digitAlpha, transitionAt } from '../transition/timeline'
@@ -21,17 +21,34 @@ export type CorrectionProps = {
 }
 
 const PANEL_HIDDEN = 1.4
-/** Seconds a failure panel needs to slide up after the results gate. */
-const FAILURE_SLIDE = 0.3
+/** Milliseconds a failure panel needs to slide up. */
+const FAILURE_SLIDE_MS = 300
 const RING_INSET = 1.5
 
 type CellProps = { n: number; look: CellLook; size: number; left: number; top: number; colors: Colors; clock?: SharedValue<number>; reduceMotion: boolean }
+
+type RingProps = { n: number; size: number; left: number; top: number; color: string; clock?: SharedValue<number>; reduceMotion: boolean }
+
+// Only uncertain cells mount a ring, so the other cells do not run transitionAt every frame.
+const Ring = memo(function Ring({ n, size, left, top, color, clock, reduceMotion }: RingProps) {
+  const style = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).rings : 1 }))
+  return (
+    <Animated.View
+      testID={`correction-ring-${n}`}
+      pointerEvents="none"
+      style={[
+        styles.ring,
+        { left: left + RING_INSET, top: top + RING_INSET, width: size - 2 * RING_INSET, height: size - 2 * RING_INSET, borderColor: color },
+        style,
+      ]}
+    />
+  )
+})
 
 const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, reduceMotion }: CellProps) {
   const row = Math.floor(n / 9)
   const col = n % 9
   const digitStyle = useAnimatedStyle(() => ({ opacity: clock ? digitAlpha(clock.value, row, col, reduceMotion) : 1 }))
-  const ringStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).rings : 1 }))
   const entry = look.style === 'entry'
   return (
     <>
@@ -54,23 +71,7 @@ const Cell = memo(function Cell({ n, look, size, left, top, colors, clock, reduc
       >
         {look.digit}
       </Animated.Text>
-      {look.uncertain && (
-        <Animated.View
-          testID={`correction-ring-${n}`}
-          pointerEvents="none"
-          style={[
-            styles.ring,
-            {
-              left: left + RING_INSET,
-              top: top + RING_INSET,
-              width: size - 2 * RING_INSET,
-              height: size - 2 * RING_INSET,
-              borderColor: colors.warning,
-            },
-            ringStyle,
-          ]}
-        />
-      )}
+      {look.uncertain && <Ring n={n} size={size} left={left} top={top} color={colors.warning} clock={clock} reduceMotion={reduceMotion} />}
     </>
   )
 })
@@ -99,12 +100,21 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
   }, [grid.width, colors])
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
+  // A failure keeps the results gate closed, so the clock holds at GATE_RESULTS (at 0 with Reduce Motion) and never reaches the
+  // panel ramp. The failure panel slides in on its own timing instead.
+  const failureSlide = useSharedValue(0)
+  useEffect(() => {
+    failureSlide.set(failed ? withTiming(1, { duration: FAILURE_SLIDE_MS }) : 0)
+  }, [failed, failureSlide])
   const panelStyle = useAnimatedStyle(() => {
     let slide = 1
     if (clock) {
-      const t = clock.value
-      // A failure keeps the results gate closed, so the clock stops there. The panel must show anyway.
-      slide = failed && !reduceMotion ? Math.min(1, Math.max(0, (t - GATE_RESULTS) / FAILURE_SLIDE)) : transitionAt(t, reduceMotion).panel
+      if (failed) {
+        const open = reduceMotion || clock.value >= GATE_RESULTS - 1e-6
+        slide = open ? failureSlide.value : 0
+      } else {
+        slide = transitionAt(clock.value, reduceMotion).panel
+      }
     }
     return { transform: [{ translateY: (1 - slide) * PANEL_HIDDEN * panel.height }] }
   })
@@ -151,7 +161,7 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
           testID="correction-panel"
           style={[
             styles.panel,
-            { left: panel.x, top: panel.y, width: panel.width, height: panel.height, backgroundColor: colors.surface, shadowColor: colors.ink },
+            { left: panel.x, top: panel.y, width: panel.width, height: panel.height, backgroundColor: colors.surface, shadowColor: colors.shadow },
             panelStyle,
           ]}
         >
@@ -175,7 +185,7 @@ export function CorrectionScreen({ result, layout, onRetake, clock, reduceMotion
               disabled
               style={[styles.play, { backgroundColor: colors.accent }]}
             >
-              <Text style={styles.playText}>Play this puzzle</Text>
+              <Text style={[styles.playText, { color: colors.onAccent }]}>Play this puzzle</Text>
             </Pressable>
           )}
           <Pressable testID="retake" accessibilityRole="button" onPress={onRetake} hitSlop={8}>
@@ -209,7 +219,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontWeight: '600' },
   sure: { fontSize: 13, fontWeight: '500' },
   play: { alignItems: 'center', paddingVertical: 12, borderRadius: 14, opacity: 0.5 },
-  playText: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
+  playText: { fontSize: 16, fontWeight: '600' },
   retake: { fontSize: 15, fontWeight: '500', textAlign: 'center' },
   failure: { gap: 4 },
   failureTitle: { fontSize: 16, fontWeight: '600' },

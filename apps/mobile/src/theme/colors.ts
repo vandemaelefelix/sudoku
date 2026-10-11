@@ -9,6 +9,8 @@ export type Colors = {
   warning: string
   warningText: string
   warningSurface: string
+  onAccent: string
+  shadow: string
 }
 
 export const LIGHT: Colors = {
@@ -22,6 +24,8 @@ export const LIGHT: Colors = {
   warning: '#d98a1c',
   warningText: '#9a5c0a',
   warningSurface: '#fbefd9',
+  onAccent: '#ffffff',
+  shadow: '#000000',
 }
 
 export const DARK: Colors = {
@@ -35,6 +39,8 @@ export const DARK: Colors = {
   warning: '#f0aa4a',
   warningText: '#f0aa4a',
   warningSurface: '#3a2a12',
+  onAccent: '#0f1116',
+  shadow: '#000000',
 }
 
 /** app.json is light only, so this returns LIGHT until the developer decides on dark mode. */

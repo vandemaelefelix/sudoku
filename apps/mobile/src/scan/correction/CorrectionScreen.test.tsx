@@ -4,6 +4,7 @@ import type { SharedValue } from 'react-native-reanimated'
 import type { CellResult, RecogniseResult } from '../../scanner'
 import { LIGHT } from '../../theme/colors'
 import { CorrectionScreen } from './CorrectionScreen'
+import { GATE_RESULTS } from '../transition/timeline'
 import { correctionLayout } from './layout'
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
@@ -91,6 +92,10 @@ describe('CorrectionScreen in review', () => {
   })
 })
 
+const failureUi = (shared: SharedValue<number>, reduceMotion = false) => (
+  <CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={shared} reduceMotion={reduceMotion} />
+)
+
 describe('CorrectionScreen with a clock', () => {
   it('draws no background and no board', () => {
     render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
@@ -113,8 +118,17 @@ describe('CorrectionScreen with a clock', () => {
     expect(style('correction-panel').transform).toEqual([{ translateY: layout.panel.height * 1.4 }])
   })
 
-  it('shows the failure panel once the clock reaches the results gate', () => {
-    render(<CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={clock(1)} />)
+  it('shows the failure panel with the clock held at the results gate', () => {
+    const { rerender } = render(failureUi(clock(GATE_RESULTS)))
+    // The mock does not react to the shared value, so the second render reads the value that the effect set.
+    rerender(failureUi(clock(GATE_RESULTS)))
+    expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
+  })
+
+  it('shows the failure panel with Reduce Motion and the clock held at 0', () => {
+    const { rerender } = render(failureUi(clock(0), true))
+    // The mock does not react to the shared value, so the second render reads the value that the effect set.
+    rerender(failureUi(clock(0), true))
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
   })
 
