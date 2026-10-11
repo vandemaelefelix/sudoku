@@ -32,10 +32,10 @@ export const JUMP = 0.25
 export const MAX_STEP = 0.1
 /** Motion above which the homes keep spreading after the first SPREAD_TIME. */
 const SPREAD_MOTION = 0.5
-const SPREAD_RADIUS = 1.3 * DOT_SPACING
-const SPREAD_PUSH = 0.05 * DOT_SPACING
+export const SPREAD_RADIUS = 1.3 * DOT_SPACING
+export const SPREAD_PUSH = 0.05 * DOT_SPACING
 /** Grid diagonals from the grid centre within which free dots spread. */
-const NEAR = 1.5
+export const NEAR = 1.5
 /** The share of the dot-to-target vector by which a flight bends sideways. */
 const ARC = 0.18
 
@@ -174,28 +174,39 @@ function release(state: FieldState, t: number) {
   }
 }
 
-function spreadHomes(state: FieldState, quad: Quad, m: Homography, inverse: Homography) {
+/** Indices of the free dots that can change a movable home: the movable ones, and the ones that are less than SPREAD_RADIUS outside the reach. In dot order, so the sums in spreadStep stay the same as over all free dots. */
+export function selectSpreadDots(state: FieldState, centre: Point, reach: number): number[] {
   'worklet'
-  const centre = project(m, 0.5, 0.5)
-  const reach = diagonal(quad) * NEAR
-  const free: number[] = []
-  const homes: Point[] = []
-  const movable: boolean[] = []
+  const chosen: number[] = []
+  const limit = reach + SPREAD_RADIUS
   for (let i = 0; i < state.dots.length; i++) {
     const d = state.dots[i]
     if (d.target >= 0) continue
-    free.push(i)
+    if (Math.hypot(d.homeX - centre.x, d.homeY - centre.y) < limit) chosen.push(i)
+  }
+  return chosen
+}
+
+export function spreadHomes(state: FieldState, quad: Quad, m: Homography, inverse: Homography) {
+  'worklet'
+  const centre = project(m, 0.5, 0.5)
+  const reach = diagonal(quad) * NEAR
+  const chosen = selectSpreadDots(state, centre, reach)
+  const homes: Point[] = []
+  const movable: boolean[] = []
+  for (let k = 0; k < chosen.length; k++) {
+    const d = state.dots[chosen[k]]
     homes.push({ x: d.homeX, y: d.homeY })
     movable.push(Math.hypot(d.homeX - centre.x, d.homeY - centre.y) < reach)
   }
   const next = spreadStep(homes, movable, SPREAD_RADIUS, SPREAD_PUSH)
-  for (let k = 0; k < free.length; k++) {
+  for (let k = 0; k < chosen.length; k++) {
     if (!movable[k]) continue
     // A clamp to the view would pull a home that the grid pushed out of the view back into the grid, and it would jump to another side.
     const leaves = next[k].x < 0 || next[k].x > state.width || next[k].y < 0 || next[k].y > state.height
     const home = pushOutside(leaves ? homes[k] : next[k], m, inverse, MARGIN)
-    state.dots[free[k]].homeX = home.x
-    state.dots[free[k]].homeY = home.y
+    state.dots[chosen[k]].homeX = home.x
+    state.dots[chosen[k]].homeY = home.y
   }
 }
 
