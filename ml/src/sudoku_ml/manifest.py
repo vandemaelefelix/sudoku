@@ -1,4 +1,4 @@
-"""Write ml/datasets/cells.csv from the folders in ml/data/cells/ (ADR-009)."""
+"""Write ml/datasets/cells.csv from the folders in ml/data/cells/ and the kind log (ADR-009)."""
 
 import csv
 import hashlib
@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES
+from sudoku_ml.kind_log import current_kinds, read_log
 
 LABELS = (*DIGIT_CLASSES, "unlabeled")
 
@@ -20,11 +21,23 @@ def pixel_id(path: Path) -> str:
     return digest.hexdigest()
 
 
-def write_cells_manifest(cells_dir: Path, manifest: Path) -> int:
-    """Rewrite the manifest from the folders. A cell's label is the folder it is in.
+def _kind_column(cell_id: str, label: str, logged: str | None) -> str:
+    if label == "empty":
+        if logged is not None:
+            raise ValueError(f"{cell_id[:16]}: an empty cell has the logged kind {logged}")
+        return "none"
+    if label == "unlabeled":
+        return ""
+    return logged or ""
 
-    Raises ValueError on an unknown folder, a misnamed file or a duplicate id.
+
+def write_cells_manifest(cells_dir: Path, manifest: Path, log: Path | None = None) -> int:
+    """Rewrite the manifest from the folders and the kind log. The folder is the digit label.
+
+    Raises ValueError on an unknown folder, a misnamed file, a duplicate id, or a logged kind
+    on an empty cell.
     """
+    kinds = current_kinds(read_log(log)) if log else {}
     for folder in cells_dir.iterdir():
         if folder.is_dir() and folder.name not in LABELS:
             raise ValueError(f"{folder} is not a known label")
@@ -37,15 +50,21 @@ def write_cells_manifest(cells_dir: Path, manifest: Path) -> int:
         if cell_id in seen:
             raise ValueError(f"{path} has the same pixels as another cell ({cell_id[:16]})")
         seen.add(cell_id)
-        rows.append([cell_id, path.parent.name])
+        label = path.parent.name
+        rows.append([cell_id, label, _kind_column(cell_id, label, kinds.get(cell_id))])
     rows.sort(key=lambda row: (row[1], row[0]))
     with manifest.open("w", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["id", "label"])
+        writer.writerow(["id", "label", "kind"])
         writer.writerows(rows)
     return len(rows)
 
 
 if __name__ == "__main__":
     ml_root = Path(__file__).parents[2]
-    print(write_cells_manifest(ml_root / "data" / "cells", ml_root / "datasets" / "cells.csv"))
+    datasets = ml_root / "datasets"
+    print(
+        write_cells_manifest(
+            ml_root / "data" / "cells", datasets / "cells.csv", datasets / "kind-log.jsonl"
+        )
+    )
