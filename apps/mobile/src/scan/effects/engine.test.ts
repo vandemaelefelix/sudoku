@@ -1,4 +1,4 @@
-import { transitionAt } from '@/scan/transition/timeline'
+import { transitionAt } from '@/scan/utils/transition.utils'
 import { advance, advanceCapture } from './engine'
 import type { AnyEffect } from './types'
 import type { Quad } from '@/utils/geometry.utils'

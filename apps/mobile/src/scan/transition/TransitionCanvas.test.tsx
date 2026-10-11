@@ -3,8 +3,7 @@ import { render, screen } from '@testing-library/react-native'
 import { useSharedValue } from 'react-native-reanimated'
 import { LIGHT } from '@/theme/colors'
 import { TransitionCanvas } from './TransitionCanvas'
-import type { CaptureFrame } from './warp'
-import { transitionAt } from './timeline'
+import { type CaptureFrame, transitionAt } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
 
 const QUAD: Quad = [

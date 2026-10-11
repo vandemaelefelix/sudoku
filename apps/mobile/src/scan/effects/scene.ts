@@ -1,4 +1,4 @@
-import type { Channels } from '@/scan/transition/timeline'
+import type { Channels } from '@/scan/utils/transition.utils'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { type Homography, invert, unitToQuad } from '@/utils/homography.utils'
 

@@ -8,8 +8,8 @@ import {
   sweepShift,
   transitionAt,
   transitionEnd,
-} from './timeline'
-import type { CaptureFrame } from './warp'
+  type CaptureFrame,
+} from '@/scan/utils/transition.utils'
 import { type Quad, lerpQuad } from '@/utils/geometry.utils'
 
 /**

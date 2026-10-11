@@ -10,10 +10,14 @@ import Animated, {
 } from 'react-native-reanimated'
 import type { RecogniseResult } from '@/scanner'
 import { useColors, type Colors } from '@/theme/colors'
-import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '@/scan/transition/timeline'
-import { cellLook, cellsToCheck, type CellLook } from './cells'
-import { drawGridLines } from './gridLines'
-import type { CorrectionLayout } from './layout'
+import { GATE_RESULTS, digitAlpha, panelAt, ringsAt, sweepShift, transitionAt } from '@/scan/utils/transition.utils'
+import {
+  cellLook,
+  cellsToCheck,
+  type CellLook,
+  drawGridLines,
+  type CorrectionLayout,
+} from '@/scan/utils/correction.utils'
 
 export type CorrectionProps = {
   result: RecogniseResult | null

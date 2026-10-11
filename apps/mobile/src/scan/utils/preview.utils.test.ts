@@ -1,4 +1,4 @@
-import { sameAspect, toPreview, uprightAspect } from './previewMapping'
+import { sameAspect, toPreview, uprightAspect } from './preview.utils'
 import type { Quad } from '@/utils/geometry.utils'
 
 const corners: Quad = [
