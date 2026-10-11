@@ -8,8 +8,7 @@ import { spreadStep } from '../common/spread'
 import { diagonal, type Scene } from '../scene'
 
 // Stage 1 of the scan experience design. Opacities are 0..1, times are seconds, sizes are points.
-export const DIM_SEARCH = 0.3
-export const DIM_OUTSIDE = 0.45
+export const DIM = 0.3
 export const FREE_ALPHA = 0.32
 export const GATHER_ALPHA_START = 0.4
 export const GATHER_ALPHA_END = 0.8
