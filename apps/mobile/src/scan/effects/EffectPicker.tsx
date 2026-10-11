@@ -86,7 +86,7 @@ export function EffectPicker({ effect, settings }: { effect: SharedValue<number>
 }
 
 const styles = StyleSheet.create({
-  layer: { ...StyleSheet.absoluteFill, alignItems: 'center', paddingTop: 60 },
+  layer: { ...StyleSheet.absoluteFill, alignItems: 'center', paddingTop: 70 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.6)' },
   pillText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
   list: { marginTop: 8, padding: 12, minWidth: 240, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.8)' },

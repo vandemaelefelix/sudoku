@@ -7,7 +7,7 @@ import type { Quad } from '../../scanner'
 import { countFrame, EMPTY_WINDOW } from '../frameRate'
 import type { ViewSize } from '../previewMapping'
 import { advance, type Engine } from './engine'
-import { EFFECTS, effectAt } from './index'
+import { DEFAULT_EFFECT, EFFECTS, effectAt } from './index'
 import { makeDrawKit } from './kit'
 
 function logOverlay(id: string, fps: number, overlayMs: number) {
@@ -29,7 +29,8 @@ export function EffectCanvas({
 }) {
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
-  const kit = useMemo(() => makeDrawKit(EFFECTS), [])
+  // A release build runs only the default effect, so it compiles no other shader (ADR-014).
+  const kit = useMemo(() => makeDrawKit(__DEV__ ? EFFECTS : [DEFAULT_EFFECT]), [])
   const empty = useMemo(
     () =>
       createPicture(() => {
@@ -52,7 +53,7 @@ export function EffectCanvas({
     const quad = outline.get()
     engine.modify((current) => {
       'worklet'
-      return advance(current, index, active, size, quad, t, reduceMotion)
+      return advance(current, active, size, quad, t, reduceMotion)
     }, true)
     const now = engine.get()
     if (now == null) return

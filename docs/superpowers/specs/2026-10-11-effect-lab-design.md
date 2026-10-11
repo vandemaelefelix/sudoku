@@ -112,7 +112,7 @@ outline into the facts that every effect needs. Effects read the scene. They nev
 | `quad` | The grid of this frame in view points, or null. A degenerate quad counts as null |
 | `lastQuad` | The last usable grid, for fades after a loss |
 | `m`, `inverse` | The homography from the unit square to the view, and its inverse |
-| `event` | `found`, `lost` or `none`, for this frame only. A jump to another grid gives `lost` and `found` in one frame |
+| `event` | `found`, `lost` or `none`, for this frame only. A jump to another grid gives `found`, with `lostAt` and `foundAt` both at the time of the jump |
 | `foundAt`, `lostAt` | The time of the last `found` and the last `lost` |
 | `presence` | 0..1. It moves to 1 in 0.4 s while a grid is found, and back to 0 when the grid is lost |
 | `motion` | 0..1. The corner speed relative to the steady speed, measured only when a new quad arrives |
