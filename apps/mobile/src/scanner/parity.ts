@@ -1,11 +1,21 @@
 import { type Classifier, DIGIT_CLASSES, KIND_CLASSES, type RawOutputs } from './classifier'
 import { loadClassifier } from './model'
 
-// ADR-005 and issue #5: the phone must give PyTorch's answers on the 81 reference cells, fast enough.
+// ADR-005: the phone must give PyTorch's answers on the 81 reference cells, fast enough.
 
 export type ReferenceOutputs = { run: string; inputs: string; digit: number[][]; kind: number[][] }
-/** maxDiff: the largest absolute probability difference. Mismatches: cell indices with another top class. medianMs: of PARITY_RUNS calls. */
-export type ParityReport = { maxDiff: number; digitMismatches: number[]; kindMismatches: number[]; medianMs: number }
+/**
+ * maxDiff: the largest absolute probability difference. Mismatches: cell indices with another top class.
+ * medianMs: of PARITY_RUNS calls. run: the run of the installed model. runMatches: it is the run of the reference.
+ */
+export type ParityReport = {
+  maxDiff: number
+  digitMismatches: number[]
+  kindMismatches: number[]
+  medianMs: number
+  run: string
+  runMatches: boolean
+}
 
 export const PARITY_RUNS = 20
 const MAX_DIFF = 1e-3
@@ -36,7 +46,7 @@ function compareHead(got: Float32Array, expected: number[][], width: number) {
   return { maxDiff, mismatches }
 }
 
-export function compareOutputs(raw: RawOutputs, reference: ReferenceOutputs): Omit<ParityReport, 'medianMs'> {
+export function compareOutputs(raw: RawOutputs, reference: ReferenceOutputs): Omit<ParityReport, 'medianMs' | 'run' | 'runMatches'> {
   const digit = compareHead(raw.digit, reference.digit, DIGIT_CLASSES)
   const kind = compareHead(raw.kind, reference.kind, KIND_CLASSES.length)
   return {
@@ -62,7 +72,8 @@ export function measureParity(
   }
   times.sort((a, b) => a - b)
   const medianMs = (times[PARITY_RUNS / 2 - 1] + times[PARITY_RUNS / 2]) / 2
-  return { ...result, medianMs }
+  const run = classifier.manifest.run ?? 'unknown'
+  return { ...result, medianMs, run, runMatches: run === reference.run }
 }
 
 export function formatParity(report: ParityReport): string {
@@ -70,9 +81,10 @@ export function formatParity(report: ParityReport): string {
     report.digitMismatches.length === 0 &&
     report.kindMismatches.length === 0 &&
     report.maxDiff <= MAX_DIFF &&
-    report.medianMs <= MAX_MEDIAN_MS
+    report.medianMs <= MAX_MEDIAN_MS &&
+    report.runMatches
   return (
-    `${pass ? 'PASS' : 'FAIL'}: max diff ${report.maxDiff.toExponential(2)}, ` +
+    `${pass ? 'PASS' : 'FAIL'} (run ${report.run}): max diff ${report.maxDiff.toExponential(2)}, ` +
     `digit mismatches [${report.digitMismatches.join(', ')}], kind mismatches [${report.kindMismatches.join(', ')}], ` +
     `median ${report.medianMs.toFixed(1)} ms over ${PARITY_RUNS} calls`
   )

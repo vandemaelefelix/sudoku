@@ -46,8 +46,8 @@ describe('preprocessCells', () => {
   it('maps white paper to 0 and black ink to 1', () => {
     const white = preprocessCells(new Uint8Array(CELLS * CELL_SIZE * CELL_SIZE * 3).fill(255))
     const black = preprocessCells(new Uint8Array(CELLS * CELL_SIZE * CELL_SIZE * 3))
-    expect(Math.max(...white.map(Math.abs))).toBeLessThan(1e-6)
-    expect(Math.min(...black)).toBeGreaterThan(1 - 1e-6)
+    expect(white.reduce((worst, v) => Math.max(worst, Math.abs(v)), 0)).toBeLessThan(1e-6)
+    expect(black.reduce((least, v) => Math.min(least, v), Infinity)).toBeGreaterThan(1 - 1e-6)
   })
 
   it('refuses an input of the wrong length', () => {

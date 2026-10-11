@@ -1,5 +1,13 @@
 import type { Classifier, RawOutputs } from './classifier'
-import { compareOutputs, decodeInputs, formatParity, measureParity, PARITY_RUNS, type ReferenceOutputs } from './parity'
+import {
+  compareOutputs,
+  decodeInputs,
+  formatParity,
+  measureParity,
+  PARITY_RUNS,
+  type ParityReport,
+  type ReferenceOutputs,
+} from './parity'
 import { INPUT_LENGTH } from './preprocess'
 
 function oneHot(width: number, top: number): number[][] {
@@ -54,7 +62,7 @@ describe('measureParity', () => {
   it('sends the reference inputs and takes the median of the timed runs', () => {
     const sent: Float32Array[] = []
     const classifier: Classifier = {
-      manifest: { model: 'm', version: '1.0.0', contract: '1.0', file: 'f', outputs: { digit: 0, kind: 1 } },
+      manifest: { model: 'm', version: '1.0.0', contract: '1.0', file: 'f', outputs: { digit: 0, kind: 1 }, run: 'test-run' },
       run: (input) => (sent.push(input), raw(REFERENCE.digit, REFERENCE.kind)),
       classify: () => [],
     }
@@ -67,17 +75,37 @@ describe('measureParity', () => {
     expect(sent[0][0]).toBe(0.25)
     expect(report.medianMs).toBe(10.5)
     expect(report.maxDiff).toBe(0)
+    expect(report).toMatchObject({ run: 'test-run', runMatches: true })
+  })
+
+  it('reports a run that differs from the reference run', () => {
+    const classifier: Classifier = {
+      manifest: { model: 'm', version: '1.0.0', contract: '1.0', file: 'f', outputs: { digit: 0, kind: 1 }, run: 'other-run' },
+      run: () => raw(REFERENCE.digit, REFERENCE.kind),
+      classify: () => [],
+    }
+    expect(measureParity(classifier, REFERENCE, () => 0)).toMatchObject({ run: 'other-run', runMatches: false })
   })
 })
 
 describe('formatParity', () => {
-  it('says PASS when the report meets ADR-005 and the 100 ms budget', () => {
-    expect(formatParity({ maxDiff: 2e-7, digitMismatches: [], kindMismatches: [], medianMs: 12 })).toMatch(/^PASS/)
+  const GOOD: ParityReport = {
+    maxDiff: 2e-7,
+    digitMismatches: [],
+    kindMismatches: [],
+    medianMs: 12,
+    run: 'r1',
+    runMatches: true,
+  }
+
+  it('says PASS and names the run when the report meets ADR-005 and the 100 ms budget', () => {
+    expect(formatParity(GOOD)).toMatch(/^PASS \(run r1\)/)
   })
 
-  it('says FAIL for a mismatch, a large difference or a slow call', () => {
-    expect(formatParity({ maxDiff: 0, digitMismatches: [4], kindMismatches: [], medianMs: 12 })).toMatch(/^FAIL/)
-    expect(formatParity({ maxDiff: 2e-3, digitMismatches: [], kindMismatches: [], medianMs: 12 })).toMatch(/^FAIL/)
-    expect(formatParity({ maxDiff: 0, digitMismatches: [], kindMismatches: [], medianMs: 101 })).toMatch(/^FAIL/)
+  it('says FAIL for a mismatch, a large difference, a slow call or another run', () => {
+    expect(formatParity({ ...GOOD, digitMismatches: [4] })).toMatch(/^FAIL \(run r1\)/)
+    expect(formatParity({ ...GOOD, maxDiff: 2e-3 })).toMatch(/^FAIL/)
+    expect(formatParity({ ...GOOD, medianMs: 101 })).toMatch(/^FAIL/)
+    expect(formatParity({ ...GOOD, runMatches: false })).toMatch(/^FAIL/)
   })
 })

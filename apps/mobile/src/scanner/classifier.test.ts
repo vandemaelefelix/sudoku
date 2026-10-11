@@ -32,6 +32,7 @@ function fakeModel(digit: Float32Array, kind: Float32Array, order: 'digit-first'
   const received: ArrayBuffer[] = []
   const model: TfliteModel & { received: ArrayBuffer[]; next: (d: Float32Array, k: Float32Array) => void } = {
     received,
+    inputs: [{ shape: [81, 32, 32, 1], dataType: 'float32' }],
     outputs: order === 'digit-first' ? [{ shape: [81, 10] }, { shape: [81, 4] }] : [{ shape: [81, 4] }, { shape: [81, 10] }],
     runSync: (inputs) => {
       received.push(inputs[0])
@@ -54,6 +55,7 @@ describe('checkManifest', () => {
   it.each([
     ['another major', { ...MANIFEST, contract: '2.0' }],
     ['a malformed version', { ...MANIFEST, contract: 'x' }],
+    ['a contract that is not a string', { ...MANIFEST, contract: 1 }],
     ['no outputs', { ...MANIFEST, outputs: undefined }],
     ['the same index twice', { ...MANIFEST, outputs: { digit: 0, kind: 0 } }],
     ['not an object', null],
@@ -94,6 +96,18 @@ describe('createClassifier', () => {
 
   it('refuses a model whose output shapes do not fit the manifest', () => {
     const model = fakeModel(rows(10, 5), rows(4, 1), 'kind-first')
+    expect(() => createClassifier(model, MANIFEST)).toThrow(ModelContractError)
+  })
+
+  it('refuses a model whose input shape differs', () => {
+    const model = fakeModel(rows(10, 5), rows(4, 1))
+    model.inputs = [{ shape: [1, 32, 32, 1], dataType: 'float32' }]
+    expect(() => createClassifier(model, MANIFEST)).toThrow(ModelContractError)
+  })
+
+  it('refuses a model whose input is not float32', () => {
+    const model = fakeModel(rows(10, 5), rows(4, 1))
+    model.inputs = [{ shape: [81, 32, 32, 1], dataType: 'uint8' }]
     expect(() => createClassifier(model, MANIFEST)).toThrow(ModelContractError)
   })
 

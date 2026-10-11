@@ -20,7 +20,8 @@ def install(run: Path, target: Path, version: str, today: str) -> Path:
     # SUD-09: the scanner implements the same contract major as this package.
     if _major(info["contract"]) != _major(CONTRACT_VERSION):
         raise ValueError(
-            f"the run implements contract {info['contract']}, the app {CONTRACT_VERSION}"
+            f"the run implements contract {info['contract']}, "
+            f"this ml package implements {CONTRACT_VERSION}"
         )
     for name in FILES:
         if not (run / name).exists():
