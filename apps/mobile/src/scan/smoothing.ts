@@ -4,9 +4,9 @@ import type { Point, Quad } from '../scanner'
 // Units: normalised frame coordinates and seconds. Targets QR-06.
 
 /** Hz. The cutoff of a still corner. Lower is steadier. */
-export const MIN_CUTOFF = 1
+export const MIN_CUTOFF = 0.5
 /** Hz per (normalised unit per second). Higher follows fast moves with less lag. */
-export const BETA = 20
+export const BETA = 120
 /** Hz. The cutoff of the speed estimate. */
 export const DERIVATIVE_CUTOFF = 1
 /** Seconds. The outline stays this long after the last detection. */
