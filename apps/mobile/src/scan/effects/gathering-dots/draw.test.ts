@@ -1,4 +1,5 @@
 import type { Quad } from '../../../scanner'
+import { type Channels, TRANSITION_END, transitionAt } from '../../transition/timeline'
 import { SPRITE_SIZE } from '../common/sprite'
 import { makeDrawKit } from '../kit'
 import { createScene, stepScene } from '../scene'
@@ -100,5 +101,50 @@ describe('drawField', () => {
     expect(canvas.drawPath.mock.calls[0][0].calls).not.toContainEqual(['setFillType', 1])
     expect(canvas.drawPath.mock.calls[1][0].calls).toContainEqual(['setFillType', 1])
     expect(fillOf(w.kit).setAlphaf.mock.calls).toEqual([[DIM_SEARCH * 0.5], [DIM_OUTSIDE * 0.5]])
+  })
+})
+
+/** Locks on a still grid, then draws one capture frame with these channels. */
+function captured(channels: Channels) {
+  const w = world()
+  for (let t = 0; t <= 2.5; t += 1 / 60) {
+    stepScene(w.scene, grid, t, false)
+    stepField(w.field, w.scene)
+  }
+  w.scene.presence = 0.5
+  w.scene.capture = channels
+  stepField(w.field, w.scene)
+  const canvas = fakeCanvas()
+  drawField(canvas as never, w.field, w.scene, w.kit)
+  return { w, canvas, colors: canvas.drawAtlas.mock.calls[0][5] as Float32Array[] }
+}
+const gatheredIndex = (w: ReturnType<typeof world>) => w.field.dots.findIndex((d) => d.target >= 0)
+const freeIndex = (w: ReturnType<typeof world>) => w.field.dots.findIndex((d) => d.target < 0)
+
+describe('drawField in the capture phase', () => {
+  it('fades both dims by 1 − dim', () => {
+    const { w } = captured({ ...transitionAt(0, false), dim: 0.75 })
+    const alphas = fillOf(w.kit).setAlphaf.mock.calls.map((call) => call[0] as number)
+    expect(alphas).toHaveLength(2)
+    expect(alphas[0]).toBeCloseTo(DIM_SEARCH * 0.5 * 0.25, 9)
+    expect(alphas[1]).toBeCloseTo(DIM_OUTSIDE * 0.5 * 0.25, 9)
+  })
+
+  it('draws no dim and no visible dot at the end of the transition', () => {
+    const { canvas, colors } = captured(transitionAt(TRANSITION_END, false))
+    expect(canvas.drawPath).not.toHaveBeenCalled()
+    for (const c of colors) expect(c[3]).toBe(0)
+  })
+
+  it('draws the gathered dots white before the ink ramp', () => {
+    const { w, colors } = captured(transitionAt(0, false))
+    expect(Array.from(colors[gatheredIndex(w)].slice(0, 3))).toEqual([1, 1, 1])
+  })
+
+  it('draws the gathered dots in ink at ink 1, and keeps the free dots white', () => {
+    const { w, colors } = captured({ ...transitionAt(0, false), ink: 1 })
+    const c = colors[gatheredIndex(w)]
+    for (let k = 0; k < 3; k++) expect(c[k]).toBeCloseTo(w.kit.ink[k], 6)
+    expect(Array.from(colors[freeIndex(w)].slice(0, 3))).toEqual([1, 1, 1])
   })
 })

@@ -1,5 +1,6 @@
 import type { Point, Quad } from '../../../scanner'
 import type { ViewSize } from '../../previewMapping'
+import type { Channels } from '../../transition/timeline'
 import { assignNearest } from '../common/assign'
 import { type Homography, intersections, isBoxCorner, project, pushOutside } from '../common/geometry'
 import { createDots, type Dot, DOT_SPACING, twinkle, wander } from '../common/layout'
@@ -33,6 +34,10 @@ export const SPREAD_PUSH = 0.05 * DOT_SPACING
 export const NEAR = 1.5
 /** The share of the dot-to-target vector by which a flight bends sideways. */
 const ARC = 0.18
+/** The capture transition (scan-pipeline concept). The radius of a gathered dot at the top of the pulse is 1 + PULSE_GROW times its radius. */
+export const PULSE_GROW = 0.6
+/** Points that a free dot moves away from the grid centre at freeDrift 1. */
+export const FREE_DRIFT = 40
 
 /** origX, origY: the home from the layout. since: start of the flight or the release. x, y, radius, alpha: what drawField draws. */
 export type FieldDot = Dot & {
@@ -50,11 +55,15 @@ export type FieldDot = Dot & {
   alpha: number
 }
 
-/** holding: the dots are gathered on a grid. gatheredAt: the time of the last gather, which starts the spread of the free dots. */
+/**
+ * holding: the dots are gathered on a grid. gatheredAt: the time of the last gather, which starts the spread of the free dots.
+ * capturing: the capture phase has started. Its first frame stores the position of each dot in fromX and fromY.
+ */
 export type FieldState = {
   dots: FieldDot[]
   holding: boolean
   gatheredAt: number
+  capturing: boolean
 }
 
 function smooth(x: number): number {
@@ -83,7 +92,7 @@ export function createField(view: ViewSize): FieldState {
       alpha: FREE_ALPHA,
     }
   })
-  return { dots, holding: false, gatheredAt: -1 }
+  return { dots, holding: false, gatheredAt: -1, capturing: false }
 }
 
 function gather(state: FieldState, m: Homography, t: number) {
@@ -239,11 +248,56 @@ function placeFree(
 }
 
 /**
- * Advances the dots to scene.t. Run stepScene first. Mutates and returns state.
+ * The capture phase: the gathered dots ride the quad into the crossings of the correction screen, and the free dots leave.
+ * A dot still in flight lands at once, because the flatten moves the grid faster than a flight.
+ */
+function stepCapture(state: FieldState, scene: Scene, capture: Channels): FieldState {
+  'worklet'
+  const m = scene.m
+  if (!state.capturing) {
+    for (let i = 0; i < state.dots.length; i++) {
+      state.dots[i].fromX = state.dots[i].x
+      state.dots[i].fromY = state.dots[i].y
+    }
+    state.capturing = true
+  }
+  const centre = m == null ? null : project(m, 0.5, 0.5)
+  const scale = (1 + PULSE_GROW * capture.pulse) * (1 - capture.shrink)
+  for (let i = 0; i < state.dots.length; i++) {
+    const d = state.dots[i]
+    if (d.target >= 0 && m != null) {
+      const at = project(m, (d.target % 10) / 9, Math.floor(d.target / 10) / 9)
+      d.x = at.x
+      d.y = at.y
+      d.radius = d.size * (isBoxCorner(d.target) ? GROW_BOX : GROW) * scale
+      d.alpha = 1 - capture.shrink
+      continue
+    }
+    let x = d.fromX
+    let y = d.fromY
+    if (centre != null) {
+      const dx = x - centre.x
+      const dy = y - centre.y
+      const length = Math.hypot(dx, dy) || 1
+      x += (dx / length) * FREE_DRIFT * capture.freeDrift
+      y += (dy / length) * FREE_DRIFT * capture.freeDrift
+    }
+    d.x = x
+    d.y = y
+    d.radius = d.size
+    d.alpha = FREE_ALPHA * (scene.reduceMotion ? 1 : twinkle(d, scene.t)) * (1 - capture.freeDrift)
+  }
+  return state
+}
+
+/**
+ * Advances the dots to scene.t. Run stepScene or advanceCapture first. Mutates and returns state.
  * The dots gather on 'found', and also on the first frame with a grid when the field is new, so a switch to this effect while a grid is in view gathers at once.
  */
 export function stepField(state: FieldState, scene: Scene): FieldState {
   'worklet'
+  if (scene.capture != null) return stepCapture(state, scene, scene.capture)
+  state.capturing = false
   const t = scene.t
   const quad = scene.quad
   const m = scene.m

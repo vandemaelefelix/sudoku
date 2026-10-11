@@ -1,5 +1,7 @@
 import type { Quad } from '../../scanner'
-import { advance } from './engine'
+import { transitionAt } from '../transition/timeline'
+import { project } from './common/geometry'
+import { advance, advanceCapture } from './engine'
 import type { AnyEffect } from './types'
 
 const VIEW = { width: 402, height: 874 }
@@ -83,5 +85,57 @@ describe('advance', () => {
   it('passes Reduce Motion to the scene', () => {
     const engine = advance(null, fakeEffect('a'), VIEW, null, 1, true)
     expect(engine.scene.reduceMotion).toBe(true)
+  })
+
+  it('starts without capture channels', () => {
+    expect(advance(null, fakeEffect('a'), VIEW, grid, 1, false).scene.capture).toBeNull()
+  })
+})
+
+/** Runs a still grid until the scene locks on. A new quad object per frame, as the camera gives one per detection. */
+function lockedEngine(effect: AnyEffect) {
+  let engine = advance(null, effect, VIEW, grid, 0, false)
+  for (let t = 1 / 60; t <= 2.5; t += 1 / 60) engine = advance(engine, effect, VIEW, grid.map((p) => ({ ...p })) as Quad, t, false)
+  expect(engine.scene.lockedAt).toBeGreaterThan(0)
+  return engine
+}
+
+describe('advanceCapture', () => {
+  const flat: Quad = [
+    { x: 16, y: 120 },
+    { x: 386, y: 120 },
+    { x: 386, y: 490 },
+    { x: 16, y: 490 },
+  ]
+
+  it('ignores the lock-on latch and uses the given quad', () => {
+    const a = fakeEffect('a')
+    const engine = lockedEngine(a)
+    const channels = transitionAt(0.3, false)
+    const previous = engine.scene.t
+    const next = advanceCapture(engine, a, flat, 2.55, channels)
+    expect(next.scene.quad).toBe(flat)
+    expect(next.scene.lastQuad).toBe(flat)
+    expect(project(next.scene.m!, 1, 1).x).toBeCloseTo(386, 6)
+    expect(project(next.scene.inverse!, 386, 490).y).toBeCloseTo(1, 6)
+    expect(next.scene.capture).toBe(channels)
+    expect(next.scene.event).toBe('none')
+    expect(next.scene.t).toBe(2.55)
+    expect(next.scene.dt).toBeCloseTo(2.55 - previous, 9)
+  })
+
+  it('steps the effect with the scene and keeps its state', () => {
+    const a = fakeEffect('a')
+    const engine = lockedEngine(a)
+    const before = engine.state
+    const next = advanceCapture(engine, a, flat, 2.6, transitionAt(0.3, false))
+    expect(a.step).toHaveBeenLastCalledWith(before, next.scene)
+    expect(next.state).toBe(before)
+  })
+
+  it('leaves the capture phase on the next live frame', () => {
+    const a = fakeEffect('a')
+    const captured = advanceCapture(lockedEngine(a), a, flat, 2.6, transitionAt(0.3, false))
+    expect(advance(captured, a, VIEW, grid, 2.7, false).scene.capture).toBeNull()
   })
 })

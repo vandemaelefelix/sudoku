@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
 import type { Quad } from '../../scanner'
 import type { ViewSize } from '../previewMapping'
+import { type Channels, transitionAt } from '../transition/timeline'
 import { EffectCanvas } from './EffectCanvas'
+import * as engine from './engine'
 import { DEFAULT_INDEX, effectIndex } from './index'
 
 // Test effects stand in for the registry, so removing a real effect cannot break these tests.
@@ -253,5 +255,65 @@ describe('lock-on', () => {
     expect(onLock).toHaveBeenCalledTimes(1)
     expect(onLock).toHaveBeenCalledWith(NORMALISED)
     log.mockRestore()
+  })
+})
+
+// The spy comes before render: the frame worklet captures advanceCapture when it is created.
+const advanceCaptureSpy = () => jest.spyOn(engine, 'advanceCapture')
+
+describe('the capture phase', () => {
+  const flat: Quad = [
+    { x: 16, y: 120 },
+    { x: 386, y: 120 },
+    { x: 386, y: 490 },
+    { x: 16, y: 490 },
+  ]
+
+  it('rides the capture quad and never calls onLock while capture is set', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const capture = advanceCaptureSpy()
+    const onLock = jest.fn()
+    const channels = transitionAt(0.2, false)
+    const value = shared<{ quad: Quad; channels: Channels } | null>(null)
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(grid)}
+        onLock={onLock}
+        capture={value}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    callback({ timestamp: 0 } as never)
+    Object.assign(value, { value: { quad: flat, channels } })
+    for (let ms = 1000 / 60; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(onLock).not.toHaveBeenCalled()
+    expect(capture).toHaveBeenCalled()
+    const [, , quad, , passed] = capture.mock.calls.at(-1)!
+    expect(quad).toBe(flat)
+    expect(passed).toBe(channels)
+    capture.mockRestore()
+    log.mockRestore()
+  })
+
+  it('runs the live phase while capture is null', () => {
+    const capture = advanceCaptureSpy()
+    render(
+      <EffectCanvas
+        outline={constant<Quad | null>(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(null)}
+        onLock={jest.fn()}
+        capture={constant<{ quad: Quad; channels: Channels } | null>(null)}
+      />,
+    )
+    tick(1)
+    tick(1 + 1 / 60)
+    expect(capture).not.toHaveBeenCalled()
+    capture.mockRestore()
   })
 })
