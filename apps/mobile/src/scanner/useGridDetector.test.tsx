@@ -9,7 +9,7 @@ jest.mock('./findGrid', () => ({ findGrid: jest.fn(() => null) }))
 
 const resizerState = jest.mocked(useResizer)
 const find = jest.mocked(findGrid)
-const square: Quad = [
+const trapezoid: Quad = [
   { x: 0.25, y: 0.125 },
   { x: 0.5, y: 0.125 },
   { x: 0.875, y: 0.5 },
@@ -77,10 +77,10 @@ describe('useGridDetector', () => {
 
   it.each(['left', 'right'] as const)('turns the quad back by 180 degrees for a %s frame', (orientation) => {
     givenResizer()
-    find.mockReturnValueOnce({ quad: square, score: 0.4 })
+    find.mockReturnValueOnce({ quad: trapezoid, score: 0.4 })
     const { result } = renderHook(() => useGridDetector())
     const sideways = { timestamp: 1, orientation } as unknown as Frame
-    expect(result.current!(sideways)).toEqual({ quad: turnHalf(square), score: 0.4 })
+    expect(result.current!(sideways)).toEqual({ quad: turnHalf(trapezoid), score: 0.4 })
   })
 
   it('disposes the resized frame when detection fails', () => {

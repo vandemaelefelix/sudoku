@@ -17,7 +17,11 @@ export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: num
 const MEASURE_JITTER = __DEV__
 
 function logFrameRate(fps: number, detectionMs: number) {
-  if (__DEV__) console.log(`[camera] ${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)
+  console.log(`[camera] ${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)
+}
+
+function warnDetector(message: string) {
+  console.warn(`[camera] grid detection failed: ${message}`)
 }
 
 function logJitter(report: JitterReport) {
@@ -30,7 +34,8 @@ export function CameraScreen() {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
   const [isActive, setIsActive] = useState(AppState.currentState === 'active')
-  const window = useMemo(() => createSynchronizable(EMPTY_WINDOW), [])
+  const frameWindow = useMemo(() => createSynchronizable(EMPTY_WINDOW), [])
+  const lastWarned = useMemo(() => createSynchronizable(''), [])
   const detectGrid = useGridDetector()
   const detection = useSharedValue<FrameDetection | null>(null)
   const viewSize = useSharedValue<ViewSize>({ width: 0, height: 0 })
@@ -44,10 +49,19 @@ export function CameraScreen() {
       'worklet'
       try {
         const started = Date.now()
-        const grid = detectGrid == null ? null : detectGrid(frame)
-        const result = countFrame(window.getBlocking(), frame.timestamp, Date.now() - started)
-        window.setBlocking(result.window)
-        if (result.report !== null) scheduleOnRN(logFrameRate, result.report.fps, result.report.detectionMs)
+        let grid = null
+        try {
+          grid = detectGrid == null ? null : detectGrid(frame)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          if (__DEV__ && lastWarned.getBlocking() !== message) {
+            lastWarned.setBlocking(message)
+            scheduleOnRN(warnDetector, message)
+          }
+        }
+        const result = countFrame(frameWindow.getBlocking(), frame.timestamp, Date.now() - started)
+        frameWindow.setBlocking(result.window)
+        if (__DEV__ && result.report !== null) scheduleOnRN(logFrameRate, result.report.fps, result.report.detectionMs)
         detection.set({
           quad: grid == null ? null : grid.quad,
           timestamp: frame.timestamp,
