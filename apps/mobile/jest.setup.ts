@@ -45,10 +45,46 @@ jest.mock('react-native-vision-camera-resizer', () => ({
   useResizer: jest.fn(() => ({ state: 'loading', resizer: undefined, error: undefined })),
 }))
 
-jest.mock('react-native-reanimated', () => ({
-  ...jest.requireActual('react-native-reanimated/mock'),
-  useAnimatedReaction: jest.fn(),
-}))
+jest.mock('react-native-reanimated', () => {
+  const { useRef } = jest.requireActual('react')
+  return {
+    ...jest.requireActual('react-native-reanimated/mock'),
+    // The library mock makes a new holder on every render and has no modify().
+    useSharedValue: <T,>(initial: T) => {
+      const holder: { current: { value: T } | null } = useRef(null)
+      if (holder.current == null) {
+        const mockShared = {
+          value: initial,
+          get: () => mockShared.value,
+          set: (next: T | ((mockPrevious: T) => T)) => {
+            mockShared.value = typeof next === 'function' ? (next as (mockPrevious: T) => T)(mockShared.value) : next
+          },
+          modify: (modifier?: (mockPrevious: T) => T) => {
+            if (modifier) mockShared.value = modifier(mockShared.value)
+          },
+        }
+        holder.current = mockShared
+      }
+      return holder.current
+    },
+    useAnimatedReaction: jest.fn(),
+    useFrameCallback: jest.fn(() => ({ setActive: jest.fn(), isActive: true, callbackId: 1 })),
+    useReducedMotion: jest.fn(() => false),
+  }
+})
+
+// A path stand-in that records its calls. The name starts with mock so the jest.mock factory may use it.
+function mockPath() {
+  const calls: unknown[][] = []
+  const self = {
+    calls,
+    moveTo: (...args: unknown[]) => (calls.push(['moveTo', ...args]), self),
+    lineTo: (...args: unknown[]) => (calls.push(['lineTo', ...args]), self),
+    close: () => (calls.push(['close']), self),
+    setFillType: (fill: unknown) => (calls.push(['setFillType', fill]), self),
+  }
+  return self
+}
 
 // Skia's own Jest setup needs CanvasKit. Views are enough for these tests.
 jest.mock('@shopify/react-native-skia', () => {
@@ -58,5 +94,29 @@ jest.mock('@shopify/react-native-skia', () => {
     Canvas: ({ children, ...props }: { children?: unknown }) =>
       createElement(View, { testID: 'skia-canvas', ...props }, children),
     Points: (props: object) => createElement(View, { testID: 'skia-points', ...props }),
+    Picture: (props: object) => createElement(View, { testID: 'skia-picture', ...props }),
+    createPicture: jest.fn(() => ({})),
+    FillType: { Winding: 0, EvenOdd: 1 },
+    BlendMode: { Modulate: 13 },
+    TileMode: { Clamp: 0 },
+    Skia: {
+      Color: (color: string) => color,
+      Paint: () => ({
+        setAntiAlias: jest.fn(),
+        setColor: jest.fn(),
+        setAlphaf: jest.fn(),
+        setShader: jest.fn(),
+      }),
+      Path: { Make: mockPath },
+      RSXform: (scos: number, ssin: number, tx: number, ty: number) => ({ scos, ssin, tx, ty }),
+      XYWHRect: (x: number, y: number, width: number, height: number) => ({ x, y, width, height }),
+      Shader: { MakeRadialGradient: jest.fn(() => ({})) },
+      Surface: {
+        Make: jest.fn(() => ({
+          getCanvas: () => ({ drawPaint: jest.fn() }),
+          makeImageSnapshot: () => ({}),
+        })),
+      },
+    },
   }
 })
