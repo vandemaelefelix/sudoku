@@ -1,5 +1,6 @@
 import { type SkCanvas, type SkPath, Skia } from '@shopify/react-native-skia'
 import { drawDim } from '@/scan/effects/common/dim'
+import { FIXED_COLORS } from '@/theme/fixed.colors'
 import { prototypeScale } from '@/scan/effects/common/shaderMatrix'
 import type { Scene } from '@/scan/effects/scene'
 import type { DrawKit, Effect } from '@/scan/effects/types'
@@ -42,7 +43,7 @@ function draw(canvas: SkCanvas, _state: null, scene: Scene, kit: DrawKit): void 
   if (quad == null || scene.presence <= 0) return
   const p = scene.lockProgress
   drawDim(canvas, kit.fill, scene.width, scene.height, quad, scene.presence * (DIM_BASE + DIM_STEADY * p))
-  kit.stroke.setColor(Skia.Color('#ffffff'))
+  kit.stroke.setColor(Skia.Color(FIXED_COLORS.bracket))
   kit.stroke.setAlphaf(scene.presence)
   kit.stroke.setStrokeWidth(BRACKET_WIDTH * prototypeScale(scene.width))
   canvas.drawPath(bracketPath(quad, BRACKET_BASE + BRACKET_STEADY * p * p), kit.stroke)

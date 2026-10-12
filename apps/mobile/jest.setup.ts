@@ -73,6 +73,7 @@ jest.mock('expo-sqlite/kv-store', () => {
     __esModule: true,
     default: {
       getItemAsync: jest.fn(async (key: string) => mockItems.get(key) ?? null),
+      getItemSync: jest.fn((key: string) => mockItems.get(key) ?? null),
       setItemAsync: jest.fn(async (key: string, value: string) => {
         mockItems.set(key, value)
       }),
@@ -166,3 +167,7 @@ jest.mock('@shopify/react-native-skia', () => {
     },
   }
 })
+
+// The Unistyles mock resolves every StyleSheet.create with the first registered theme, so configure must run before a styles file loads.
+// oxlint-disable-next-line import/no-unassigned-import -- the module registers the themes as its side effect.
+require('@/theme/unistyles')

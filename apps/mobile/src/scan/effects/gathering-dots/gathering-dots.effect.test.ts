@@ -2,6 +2,9 @@ import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, stepScene } from '@/scan/effects/scene'
 import { gatheringDots } from './gathering-dots.effect'
 import type { Quad } from '@/utils/geometry.utils'
+import { daylight } from '@/theme/themes/daylight'
+
+const INK = daylight.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 
@@ -33,7 +36,7 @@ describe('gatheringDots', () => {
   it('draws the dots in one atlas call', () => {
     const scene = stepScene(createScene(VIEW), null, 0, false)
     const canvas = { drawAtlas: jest.fn(), drawPath: jest.fn() }
-    gatheringDots.draw(canvas as never, gatheringDots.create(scene), scene, makeDrawKit([]))
+    gatheringDots.draw(canvas as never, gatheringDots.create(scene), scene, makeDrawKit([], INK))
     expect(canvas.drawAtlas).toHaveBeenCalledTimes(1)
   })
 })

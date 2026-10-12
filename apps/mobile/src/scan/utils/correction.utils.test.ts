@@ -1,10 +1,20 @@
-import { correctionLayout, cellLook, cellsToCheck, drawGridLines } from './correction.utils'
+import { correctionLayout, cellLook, cellsToCheck, drawGridLines, gridLineStyle } from './correction.utils'
 import type { Rect } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
 import type { Homography } from '@/utils/homography.utils'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
+import { daylight } from '@/theme/themes/daylight'
 
+// Three widths and three colours, so each line kind shows which token it reads.
+const STYLE = {
+  frame: daylight.components.grid.frame,
+  box: daylight.colors.accent,
+  cell: daylight.components.grid.cellLine,
+  frameWidth: 3,
+  boxWidth: 2,
+  cellWidth: 1,
+}
 const insets = { top: 62, bottom: 34, left: 0, right: 0 }
 const bottom = (r: Rect) => r.y + r.height
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < bottom(b) && b.y < bottom(a)
@@ -141,30 +151,50 @@ function setup() {
 }
 
 describe('drawGridLines', () => {
-  it('draws 20 lines, 8 box lines in ink and 12 cell lines in the line colour', () => {
+  it('draws 20 lines: 4 frame lines, 4 box lines and 12 cell lines, each in its own colour and width', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 1, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 1, STYLE)
     expect(lines).toHaveLength(20)
-    expect(lines.filter((l) => l.width === 2 && l.colour === '#111')).toHaveLength(8)
-    expect(lines.filter((l) => l.width === 1 && l.colour === '#ccc')).toHaveLength(12)
+    expect(lines.filter((l) => l.width === 3 && l.colour === STYLE.frame)).toHaveLength(4)
+    expect(lines.filter((l) => l.width === 2 && l.colour === STYLE.box)).toHaveLength(4)
+    expect(lines.filter((l) => l.width === 1 && l.colour === STYLE.cell)).toHaveLength(12)
+  })
+
+  it('draws the frame last, so a crossing shows the frame colour', () => {
+    const { canvas, paint, lines } = setup()
+    drawGridLines(canvas, paint, scale90, 1, STYLE)
+    expect(lines.slice(-4).every((l) => l.colour === STYLE.frame)).toBe(true)
   })
 
   it('spans the full grid at grow 1', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 1, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 1, STYLE)
     expect(lines).toContainEqual(expect.objectContaining({ x0: 0, y0: 30, x1: 90, y1: 30 }))
     expect(lines).toContainEqual(expect.objectContaining({ x0: 30, y0: 0, x1: 30, y1: 90 }))
   })
 
   it('grows each line from its middle', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 0.5, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 0.5, STYLE)
     expect(lines).toContainEqual(expect.objectContaining({ x0: 22.5, y0: 30, x1: 67.5, y1: 30 }))
   })
 
   it('draws nothing at grow 0', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 0, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 0, STYLE)
     expect(lines).toHaveLength(0)
+  })
+})
+
+describe('gridLineStyle', () => {
+  it('takes the grid colours and the line widths from the theme', () => {
+    expect(gridLineStyle(daylight)).toEqual({
+      frame: daylight.components.grid.frame,
+      box: daylight.components.grid.boxLine,
+      cell: daylight.components.grid.cellLine,
+      frameWidth: daylight.shape.gridLine.outer,
+      boxWidth: daylight.shape.gridLine.box,
+      cellWidth: daylight.shape.gridLine.cell,
+    })
   })
 })

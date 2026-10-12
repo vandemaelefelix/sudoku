@@ -1,0 +1,54 @@
+import { SHARED_MOTION, SHARED_SHAPE, SHARED_SPACE, SHARED_TYPE } from '@/theme/shared.tokens'
+import type { Theme } from '@/theme/theme.types'
+import { palette as p } from './palette'
+
+const colors: Theme['colors'] = {
+  background: p.night950,
+  surface: p.night900,
+  text: p.mist100,
+  textMuted: p.mist400,
+  accent: p.periwinkle400,
+  onAccent: p.night950,
+  accentSoft: p.indigo900,
+  line: p.night800,
+  lineStrong: p.night600,
+  danger: p.coral400,
+  dangerSurface: p.maroon900,
+  warning: p.amber400,
+  warningText: p.amber400,
+  warningSurface: p.umber900,
+  shadow: p.black,
+  scrim: p.nightScrim,
+  scrimStrong: p.nightScrimStrong,
+}
+
+export const midnight: Theme = {
+  name: 'midnight',
+  statusBar: 'light',
+  colors,
+  type: SHARED_TYPE,
+  space: SHARED_SPACE,
+  shape: SHARED_SHAPE,
+  elevation: { key: 'none', sheet: '0 24px 60px -20px rgba(0,0,0,0.6)', panel: '0 -6px 12px rgba(0,0,0,0.4)' },
+  motion: SHARED_MOTION,
+  components: {
+    grid: { frame: colors.lineStrong, boxLine: colors.lineStrong, cellLine: colors.line },
+    cell: {
+      fill: colors.surface,
+      peer: p.night850,
+      same: p.indigo750,
+      selected: p.indigo800,
+      conflictFill: colors.dangerSurface,
+      ring: colors.accent,
+      given: colors.text,
+      // Lighter than the accent: the accent on the same-number fill is below 4.5 : 1.
+      entry: p.periwinkle350,
+      conflict: colors.danger,
+      // The muted text, not the canvas note grey: that grey is below 4.5 : 1 on the selected fill.
+      note: colors.textMuted,
+    },
+    key: { fill: p.night850, digit: colors.text, noteDigit: colors.accent },
+    switch: { on: colors.accent, off: p.night700, knob: p.white },
+    segmented: { track: p.night850, selected: colors.surface },
+  },
+}

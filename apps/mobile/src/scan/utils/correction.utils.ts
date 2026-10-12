@@ -3,6 +3,7 @@ import type { CellResult } from '@/scanner'
 import { PaintStyle, Skia, type SkCanvas, type SkPaint } from '@shopify/react-native-skia'
 import { project, type Homography } from '@/utils/homography.utils'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
+import type { Theme } from '@/theme/theme.types'
 
 export type Insets = { top: number; bottom: number; left: number; right: number }
 export type CorrectionLayout = { title: Rect; grid: Rect; panel: Rect }
@@ -48,29 +49,55 @@ export function cellsToCheck(cells: CellResult[]): number {
   return count
 }
 
-const BOX_WIDTH = 2
-const CELL_WIDTH = 1
+/** The colours and widths (points) of the grid lines. frame: the outer square. box: the lines between the 3 × 3 boxes. */
+export type GridLineStyle = {
+  frame: string
+  box: string
+  cell: string
+  frameWidth: number
+  boxWidth: number
+  cellWidth: number
+}
 
-/** Draws the 20 lines of the grid that m maps the unit square onto. grow 0..1: each line grows from its middle. Box lines 2 pt in ink, cell lines 1 pt in the line colour. */
+export function gridLineStyle(theme: Theme): GridLineStyle {
+  const { grid } = theme.components
+  const { gridLine } = theme.shape
+  return {
+    frame: grid.frame,
+    box: grid.boxLine,
+    cell: grid.cellLine,
+    frameWidth: gridLine.outer,
+    boxWidth: gridLine.box,
+    cellWidth: gridLine.cell,
+  }
+}
+
+/** 0: a cell line, 1: a box line, 2: a frame line. i: the line index, 0..9. */
+function lineKind(i: number): number {
+  'worklet'
+  if (i === 0 || i === 9) return 2
+  return i % 3 === 0 ? 1 : 0
+}
+
+/** Draws the 20 lines of the grid that m maps the unit square onto. grow 0..1: each line grows from its middle. */
 export function drawGridLines(
   canvas: SkCanvas,
   paint: SkPaint,
   m: Homography,
   grow: number,
-  ink: string,
-  line: string,
+  style: GridLineStyle,
 ): void {
   'worklet'
   if (grow <= 0) return
   const from = 0.5 - grow / 2
   const to = 0.5 + grow / 2
   paint.setStyle(PaintStyle.Stroke)
-  // The box lines come last, so a crossing shows the ink.
-  for (const box of [false, true]) {
-    paint.setColor(Skia.Color(box ? ink : line))
-    paint.setStrokeWidth(box ? BOX_WIDTH : CELL_WIDTH)
+  // The frame comes last and the cell lines first, so a crossing shows the stronger line.
+  for (let kind = 0; kind <= 2; kind++) {
+    paint.setColor(Skia.Color(kind === 2 ? style.frame : kind === 1 ? style.box : style.cell))
+    paint.setStrokeWidth(kind === 2 ? style.frameWidth : kind === 1 ? style.boxWidth : style.cellWidth)
     for (let i = 0; i <= 9; i++) {
-      if ((i % 3 === 0) !== box) continue
+      if (lineKind(i) !== kind) continue
       const t = i / 9
       const h0 = project(m, from, t)
       const h1 = project(m, to, t)

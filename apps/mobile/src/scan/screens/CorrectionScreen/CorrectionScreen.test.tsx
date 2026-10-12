@@ -2,7 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import type { CellResult, RecogniseResult } from '@/scanner'
-import { LIGHT } from '@/theme/colors'
+import { createPicture, Skia } from '@shopify/react-native-skia'
+import type { Theme } from '@/theme/theme.types'
+import { daylight } from '@/theme/themes/daylight'
+import { midnight } from '@/theme/themes/midnight'
 import { CorrectionScreen } from './CorrectionScreen'
 import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
@@ -25,9 +28,17 @@ describe('CorrectionScreen in review', () => {
   it('styles the digits as given, entry and empty from the tokens', () => {
     render(<CorrectionScreen result={okResult({ 0: given, 1: entry })} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('5')
-    expect(style('correction-cell-0')).toMatchObject({ color: LIGHT.text, fontWeight: '600' })
+    expect(style('correction-cell-0')).toMatchObject({
+      color: daylight.components.cell.given,
+      fontFamily: daylight.type.given.family,
+      fontWeight: daylight.type.given.weight,
+    })
     expect(screen.getByTestId('correction-cell-1')).toHaveTextContent('7')
-    expect(style('correction-cell-1')).toMatchObject({ color: LIGHT.accent, fontWeight: '500' })
+    expect(style('correction-cell-1')).toMatchObject({
+      color: daylight.components.cell.entry,
+      fontFamily: daylight.type.entry.family,
+      fontWeight: daylight.type.entry.weight,
+    })
     expect(screen.getByTestId('correction-cell-2')).toHaveTextContent('')
   })
 
@@ -45,7 +56,7 @@ describe('CorrectionScreen in review', () => {
     expect(style('correction-ring-0')).toMatchObject({
       borderStyle: 'dashed',
       borderWidth: 1.5,
-      borderColor: LIGHT.warning,
+      borderColor: daylight.colors.warning,
       borderRadius: 6,
     })
   })
@@ -82,9 +93,44 @@ describe('CorrectionScreen in review', () => {
     expect(onRetake).toHaveBeenCalledTimes(1)
   })
 
+  it('takes the panel colour from the theme styles, not from an inline object', () => {
+    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
+    const own = screen.getByTestId('correction-panel').props.style.flat(Infinity)
+    expect(own).toContainEqual(
+      expect.objectContaining({
+        backgroundColor: daylight.colors.surface,
+        shadowColor: daylight.colors.shadow,
+        borderRadius: 24,
+      }),
+    )
+  })
+
+  it('fills the board with the cell fill token, the same token as the transition canvas', () => {
+    // A theme whose cell fill differs from its surface, so the test sees which token the board reads.
+    const theme: Theme = {
+      ...daylight,
+      components: { ...daylight.components, cell: { ...daylight.components.cell, fill: midnight.colors.accent } },
+    }
+    const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
+    const theming = jest
+      .spyOn(unistyles, 'useUnistyles')
+      .mockReturnValue({ theme, rt: unistyles.UnistylesRuntime } as never)
+    const paint = jest.spyOn(Skia, 'Paint')
+    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
+    const record = jest.mocked(createPicture).mock.lastCall?.[0]
+    record?.({ drawRect: jest.fn(), drawLine: jest.fn() } as never)
+    const colours = paint.mock.results.flatMap((r) =>
+      jest.mocked(r.value.setColor).mock.calls.map((c: unknown[]) => c[0]),
+    )
+    expect(colours).toContain(midnight.colors.accent)
+    expect(colours).not.toContain(daylight.colors.surface)
+    paint.mockRestore()
+    theming.mockRestore()
+  })
+
   it('draws the background and the board', () => {
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
-    expect(style('correction-screen').backgroundColor).toBe(LIGHT.background)
+    expect(style('correction-screen').backgroundColor).toBe(daylight.colors.background)
     expect(screen.getByTestId('skia-canvas')).toBeTruthy()
   })
 

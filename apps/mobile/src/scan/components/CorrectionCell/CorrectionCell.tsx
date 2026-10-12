@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import Animated, { useAnimatedStyle } from 'react-native-reanimated'
-import type { Colors } from '@/theme/colors'
 import { CorrectionRing } from '@/scan/components/CorrectionRing'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { digitAlpha, shiftOf, type SweepTiming } from '@/scan/utils/transition.utils'
@@ -13,7 +12,6 @@ type CorrectionCellProps = SweepTiming & {
   size: number
   left: number
   top: number
-  colors: Colors
 }
 
 /** One digit of the correction screen, with a ring when it is uncertain. n: the cell index, row-major. */
@@ -23,7 +21,6 @@ export const CorrectionCell = memo(function CorrectionCell({
   size,
   left,
   top,
-  colors,
   clock,
   resultsAt,
   reduceMotion,
@@ -45,16 +42,8 @@ export const CorrectionCell = memo(function CorrectionCell({
         testID={`correction-cell-${n}`}
         style={[
           styles.digit,
-          {
-            left,
-            top,
-            width: size,
-            height: size,
-            lineHeight: size,
-            fontSize: size * 0.6,
-            color: entry ? colors.accent : colors.text,
-            fontWeight: entry ? '500' : '600',
-          },
+          entry ? styles.entry : styles.given,
+          { left, top, width: size, height: size, lineHeight: size, fontSize: size * 0.6 },
           digitStyle,
         ]}
       >
@@ -66,7 +55,6 @@ export const CorrectionCell = memo(function CorrectionCell({
           size={size}
           left={left}
           top={top}
-          color={colors.warning}
           clock={clock}
           resultsAt={resultsAt}
           reduceMotion={reduceMotion}

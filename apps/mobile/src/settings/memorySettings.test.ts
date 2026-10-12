@@ -20,4 +20,10 @@ describe('createMemorySettings', () => {
     await a.set('lab.effect', 'ripples')
     await expect(createMemorySettings().get('lab.effect')).resolves.toBeNull()
   })
+
+  it('reads a value synchronously', () => {
+    const settings = createMemorySettings({ a: '1' })
+    expect(settings.getSync('a')).toBe('1')
+    expect(settings.getSync('missing')).toBeNull()
+  })
 })
