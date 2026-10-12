@@ -98,11 +98,9 @@ export function reduceSession(session: Session, action: SessionAction): Session 
 }
 
 export function canUndo(game: Game): boolean {
-  return game.status === 'playing' && game.undoSteps.length > 0
+  return undo(game).game !== game
 }
 
 export function canErase(game: Game): boolean {
-  const cell = game.selected
-  if (game.status !== 'playing' || cell === null || game.givens[cell] !== 0) return false
-  return game.entries[cell] !== 0 || (game.notes[cell] ?? []).length > 0
+  return erase(game).game !== game
 }
