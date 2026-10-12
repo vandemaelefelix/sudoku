@@ -87,16 +87,6 @@ describe('advance', () => {
     expect(engine.scene.reduceMotion).toBe(true)
   })
 
-  it('creates an armed scene by default, and a scene that is not armed on request', () => {
-    expect(advance(null, fakeEffect('a'), VIEW, grid, 1, false).scene.armed).toBe(true)
-    expect(advance(null, fakeEffect('a'), VIEW, grid, 1, false, false).scene.armed).toBe(false)
-  })
-
-  it('keeps the scene armed state on later frames', () => {
-    const first = advance(null, fakeEffect('a'), VIEW, null, 1, false, false)
-    expect(advance(first, fakeEffect('a'), VIEW, null, 1 + 1 / 60, false, true).scene.armed).toBe(false)
-  })
-
   it('starts without capture channels', () => {
     expect(advance(null, fakeEffect('a'), VIEW, grid, 1, false).scene.capture).toBeNull()
   })

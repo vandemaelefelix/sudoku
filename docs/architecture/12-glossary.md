@@ -11,6 +11,7 @@ status: DRAFT
 | Contract | The model contract: input format, outputs, labels and manifest shared by `ml/` and the app |
 | Walking skeleton | Milestone M0: the thinnest real path from camera to model on the iPhone. Production code that proves ADR-002 and ADR-005 |
 | Digit head | The classifier output that says `empty` or 1–9 |
+| Drift | The largest net move of a grid corner over `DRIFT_WINDOW`, in points per second. Noise and tremor cancel over the window. A drift above `DRIFT_LIMIT` is a clear move, such as a pan |
 | Entry | A digit the player filled in. In a scan: a `handwritten` digit. Editable |
 | Start entries | The entries that come with the start of a game and that the player did not make, such as handwritten digits from a scan. A retry keeps them |
 | Expo | The React Native framework and tooling used for the app. Development builds, since native modules are needed |
@@ -32,8 +33,7 @@ status: DRAFT
 | Intersection | One of the 10 × 10 points where grid lines cross. Found on capture, used for per-cell flattening |
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes`. The kind says how the mark was made: `printed` by a printer or a screen, `handwritten` by a person (ADR-009, amendment) |
-| Lock-on | The moment the grid corners have been steady long enough, and the scan captures |
-| Armed (lock-on) | A scene that may lock on automatically. The first scene is armed. A scene after a Retake arms only after the grid is gone for 0.5 s after the warm-up, or jumps to another place. The shutter does not need it. See the scan-pipeline concept |
+| Lock-on | The moment the same grid has been in view long enough without a clear move, and the scan captures |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
 | Notes | Small pencil marks in a cell. In a scan: a kind, loaded as an empty cell. In the game: the candidate numbers that the player sets in notes mode |
@@ -52,11 +52,11 @@ status: DRAFT
 | Gathered dot | A dot of the dot field that sits on one grid intersection and follows it |
 | Effect | One way to draw the live overlay on the camera screen. A module with `create`, `step` and `draw` in `src/scan/effects/` (ADR-014) |
 | Scene | The facts about the grid that the engine gives to every effect in each frame: the grid, its matrices, found and lost, presence, motion and the steady state |
-| Steady state | The grid corners move slower than the steady threshold. The overlay then shows its lock-on reaction |
+| Steady state | The grid corners move slower than the steady threshold. The overlay shows it. Lock-on does not read it (ADR-019) |
 | Effect lab | The switch between effects in a development build: the dev pill and its list. A release build does not have it |
 | Dev pill | The button at the top of the camera screen in a development build. It shows the active effect and opens the list of effects |
 | Draw kit | The paints, the star sprite and the compiled runtime shaders that the engine makes once and gives to every effect |
-| Lock-on progress | 0 to 1: how long the grid has been steady, divided by `LOCK_DWELL`. It resets when the grid is lost, found again or jumps. At 1 the scan locks on. The gathered dots show it |
+| Lock-on progress | 0 to 1: how long the grid has been in view without a clear move, divided by `LOCK_DWELL`. It resets when the grid is lost, found again, jumps or clearly moves. At 1 the scan locks on. The gathered dots show it |
 | Shutter | The button on the camera screen that captures at any time, also without lock-on |
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
 | Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake. The player can fix a digit and its kind there. Play this puzzle loads it when the play gate passes |
