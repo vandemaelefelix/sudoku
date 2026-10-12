@@ -129,7 +129,19 @@ misses it: the photo takes about 120 ms, and the conversion follows. The code lo
 | empty | Empty |
 
 The givens alone must have exactly one solution, checked by `@sudoku/core` before the puzzle
-loads. If they have none or several, the correction screen says so and does not load.
+loads. The correction screen turns "Play this puzzle" on only when this play gate passes:
+
+| Situation | Blocks Play | The correction screen says |
+| --- | --- | --- |
+| Uncertain cells | No. The ring is a hint | Nothing more |
+| Two givens break a rule | Yes | The conflict chip and the marks |
+| The givens have no solution | Yes | "This puzzle has no solution. Check the marked cells." |
+| The givens have more than one solution | Yes | "A given is missing or wrong." |
+| The givens and the entries fill the grid | Yes | "This puzzle is already solved." |
+| A handwritten entry is wrong | No. It loads as a wrong entry, not a mistake | Nothing |
+
+A scanned game takes the level of the nearest givens target and the source `scanned`
+(ADR-011, amendment "a level for scanned puzzles").
 
 ## Open questions
 
