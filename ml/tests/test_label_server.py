@@ -443,7 +443,7 @@ def test_the_finish_route_is_missing_without_a_finish_function(served):
 def test_the_progress_route_says_how_many_cells_are_linked(served_photos):
     port, _, _, stem = served_photos
     _, data = request(port, "GET", "/api/progress")
-    assert json.loads(data)["link_line"].startswith("linked 0 of 3 cells; the others come from")
+    assert json.loads(data)["link_line"].startswith("Linked 0 of 3 cells. Cells without a link")
     request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
     _, data = request(port, "GET", "/api/progress")
-    assert json.loads(data)["link_line"].startswith("linked 35 of 38 cells")
+    assert json.loads(data)["link_line"].startswith("Linked 35 of 38 cells.")

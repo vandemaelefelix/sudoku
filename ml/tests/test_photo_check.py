@@ -208,3 +208,9 @@ def test_clear_temp_deletes_the_leftovers_of_a_stopped_cut(tmp_path: Path):
     assert clear_temp(paths) == 2
     assert list(paths.tmp.glob("*")) == [] and list(old.glob("*")) == []
     assert clear_temp(paths) == 0
+
+
+def test_a_pending_photo_whose_file_is_missing_is_skipped(tmp_path: Path):
+    check, paths, stem = checked(tmp_path, grid_photo())
+    next(paths.photos.iterdir()).unlink()
+    assert check.pending() == [] and check.next() is None
