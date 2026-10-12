@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import { generate } from '@sudoku/core'
 import type { CellResult, RecogniseResult } from '@/scanner'
+import * as playUtils from '@/scan/utils/play.utils'
 import type { ScannedStart } from '@/scan/utils/play.utils'
 import { createPicture, Skia } from '@shopify/react-native-skia'
 import type { Theme } from '@/theme/theme.types'
@@ -456,6 +457,10 @@ const playUi = (result: RecogniseResult, onPlay = jest.fn<void, [ScannedStart]>(
 const playOn = () => screen.getByTestId('play').props.accessibilityState.disabled === false
 
 describe('CorrectionScreen play gate', () => {
+  const checkSpy = jest.spyOn(playUtils, 'checkPlay')
+  beforeEach(() => checkSpy.mockClear())
+  afterAll(() => checkSpy.mockRestore())
+
   it('turns Play on for givens with one solution, and hands over the plain grid', () => {
     const onPlay = playUi(
       scanOf(puzzle.givens, { [firstOpen]: { digit: wrongDigit, kind: 'handwritten', confidence: 1 } }),
@@ -509,6 +514,7 @@ describe('CorrectionScreen play gate', () => {
       if (puzzle.givens[n] === 0) over[n] = { digit, kind: 'handwritten', confidence: 1 }
     })
     playUi(scanOf(puzzle.givens, over))
+    expect(playOn()).toBe(false)
     expect(screen.getByTestId('play-blocked')).toHaveTextContent('This puzzle is already solved.')
   })
 
@@ -541,5 +547,17 @@ describe('CorrectionScreen play gate', () => {
     )
     expect(playOn()).toBe(false)
     expect(screen.queryByTestId('play-blocked')).toBeNull()
+    expect(checkSpy).not.toHaveBeenCalled()
+  })
+
+  it('checks the givens once when the pad closes, not per key', () => {
+    playUi(scanOf(puzzle.givens))
+    expect(checkSpy).toHaveBeenCalledTimes(1)
+    press(`correction-press-${firstOpen}`)
+    press(`correction-key-${wrongDigit}`)
+    press(`correction-key-${puzzle.solution[firstOpen] ?? 1}`)
+    expect(checkSpy).toHaveBeenCalledTimes(1)
+    press('correction-done')
+    expect(checkSpy).toHaveBeenCalledTimes(2)
   })
 })
