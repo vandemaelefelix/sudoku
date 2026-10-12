@@ -52,10 +52,33 @@ exactly which images trained it.
 - The log holds ids and words only, never an image (SUD-08).
 - Design: [kind labelling design](../../superpowers/specs/2026-10-11-kind-labelling-design.md).
 
+## Amendment: photo import and digit pass (2026-10-12)
+
+- `just import-photos <folder>` copies new photos into `ml/data/photos/`. The photo id uses the
+  same rule as the cell id. A photo that is already present is skipped.
+- `photos.csv` gets the columns `licence` and `attribution`. Older rows have the licence `none`.
+  The origins are `phone`, `web`, `wicht`, `openverse`, `commons` and `lexski`.
+- The import reads the origin and licence from a `manifest.jsonl` next to the photos, or from the
+  command line. A photo without both is skipped.
+- A person checks each imported photo on the Photos screen of the labelling page: accept, fix the
+  4 corners, or reject. `ml/datasets/photo-checks.jsonl` (in git) holds one line per decision.
+- An accepted photo is cut with the flatten of the app's scanner: 576 × 576, then 64 × 64 cells
+  ([scan pipeline](../00-concepts/scan-pipeline.md)). Only cells fully inside the photo are cut.
+  A photo with fewer than 10 such cells gets no cells.
+- `ml/datasets/cell-origins.csv` (in git) links each cut cell to its photo, row and column. The
+  licence of a cell is the licence of its photo. Cells cut before this amendment have no row.
+- The Digits screen groups the unlabelled cells by the digit that the model predicts. A person
+  confirms each group and corrects the exceptions. Each change is a `digit` line in
+  `kind-log.jsonl` with the screen `digits`. The model's proposals live in
+  `ml/data/prelabels.json`, outside git.
+- The cell folder `discarded/` holds cells that a person rejected: bad cuts, unreadable marks.
+  Training ignores it. `cells.csv` lists these cells with the label `discarded`.
+
 ## Consequences
 
 - Until DVC, a lost laptop means rebuilding the real data from backups. `ml/data/` must have
   a backup.
+- Training does not filter cells by licence yet. A model trained on real cells stays private (ADR-013).
 
 ## Reassessment Triggers
 

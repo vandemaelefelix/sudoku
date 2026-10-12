@@ -13,6 +13,8 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just dataset-manifest`: rewrite `ml/datasets/cells.csv` from the folders.
 - `just suspects`: rank the cells whose digit or kind label the model doubts most. The Review screen shows them.
 - `just group-cells [run]`: group similar cells per digit folder for the labelling page.
+- `just import-photos <folder> [--origin O] [--licence L]`: copy new sudoku photos into `ml/data/photos/` and find the grid in each.
+- `just prelabel-cells [run]`: let a model propose a digit for each cell in `unlabeled/`. `just label-cells` runs it first.
 - `just label-cells`: open the labelling page on 127.0.0.1.
 - `just label-rollback <session>`: reverse every change of one labelling session.
 - `just relabel [file]`: apply the labels from a relabel CSV to the cells.
@@ -32,11 +34,17 @@ what they may be used for, is in [DATA_SOURCES.md](DATA_SOURCES.md).
 ml/data/
 ├── cells/
 │   ├── empty/  1/ … 9/        one folder per digit class of the model contract
-│   └── unlabeled/             cells that still need a label
+│   ├── unlabeled/             cells that still need a label
+│   └── discarded/             cells a person rejected; training ignores them
+├── import/
+│   └── detections.json        the proposed outline per photo
+├── prelabels.json             the model's proposals for unlabelled cells
 └── photos/                    full sudoku photos
 ml/datasets/
 ├── cells.csv                  id, label, kind
-├── photos.csv                 id, file, origin
+├── photos.csv                 id, file, origin, licence, attribution
+├── photo-checks.jsonl         one line per photo decision
+├── cell-origins.csv           cell, photo, row, col
 ├── kind-log.jsonl             every kind and digit change, append-only
 └── kind-check.jsonl           blind check answers
 ```
@@ -45,12 +53,25 @@ ml/datasets/
   RGB pixel bytes, row by row. The file name is the first 16 characters of the id. The folders
   hold each image once.
 - The label of a cell is the folder it is in. `cells.csv` must match the folders.
-- `origin` in `photos.csv` is `phone` or `web` (see DATA_SOURCES.md).
+- `origin` and `licence` in `photos.csv` say where a photo comes from and how it may be used (see DATA_SOURCES.md).
 - The kind of a cell comes from `kind-log.jsonl` (ADR-009, amendment). `printed` means made by
   a printer or a screen. `handwritten` means written by a person. Undecidable cells are `unsure`.
 
 The dataset holds 16,277 cells and 253 photos. 71 cells have no label yet: 67 hold notes or other
 marks, and 4 need a check by hand.
+
+## Import photos and label their digits
+
+1. Run `just import-photos <folder> --origin phone --licence own`. A folder from the sudoku
+   paper scraper has a `manifest.jsonl`, so it needs no options.
+2. Run `just label-cells`. Open the **Photos** screen. Accept each photo, fix its 4 corners or
+   reject it. Accepted photos give cells in `cells/unlabeled/`.
+3. Stop the server with Ctrl-C. Run `just label-cells` again. It pre-labels the new cells.
+4. Open the **Digits** screen. Click the cells that are not the digit in the title. Press Enter.
+5. Label the kind of the new cells on the Groups screen, as below.
+
+Commit `ml/datasets/photos.csv`, `photo-checks.jsonl`, `cell-origins.csv`, `kind-log.jsonl` and
+`cells.csv` after a session.
 
 ## Label the kind
 
