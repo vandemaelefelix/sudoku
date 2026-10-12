@@ -32,6 +32,9 @@ from sudoku_ml.relabel import move_cells
 from sudoku_ml.synthetic import Sample
 
 SCREEN_SIZE = 50
+DIGIT_SCREEN_SIZE = 100
+ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
+DIGIT_KINDS = ("handwritten", "all")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
 DIGIT_FOLDERS = tuple(str(d) for d in range(1, 10))
 _LABELLED = ("printed", "handwritten")
@@ -46,6 +49,7 @@ class Paths:
     groups: Path
     suspects: Path
     config: Path  # the training config: its seed and split define the test split
+    prelabels: Path | None = None  # ml/data/prelabels.json: the Digits screen's proposals
 
     @classmethod
     def under(cls, ml_root: Path) -> "Paths":
@@ -58,6 +62,7 @@ class Paths:
             data / "groups.json",
             data / "review" / "suspects.csv",
             ml_root / "configs" / "cell-classifier.toml",
+            data / "prelabels.json",
         )
 
 
@@ -70,7 +75,7 @@ class LabelStore:
         self.paths, self._now = paths, now
         self.session = now().strftime("%Y%m%d-%H%M%S")
         self._actions = 0
-        self._stem_ids = read_ids(paths.manifest)
+        self._registered: dict[str, str] = {}
         self._load()
         self.groups = (
             json.loads(paths.groups.read_text())["folders"] if paths.groups.exists() else {}
@@ -81,6 +86,7 @@ class LabelStore:
         return self.paths.log.stat().st_size if self.paths.log.exists() else 0
 
     def _load(self) -> None:
+        self._stem_ids = {**read_ids(self.paths.manifest), **self._registered}
         self.folder: dict[str, str] = {}
         for path in self.paths.cells.glob("*/*.png"):
             if path.stem not in self._stem_ids:
@@ -110,9 +116,16 @@ class LabelStore:
         self._seen_size = self._log_size()
 
     def _apply_digits(self, lines: list[Line]) -> None:
+        # One move_cells call: it reads every cell folder once, and 16k cells make that slow.
+        wanted = {
+            line.cell[:16]: line.new
+            for line in lines
+            if line.field == "digit" and line.old != line.new
+        }
+        if wanted:
+            move_cells(self.paths.cells, wanted)
         for line in lines:
             if line.field == "digit" and line.old != line.new:
-                move_cells(self.paths.cells, {line.cell[:16]: line.new})
                 self.folder[line.cell] = line.new
 
     def kinds(self) -> dict[str, str | None]:
@@ -247,6 +260,64 @@ class LabelStore:
     def rollback(self, session: str) -> int:
         self._refresh()
         lines = rollback_lines(self.lines, session, self._t(), self.session)
+        self._apply_digits(lines)
+        self._write(lines)
+        return len(lines)
+
+    # Digits screen
+
+    def register(self, cell_ids: list[str]) -> None:
+        """Make new cells in unlabeled/ known. Ctrl-C rewrites cells.csv with them later."""
+        for cell in cell_ids:
+            self._registered[cell[:16]] = cell
+            self._stem_ids[cell[:16]] = cell
+            self.folder[cell] = "unlabeled"
+
+    def _prelabels(self) -> dict[str, dict]:
+        if self.paths.prelabels is None or not self.paths.prelabels.exists():
+            return {}
+        return json.loads(self.paths.prelabels.read_text())["cells"]
+
+    def digit_screen(self, digit: str, kinds: str = "handwritten") -> dict:
+        self._refresh()
+        if digit not in DIGIT_CLASSES:
+            raise ValueError(f"unknown digit {digit!r}")
+        if kinds not in DIGIT_KINDS:
+            raise ValueError(f"unknown kinds filter {kinds!r}")
+        pre = self._prelabels()
+        waiting = [c for c, f in self.folder.items() if f == "unlabeled"]
+
+        def shown(cell: str) -> bool:
+            return cell in pre and (kinds == "all" or pre[cell]["kind"] == "handwritten")
+
+        counts = Counter(pre[c]["digit"] for c in waiting if shown(c))
+        members = sorted(
+            (c for c in waiting if shown(c) and pre[c]["digit"] == digit),
+            key=lambda c: (pre[c]["p"], c),
+        )
+        return {
+            "digit": digit,
+            "kinds": kinds,
+            "cells": [
+                {"id": c, "stem": c[:16], "p": pre[c]["p"]} for c in members[:DIGIT_SCREEN_SIZE]
+            ],
+            "left": len(members),
+            "counts": {d: counts[d] for d in DIGIT_CLASSES},
+            "not_prelabelled": sum(c not in pre for c in waiting),
+        }
+
+    def assign(self, entries: list[dict], screen: str) -> int:
+        """Move unlabelled cells to the chosen folders as one action. Checks all entries first."""
+        self._refresh()
+        t, action = self._t(), self._action()
+        lines = []
+        for entry in entries:
+            cell, label = entry["id"], entry["digit"]
+            if label not in ASSIGNABLE:
+                raise ValueError(f"{cell[:16]}: unknown label {label!r}")
+            if self.folder.get(cell) != "unlabeled":
+                raise ValueError(f"{cell[:16]}: not in unlabeled")
+            lines.append(Line(t, self.session, action, cell, "digit", "unlabeled", label, screen))
         self._apply_digits(lines)
         self._write(lines)
         return len(lines)
