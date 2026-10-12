@@ -1,12 +1,6 @@
 import { GRID_CELLS } from '../grid'
 import { peersOf } from '../units'
-import {
-  completeDigits,
-  completedBetween,
-  isSolved,
-  NOTHING_COMPLETED,
-  valueAt,
-} from './completion'
+import { completeDigits, completedBetween, DIGITS, isSolved, NOTHING_COMPLETED, valueAt } from './completion'
 import { MAX_MISTAKES, UNDO_LIMIT } from './constants'
 import type { Digit, Game, MoveResult, Random, UndoStep } from './types'
 
@@ -84,7 +78,7 @@ export function toggleNote(game: Game, digit: Digit): MoveResult {
   const current = game.notes[cell] ?? []
   const cellNotes = current.includes(digit)
     ? current.filter((note) => note !== digit)
-    : [...current, digit].sort((a, b) => a - b)
+    : DIGITS.filter((note) => note === digit || current.includes(note))
   return noCompletion({
     ...game,
     notes: replaceAt(game.notes, cell, cellNotes),

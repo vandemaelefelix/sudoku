@@ -45,9 +45,7 @@ export function toSavedGame(game: Game): SavedGame {
 export function fromSavedGame(value: unknown): Game {
   const saved = record(value, 'The saved game')
   if (saved.version !== SAVED_GAME_VERSION) {
-    throw new RangeError(
-      `The saved game version ${String(saved.version)} is not ${SAVED_GAME_VERSION}`,
-    )
+    throw new RangeError(`The saved game version ${String(saved.version)} is not ${SAVED_GAME_VERSION}`)
   }
   const board = createGame({
     givens: numbers(saved.givens, 'givens'),
@@ -68,8 +66,7 @@ export function fromSavedGame(value: unknown): Game {
   return {
     ...board,
     notes: notes(saved.notes, 'notes'),
-    selected:
-      saved.selected === null ? null : integer(saved.selected, 'selected', 0, GRID_CELLS - 1),
+    selected: saved.selected === null ? null : integer(saved.selected, 'selected', 0, GRID_CELLS - 1),
     mistakes: integer(saved.mistakes, 'mistakes', 0, MAX_MISTAKES),
     hintsUsed: integer(saved.hintsUsed, 'hintsUsed', 0, Number.MAX_SAFE_INTEGER),
     playedMs: duration(saved.playedMs),
@@ -126,10 +123,7 @@ function notes(value: unknown, name: string): Digit[][] {
     const digits = numbers(cell, name)
     const sorted = digits.every(
       (digit, index) =>
-        Number.isInteger(digit) &&
-        digit >= 1 &&
-        digit <= 9 &&
-        (index === 0 || digit > (digits[index - 1] ?? 0)),
+        Number.isInteger(digit) && digit >= 1 && digit <= 9 && (index === 0 || digit > (digits[index - 1] ?? 0)),
     )
     if (!sorted) throw new RangeError(`The ${name} hold notes that are not sorted digits`)
     return digits as Digit[]

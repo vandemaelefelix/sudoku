@@ -41,9 +41,7 @@ export function completeDigits(game: Game): Digit[] {
 }
 
 function completeUnits(game: Game, units: readonly (readonly number[])[]): number[] {
-  return units.flatMap((cells, index) =>
-    cells.every((cell) => isCorrect(game, cell)) ? [index] : [],
-  )
+  return units.flatMap((cells, index) => (cells.every((cell) => isCorrect(game, cell)) ? [index] : []))
 }
 
 function added<T>(before: readonly T[], after: readonly T[]): T[] {

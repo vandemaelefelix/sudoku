@@ -3,8 +3,7 @@ import { completedBetween, completeDigits, isWrong, NOTHING_COMPLETED, valueAt }
 import { createGame } from './createGame'
 import { SAMPLE_GIVENS, SAMPLE_SOLUTION, solvedExcept } from './samplePuzzle'
 
-const withEntries = (entries: number[]) =>
-  createGame({ givens: SAMPLE_GIVENS, solution: SAMPLE_SOLUTION, entries })
+const withEntries = (entries: number[]) => createGame({ givens: SAMPLE_GIVENS, solution: SAMPLE_SOLUTION, entries })
 
 describe('valueAt and isWrong', () => {
   it('reads a given or an entry', () => {
@@ -55,8 +54,6 @@ describe('completedBetween', () => {
   it('never reports a unit that holds a wrong number', () => {
     const after = solvedExcept()
     after[2] = 1
-    expect(completedBetween(withEntries(solvedExcept(2)), withEntries(after))).toEqual(
-      NOTHING_COMPLETED,
-    )
+    expect(completedBetween(withEntries(solvedExcept(2)), withEntries(after))).toEqual(NOTHING_COMPLETED)
   })
 })
