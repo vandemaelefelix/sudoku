@@ -102,6 +102,7 @@ it('starts a new game at the tapped level and saves it', async () => {
   expect(progress).toMatchObject({ level: 'easy', source: 'generated' })
   expect(givensOf(progress.game.givens)).toBe(GIVENS_TARGET.easy)
   expect(screen.getAllByTestId(/^cell-\d+$/)).toHaveLength(81)
+  expect((await inProgress(storage)).seed).toEqual(expect.any(Number))
 })
 
 it('a double tap on a level starts one game', async () => {
@@ -300,6 +301,7 @@ it('New puzzle starts a new game at the same level, and the lost game is in the 
   const next = await inProgress(storage)
   expect(next.id).not.toBe(lost.id)
   expect(next.level).toBe('medium')
+  expect(next.seed).toEqual(expect.any(Number))
   expect(await storage.history.list()).toMatchObject([{ id: lost.id, level: 'medium', result: 'lost' }])
   await layOutBoard()
   expect(screen.getAllByTestId(/^cell-\d+$/)).toHaveLength(81)
@@ -316,6 +318,7 @@ it('Try this puzzle again starts the same puzzle as a new saved game', async () 
   expect(retried.id).not.toBe(lost.id)
   expect(retried.game.givens).toEqual(lost.game.givens)
   expect(retried.game.mistakes).toBe(0)
+  expect(retried.seed).toBe(lost.seed)
   expect(await storage.history.list()).toHaveLength(1)
 })
 
