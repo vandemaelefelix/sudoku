@@ -68,7 +68,11 @@ status: DRAFT
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
 | Theme | One typed object with every token the app needs. Daylight and Midnight ship first (ADR-015) |
-| Primitive token | A raw value, such as a hex colour. Only the file of its own theme reads it (ADR-015) |
+| Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |
 | Semantic token | A token named by its meaning, such as `colors.text` or `type.given`. Most components read these (ADR-015) |
 | Component token | A token that belongs to one component, such as `components.cell.selected` (ADR-015) |
 | Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. None exists in v1 (ADR-015) |
+| Type role | A semantic text style for one kind of digit: `type.given`, `type.entry` or `type.note` (ADR-015) |
+| Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
+| Daylight | The light theme (ADR-015) |
+| Midnight | The dark theme (ADR-015) |
