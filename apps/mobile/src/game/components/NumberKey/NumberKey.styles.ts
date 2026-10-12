@@ -3,8 +3,8 @@ import { roleFont } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   key: {
-    width: 64,
-    height: 60,
+    width: theme.size.key.width,
+    height: theme.size.key.height,
     borderRadius: theme.shape.radius.md,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,4 +1,11 @@
-import { SHARED_MOTION, SHARED_SHAPE, SHARED_SPACE, SHARED_TYPE } from '@/theme/shared.tokens'
+import {
+  SHARED_MOTION,
+  SHARED_OPACITY,
+  SHARED_SHAPE,
+  SHARED_SIZE,
+  SHARED_SPACE,
+  SHARED_TYPE,
+} from '@/theme/shared.tokens'
 import type { Theme } from '@/theme/theme.types'
 import { palette as p } from './palette'
 
@@ -29,6 +36,8 @@ export const midnight: Theme = {
   type: SHARED_TYPE,
   space: SHARED_SPACE,
   shape: SHARED_SHAPE,
+  size: SHARED_SIZE,
+  opacity: SHARED_OPACITY,
   elevation: { key: 'none', sheet: '0 24px 60px -20px rgba(0,0,0,0.6)', panel: '0 -6px 12px rgba(0,0,0,0.4)' },
   motion: SHARED_MOTION,
   components: {

@@ -3,12 +3,12 @@ import { roleFont } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   pill: {
-    height: 36,
-    paddingHorizontal: 14,
+    height: theme.size.pill.height,
+    paddingHorizontal: theme.size.pill.paddingHorizontal,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.space.sm,
-    borderWidth: 1,
+    borderWidth: theme.shape.stroke.thin,
     borderColor: theme.colors.line,
     borderRadius: theme.shape.radius.pill,
   },
