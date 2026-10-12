@@ -11,17 +11,14 @@ import Animated, {
 import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { CorrectionCell } from '@/scan/components/CorrectionCell'
+import { CorrectionPad } from '@/scan/components/CorrectionPad'
+import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
-import {
-  cellLook,
-  cellsToCheck,
-  drawGridLines,
-  gridLineStyle,
-  type CorrectionLayout,
-} from '@/scan/utils/correction.utils'
+import { drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
 import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
+import { PANEL_PADDING } from '@/scan/constants/correction.constants'
 
 export type CorrectionProps = {
   result: RecogniseResult | null
@@ -50,8 +47,11 @@ export function CorrectionScreen({
   const failed = result != null && !result.ok
   const cellSize = grid.width / 9
 
-  const looks = useMemo(() => (result?.ok ? result.cells.map(cellLook) : []), [result])
-  const toCheck = result?.ok ? cellsToCheck(result.cells) : 0
+  const { looks, selected, conflicts, toCheck, actions } = useCorrectionEdits(result)
+  // The player edits only the finished screen. During the transition the cells are not pressable and show no edit marks.
+  const editable = clock == null && result?.ok === true
+  const selectedLook = editable && selected !== null ? looks[selected] : undefined
+  const conflictCount = conflicts.filter(Boolean).length
 
   // The picture is made again when the theme changes (ADR-015, point 10).
   const board = useMemo(() => {
@@ -105,7 +105,7 @@ export function CorrectionScreen({
         style={[styles.title, { left: title.x, top: title.y, width: title.width, height: title.height }, titleStyle]}
       >
         <Text style={styles.titleText}>Check the scan</Text>
-        <Text style={styles.subtitle}>Tap a digit to fix it</Text>
+        <Text style={styles.subtitle}>Tap a cell to fix it</Text>
       </Animated.View>
       {looks.map((look, n) => (
         <CorrectionCell
@@ -116,6 +116,9 @@ export function CorrectionScreen({
           size={cellSize}
           left={grid.x + (n % 9) * cellSize}
           top={grid.y + Math.floor(n / 9) * cellSize}
+          selected={editable && selected === n}
+          conflict={editable && (conflicts[n] ?? false)}
+          onSelect={editable ? actions.select : undefined}
           clock={clock}
           resultsAt={resultsAt}
           reduceMotion={reduceMotion}
@@ -140,6 +143,7 @@ export function CorrectionScreen({
               top: panel.y,
               width: panel.width,
               height: panel.height,
+              padding: PANEL_PADDING,
             },
             panelStyle,
           ]}
@@ -149,27 +153,49 @@ export function CorrectionScreen({
               <Text style={styles.failureTitle}>The scan failed</Text>
               <Text style={styles.failureReason}>{result.reason}</Text>
             </View>
-          ) : toCheck > 0 ? (
-            <View style={styles.chip}>
-              <Text style={styles.chipText}>{`● ${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
-            </View>
+          ) : selectedLook ? (
+            <CorrectionPad
+              cell={selected ?? 0}
+              look={selectedLook}
+              onDigit={actions.setDigit}
+              onClear={actions.clear}
+              onKind={actions.setKind}
+              onDone={actions.deselect}
+            />
           ) : (
-            <Text style={styles.sure}>All cells look sure</Text>
+            <>
+              <View style={styles.chips}>
+                {conflictCount > 0 && (
+                  <View style={[styles.chip, styles.chipConflict]}>
+                    <Text
+                      style={[styles.chipText, styles.chipConflictText]}
+                    >{`● ${conflictCount} givens in conflict`}</Text>
+                  </View>
+                )}
+                {toCheck > 0 ? (
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>{`● ${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
+                  </View>
+                ) : (
+                  conflictCount === 0 && <Text style={styles.sure}>All cells look sure</Text>
+                )}
+              </View>
+              <Pressable
+                testID="play"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: true }}
+                disabled
+                style={styles.play}
+              >
+                <Text style={styles.playText}>Play this puzzle</Text>
+              </Pressable>
+            </>
           )}
-          {!failed && (
-            <Pressable
-              testID="play"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: true }}
-              disabled
-              style={styles.play}
-            >
-              <Text style={styles.playText}>Play this puzzle</Text>
+          {!selectedLook && (
+            <Pressable testID="retake" accessibilityRole="button" onPress={onRetake} hitSlop={8}>
+              <Text style={styles.retake}>Retake</Text>
             </Pressable>
           )}
-          <Pressable testID="retake" accessibilityRole="button" onPress={onRetake} hitSlop={8}>
-            <Text style={styles.retake}>Retake</Text>
-          </Pressable>
         </Animated.View>
       )}
     </View>

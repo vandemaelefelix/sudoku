@@ -2,7 +2,7 @@ import type { Rect, ViewSize } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import { PaintStyle, Skia, type SkCanvas, type SkPaint } from '@shopify/react-native-skia'
 import { project, type Homography } from '@/utils/homography.utils'
-import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
+import { PANEL_HEIGHT, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 import type { Theme } from '@/theme/theme.types'
 
 export type Insets = { top: number; bottom: number; left: number; right: number }
@@ -13,7 +13,6 @@ const TITLE_TOP = 8
 const TITLE_HEIGHT = 52
 const GAP = 12
 const PANEL_SIDE = 10
-const PANEL_HEIGHT = 168
 
 /** Points, not rounded. The transition and the correction screen both read this, so the last frame matches the screen. */
 export function correctionLayout(view: ViewSize, insets: Insets): CorrectionLayout {
@@ -43,10 +42,8 @@ export function cellLook(cell: CellResult): CellLook {
   return { digit: String(cell.digit), style: cell.kind === 'printed' ? 'given' : 'entry', uncertain }
 }
 
-export function cellsToCheck(cells: CellResult[]): number {
-  let count = 0
-  for (const cell of cells) if (cellLook(cell).uncertain) count++
-  return count
+export function cellsToCheck(looks: readonly CellLook[]): number {
+  return looks.filter((look) => look.uncertain).length
 }
 
 /** The colours and widths (points) of the grid lines. frame: the outer square. box: the lines between the 3 × 3 boxes. */

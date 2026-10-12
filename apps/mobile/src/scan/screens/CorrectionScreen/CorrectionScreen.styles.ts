@@ -10,7 +10,6 @@ export const styles = StyleSheet.create((theme) => ({
   panel: {
     position: 'absolute',
     borderRadius: 24,
-    padding: 12,
     gap: 9,
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
@@ -28,6 +27,9 @@ export const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.warningSurface,
   },
   chipText: { fontSize: 13, fontWeight: '600', color: theme.colors.warningText },
+  chips: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+  chipConflict: { backgroundColor: theme.colors.dangerSurface },
+  chipConflictText: { color: theme.colors.danger },
   sure: { fontSize: 13, fontWeight: '500', color: theme.colors.textMuted },
   play: {
     alignItems: 'center',
