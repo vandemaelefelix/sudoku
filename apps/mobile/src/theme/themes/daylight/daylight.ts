@@ -62,5 +62,6 @@ export const daylight: Theme = {
     key: { fill: p.white, digit: colors.text, noteDigit: colors.accent },
     switch: { on: colors.accent, off: p.slate300, knob: p.white },
     segmented: { track: p.slate150, selected: colors.surface },
+    pulse: { waveOpacity: 0.3, popScale: 1.3 },
   },
 }

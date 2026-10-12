@@ -59,5 +59,7 @@ export const midnight: Theme = {
     key: { fill: p.night850, digit: colors.text, noteDigit: colors.accent },
     switch: { on: colors.accent, off: p.night700, knob: p.white },
     segmented: { track: p.night850, selected: colors.surface },
+    // A little stronger than Daylight, as in the design canvas: the accent is lighter on the dark fills.
+    pulse: { waveOpacity: 0.32, popScale: 1.3 },
   },
 }

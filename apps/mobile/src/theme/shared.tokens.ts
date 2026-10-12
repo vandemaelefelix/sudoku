@@ -38,4 +38,4 @@ export const SHARED_SIZE: Theme['size'] = {
 
 export const SHARED_OPACITY: Theme['opacity'] = { disabled: 0.3, locked: 0.35 }
 
-export const SHARED_MOTION: Theme['motion'] = { short: 150, medium: 350, long: 700, pulseStep: 45 }
+export const SHARED_MOTION: Theme['motion'] = { short: 150, medium: 350, long: 700, pulseStep: 45, pop: 450 }
