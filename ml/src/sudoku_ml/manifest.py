@@ -2,6 +2,7 @@
 and its source. The folder of a cell is its digit. The kinds and the sources come from the table
 itself with the journal applied on top."""
 
+import argparse
 import csv
 import hashlib
 import io
@@ -32,6 +33,7 @@ CELL_FOLDERS = (*DIGIT_CLASSES, "unlabeled", "discarded")
 NO_KIND_FOLDERS = ("empty", "unlabeled", "discarded")
 CELL_FIELDS = ["cell_id", "digit", "kind", "photo_id", "row", "col"]
 RESTORE = "Restore it from git."
+UNCHANGED = "Check SUDOKU_IMAGES or restore the images. The table was not changed."
 
 
 @dataclass(frozen=True)
@@ -136,12 +138,38 @@ def _kind_column(cell_id: str, digit: str, kind: str | None) -> str:
     return kind or ""
 
 
-def write_cells_manifest(paths: DataPaths) -> int:
+def check_image_store(
+    paths: DataPaths, table: dict[str, CellRow], forget_missing: bool = False
+) -> None:
+    """Raises ValueError when the cell folder is missing, or when a row of the table has no file
+    any more. The tool never deletes a cell file, so a vanished cell means a wrong image store: a
+    worktree without .env, a typo in SUDOKU_IMAGES or a disk that is not mounted. A fold against
+    it would wipe the table. `forget_missing` accepts the missing cells (a CLI flag only)."""
+    if not paths.cells.is_dir():
+        raise ValueError(
+            f"The cell folder {paths.cells} does not exist, and {paths.cells_csv.name} has "
+            f"{len(table)} rows. {UNCHANGED}"
+        )
+    if forget_missing or not table:
+        return
+    on_disk = {p.stem for p in paths.cells.glob("*/*.png")}
+    gone = sorted(c for c in table if c[:16] not in on_disk)
+    if gone:
+        raise ValueError(
+            f"{len(gone)} of {len(table)} rows of {paths.cells_csv.name} have no file in "
+            f"{paths.cells}, e.g. {gone[0][:16]}. {UNCHANGED} To drop these rows, run: "
+            "just dataset-manifest --forget-missing"
+        )
+
+
+def write_cells_manifest(paths: DataPaths, forget_missing: bool = False) -> int:
     """Fold the journal into cells.csv: one row per cell file. The folder is the digit.
 
-    Raises ValueError on an unknown folder, a misnamed file, a duplicate id, a kind on an empty
-    cell, or a cells.csv that does not parse."""
+    Raises ValueError on a missing or wrong image store (see check_image_store), an unknown
+    folder, a misnamed file, a duplicate id, a kind on an empty cell, or a cells.csv that does
+    not parse."""
     table = read_cells_table(paths.cells_csv)
+    check_image_store(paths, table, forget_missing)
     lines = read_journal(paths.journal)
     kinds = current_kinds(lines, base_kinds(table))
     sources = current_sources(lines, base_sources(table))
@@ -187,22 +215,37 @@ def repair_lines(
     ]
 
 
-def repair_and_write(paths: DataPaths, now: datetime | None = None) -> int:
+def repair_and_write(
+    paths: DataPaths, now: datetime | None = None, forget_missing: bool = False
+) -> int:
     """`just dataset-manifest`: repair the kinds of moved cells, then fold the journal."""
     moment = now or datetime.now(UTC)
     table = read_cells_table(paths.cells_csv)
+    check_image_store(paths, table, forget_missing)
     kinds = current_kinds(read_journal(paths.journal), base_kinds(table))
     folder = {pixel_id(p): p.parent.name for p in paths.cells.glob("*/*.png")}
     session = f"{moment.astimezone(UTC):%Y%m%d-%H%M%S}-repair"
     lines = repair_lines(folder, kinds, format_time(moment), session)
     if lines:
         append_records(paths.journal, lines)
-    return write_cells_manifest(paths)
+    return write_cells_manifest(paths, forget_missing)
+
+
+def main(argv: list[str], paths: DataPaths | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="just dataset-manifest")
+    parser.add_argument(
+        "--forget-missing",
+        action="store_true",
+        help="drop the rows of cells whose file is gone. The page and Finish never do this.",
+    )
+    args = parser.parse_args(argv)
+    try:
+        print(repair_and_write(paths or DataPaths.under(), forget_missing=args.forget_missing))
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    try:
-        print(repair_and_write(DataPaths.under()))
-    except ValueError as error:
-        print(error, file=sys.stderr)
-        sys.exit(1)
+    sys.exit(main(sys.argv[1:]))
