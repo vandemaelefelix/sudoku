@@ -13,6 +13,18 @@ export const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.line,
     borderRadius: theme.shape.radius.pill,
   },
+  // The border takes the accent, so the paused pill keeps the size of the playing pill.
+  pausedPill: {
+    height: theme.size.pill.height,
+    paddingHorizontal: theme.size.pill.paddingHorizontal,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space.sm,
+    borderWidth: theme.shape.stroke.thin,
+    borderColor: theme.colors.accent,
+    borderRadius: theme.shape.radius.pill,
+    backgroundColor: theme.colors.accent,
+  },
   // The canvas shows plain muted time after the end: no border, no icon.
   endedPill: {
     height: theme.size.pill.height,
@@ -24,6 +36,12 @@ export const styles = StyleSheet.create((theme) => ({
     ...roleFont(theme.type.timer),
     fontSize: theme.type.timer.scale,
     color: theme.colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  pausedTime: {
+    ...roleFont(theme.type.timer),
+    fontSize: theme.type.timer.scale,
+    color: theme.colors.onAccent,
     fontVariant: ['tabular-nums'],
   },
   endedTime: {
