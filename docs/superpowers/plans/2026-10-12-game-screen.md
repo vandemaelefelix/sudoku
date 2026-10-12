@@ -76,19 +76,23 @@ No theme file changes: `Theme` already holds every token the canvas needs (`comp
 
 ### Wave 4 ownership
 
-Each wave 4 issue changes only the files in its row, and adds new files of its own. A file with no row stays as #37 leaves it.
+Each wave 4 issue changes only the files in its row, and adds new files of its own. All paths are under `apps/mobile/src/game/`. A file with no row stays as #37 leaves it.
 
-| Issue | Changes these #37 files | Mounts its new parts in |
+| Issue | Owns these #37 files | Mounts its new parts in |
 | --- | --- | --- |
-| #38 assists and settings | `hooks/useGameSession/*`, `constants/assists.constants.ts`, `utils/cell.utils.ts` (+ test) | `useGameSession` reads the saved assists |
-| #39 pause | `components/Board/*`, `components/TimerPill/*`, `hooks/useGameClock/*` | The pause layer in `Board`, the tap in `TimerPill`, AppState in `useGameClock` |
+| #38 assists and settings | `hooks/useAssists/*`, `hooks/useCellViews/*`, `constants/assists.constants.ts`, `utils/cell.utils.ts` (+ test) | `useAssists` returns the saved assists. It does not need `useGameSession` |
+| #39 pause | `hooks/useGameSession/*`, `hooks/useGameClock/*`, `components/Board/*`, `components/TimerPill/*` | The pause layer in `Board`, the tap in `TimerPill`, AppState in `useGameClock` and `useGameSession` |
 | #40 game over | `screens/GameScreen/*`, `components/MistakeDots/*` | The game over sheet in `GameScreen`, the warning haptic in `MistakeDots` |
 | #41 complete number keys | `components/Keypad/*`, `components/NumberKey/*` | — |
-| #42 pulses and haptics | `components/Grid/*`, `hooks/useMoveHaptics/*` | A pulse layer in `Grid` that reads `move` from `useGame()` |
+| #42 pulses and haptics | `components/Grid/*`, `hooks/useMoveHaptics/*` | A pulse layer in `Grid` that reads `move` from `useGameState()` |
 | #44 accessibility | `components/Cell/*`, `utils/cellLabel.utils.ts` (+ test) | Run #44 after the rest of wave 4: Dynamic Type also touches the timer pill (#39), the sheets (#40) and settings (#38) |
 | #27 scanned puzzle | none | `GameScreen` takes `start: NewGame`, so the scan hands over givens and entries. Its route belongs to the navigation of #51 |
 
-`session.utils.ts` already holds the `pause` and `resume` actions, so #39 does not change it. The core already locks a lost or won game, and #37 already disables the tools and the keypad when the status is not `playing`, so #39 and #40 do not change `Tools` or `Keypad`.
+No wave 4 issue changes these files: `utils/session.utils.ts`, `utils/grid.utils.ts`, `utils/time.utils.ts`, `utils/sample.utils.ts`, `constants/game.constants.ts`, `hooks/useGameState/*`, `hooks/useGameTime/*`, `hooks/useGameActions/*`, `components/GameProvider/*`, `components/Header/*`, `components/Tools/*`, `components/Icon/*` and `components/ThemeStatusBar/*`. `session.utils.ts` already holds the `pause` and `resume` actions. The core already locks a lost or won game, and #37 already disables the tools and the keypad when the status is not `playing`, so #39 and #40 do not change `Tools` or `Keypad`.
+
+### Render rule
+
+A clock tick and a theme switch MUST NOT render the grid again. Three contexts carry the game: `useGameActions()` (stable for the whole game), `useGameState()` (the board, notes mode and the last move; a tick keeps it) and `useGameTime()` (the time; only the timer pill reads it). No component above the grid reads a theme hook. `GameScreen.renders.test.tsx` counts the renders.
 
 ### How the screen is reached
 
