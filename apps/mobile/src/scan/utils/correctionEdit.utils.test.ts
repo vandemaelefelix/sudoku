@@ -1,6 +1,7 @@
 import { GRID_CELLS } from '@sudoku/core'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import {
+  cellPlace,
   clearCell,
   correctedGrid,
   correctionCellLabel,
@@ -119,6 +120,13 @@ describe('correctedGrid', () => {
     expect(grid.givens).toHaveLength(GRID_CELLS)
     expect(grid.entries).toHaveLength(GRID_CELLS)
     expect(grid.givens.slice(3).every((value) => value === 0)).toBe(true)
+  })
+})
+
+describe('cellPlace', () => {
+  it('says the row and the column, from 1', () => {
+    expect(cellPlace(0)).toBe('Row 1, column 1')
+    expect(cellPlace(23)).toBe('Row 3, column 6')
   })
 })
 

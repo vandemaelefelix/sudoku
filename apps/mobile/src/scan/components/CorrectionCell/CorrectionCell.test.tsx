@@ -65,7 +65,9 @@ it('calls onSelect with its index', () => {
 
 it('is not pressable without onSelect, as during the transition', () => {
   render(<CorrectionCell n={0} look={given} {...at} />)
-  expect(screen.getByTestId('correction-press-0').props.accessibilityState).toMatchObject({ disabled: true })
+  const press = screen.getByTestId('correction-press-0')
+  expect(press.props.accessibilityState).toMatchObject({ disabled: true })
+  expect(press.props.accessible).toBe(false)
 })
 
 it('gives VoiceOver the place, the kind, the digit and the selection', () => {

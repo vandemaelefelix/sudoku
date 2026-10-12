@@ -1,11 +1,13 @@
 import { Pressable, Text, View } from 'react-native'
 import type { Digit } from '@sudoku/core'
 import type { CellLook } from '@/scan/utils/correction.utils'
-import type { EntryKind } from '@/scan/utils/correctionEdit.utils'
-import { KINDS, PAD_ROWS } from './CorrectionPad.constants'
+import { cellPlace, type EntryKind } from '@/scan/utils/correctionEdit.utils'
+import { KIND_HIT_SLOP, KINDS, PAD_ROWS } from './CorrectionPad.constants'
 import { styles } from './CorrectionPad.styles'
 
 type CorrectionPadProps = {
+  /** The index of the selected cell, row-major. */
+  cell: number
   look: CellLook
   onDigit(digit: Digit): void
   onClear(): void
@@ -14,8 +16,10 @@ type CorrectionPadProps = {
 }
 
 /** The panel content while a cell is selected: the given / entry switch, Done, the digits and Clear. */
-export function CorrectionPad({ look, onDigit, onClear, onKind, onDone }: CorrectionPadProps) {
+export function CorrectionPad({ cell, look, onDigit, onClear, onKind, onDone }: CorrectionPadProps) {
   const empty = look.style === 'empty'
+  // The pad replaces the panel content, so each control says which cell it changes.
+  const hint = `Changes ${cellPlace(cell).toLowerCase()}`
   return (
     <View testID="correction-pad" style={styles.pad}>
       <View testID="correction-pad-kinds" style={styles.row}>
@@ -28,6 +32,8 @@ export function CorrectionPad({ look, onDigit, onClear, onKind, onDone }: Correc
                 testID={`correction-kind-${kind}`}
                 accessibilityRole="radio"
                 accessibilityLabel={label}
+                accessibilityHint={hint}
+                hitSlop={KIND_HIT_SLOP}
                 accessibilityState={{ checked: on, disabled: empty }}
                 disabled={empty}
                 onPress={() => onKind(kind)}
@@ -56,6 +62,7 @@ export function CorrectionPad({ look, onDigit, onClear, onKind, onDone }: Correc
               testID={`correction-key-${digit}`}
               accessibilityRole="button"
               accessibilityLabel={`Set ${digit}`}
+              accessibilityHint={hint}
               onPress={() => onDigit(digit)}
               style={styles.key}
             >
@@ -67,6 +74,7 @@ export function CorrectionPad({ look, onDigit, onClear, onKind, onDone }: Correc
               testID="correction-clear"
               accessibilityRole="button"
               accessibilityLabel="Clear the cell"
+              accessibilityHint={hint}
               onPress={onClear}
               style={styles.key}
             >

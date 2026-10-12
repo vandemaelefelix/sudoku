@@ -11,10 +11,10 @@ import Animated, {
 import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { CorrectionCell } from '@/scan/components/CorrectionCell'
-import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
-import { drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
 import { CorrectionPad } from '@/scan/components/CorrectionPad'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
+import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
+import { drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
 import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
@@ -153,6 +153,7 @@ export function CorrectionScreen({
             </View>
           ) : selectedLook ? (
             <CorrectionPad
+              cell={selected ?? 0}
               look={selectedLook}
               onDigit={actions.setDigit}
               onClear={actions.clear}
@@ -163,8 +164,10 @@ export function CorrectionScreen({
             <>
               <View style={styles.chips}>
                 {conflictCount > 0 && (
-                  <View style={styles.chipConflict}>
-                    <Text style={styles.chipConflictText}>{`● ${conflictCount} givens in conflict`}</Text>
+                  <View style={[styles.chip, styles.chipConflict]}>
+                    <Text
+                      style={[styles.chipText, styles.chipConflictText]}
+                    >{`● ${conflictCount} givens in conflict`}</Text>
                   </View>
                 )}
                 {toCheck > 0 ? (

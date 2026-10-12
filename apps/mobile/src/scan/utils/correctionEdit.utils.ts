@@ -76,8 +76,13 @@ export function correctedGrid(looks: readonly CellLook[]): CorrectedGrid {
 }
 
 /** The VoiceOver label of a correction cell, for example "Row 1, column 3, entry 7, check this cell". */
+/** The place of a cell for VoiceOver, for example "Row 1, column 3". cell: the index, row-major. */
+export function cellPlace(cell: number): string {
+  return `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`
+}
+
 export function correctionCellLabel(cell: number, look: CellLook, conflict: boolean): string {
-  const parts = [`Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`]
+  const parts = [cellPlace(cell)]
   parts.push(look.style === 'empty' ? 'empty' : `${look.style} ${look.digit}`)
   if (conflict) parts.push('same digit as another given')
   if (look.uncertain) parts.push('check this cell')

@@ -10,7 +10,7 @@ const style = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).
 
 function renderPad(look: CellLook = GIVEN_5) {
   const handlers = { onDigit: jest.fn(), onClear: jest.fn(), onKind: jest.fn(), onDone: jest.fn() }
-  render(<CorrectionPad look={look} {...handlers} />)
+  render(<CorrectionPad cell={11} look={look} {...handlers} />)
   return handlers
 }
 
@@ -45,6 +45,19 @@ it('disables the kind switch for an empty cell', () => {
   expect(screen.getByTestId('correction-kind-given').props.accessibilityState).toMatchObject({ disabled: true })
   fireEvent.press(screen.getByTestId('correction-kind-given'))
   expect(onKind).not.toHaveBeenCalled()
+})
+
+it('says which cell each control changes', () => {
+  renderPad()
+  for (const testID of ['correction-key-1', 'correction-clear', 'correction-kind-entry']) {
+    expect(screen.getByTestId(testID).props.accessibilityHint).toBe('Changes row 2, column 3')
+  }
+})
+
+it('gives each kind radio a touch target of 44 pt', () => {
+  renderPad()
+  const { hitSlop } = screen.getByTestId('correction-kind-given').props
+  expect(daylight.size.touch - 2 * daylight.space.xs + 2 * hitSlop).toBeGreaterThanOrEqual(daylight.size.touch)
 })
 
 it('calls onDone', () => {

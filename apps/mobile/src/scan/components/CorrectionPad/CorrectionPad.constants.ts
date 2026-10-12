@@ -7,6 +7,9 @@ export const PAD_ROWS: readonly (readonly Digit[])[] = [
   [6, 7, 8, 9],
 ]
 
+/** Points around each Given / Entry radio. The track inset makes the radio 8 pt lower than the 44 pt touch target. */
+export const KIND_HIT_SLOP = 4
+
 export const KINDS: readonly { kind: EntryKind; label: string }[] = [
   { kind: 'given', label: 'Given' },
   { kind: 'entry', label: 'Entry' },

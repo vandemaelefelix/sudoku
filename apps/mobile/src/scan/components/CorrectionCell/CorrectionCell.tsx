@@ -50,6 +50,8 @@ export const CorrectionCell = memo(function CorrectionCell({
     <>
       <Pressable
         testID={`correction-press-${n}`}
+        // During the transition the cells are not controls yet, so VoiceOver skips them.
+        accessible={!disabled}
         accessibilityRole="button"
         accessibilityLabel={correctionCellLabel(n, look, conflict)}
         accessibilityState={{ selected, disabled }}

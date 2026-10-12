@@ -29,13 +29,8 @@ export const styles = StyleSheet.create((theme) => ({
   },
   chipText: { fontSize: 13, fontWeight: '600', color: theme.colors.warningText },
   chips: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-  chipConflict: {
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: theme.shape.radius.pill,
-    backgroundColor: theme.colors.dangerSurface,
-  },
-  chipConflictText: { fontSize: 13, fontWeight: '600', color: theme.colors.danger },
+  chipConflict: { backgroundColor: theme.colors.dangerSurface },
+  chipConflictText: { color: theme.colors.danger },
   sure: { fontSize: 13, fontWeight: '500', color: theme.colors.textMuted },
   play: {
     alignItems: 'center',
