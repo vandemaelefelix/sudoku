@@ -63,6 +63,17 @@
   .swatch { display: inline-block; padding: 0 4px; color: #fff; font-weight: bold; }
   table { border-collapse: collapse; }
   th, td { padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right; }
+  #state:empty { display: none; }
+  #state { padding: 24px 0; font-size: 20px; font-weight: bold; }
+  #state .detail { font-size: 14px; font-weight: normal; margin-top: 8px; }
+  #state .buttons { display: flex; gap: 8px; margin-top: 12px; }
+  #state.error { color: #b00020; }
+  #state.done .mark { color: #1b7f3b; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #ccc;
+             border-top-color: #333; border-radius: 50%; animation: spin 0.8s linear infinite;
+             vertical-align: -3px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  main.state-hide #photos, main.state-hide #grid, main.state-hide #table { display: none; }
   td.todo { text-align: left; }
   #table .summary { font-size: 20px; font-weight: bold; margin: 0 0 8px; }
   #table .summary-line { margin: 0 0 12px; }
@@ -97,7 +108,7 @@
 <div id="banner" role="status"></div>
 <div id="folders"></div>
 <div id="message" role="status"></div>
-<main><div id="photos"></div><div id="grid"></div><div id="table"></div></main>
+<main id="main"><div id="state" role="status"></div><div id="photos"></div><div id="grid"></div><div id="table"></div></main>
 <aside>
   <details><summary>Help</summary><div id="help"></div></details>
   <h3>Pointed-at cell</h3>
@@ -205,6 +216,8 @@ let checkPage = 0;
 let busy = false;
 let checkDone = false;
 let progressData = null;  // the last /api/progress, for the banner
+let lastTarget;       // the target of the last open(), for Try again
+let checkError = "";
 let lastStatus = null;  // the last /api/status, for the banner
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
 let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
@@ -227,14 +240,153 @@ const DO = {
 const $ = (id) => document.getElementById(id);
 const say = (text) => { $("message").textContent = text || ""; };
 
+const TIMEOUT = { normal: 60000, slow: 300000 };  // the slow routes read every cell
+const SLOW_ROUTES = ["/api/review", "/api/check", "/api/prelabel"];
+const NO_SERVER = "Cannot reach the server. Check that it still runs. " +
+  "Start it again with just label-cells, then press Try again.";
+const TOO_SLOW = "The server did not answer in time. Press Try again.";
+
 async function api(path, body) {
   const options = body === undefined ? {} : {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   };
-  const response = await fetch(path, options);
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.error || response.statusText);
-  return value;
+  const controller = new AbortController();
+  const limit = SLOW_ROUTES.some((r) => path.startsWith(r)) ? TIMEOUT.slow : TIMEOUT.normal;
+  const timer = setTimeout(() => controller.abort(), limit);
+  try {
+    let response;
+    let value;
+    try {
+      response = await fetch(path, { ...options, signal: controller.signal });
+      value = await response.json();
+    } catch (error) {
+      if (error.name === "AbortError") throw new Error(TOO_SLOW);
+      if (response) throw new Error("The server sent an answer that the page cannot read.");
+      throw new Error(NO_SERVER);
+    }
+    if (!response.ok) throw new Error(value.error || response.statusText);
+    return value;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// The one visible state of the screen: loading, error, empty, done or ready.
+// kind "ready" shows the screen. The other kinds hide it, except a done state with keep.
+let view = { kind: "ready" };
+
+function showState(kind, text, buttons = [], detail = "", keep = false) {
+  view = { kind, text, buttons, detail, keep };
+  applyView();
+}
+
+function applyView() {
+  const box = $("state");
+  box.innerHTML = "";
+  box.className = view.kind;
+  $("main").className = view.kind !== "ready" && !view.keep ? "state-hide" : "";
+  if (view.kind === "ready") return;
+  const line = document.createElement("div");
+  if (view.kind === "loading") {
+    const spin = document.createElement("span");
+    spin.className = "spinner";
+    line.append(spin);
+  }
+  line.append(view.text);
+  box.append(line);
+  if (view.detail) {
+    const detail = document.createElement("div");
+    detail.className = "detail";
+    detail.textContent = view.detail;
+    box.append(detail);
+  }
+  if (view.buttons.length) {
+    const row = document.createElement("div");
+    row.className = "buttons";
+    for (const [label, action] of view.buttons) addButton(row, label, action);
+    box.append(row);
+  }
+}
+
+const isBlocked = () => view.kind !== "ready";
+// Undo and the kinds switch still work on an empty or finished screen.
+const allowedWhenBlocked = (key) => view.kind !== "loading" && view.kind !== "error" &&
+  (key === "z" || (key === "k" && mode === "digits"));
+
+function startLoading() {
+  const slow = mode === "review" || mode === "check";
+  showState("loading", "Loading…", [], slow ? "This takes about 30 seconds the first time." : "");
+  renderActions();
+}
+
+function fail(error) {
+  showState("error", error.message, [["Try again", () => open(mode, lastTarget)]]);
+  renderActions();
+}
+
+// A load that ended replaces the loading or error state. The derived state follows in render.
+function endLoading() {
+  if (view.kind === "loading" || view.kind === "error") view = { kind: "ready" };
+}
+
+const OPEN_DIGITS = ["Open Confirm digits", () => open("digits")];
+const OPEN_REVIEW = ["Open Review", () => open("review")];
+
+// What the data says about the screen. Runs after every render.
+function deriveView() {
+  if (view.kind === "loading" || view.kind === "error") return applyView();
+  const st = lastStatus;
+  if (mode === "photos" && !photo && st) {
+    if (st.photos_total === 0) {
+      return showState("empty", "No photos yet. Run just import-photos <folder>, then restart the server.");
+    }
+    return showState("done", "All photos are checked. ✓ Next: Confirm digits.", [OPEN_DIGITS]);
+  }
+  if (mode === "groups" && !screen && st) {
+    if (st.digit_cells === 0) {
+      return showState("empty", "No cells to label yet. Confirm digits first.", [OPEN_DIGITS]);
+    }
+    return showState("done", "Every cell has a kind. ✓ Next: Review.", [OPEN_REVIEW], STOP_SUSPECTS);
+  }
+  if (mode === "digits" && screen && !screen.left) return deriveDigits();
+  if (mode === "review" && screen && !screen.open) {
+    if (!screen.suspects) return showState("empty", REVIEW_NEVER);
+    return showState("done", "Nothing to review. ✓ All labels look fine.");
+  }
+  if (mode === "check" && !screen) {
+    if (checkDone) {
+      return showState("done", "The check is done. ✓ Next: open Review.", [OPEN_REVIEW], "", true);
+    }
+    return showState("empty", "Not enough labels to test yet.", [], checkError);
+  }
+  showState("ready");
+}
+
+const REVIEW_NEVER = "Nothing to review yet. Stop the server, run just suspects, start the server again.";
+
+function deriveDigits() {
+  const st = lastStatus;
+  const next = DIGITS.find((d) => screen.counts[d] > 0);
+  if (next) {
+    return showState("done", `No cells left for ${screen.digit}. ✓ Open digit ${next}.`,
+      [[`Open digit ${next}`, () => run(() => loadDigits(next))]]);
+  }
+  if (!st) return showState("ready");
+  if (st.digits > 0) {
+    return showState("empty", "No handwritten cells to show. Press K to show all kinds.",
+      [["Show all kinds", () => run(toggleKinds)]]);
+  }
+  const n = screen.not_prelabelled;
+  if (n) {
+    return showState("empty", `${n} new ${n === 1 ? "cell has" : "cells have"} no pre-label.`,
+      [["Pre-label new cells", () => run(prelabel)]]);
+  }
+  if (st.digit_cells === 0) {
+    return showState("empty", "No cells to confirm yet. Check photos first.",
+      [["Open Check photos", () => open("photos")]]);
+  }
+  showState("done", "All digits are confirmed. ✓ Next: Label kind.",
+    [["Open Label kind", () => open("groups")]]);
 }
 
 function cellsOnScreen() {
@@ -326,7 +478,8 @@ function title() {
 const goTo = (label, target) => [label, () => open(target)];
 
 async function prelabel() {
-  say("Pre-labelling. The first run takes a while.");
+  showState("loading", "Pre-labelling…", [], "The first run takes a while.");
+  renderActions();
   const count = (await api("/api/prelabel", {})).result;
   await reload();
   say(`Pre-labelled ${count} new cells.`);
@@ -336,6 +489,7 @@ const STOP_SUSPECTS = "Stop the server with Ctrl-C. Run just suspects. Start the
 
 // What to do next on this screen. An empty screen says what comes next, with a button for it.
 function bannerFor() {
+  if (view.kind === "loading" || view.kind === "error") return ["", []];
   if (mode === "photos") {
     if (photo) {
       return [corners ? `${DO.photos} Digits sideways? Press T. You cannot undo a photo.`
@@ -381,7 +535,10 @@ function bannerFor() {
     return [`Every cell has a kind. ${STOP_SUSPECTS}`, [goTo("Open Review", "review")]];
   }
   if (mode === "review") {
-    return screen && !screen.open ? [`Nothing to review yet. ${STOP_SUSPECTS}`, []] : [DO.review, []];
+    if (screen && !screen.open) {
+      return [screen.suspects ? "Nothing to review. ✓ All labels look fine." : REVIEW_NEVER, []];
+    }
+    return [DO.review, []];
   }
   if (mode === "check") {
     if (checkDone) return ["The check is done. Next: open Review.", [goTo("Open Review", "review")]];
@@ -390,7 +547,7 @@ function bannerFor() {
   if (!progressData) return ["", []];
   const left = cellsWithoutKind(progressData);
   return [left ? `${left} cells still need a kind. Press a button in the To do column.`
-    : "Every cell has a kind. Next: Review.", []];
+    : "Every cell has a kind. ✓ Next: Review.", []];
 }
 
 function renderBanner() {
@@ -448,6 +605,8 @@ function renderActions() {
     button.textContent = label;
     if (hint) button.title = hint;
     button.onclick = () => run(action);
+    const key = label[0].toLowerCase();
+    button.disabled = isBlocked() && !allowedWhenBlocked(key);
     footer.append(button);
   }
 }
@@ -491,7 +650,7 @@ function clickCorner(event) {
     corners = clicks;
     clicks = [];
     renderBanner();
-    refreshPreview().catch((error) => say(error.message));
+    refreshPreview().catch(fail);
   }
   drawQuad();
 }
@@ -519,6 +678,8 @@ async function renderPhoto() {
 
 async function loadPhoto(after) {
   photo = await api(`/api/photos/next${after ? `?after=${after}` : ""}`);
+  if (!photo) lastStatus = await api("/api/status");
+  endLoading();
   corners = photo && photo.corners;
   clicks = [];
   previewQuery = null;
@@ -572,12 +733,14 @@ function clearCorners() {
   corners = photo.corners;
   previewQuery = null;
   renderBanner();
-  renderPhoto().catch((error) => say(error.message));
+  renderPhoto().catch(fail);
 }
 
 async function loadDigits(next) {
   if (next) digit = next;
-  setScreen(await api(`/api/digits?digit=${digit}&kinds=${kinds}`));
+  const value = await api(`/api/digits?digit=${digit}&kinds=${kinds}`);
+  if (!value.left) lastStatus = await api("/api/status");
+  setScreen(value);
 }
 
 async function toggleKinds() {
@@ -590,6 +753,7 @@ function render() {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === mode);
   document.body.className = `mode-${mode}`;
   $("help").innerHTML = HELP[mode];
+  deriveView();
   renderBanner();
   renderFolders();
   renderActions();
@@ -633,6 +797,7 @@ function render() {
 }
 
 function setScreen(value) {
+  endLoading();
   screen = value;
   local = {};
   hovered = null;
@@ -650,7 +815,9 @@ function setScreen(value) {
 
 async function loadGroups(after) {
   const query = after ? `?folder=${after.folder}&group=${after.group}&page=${after.page}` : "";
-  setScreen(await api(`/api/next${query}`));
+  const value = await api(`/api/next${query}`);
+  if (!value) lastStatus = await api("/api/status");
+  setScreen(value);
 }
 
 async function reload() {
@@ -772,14 +939,16 @@ const PROGRESS_COLUMNS = [
 ];
 
 function renderProgress(value) {
+  endLoading();
   progressData = value;
+  render();
   renderBanner();
   const left = cellsWithoutKind(value);
   const table = $("table");
   table.innerHTML = "";
   const summary = document.createElement("p");
   summary.className = "summary";
-  summary.textContent = left ? `${left} cells still need a kind.` : "Every cell has a kind. Next: Review.";
+  summary.textContent = left ? `${left} cells still need a kind.` : "Every cell has a kind. ✓ Next: Review.";
   table.append(summary);
   const buttons = document.createElement("div");
   buttons.className = "buttons";
@@ -862,7 +1031,7 @@ async function run(action) {
   try {
     await action();
   } catch (error) {
-    say(error.message);
+    fail(error);
   } finally {
     busy = false;
     refreshStatus();
@@ -872,12 +1041,16 @@ async function run(action) {
 async function open(next, target) {
   if (busy) return;
   mode = next;
+  lastTarget = target;
   checkDone = false;
+  checkError = "";
   progressData = null;
   screen = null;
   local = {};
   hovered = null;
   say("");
+  startLoading();
+  render();
   await run(async () => {
     if (mode === "photos") {
       await loadPhoto();
@@ -887,21 +1060,19 @@ async function open(next, target) {
       setScreen(await api(`/api/screen?folder=${target.folder}&group=${target.group}&page=0`));
     } else if (mode === "groups") {
       await loadGroups();
-    } else if (mode === "review" || mode === "check") {
-      render();
-      say("Loading. The first time takes about half a minute: the server reads every cell to find near-duplicates.");
-      if (mode === "review") {
-        setScreen(await api("/api/review"));
-        say("");
+    } else if (mode === "review") {
+      setScreen(await api("/api/review"));
+    } else if (mode === "check") {
+      const value = await api("/api/check");
+      checkPage = 0;
+      if (value.error) {
+        checkError = value.error;
+        endLoading();
+        render();
       } else {
-        const value = await api("/api/check");
-        if (value.error) { render(); return say(value.error); }
-        checkPage = 0;
         setScreen(value);
-        say("");
       }
     } else {
-      render();
       renderProgress(await api("/api/progress"));
     }
   });
@@ -910,6 +1081,7 @@ async function open(next, target) {
 document.addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.target.tagName === "BUTTON" && event.key === "Enter") return;
   const key = event.key.toLowerCase();
+  if (isBlocked() && !allowedWhenBlocked(key)) return;
   if (mode === "photos") {
     if (key === "enter") run(acceptPhoto);
     else if (key === "r") run(rejectPhoto);
