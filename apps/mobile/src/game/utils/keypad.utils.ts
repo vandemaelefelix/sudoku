@@ -10,7 +10,7 @@ function easeOut(t: number): number {
 
 function fadeTo(doneOpacity: number, t: number): number {
   'worklet'
-  return 1 - (1 - doneOpacity) * t
+  return doneOpacity * t + (1 - t)
 }
 
 /** progress: 0 (open key) to 1 (complete key), linear in time. Reduce Motion keeps the scale at 1. */
