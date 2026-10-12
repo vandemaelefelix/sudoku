@@ -86,3 +86,27 @@ it('keeps the same board when only the time changes', () => {
   const paused = run(ticked, { type: 'pause' })
   expect(paused.board).toBe(paused.game)
 })
+
+it('resumes a game as it was saved', () => {
+  const played = run(
+    start(),
+    { type: 'select', cell: OPEN },
+    { type: 'toggleNotesMode' },
+    { type: 'digit', digit: 3 },
+    { type: 'toggleNotesMode' },
+    { type: 'digit', digit: 5 },
+    { type: 'tick', elapsedMs: 65_000 },
+  ).game
+  const session = startSession(played)
+  expect(session.game).toBe(played)
+  expect(session.board).toBe(played)
+  expect(session.game).toMatchObject({ mistakes: 1, playedMs: 65_000 })
+  expect(session.game.undoSteps).toHaveLength(2)
+  expect(session).toMatchObject({ notesMode: false, move: null })
+})
+
+it('starts a new game from the givens', () => {
+  const session = startSession(sampleStart())
+  expect(session.game).toMatchObject({ mistakes: 0, playedMs: 0, status: 'playing' })
+  expect(session.move).toBeNull()
+})
