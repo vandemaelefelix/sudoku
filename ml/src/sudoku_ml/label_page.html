@@ -63,7 +63,13 @@
   .swatch { display: inline-block; padding: 0 4px; color: #fff; font-weight: bold; }
   table { border-collapse: collapse; }
   th, td { padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right; }
-  td.groups { text-align: left; }
+  td.todo { text-align: left; }
+  #table .summary { font-size: 20px; font-weight: bold; margin: 0 0 8px; }
+  #table .summary-line { margin: 0 0 12px; }
+  #table .buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  #table .done { color: #1b7f3b; font-weight: bold; }
+  #table tfoot th, #table tfoot td { border-top: 2px solid #999; font-weight: bold; }
+  #table .notes { margin: 12px 0 0; }
   .photo-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
   .wrap { position: relative; padding: 120px; background: #444; cursor: crosshair; }
   .wrap img { display: block; max-width: 640px; max-height: 70vh; }
@@ -183,12 +189,12 @@ const HELP = {
   progress: `
     <h3>What to do</h3>
     <ol>
-      <li>Label every group on the Label kind screen.</li>
-      <li>Stop the server with Ctrl-C. Run <code>just suspects</code> in the terminal.</li>
+      <li>Read the sentence above the table. It says what is left.</li>
+      <li>Press a button in the To do column to label the cells without a kind.</li>
+      <li>When every row says Done, stop the server with Ctrl-C. Run <code>just suspects</code>.</li>
       <li>Start the server again. Work through the Review screen.</li>
       <li>After 7 days or more, run the Check screen.</li>
-    </ol>
-    <p>"No kind" counts the cells you still have to label. Click a group number to open it. The number in brackets is the cells without a kind in that group.</p>`,
+    </ol>`,
 };
 const PAGE = 50;
 let mode = "groups";
@@ -198,6 +204,7 @@ let hovered = null;
 let checkPage = 0;
 let busy = false;
 let checkDone = false;
+let progressData = null;  // the last /api/progress, for the banner
 let lastStatus = null;  // the last /api/status, for the banner
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
 let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
@@ -215,7 +222,6 @@ const DO = {
   groups: "Press P if most cells are printed, or H if most are handwritten. Click the odd ones. Press Enter.",
   review: "Click each cell with the wrong kind. Then press Enter.",
   check: "Label each cell again without looking back. Press Enter.",
-  progress: "Label every group. Stop the server with Ctrl-C. Run just suspects. Start the server again. Then open Review.",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -381,7 +387,10 @@ function bannerFor() {
     if (checkDone) return ["The check is done. Next: open Review.", [goTo("Open Review", "review")]];
     return screen ? [DO.check, []] : ["", []];
   }
-  return [DO.progress, []];
+  if (!progressData) return ["", []];
+  const left = cellsWithoutKind(progressData);
+  return [left ? `${left} cells still need a kind. Press a button in the To do column.`
+    : "Every cell has a kind. Next: Review.", []];
 }
 
 function renderBanner() {
@@ -732,25 +741,100 @@ function renderConfusion(confusion) {
   $("table").innerHTML = `<table><tr><th>Label \\ answer</th>${answers.map((a) => `<th>${a}</th>`).join("")}</tr>${rows.join("")}</table>`;
 }
 
+const cellsWithoutKind = (value) =>
+  Object.values(value.folders).reduce((sum, f) => sum + f.without, 0);
+
+// The first group of the folder with a missing kind. A finished folder opens at group 1.
+const firstGroup = (f) => Math.max(0, f.groups.findIndex((g) => g.without > 0));
+
+function addButton(parent, label, action) {
+  const button = document.createElement("button");
+  button.textContent = label;
+  button.onclick = action;
+  parent.append(button);
+}
+
+function checkLine(check) {
+  if (!check) return "Check: not done yet. Do it after 7 days.";
+  return `Check: you agreed with ${(check.agreement * 100).toFixed(1)} % of ${check.n} labels ` +
+    `(${check.date}).`;
+}
+
+const PROGRESS_COLUMNS = [
+  ["Digit", "The digit of these cells."],
+  ["Cells", "All cells in this folder."],
+  ["Printed", "Cells that you labelled printed."],
+  ["Handwritten", "Cells that you labelled handwritten."],
+  ["Unsure", "You could not decide. Training ignores these cells."],
+  ["Without a kind", "Cells that still need a printed or handwritten label."],
+  ["Digit corrected", "Cells that you moved to another digit after the first pass."],
+  ["To do", "What to do next in this folder."],
+];
+
 function renderProgress(value) {
-  const check = value.check
-    ? `${(value.check.agreement * 100).toFixed(1)} % on ${value.check.n} cells (${value.check.date})`
-    : "none yet";
-  $("title").textContent = `Progress · ${value.review_open} cells to review · last check: ${check}`;
-  const rows = Object.entries(value.folders).map(([folder, f]) =>
-    `<tr><th>${folder}/</th><td>${f.cells}</td><td>${f.printed}</td><td>${f.handwritten}</td>` +
-    `<td>${f.unsure}</td><td>${f.without}</td><td>${f.moved_out}</td><td class="groups">` +
-    f.groups.map((g) => `<a href="#" data-folder="${folder}" data-group="${g.group}">${g.group + 1}` +
-      `${g.without ? ` (${g.without})` : ""}</a>`).join(" · ") + "</td></tr>");
-  $("table").innerHTML = "<table><tr><th>Folder</th><th>Cells</th><th>Printed</th><th>Handwritten</th>" +
-    "<th>Unsure</th><th>No kind</th><th>Moved out</th><th>Groups (cells without a kind)</th></tr>" +
-    rows.join("") + "</table>";
-  for (const a of $("table").querySelectorAll("a")) {
-    a.onclick = (event) => {
-      event.preventDefault();
-      open("groups", { folder: a.dataset.folder, group: Number(a.dataset.group) });
-    };
+  progressData = value;
+  renderBanner();
+  const left = cellsWithoutKind(value);
+  const table = $("table");
+  table.innerHTML = "";
+  const summary = document.createElement("p");
+  summary.className = "summary";
+  summary.textContent = left ? `${left} cells still need a kind.` : "Every cell has a kind. Next: Review.";
+  table.append(summary);
+  const buttons = document.createElement("div");
+  buttons.className = "buttons";
+  if (left) {
+    for (const [folder, f] of Object.entries(value.folders)) {
+      if (f.without) {
+        addButton(buttons, `Digit ${folder}: ${f.without} cells`,
+          () => open("groups", { folder, group: firstGroup(f) }));
+      }
+    }
+  } else {
+    addButton(buttons, "Open Review", () => open("review"));
+    const line = document.createElement("p");
+    line.className = "summary-line";
+    line.textContent = STOP_SUSPECTS;
+    table.append(line);
   }
+  table.append(buttons);
+  const grid = document.createElement("table");
+  grid.innerHTML = "<thead><tr>" + PROGRESS_COLUMNS.map(([name, tip]) =>
+    `<th title="${tip}">${name}</th>`).join("") + "</tr></thead><tbody></tbody><tfoot></tfoot>";
+  const sum = (key) => Object.values(value.folders).reduce((n, f) => n + f[key], 0);
+  for (const [folder, f] of Object.entries(value.folders)) {
+    const row = grid.tBodies[0].insertRow();
+    row.innerHTML = `<th>${folder}</th><td>${f.cells}</td><td>${f.printed}</td><td>${f.handwritten}</td>` +
+      `<td>${f.unsure}</td><td>${f.without}</td><td>${f.moved_out}</td><td class="todo"></td>`;
+    const todo = row.lastElementChild;
+    if (f.without) {
+      addButton(todo, `Label ${f.without} cells`, () => open("groups", { folder, group: firstGroup(f) }));
+    } else {
+      todo.innerHTML = '<span class="done">Done</span> ';
+    }
+    const look = document.createElement("a");
+    look.href = "#";
+    look.textContent = "Look again";
+    look.onclick = (event) => {
+      event.preventDefault();
+      open("groups", { folder, group: 0 });
+    };
+    todo.append(" ", look);
+  }
+  grid.tFoot.insertRow().innerHTML = "<th>Total</th>" +
+    ["cells", "printed", "handwritten", "unsure", "without", "moved_out"]
+      .map((key) => `<td>${sum(key)}</td>`).join("") + "<td></td>";
+  table.append(grid);
+  const notes = document.createElement("p");
+  notes.className = "notes";
+  notes.innerHTML = "";
+  for (const text of [`Review: ${value.review_open} cells to look at.`, checkLine(value.check)]) {
+    const line = document.createElement("div");
+    line.textContent = text;
+    notes.append(line);
+  }
+  table.append(notes);
+  $("title").textContent = "Progress";
 }
 
 async function refreshStatus() {
@@ -789,6 +873,7 @@ async function open(next, target) {
   if (busy) return;
   mode = next;
   checkDone = false;
+  progressData = null;
   screen = null;
   local = {};
   hovered = null;
