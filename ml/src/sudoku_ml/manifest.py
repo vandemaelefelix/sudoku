@@ -9,7 +9,9 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.kind_log import current_kinds, read_log
 
-LABELS = (*DIGIT_CLASSES, "unlabeled")
+# Training reads only DIGIT_CLASSES. `unlabeled` waits for a label. `discarded` holds cells that
+# a person rejected in the digit pass: bad cuts, unreadable marks.
+LABELS = (*DIGIT_CLASSES, "unlabeled", "discarded")
 
 
 def pixel_id(path: Path) -> str:
@@ -26,7 +28,7 @@ def _kind_column(cell_id: str, label: str, logged: str | None) -> str:
         if logged is not None:
             raise ValueError(f"{cell_id[:16]}: an empty cell has the logged kind {logged}")
         return "none"
-    if label == "unlabeled":
+    if label in ("unlabeled", "discarded"):
         return ""
     return logged or ""
 
