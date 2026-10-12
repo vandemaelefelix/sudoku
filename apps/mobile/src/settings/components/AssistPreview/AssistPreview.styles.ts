@@ -8,6 +8,5 @@ export const styles = StyleSheet.create((theme) => ({
     borderBottomColor: theme.colors.line,
     backgroundColor: theme.colors.background,
   },
-  // The canvas draws the preview 180 pt wide: cells of about 20 pt.
-  frame: { width: 180, height: 180 },
+  frame: { width: theme.size.preview, height: theme.size.preview },
 }))

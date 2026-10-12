@@ -22,10 +22,9 @@ export const styles = StyleSheet.create((theme, rt) => ({
   title: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
   section: { gap: theme.space.sm, marginTop: theme.space.xs },
   sectionTitle: {
-    ...roleFont(theme.type.label),
-    fontSize: theme.type.label.scale,
-    // The canvas spaces the uppercase heading by 0.06 em.
-    letterSpacing: theme.type.label.scale * 0.06,
+    ...roleFont(theme.type.section),
+    fontSize: theme.type.section.scale,
+    letterSpacing: theme.type.section.scale * theme.type.section.tracking,
     textTransform: 'uppercase',
     color: theme.colors.textMuted,
   },
