@@ -339,6 +339,8 @@ def test_the_page_explains_the_photos_and_digits_screens(served):
         "Press <b>Pre-label new cells</b>",
         "Stop the server with Ctrl-C.",
         "1 Check photos",
+        "T · Turn grid 90°",
+        "Digits sideways? Press T.",
         "Do the red lines follow the grid?",
     ):
         assert text in page

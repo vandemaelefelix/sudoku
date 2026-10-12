@@ -302,7 +302,7 @@ const STOP_SUSPECTS = "Stop the server with Ctrl-C. Run just suspects. Start the
 function bannerFor() {
   if (mode === "photos") {
     if (photo) {
-      return [corners ? `${DO.photos} You cannot undo a photo.`
+      return [corners ? `${DO.photos} Digits sideways? Press T. You cannot undo a photo.`
         : "No grid found. Click the 4 corners, then press Enter.", []];
     }
     if (!lastStatus) return ["", []];
@@ -386,7 +386,9 @@ const ACTIONS = {
   photos: [["Enter · Accept grid", () => acceptPhoto(), "Cut the cells from this grid outline."],
            ["R · Reject: not a sudoku", () => rejectPhoto(), "Never use this photo."],
            ["S · Skip: decide later", () => skipPhoto(), "Look at it again after the other photos."],
-           ["C · Reset corners", () => clearCorners(), "Go back to the outline that the import found."]],
+           ["C · Reset corners", () => clearCorners(), "Go back to the outline that the import found."],
+           ["T · Turn grid 90°", () => turnGrid(),
+            "Use this when the digits in the right image lie sideways or upside down."]],
   digits: [["Enter · confirm screen", () => save()], ["K · handwritten or all kinds", () => toggleKinds()],
            ["Z · undo", () => undo()]],
   progress: [],
@@ -503,6 +505,17 @@ async function skipPhoto() {
   if (!photo) return;
   await loadPhoto(photo.stem);
   say("Skipped. The photo comes back after the others.");
+}
+
+// A cyclic shift keeps the quad convex. The cells turn 90° clockwise. Four turns return to the start.
+async function turnGrid() {
+  if (!photo || !corners) return;
+  corners = [corners[3], corners[0], corners[1], corners[2]];
+  clicks = [];
+  previewQuery = null;
+  drawQuad();
+  renderBanner();
+  await refreshPreview();
 }
 
 function clearCorners() {
@@ -776,6 +789,7 @@ document.addEventListener("keydown", (event) => {
     else if (key === "r") run(rejectPhoto);
     else if (key === "s") run(skipPhoto);
     else if (key === "c") clearCorners();
+    else if (key === "t") run(turnGrid);
     return;
   }
   if (mode === "digits" && (/^[0-9]$/.test(key) || key === "x")) {
