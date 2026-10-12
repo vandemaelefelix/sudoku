@@ -63,7 +63,10 @@ describe('save and read', () => {
     settings.getSync = () => {
       throw new Error('disk')
     }
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
     expect(readThemePreference(settings)).toBe('system')
+    expect(log).toHaveBeenCalledWith('[theme] saved theme unreadable: disk')
+    log.mockRestore()
   })
   it('reads system when the saved value is broken', () => {
     expect(readThemePreference(createMemorySettings({ [THEME_PREFERENCE_KEY]: 'sepia' }))).toBe('system')

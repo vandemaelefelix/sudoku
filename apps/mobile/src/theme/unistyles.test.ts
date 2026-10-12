@@ -32,6 +32,7 @@ it.each([
 it('configures Unistyles to follow the system when the store throws', () => {
   jest.isolateModules(() => {
     const configure = jest.spyOn(require('react-native-unistyles').StyleSheet, 'configure')
+    jest.spyOn(console, 'log').mockImplementationOnce(() => {})
     jest.mocked(require('expo-sqlite/kv-store').default.getItemSync).mockImplementationOnce(() => {
       throw new Error('disk')
     })
