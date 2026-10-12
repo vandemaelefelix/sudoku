@@ -72,6 +72,8 @@ export type Theme = {
     noteInset: number
     /** The side of the assist preview grid. Cells of about 20 pt. */
     preview: number
+    /** The finish card width and the side of its grid, in points. */
+    card: { width: number; grid: number }
   }
   /** disabled: a control that cannot act now. locked: the controls of a game that ended. */
   opacity: { disabled: number; locked: number }
@@ -92,6 +94,24 @@ export type Theme = {
     pop: number
   }
   components: {
+    /** The same in both themes, as on the design canvas. The gradient runs top, middle, bottom at 150°. */
+    finishCard: {
+      top: string
+      middle: string
+      bottom: string
+      text: string
+      textMuted: string
+      given: string
+      entry: string
+      line: string
+      boxLine: string
+      shine: string
+      shineCool: string
+      shineWarm: string
+      shineClear: string
+      badge: string
+      badgeText: string
+    }
     grid: { frame: string; boxLine: string; cellLine: string }
     cell: {
       fill: string

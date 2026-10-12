@@ -40,6 +40,9 @@ export const MIGRATIONS: readonly string[] = [
   `UPDATE game_in_progress
     SET saved_game = json_set(saved_game, '$.version', 2, '$.startEntries', json('${NO_START_ENTRIES}'))
     WHERE CASE WHEN json_valid(saved_game) THEN json_extract(saved_game, '$.version') END = 1;`,
+  // A scanned game and a game saved before this migration have no seed (ADR-012, amendment "the seed").
+  `ALTER TABLE game_in_progress ADD COLUMN seed INTEGER CHECK (seed IS NULL OR seed >= 0);
+  ALTER TABLE game_history ADD COLUMN seed INTEGER CHECK (seed IS NULL OR seed >= 0);`,
 ]
 
 /**

@@ -79,6 +79,16 @@ gets a level in v1, against the bullet "Scanned puzzles get no level in v1" abov
 - The technique solver (#53) replaces this rule. Then a scanned puzzle gets the level of its
   techniques (point 5).
 
+## Amendment: the puzzle number (2026-10-12)
+
+The finish card shows the number of a generated puzzle (#43). The seed is that number.
+
+- The app draws seeds from 0 to 999 999, so the number stays short: "Puzzle 412 077".
+  `generate()` still accepts every seed from 0 to 0xffffffff.
+- One million puzzles per level is enough for v1. A player meets a puzzle twice only by chance.
+- The seed is stored with the game in progress and the history (ADR-012, amendment "the seed").
+- A scanned puzzle has no seed. Its card says "Scanned from paper".
+
 ## Consequences
 
 - The technique set grows over time. Each new technique makes hints better and grading finer,

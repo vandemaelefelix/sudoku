@@ -91,8 +91,14 @@ The **finish card** shows the result of a solved puzzle:
 - the source: "Scanned from paper" with a scan icon, or the puzzle number,
 - the date.
 
-The card tilts a little with the movement of the phone. An ADR decides the motion sensor
-before the card is built.
+The card shows after the solve pulse. With Reduce Motion on, it shows at once.
+
+- "New best" shows when the game counts toward the best time and its time is shorter than the
+  stored best time of the level. Only a won generated game without hints counts (ADR-012). The
+  first counted win at a level is a new best.
+- The puzzle number is the seed of a generated puzzle (ADR-011).
+- The card tilts a little with the movement of the phone, and a shine moves over it (ADR-017).
+  With Reduce Motion on, it does not tilt.
 
 ### Settings
 
@@ -118,7 +124,7 @@ The Settings screen has two groups:
 
 | Question | Decided by |
 | --- | --- |
-| The motion sensor that tilts the finish card | An ADR in issue #43 |
+| The motion sensor that tilts the finish card | Decided: ADR-017 |
 | Which cell a hint picks. V1 picks a random empty or wrong cell. Hints that teach a technique come later (ADR-011) | Issue #45, after this epic |
 | An option to turn off the entry check | Issue #46, after this epic |
 | VoiceOver labels for each cell and Dynamic Type sizes | Issue #44 |

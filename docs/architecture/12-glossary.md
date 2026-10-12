@@ -92,6 +92,7 @@ status: DRAFT
 | Hint | A move that fills one cell with its correct number. It counts once. ADR-011 decides which cell the hint picks |
 | Complete number | A number with all nine placed correctly. Its key is disabled. Wrong placements do not count |
 | Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
+| Puzzle number | The seed of a generated puzzle, shown on the finish card: "Puzzle 412 077". The app draws seeds below 1 000 000 (ADR-011) |
 | Pulse | The short wave of colour that spreads from a cell when a correct number completes a row, column, box, number or the whole grid. A haptic tap goes with it |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
@@ -104,12 +105,12 @@ status: DRAFT
 | Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
 | Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
 | Solution | The full grid that the givens allow. A playable puzzle has exactly one |
-| Seed | An integer that names one generated puzzle. The same seed and level give the same puzzle on every device (ADR-011) |
+| Seed | An integer that names one generated puzzle. The same seed and level give the same puzzle on every device (ADR-011). The app stores it with the game (ADR-012) |
 | Time played | The time a game counted while its status was playing. The app tells the core how much time passed. The core never reads a clock |
 | Saved game | A game as a plain object with a version number, so the app can store it and load it again (ADR-012) |
 | Game in progress | The one game that the app saves after every move, so the player can resume it. Starting a new game discards it (ADR-012) |
 | History | The list of won and lost games: level, source, result, time played, mistakes, hints and date (ADR-012) |
-| Best time | The shortest time played of a won game at one level |
+| Best time | The shortest time played of a won generated game without hints, at one level (ADR-012) |
 | Home screen | The first screen of the app. It lists the levels, offers Continue for the game in progress, and links to Scan and Settings |
 | Continue | The home screen button that resumes the game in progress at its last move, with its time played |
 | Route | One screen that the app can show, at one path, such as `/game`. A file in `src/app/` defines it (ADR-016) |

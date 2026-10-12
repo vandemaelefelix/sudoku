@@ -1,4 +1,5 @@
 import {
+  SHARED_FINISH_CARD,
   SHARED_MOTION,
   SHARED_OPACITY,
   SHARED_SHAPE,
@@ -45,6 +46,7 @@ export const daylight: Theme = {
   },
   motion: SHARED_MOTION,
   components: {
+    finishCard: SHARED_FINISH_CARD,
     grid: { frame: colors.lineStrong, boxLine: colors.lineStrong, cellLine: colors.line },
     cell: {
       fill: colors.surface,
