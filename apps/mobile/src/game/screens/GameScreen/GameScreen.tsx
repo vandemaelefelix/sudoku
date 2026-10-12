@@ -12,7 +12,7 @@ import { styles } from './GameScreen.styles'
 
 type GameScreenProps = { start: NewGame; onBack(): void }
 
-/** The game screen of the design canvas. start is read once: a new puzzle needs a new key. */
+/** The game screen of the design canvas. GameProvider reads start once. Give the screen a new React key for a new puzzle. */
 export function GameScreen({ start, onBack }: GameScreenProps) {
   const { theme } = useUnistyles()
   const insets = useSafeAreaInsets()
