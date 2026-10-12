@@ -2,11 +2,13 @@ import { act, render } from '@testing-library/react-native'
 import { useEffect } from 'react'
 import type { NewGame } from '@sudoku/core'
 import { GameProvider } from '@/game/components/GameProvider'
+import { NO_PULSE } from '@/game/constants/pulse.constants'
 import { useGameActions, type GameActions } from '@/game/hooks/useGameActions'
+import type { Pulse } from '@/game/hooks/usePulse'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { Grid } from './Grid'
 
-const mockSeen = { renders: 0, pulses: new Set<unknown>() }
+const mockSeen = { renders: 0, pulses: new Set<Pulse | undefined>() }
 
 jest.mock('@/game/components/Cell', () => {
   const { createElement, memo } = jest.requireActual<typeof import('react')>('react')
@@ -55,6 +57,8 @@ it('renders only the changed cells on a move that completes a row, and nothing w
   expect(mockSeen.renders).toBeGreaterThan(0)
   expect(mockSeen.renders).toBeLessThan(81)
   const afterMove = mockSeen.renders
+  const [pulse] = [...mockSeen.pulses]
+  expect(pulse?.delays.get().slice(0, 9)).not.toContain(NO_PULSE)
   act(() => jest.advanceTimersByTime(2000))
   expect(mockSeen.renders).toBe(afterMove)
   expect(mockSeen.pulses.size).toBe(1)
