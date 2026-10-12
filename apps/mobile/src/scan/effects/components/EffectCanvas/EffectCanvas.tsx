@@ -9,11 +9,21 @@ import type { CaptureFrame } from '@/scan/utils/transition.utils'
 import { advance, advanceCapture, type Engine } from '@/scan/effects/engine'
 import { DEFAULT_EFFECT, EFFECTS, effectAt } from '@/scan/effects/registry'
 import { makeDrawKit } from '@/scan/effects/kit'
+import { formatLockReport, type LockReport, lockReport } from '@/scan/effects/scene'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { devLog } from '@/utils/log.utils'
+import { LOCK_LOG_INTERVAL } from './EffectCanvas.constants'
 
 function logOverlay(id: string, fps: number, overlayMs: number) {
   devLog('fx', `${id} ${fps.toFixed(1)} fps, overlay ${overlayMs.toFixed(2)} ms`)
+}
+
+function logLock(report: LockReport) {
+  devLog('lock', formatLockReport(report))
+}
+
+function logLockWithoutQuad() {
+  devLog('lock', 'locked, but frameQuad is null: onLock not called')
 }
 
 /**
@@ -21,7 +31,6 @@ function logOverlay(id: string, fps: number, overlayMs: number) {
  * effect: an index into EFFECTS. Only the JS thread writes it, and only when the developer picks an effect.
  * frameQuad: the same grid, normalised to the upright frame. onLock: called once per scene, on the JS thread, with frameQuad at lock-on.
  * capture: the transition frame (the dots follow its quad), or null in the live phase. While it is set, outline is ignored and onLock is not called.
- * armed: false after a scan or a Retake, so the new scene does not lock on again on the same puzzle (scan-pipeline concept).
  * beforeFrame: runs first in each UI frame, with the frame timestamp in milliseconds. The transition clock steps here, so the
  * overlay draws the grid of this frame.
  */
@@ -33,7 +42,6 @@ export function EffectCanvas({
   onLock,
   capture,
   beforeFrame,
-  armed = true,
 }: {
   outline: SharedValue<Quad | null>
   view: SharedValue<ViewSize>
@@ -42,7 +50,6 @@ export function EffectCanvas({
   onLock: (quad: Quad) => void
   capture?: SharedValue<CaptureFrame | null>
   beforeFrame?: (timestamp: number) => void
-  armed?: boolean
 }) {
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
@@ -61,6 +68,7 @@ export function EffectCanvas({
   const engine = useSharedValue<Engine | null>(null)
   const picture = useSharedValue(empty)
   const timing = useSharedValue(EMPTY_WINDOW)
+  const lockLoggedAt = useSharedValue(-1)
 
   useFrameCallback((frame) => {
     'worklet'
@@ -77,7 +85,7 @@ export function EffectCanvas({
       'worklet'
       if (captured != null && current != null)
         return advanceCapture(current, active, captured.quad, t, captured.channels, captured.crossFade)
-      return advance(current, active, size, quad, t, reduceMotion, armed)
+      return advance(current, active, size, quad, t, reduceMotion)
     }, true)
     const now = engine.get()
     if (now == null) return
@@ -85,6 +93,14 @@ export function EffectCanvas({
     if (captured == null && now.scene.lockedAt === t) {
       const locked = frameQuad.get()
       if (locked != null) scheduleOnRN(onLock, locked)
+      else if (__DEV__) scheduleOnRN(logLockWithoutQuad)
+    }
+    if (__DEV__ && captured == null) {
+      const last = lockLoggedAt.get()
+      if (last < 0 || t - last >= LOCK_LOG_INTERVAL) {
+        lockLoggedAt.set(t)
+        scheduleOnRN(logLock, lockReport(now.scene))
+      }
     }
     picture.set(
       createPicture((canvas) => {

@@ -22,7 +22,7 @@ export function ScanFlow() {
   )
   const [phase, setPhase] = useState<Phase>({ phase: 'live' })
   const play = useScannedStart()
-  // A new key mounts a new CameraScreen: the effect scene keeps its lock-on latch and the flattened grid otherwise.
+  // A new key mounts a new CameraScreen: the effect scene, its warm-up and the flattened grid start new.
   const [scene, setScene] = useState(0)
 
   const retake = useCallback(() => {
@@ -39,6 +39,5 @@ export function ScanFlow() {
       </>
     )
   }
-  // Only the first scene arms at once. After a Retake the same puzzle is often still in view.
-  return <CameraScreen key={scene} layout={layout} onDone={done} onRetake={retake} armed={scene === 0} />
+  return <CameraScreen key={scene} layout={layout} onDone={done} onRetake={retake} />
 }

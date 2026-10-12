@@ -12,7 +12,6 @@ export type Engine = { id: string; scene: Scene; state: unknown }
  * One frame on the UI thread: the scene first, then the active effect.
  * A new view size gives a new scene and a new effect state. Another effect id gives a new effect state, and the scene stays.
  * The id decides, not the registry index: a Fast Refresh can give an index to another effect.
- * armed: applies only to a new scene, see createScene.
  */
 export function advance(
   engine: Engine | null,
@@ -21,11 +20,10 @@ export function advance(
   quad: Quad | null,
   t: number,
   reduceMotion: boolean,
-  armed = true,
 ): Engine {
   'worklet'
   if (engine == null || engine.scene.width !== view.width || engine.scene.height !== view.height) {
-    const scene = stepScene(createScene(view, armed), quad, t, reduceMotion)
+    const scene = stepScene(createScene(view), quad, t, reduceMotion)
     return { id: effect.id, scene, state: effect.step(effect.create(scene), scene) }
   }
   const scene = stepScene(engine.scene, quad, t, reduceMotion)
