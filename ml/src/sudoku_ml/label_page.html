@@ -65,7 +65,7 @@
   th, td { padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right; }
   #state:empty { display: none; }
   #state { padding: 24px 0; font-size: 20px; font-weight: bold; }
-  #state .detail { font-size: 14px; font-weight: normal; margin-top: 8px; }
+  #state .detail { font-size: 14px; font-weight: normal; margin-top: 8px; white-space: pre-line; }
   #state .buttons { display: flex; gap: 8px; margin-top: 12px; }
   #state.error { color: #b00020; }
   #state.done .mark { color: #1b7f3b; }
@@ -102,6 +102,8 @@
     <button class="tool" data-mode="review"><span class="label">Review</span><small>Fix doubtful labels</small></button>
     <button class="tool" data-mode="check"><span class="label">Check</span><small>Test your own labels</small></button>
     <button class="tool" data-mode="progress"><span class="label">Progress</span><small>Overview</small></button>
+    <span class="divider"></span>
+    <button class="tool" id="finish" title="Save and tidy up. Your unlabelled cells and pending photos stay."><span class="label">Finish</span><small>Save and tidy up</small></button>
   </nav>
   <span id="title"></span>
 </header>
@@ -197,6 +199,7 @@ const HELP = {
     </ol>
     <p>Each disagreement goes to the Review screen. Your answers never change a label.</p>
     ${LEGEND}`,
+  finish: "",
   progress: `
     <h3>What to do</h3>
     <ol>
@@ -215,6 +218,7 @@ let hovered = null;
 let checkPage = 0;
 let busy = false;
 let checkDone = false;
+let finishResult = null;  // the last /api/finish
 let progressData = null;  // the last /api/progress, for the banner
 let lastTarget;       // the target of the last open(), for Try again
 let checkError = "";
@@ -241,7 +245,7 @@ const $ = (id) => document.getElementById(id);
 const say = (text) => { $("message").textContent = text || ""; };
 
 const TIMEOUT = { normal: 60000, slow: 300000 };  // the slow routes read every cell
-const SLOW_ROUTES = ["/api/review", "/api/check", "/api/prelabel"];
+const SLOW_ROUTES = ["/api/review", "/api/check", "/api/prelabel", "/api/finish"];
 const NO_SERVER = "Cannot reach the server. Check that it still runs. " +
   "Start it again with just label-cells, then press Try again.";
 const TOO_SLOW = "The server did not answer in time. Press Try again.";
@@ -315,6 +319,9 @@ const allowedWhenBlocked = (key) => view.kind !== "loading" && view.kind !== "er
 
 function startLoading() {
   const slow = mode === "review" || mode === "check";
+  if (mode === "finish") {
+    return showState("loading", "Finishing…", [], "The tool checks every cell and photo. This takes a while.");
+  }
   showState("loading", "Loading…", [], slow ? "This takes about 30 seconds the first time." : "");
   renderActions();
 }
@@ -335,6 +342,7 @@ const OPEN_REVIEW = ["Open Review", () => open("review")];
 // What the data says about the screen. Runs after every render.
 function deriveView() {
   if (view.kind === "loading" || view.kind === "error") return applyView();
+  if (mode === "finish" && finishResult) return finishPanel(finishResult);
   const st = lastStatus;
   if (mode === "photos" && !photo && st) {
     if (st.photos_total === 0) {
@@ -469,6 +477,8 @@ function title() {
       `${screen.not_prelabelled ? ` · ${screen.not_prelabelled} cells without a pre-label` : ""}`;
   } else if (mode === "photos") {
     return;
+  } else if (mode === "finish") {
+    text = "Finish";
   } else {
     text = "Progress";
   }
@@ -544,7 +554,7 @@ function bannerFor() {
     if (checkDone) return ["The check is done. Next: open Review.", [goTo("Open Review", "review")]];
     return screen ? [DO.check, []] : ["", []];
   }
-  if (!progressData) return ["", []];
+  if (mode === "finish" || !progressData) return ["", []];
   const left = cellsWithoutKind(progressData);
   return [left ? `${left} cells still need a kind. Press a button in the To do column.`
     : "Every cell has a kind. ✓ Next: Review.", []];
@@ -595,6 +605,7 @@ const ACTIONS = {
   digits: [["Enter · confirm screen", () => save()], ["K · handwritten or all kinds", () => toggleKinds()],
            ["Z · undo", () => undo()]],
   progress: [],
+  finish: [],
 };
 
 function renderActions() {
@@ -997,7 +1008,9 @@ function renderProgress(value) {
   const notes = document.createElement("p");
   notes.className = "notes";
   notes.innerHTML = "";
-  for (const text of [`Review: ${value.review_open} cells to look at.`, checkLine(value.check)]) {
+  const lines = [`Review: ${value.review_open} cells to look at.`, checkLine(value.check)];
+  if (value.link_line) lines.push(value.link_line[0].toUpperCase() + value.link_line.slice(1) + ".");
+  for (const text of lines) {
     const line = document.createElement("div");
     line.textContent = text;
     notes.append(line);
@@ -1024,6 +1037,23 @@ async function refreshStatus() {
   }
 }
 
+const FINISH_NEXT = "Commit the lists: git add ml/datasets and commit.";
+
+function finishPanel(result) {
+  const report = result.report;
+  const counts = (items) => Object.entries(items).map(([name, n]) => `${name} ${n}`).join(", ");
+  const removed = result.removed.length ? result.removed.join(", ") : "nothing";
+  const link = report.link_line;
+  return showState("done", "Finished. Nothing is lost if you stop now.", [], [
+    `Cells: ${counts(report.cells)}.`,
+    `Photos: ${counts(report.photos)}.`,
+    `${link[0].toUpperCase()}${link.slice(1)}.`,
+    `Still waiting: ${result.still_waiting.cells} cells, ${result.still_waiting.photos} photos.`,
+    `Removed: ${removed}.`,
+    FINISH_NEXT,
+  ].join("\n"));
+}
+
 async function run(action) {
   // A held or double Enter would otherwise send the same screen twice.
   if (busy) return;
@@ -1044,6 +1074,7 @@ async function open(next, target) {
   lastTarget = target;
   checkDone = false;
   checkError = "";
+  finishResult = null;
   progressData = null;
   screen = null;
   local = {};
@@ -1060,6 +1091,10 @@ async function open(next, target) {
       setScreen(await api(`/api/screen?folder=${target.folder}&group=${target.group}&page=0`));
     } else if (mode === "groups") {
       await loadGroups();
+    } else if (mode === "finish") {
+      finishResult = (await api("/api/finish", {})).result;
+      endLoading();
+      render();
     } else if (mode === "review") {
       setScreen(await api("/api/review"));
     } else if (mode === "check") {
@@ -1111,7 +1146,8 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-for (const b of document.querySelectorAll("nav button")) b.onclick = () => open(b.dataset.mode);
+for (const b of document.querySelectorAll("nav button[data-mode]")) b.onclick = () => open(b.dataset.mode);
+$("finish").onclick = () => open("finish");
 open("groups");
 </script>
 </body>
