@@ -1,0 +1,6 @@
+export type { GameStorage } from './gameStorage.types'
+export type { BestTimes, HistoryRepository } from './HistoryRepository'
+export { createMemoryStorage } from './memoryStorage'
+export { openStorage } from './openStorage'
+export type { PuzzleRepository } from './PuzzleRepository'
+export type { GameResult, HistoryEntry, Level, PuzzleSource, SavedProgress, StorageDeps } from './storage.types'
