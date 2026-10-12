@@ -46,8 +46,15 @@ export type SessionAction =
   | { type: 'resume' }
   | { type: 'tick'; elapsedMs: number }
 
-export function startSession(start: NewGame): Session {
-  const game = createGame(start)
+/** A new game from its givens, or a saved game to resume as it is. */
+export type GameStart = NewGame | Game
+
+function isGame(start: GameStart): start is Game {
+  return 'status' in start
+}
+
+export function startSession(start: GameStart): Session {
+  const game = isGame(start) ? start : createGame(start)
   return { game, board: game, notesMode: false, move: null }
 }
 

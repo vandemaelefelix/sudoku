@@ -15,6 +15,11 @@ export type Game = {
   readonly solution: readonly number[]
   /** 0 on every cell with a given. */
   readonly entries: readonly number[]
+  /**
+   * The entries that came with the start and that the player did not make, such as scanned digits.
+   * 0 on every other cell. No action changes them.
+   */
+  readonly startEntries: readonly number[]
   /** Sorted. Empty on every cell with a given or an entry. */
   readonly notes: readonly (readonly Digit[])[]
   readonly selected: number | null
