@@ -3,6 +3,8 @@ cells of an accepted photo into cells/unlabeled/ (ADR-009, amendment of 2026-10-
 
 import csv
 import io
+import sys
+import uuid
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -23,11 +25,18 @@ from sudoku_ml.flatten import (
 )
 from sudoku_ml.kind_log import append_records, format_time, read_records
 from sudoku_ml.manifest import pixel_id
-from sudoku_ml.photo_import import PhotoPaths, read_detections, read_photos
+from sudoku_ml.photo_import import (
+    PhotoPaths,
+    detect_outline,
+    read_detections,
+    read_photos,
+    write_detections,
+)
 
 MIN_CELLS = 10  # fewer usable cells are not worth the labelling time
 DISPLAY_SIZE = 1600
 ORIGIN_FIELDS = ["cell", "photo", "row", "col"]
+LINK_LINE = "linked {linked} of {total} cells; the others come from before the link existed"
 FLAT_CACHE = 16  # flattened grids: the person moves across the cells of several photos
 
 
@@ -40,6 +49,18 @@ class PhotoDecision:
     reason: str
     corners: list[list[float]] | None
     cells: int  # cells cut
+
+
+def clear_temp(paths: PhotoPaths) -> int:
+    """Delete the cells that a stopped cut left behind. `unlabeled/tmp-cut.png` is the name of
+    the earlier cut. Returns the number of files deleted."""
+    leftovers = [*paths.tmp.glob("*"), paths.cells / "unlabeled" / "tmp-cut.png"]
+    found = [p for p in leftovers if p.is_file()]
+    for path in found:
+        path.unlink()
+    if found:
+        print(f"Deleted {len(found)} leftover files of a stopped cut.", file=sys.stderr)
+    return len(found)
 
 
 class PhotoCheck:
@@ -59,16 +80,20 @@ class PhotoCheck:
         return len(self._rows())
 
     def pending(self) -> list[str]:
-        detections, decided = read_detections(self.paths.detections), self._decided()
-        return [
-            stem
-            for stem, row in self._rows().items()
-            if row["id"] in detections and row["id"] not in decided
-        ]
+        decided = self._decided()
+        return [stem for stem, row in self._rows().items() if row["id"] not in decided]
+
+    def _outline(self, stem: str, photo_id: str) -> dict:
+        # The file holds pending photos only. A missing entry is computed again and stored.
+        detections = read_detections(self.paths.detections)
+        if photo_id not in detections:
+            detections[photo_id] = detect_outline(self._image(stem))
+            write_detections(self.paths.detections, detections)
+        return detections[photo_id]
 
     def photo(self, stem: str) -> dict:
         row = self._rows()[stem]
-        found = read_detections(self.paths.detections)[row["id"]]
+        found = self._outline(stem, row["id"])
         return {
             "id": row["id"],
             "stem": stem,
@@ -146,6 +171,12 @@ class PhotoCheck:
             self._origins = (mtime, rows)
         return self._origins[1]
 
+    def link_line(self, cells: list[str]) -> str:
+        """How many of `cells` (full ids) have an origin row. Cheap, for the Progress page."""
+        rows = self._origin_rows()
+        linked = sum(cell[:16] in rows for cell in cells)
+        return LINK_LINE.format(linked=linked, total=len(cells))
+
     def _accepted_corners(self, photo_id: str) -> list[list[float]] | None:
         found = None
         for d in read_records(self.paths.checks, PhotoDecision):
@@ -203,6 +234,9 @@ class PhotoCheck:
             format_time(self._now()), self.session, photo_id, decision, reason, corners, cells
         )
         append_records(self.paths.checks, [line])
+        detections = read_detections(self.paths.detections)
+        if detections.pop(photo_id, None) is not None:
+            write_detections(self.paths.detections, detections)
 
     def reject(self, stem: str, reason: str) -> None:
         row = self._open(stem)
@@ -217,20 +251,23 @@ class PhotoCheck:
             return {"decision": "too-few-cells", "cells": 0, "duplicates": 0, "new_cells": []}
         target = self.paths.cells / "unlabeled"
         target.mkdir(parents=True, exist_ok=True)
+        # A cut outside cells/ that is renamed in: a stop never leaves a misnamed cell in a
+        # cell folder (ADR-009).
+        self.paths.tmp.mkdir(parents=True, exist_ok=True)
         existing = {p.stem for p in self.paths.cells.glob("*/*.png")}
         new_cells, origins, duplicates = [], [], 0
         cells = slice_cells(warp_grid(self._image(stem), checked))
         for n, (cell, ok) in enumerate(zip(cells, usable, strict=True)):
             if not ok:
                 continue
-            tmp = target / "tmp-cut.png"
+            tmp = self.paths.tmp / f"{uuid.uuid4().hex}.png"
             Image.fromarray(cell).save(tmp)
             cell_id = pixel_id(tmp)
             if cell_id[:16] in existing:
                 tmp.unlink()
                 duplicates += 1
                 continue
-            tmp.rename(target / f"{cell_id[:16]}.png")
+            tmp.replace(target / f"{cell_id[:16]}.png")
             existing.add(cell_id[:16])
             new_cells.append(cell_id)
             r, c = divmod(n, GRID_CELLS)

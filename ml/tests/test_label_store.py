@@ -167,10 +167,17 @@ def test_a_large_group_takes_several_screens(tmp_path: Path):
     assert sum(c["least_sure"] for c in first["cells"]) == 6
 
 
-def test_the_store_refuses_cells_missing_from_the_manifest(tmp_path: Path):
+def test_the_store_reads_cells_missing_from_the_manifest(tmp_path: Path):
     paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    add_cell(paths.cells, "7", pattern(999))
-    with pytest.raises(ValueError, match="just dataset-manifest"):
+    cell_id = add_cell(paths.cells, "7", pattern(999))
+    assert LabelStore(paths, Clock()).folder[cell_id] == "7"
+
+
+def test_the_store_refuses_a_misnamed_cell(tmp_path: Path):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    stray = paths.cells / "7" / ("f" * 16 + ".png")
+    Image.fromarray(pattern(998)).save(stray)
+    with pytest.raises(ValueError, match="not named after its pixels"):
         LabelStore(paths, Clock())
 
 

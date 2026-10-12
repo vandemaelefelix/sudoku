@@ -19,7 +19,7 @@ class Line:
     field: str  # "kind" or "digit"
     old: str | None
     new: str | None
-    screen: str  # "groups", "review", "digits" or "undo"
+    screen: str  # "groups", "review", "digits", "undo" or "repair"
 
 
 def read_records[T](path: Path, cls: type[T]) -> list[T]:

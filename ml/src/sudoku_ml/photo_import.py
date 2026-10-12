@@ -90,6 +90,25 @@ def read_detections(path: Path) -> dict[str, dict]:
     return json.loads(path.read_text()) if path.exists() else {}
 
 
+def write_detections(path: Path, detections: dict[str, dict]) -> None:
+    """Replace the file in one step: a stop in the middle must not leave half a file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(path.name + ".part")
+    part.write_text(json.dumps(detections))
+    part.replace(path)
+
+
+def detect_outline(rgb) -> dict:
+    found = find_grid(rgb)
+    return {
+        "corners": found.corners,
+        "lines": found.lines,
+        "reason": found.reason,
+        "width": int(rgb.shape[1]),
+        "height": int(rgb.shape[0]),
+    }
+
+
 def _scraper_sources(folder: Path) -> dict[str, dict[str, str]]:
     """File name → origin, licence and attribution, from a manifest.jsonl of the scraper."""
     for candidate in (folder / "manifest.jsonl", folder.parent / "manifest.jsonl"):
@@ -143,21 +162,13 @@ def import_folder(
         stored = paths.photos / f"{photo_id[:16]}{path.suffix.lower()}"
         shutil.copy2(path, stored)
         rgb = load_upright(stored)
-        found = find_grid(rgb)
-        detections[photo_id] = {
-            "corners": found.corners,
-            "lines": found.lines,
-            "reason": found.reason,
-            "width": int(rgb.shape[1]),
-            "height": int(rgb.shape[0]),
-        }
+        detections[photo_id] = detect_outline(rgb)
         rows.append({"id": photo_id, "file": stored.name, **source})
         known.add(photo_id)
         counts["imported"] += 1
         # Write after each photo: a crash then loses at most the photo in progress.
         write_photos(paths.manifest, rows)
-        paths.detections.parent.mkdir(parents=True, exist_ok=True)
-        paths.detections.write_text(json.dumps(detections))
+        write_detections(paths.detections, detections)
     return counts
 
 

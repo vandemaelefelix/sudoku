@@ -27,6 +27,7 @@ from sudoku_ml.kind_log import (
     undone_actions,
 )
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
+from sudoku_ml.manifest import pixel_id
 from sudoku_ml.preprocess import to_cell_image
 from sudoku_ml.relabel import move_cells
 from sudoku_ml.synthetic import Sample
@@ -99,13 +100,29 @@ class LabelStore:
         self.folder: dict[str, str] = {}
         for path in self.paths.cells.glob("*/*.png"):
             if path.stem not in self._stem_ids:
-                raise ValueError(
-                    f"{path} is not in {self.paths.manifest}. Run: just dataset-manifest"
-                )
+                # A stop before the manifest rewrite leaves cells that cells.csv does not list.
+                cell_id = pixel_id(path)
+                if cell_id[:16] != path.stem:
+                    raise ValueError(f"{path} is not named after its pixels ({cell_id[:16]})")
+                self._stem_ids[path.stem] = cell_id
             self.folder[self._stem_ids[path.stem]] = path.parent.name
         self.lines = read_log(self.paths.log)
         self.checks = read_records(self.paths.checks, CheckLine)
         self._seen_size = self._log_size()
+
+    def repair(self) -> int:
+        """Drop the kind of a cell that sits in empty/. A stop between the file move and the log
+        line of `move` leaves one. The folder is the truth for the digit (ADR-009). The lines
+        carry their own session, so undo and rollback never reverse them."""
+        session = f"{self.session}-repair"
+        t, kinds = self._t(), self.kinds()
+        lines = [
+            Line(t, session, f"{session}-1", cell, "kind", kinds[cell], None, "repair")
+            for cell, folder in self.folder.items()
+            if folder == "empty" and kinds.get(cell) is not None
+        ]
+        self._write(lines)
+        return len(lines)
 
     def _refresh(self) -> None:
         # `just label-rollback` in another terminal appends to the log and moves files.
