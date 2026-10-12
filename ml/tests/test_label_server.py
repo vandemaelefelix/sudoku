@@ -146,9 +146,7 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
         def server_close(self):
             pass
 
-    monkeypatch.setattr(
-        "sudoku_ml.label_server.make_server", lambda store, check=None, prelabel=None: Interrupted()
-    )
+    monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Interrupted())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], tmp_path) == 0
     assert paths.manifest.read_text().splitlines()[1].endswith(",handwritten")
@@ -245,9 +243,7 @@ def test_the_server_starts_without_groups(tmp_path, monkeypatch):
         def server_close(self):
             pass
 
-    monkeypatch.setattr(
-        "sudoku_ml.label_server.make_server", lambda store, check=None, prelabel=None: Interrupted()
-    )
+    monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Interrupted())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], tmp_path) == 0
 
@@ -410,3 +406,40 @@ def test_an_unexpected_error_gets_a_500_with_a_message_and_the_server_keeps_serv
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_the_finish_route_answers_with_the_result_or_a_plain_error(tmp_path: Path):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    answers = [{"removed": ["groups.json"]}, ValueError("Finish stopped and deleted nothing.")]
+
+    def finish() -> dict:
+        answer = answers.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    server = make_server(LabelStore(paths, Clock()), finish=finish, port=0)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        status, data = request(server.server_port, "POST", "/api/finish", {})
+        assert status == 200 and json.loads(data) == {"result": {"removed": ["groups.json"]}}
+        status, data = request(server.server_port, "POST", "/api/finish", {})
+        assert status == 400 and "deleted nothing" in json.loads(data)["error"]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_the_finish_route_is_missing_without_a_finish_function(served):
+    port, _, _ = served
+    status, data = request(port, "POST", "/api/finish", {})
+    assert status == 404 and json.loads(data) == {"error": "no finish"}
+
+
+def test_the_progress_route_says_how_many_cells_are_linked(served_photos):
+    port, _, _, stem = served_photos
+    _, data = request(port, "GET", "/api/progress")
+    assert json.loads(data)["link_line"].startswith("linked 0 of 3 cells; the others come from")
+    request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
+    _, data = request(port, "GET", "/api/progress")
+    assert json.loads(data)["link_line"].startswith("linked 35 of 38 cells")

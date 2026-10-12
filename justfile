@@ -103,11 +103,13 @@ group-cells run="":
 prelabel-cells run="":
     uv run --directory ml python -m sudoku_ml.prelabel {{run}}
 
-# Open the labelling page on 127.0.0.1. The manifest is rewritten before the start and at Ctrl-C
+# Open the labelling page on 127.0.0.1. At the start it repairs a stopped session, rewrites the manifest and pre-labels new cells
 label-cells:
-    just dataset-manifest
-    just prelabel-cells
     uv run --directory ml python -m sudoku_ml.label_server
+
+# Check that cells, photos and manifests agree, and print a report. Exit code 1 on a problem
+check-data:
+    uv run --directory ml python -m sudoku_ml.data_check
 
 # Reverse every change of one labelling session
 label-rollback session:

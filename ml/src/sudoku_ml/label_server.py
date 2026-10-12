@@ -12,9 +12,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from sudoku_ml.finish import finish
 from sudoku_ml.label_store import LabelStore, Paths
 from sudoku_ml.manifest import write_cells_manifest
-from sudoku_ml.photo_check import PhotoCheck
+from sudoku_ml.photo_check import PhotoCheck, clear_temp
 from sudoku_ml.photo_import import PhotoPaths
 
 PAGE = Path(__file__).with_name("label_page.html")
@@ -35,6 +36,7 @@ def make_server(
     store: LabelStore,
     check: PhotoCheck | None = None,
     prelabel: Callable[[], int] | None = None,
+    finish: Callable[[], dict] | None = None,
     host: str = "127.0.0.1",
     port: int = 8765,
 ) -> HTTPServer:
@@ -119,7 +121,10 @@ def make_server(
                         }
                     )
                 elif url.path == "/api/progress":
-                    self._json(store.progress())
+                    progress = store.progress()
+                    if check is not None:
+                        progress["link_line"] = check.link_line(list(store.folder))
+                    self._json(progress)
                 elif url.path == "/api/digits":
                     self._json(store.digit_screen(q["digit"], q.get("kinds", "handwritten")))
                 elif check is None and url.path.startswith(PHOTO_ROUTES):
@@ -175,6 +180,7 @@ def make_server(
                 "/api/check": lambda b: store.check_answer(b["answers"]),
                 "/api/assign": lambda b: store.assign(b["cells"], b["screen"]),
                 "/api/prelabel": lambda b: prelabel(),
+                "/api/finish": lambda b: finish(),
                 "/api/photos/accept": lambda b: accept(b["photo"], b["corners"]),
                 "/api/photos/reject": lambda b: reject(b["photo"], b["reason"]),
             }
@@ -182,8 +188,9 @@ def make_server(
             if route is None:
                 self._json({"error": "not found"}, 404)
                 return
-            if prelabel is None and urlparse(self.path).path == "/api/prelabel":
-                self._json({"error": "no prelabel"}, 404)
+            name = urlparse(self.path).path
+            if (name, None) in (("/api/prelabel", prelabel), ("/api/finish", finish)):
+                self._json({"error": f"no {name.removeprefix('/api/')}"}, 404)
                 return
             try:
                 length = int(self.headers.get("Content-Length", 0))
@@ -215,14 +222,36 @@ def prelabel_new_cells(ml_root: Path) -> int:
         raise ValueError(f"The pre-label failed: {error}") from error
 
 
+def waiting_line(store: LabelStore, check: PhotoCheck) -> str:
+    cells = sum(folder == "unlabeled" for folder in store.folder.values())
+    return f"Waiting: {cells} cells in unlabeled/, {len(check.pending())} photos pending."
+
+
 def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
     paths = Paths.under(ml_root)
+    photo_paths = PhotoPaths.under(ml_root)
+    # A stop in the middle of a cut leaves a file that must not stay (ADR-009).
+    clear_temp(photo_paths)
     store = LabelStore(paths)
-    check = PhotoCheck(PhotoPaths.under(ml_root), store.session, lambda: datetime.now(UTC))
+    check = PhotoCheck(photo_paths, store.session, lambda: datetime.now(UTC))
     if argv[1:2] == ["rollback"]:
         print(f"Reversed {store.rollback(argv[2])} lines.")
         return 0
-    server = make_server(store, check=check, prelabel=lambda: prelabel_new_cells(ml_root))
+    repaired = store.repair()
+    if repaired:
+        print(f"Repaired {repaired} kinds on empty cells after a stop.")
+    write_cells_manifest(paths.cells, paths.manifest, paths.log)
+    try:
+        print(f"Pre-labelled {prelabel_new_cells(ml_root)} new cells.")
+    except ValueError as error:
+        print(error)
+    print(waiting_line(store, check))
+    server = make_server(
+        store,
+        check=check,
+        prelabel=lambda: prelabel_new_cells(ml_root),
+        finish=lambda: finish(store, photo_paths),
+    )
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Session {store.session}. Open {url}. Stop with Ctrl-C.")
     webbrowser.open(url)
