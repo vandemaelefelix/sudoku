@@ -10,6 +10,13 @@ it('strokes the path of the icon in the colour of its tone', () => {
   expect(path.props.style).toBe('stroke')
 })
 
+it('draws the play icon in the colour on the accent', () => {
+  render(<Icon name="play" tone="onAccent" size={16} />)
+  const path = screen.getByTestId('skia-path')
+  expect(path.props.path).toBe('M8 5l11 7-11 7z')
+  expect(path.props.color).toBe(daylight.colors.onAccent)
+})
+
 it('draws the small icons with a thicker line', () => {
   render(<Icon name="pause" tone="text" size={16} />)
   expect(screen.getByTestId('skia-path').props.strokeWidth).toBe(2)
