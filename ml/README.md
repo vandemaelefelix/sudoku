@@ -3,6 +3,8 @@
 Training, evaluation and export of the cell classifier. A standalone uv project. It shares only
 files with the app: `contracts/`, `fixtures/` and the promoted model (SUD-07).
 
+The labelling tool has its own short guide: [LABELLING.md](LABELLING.md).
+
 ## Commands
 
 Run these from the repository root. Run `just --list` for all commands.
@@ -10,84 +12,70 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just train [config]`: train the two-head classifier. A run writes to `ml/artifacts/`.
 - `just export <run>`: export a run to TFLite. The run path is relative to `ml/`, for example `just export artifacts/<run>`.
 - `just preprocess-fixtures`: regenerate the synthetic reference pairs in `fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
-- `just dataset-manifest`: rewrite `ml/datasets/cells.csv` from the folders.
+- `just dataset-manifest`: rewrite `data/cells.csv` from the cell folders and the journal.
 - `just suspects`: rank the cells whose digit or kind label the model doubts most. The Review screen shows them.
 - `just group-cells [run]`: group similar cells per digit folder for the labelling page.
-- `just import-photos <folder> [--origin O] [--licence L]`: copy new sudoku photos into `ml/data/photos/` and find the grid in each.
+- `just import-photos <folder> [--source S] [--licence L]`: copy new sudoku photos into the image store and find the grid in each.
 - `just prelabel-cells [run]`: let a model propose a digit and a kind for each cell in `unlabeled/` and a kind for each cell in the digit folders. `just label-cells` runs it first.
 - `just label-cells`: open the labelling page on 127.0.0.1.
-- `just label-rollback <session>`: reverse every change of one labelling session.
-- `just relabel [file]`: apply the labels from a relabel CSV to the cells.
+- `just label-rollback <session>`: reverse every change of one unfinished labelling session. A finished session needs git.
+- `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
+- `just check-data`: check that the images and the tables agree. Exit code 1 on a problem.
+- `just migrate-layout <old_ml_root> [--apply] [--force]`: copy the old `ml/datasets/` and `ml/data/` layout into `data/` (ADR-018). A dry run without `--apply`.
 
 Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
 stays private (ADR-013).
 
 ## Data
 
-Do not delete `ml/data/`. Until it has a backup, it holds the only copy of the images.
+Do not delete the image store. Until it has a backup, it holds the only copy of the images.
 
-Images live in `ml/data/` and are not in git. Their manifests live in `ml/datasets/` and are in
-git, so every dataset version is exact and reviewable (ADR-009). Where the images come from, and
-what they may be used for, is in [DATA_SOURCES.md](DATA_SOURCES.md).
+The real dataset lives in `data/` at the repository root (ADR-018). [data/README.md](../data/README.md)
+says what is where and what is in git. The images are not in git. The two tables are in git, so
+every dataset version is exact and reviewable. Where the images come from, and what they may be
+used for, is in [DATA_SOURCES.md](DATA_SOURCES.md).
 
-```
-ml/data/
-├── cells/
-│   ├── empty/  1/ … 9/        one folder per digit class of the model contract
-│   ├── unlabeled/             cells that still need a label
-│   └── discarded/             cells a person rejected; training ignores them
-├── photos/                    full sudoku photos
-└── work/                      derived files; outside git; safe to delete at any time
-    ├── prelabels.json         the model's proposals: digit, kind and how sure it is of the kind
-    ├── detections.json        the proposed outline per pending photo
-    ├── suspects.csv           the likely wrong labels, from just suspects
-    ├── groups.json            the groups of cells, from just group-cells
-    └── tmp/                   cells being cut; the next start deletes leftovers
-ml/datasets/
-├── cells.csv                  id, label, kind
-├── photos.csv                 id, file, origin, licence, attribution
-├── photo-checks.jsonl         one line per photo decision
-├── cell-origins.csv           cell, photo, row, col
-├── kind-log.jsonl             every kind and digit change, append-only
-└── kind-check.jsonl           blind check answers
-```
+- The `cell_id` and the `photo_id` are the SHA-256 of the text `<width>x<height>` followed by the
+  image's RGB pixel bytes, row by row. The file name is the first 16 characters of the id. The
+  folders hold each image once.
+- The digit of a cell is the folder it is in. The `digit` column of `cells.csv` must match it.
+- The kind of a digit cell is `printed` (made by a printer or a screen), `handwritten` (written by
+  a person) or `unsure` (undecidable). Training ignores `unsure`.
+- `source` and `licence` in `sudoku-photos.csv` say where a sudoku photo comes from and how it
+  may be used.
+- The model runs stay in `ml/artifacts/`, outside git.
 
-- The `id` of an image is the SHA-256 of the text `<width>x<height>` followed by the image's
-  RGB pixel bytes, row by row. The file name is the first 16 characters of the id. The folders
-  hold each image once.
-- The label of a cell is the folder it is in. `cells.csv` must match the folders.
-- `origin` and `licence` in `photos.csv` say where a photo comes from and how it may be used (see DATA_SOURCES.md).
-- The kind of a cell comes from `kind-log.jsonl` (ADR-009, amendment). `printed` means made by
-  a printer or a screen. `handwritten` means written by a person. Undecidable cells are `unsure`.
-
-The files `photos.csv` and `cells.csv` list every photo and every cell. Count their rows to get
-the size of the dataset.
+Count the rows of `cells.csv` and `sudoku-photos.csv` to get the size of the dataset.
+`data/STATUS.md` holds the counts of the last Finish.
 
 ## Import photos and label their digits
 
-1. Run `just import-photos <folder> --origin phone --licence own`. A folder from the sudoku
+1. Run `just import-photos <folder> --source phone --licence own`. A folder from the sudoku
    paper scraper has a `manifest.jsonl`, so it needs no options.
-2. Run `just label-cells`. Open the **Photos** screen. Accept each photo, fix its 4 corners or
-   reject it. Accepted photos give cells in `cells/unlabeled/`.
+2. Run `just label-cells`. Open the **Photos** screen. Accept each sudoku photo, fix its 4
+   corners or reject it. Accepted sudoku photos give cells in `cells/unlabeled/`.
 3. Press **Pre-label new cells** on the Digits screen. The next start of `just label-cells` also
    pre-labels the new cells.
 4. Open the **Digits** screen. Click the cells that are not the digit in the title. Press Enter.
 5. Label the kind of the new cells on the Groups screen, as below.
 
-6. Press **Finish** in the header. It checks the data, rewrites `cells.csv` and deletes the
-   derived files in `ml/data/work/`. It is safe to press twice. Your unlabelled cells and pending
-   photos stay.
-7. Commit the lists: `git add ml/datasets` and commit.
+6. Press **Finish** in the header. Finish folds the journal into `cells.csv`, checks the data,
+   writes `data/STATUS.md` and deletes the journal and the derived files in `data/work/`. It is
+   safe to press twice. Your unlabelled cells and pending sudoku photos stay. After Finish, Z
+   can no longer undo the finished changes. Git keeps the old tables.
+7. Commit the tables: `git add data` and commit. Git never adds the images or `data/work/`.
 
-The tool works on the real data in `ml/data/` and `ml/datasets/`. It has no scratch copy. You can
-stop at any time: Ctrl-C, a closed terminal or a crash. Every label you saved stays. Unlabelled
-cells stay in `cells/unlabeled/`. Pending photos stay pending. The next start repairs what the
-stop left, deletes leftover files in `ml/data/work/tmp/` and prints how many cells and photos wait.
+The tool works on the real data in `data/` and the image store. It has no scratch copy. You can
+stop at any time: Ctrl-C, a closed terminal or a crash. Every label you saved stays in the
+journal. Unlabelled cells stay in `cells/unlabeled/`. Pending sudoku photos stay pending. The next
+start repairs what the stop left, deletes leftover files in `data/work/tmp/` and prints how many
+cells and sudoku photos wait.
 
-Every cell and photo has a SHA-256 pixel id, and no id appears twice. Run `just check-data` to
-test this. It also tests that the manifests match the files. It prints a short report and exits
-with 1 on a problem. The report says how many cells are linked to their photo, row and column.
-Cells cut before the link existed have no link.
+Every cell and sudoku photo has a SHA-256 pixel id, and no id appears twice. Run
+`just check-data` to test this. It also tests that the tables match the files and follow their
+rules. It prints a short report and exits with 1 on a problem. The report says how many cells
+are linked to their sudoku photo, row and column. Cells cut before the link existed have no
+link.
 
 ## Label the kind
 
@@ -99,6 +87,8 @@ Cells cut before the link existed have no link.
    that are wrong, then press Enter. In the "other" group, press P or H first.
 4. After a labelling pass, run `just suspects`. Then work through the Review screen.
 5. At least 7 days later, run the Check screen. It shows how often you agree with your labels.
+   A kind from `cells.csv` (finished) counts as old enough.
 
 Stop the server with Ctrl-C. The server then rewrites `cells.csv`, so training sees the new labels.
-Commit `ml/datasets/kind-log.jsonl`, `kind-check.jsonl` and `cells.csv` after a session.
+Press Finish at the end of a session. Then commit `data/`: `cells.csv`, `sudoku-photos.csv`,
+`kind-checks.jsonl` and `STATUS.md`.

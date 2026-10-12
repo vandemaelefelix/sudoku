@@ -23,8 +23,14 @@ sudoku/
 │   └── sudoku-core/             # @sudoku/core: board, rules, generator, solver, hints. Pure TS
 ├── ml/                          # Python (uv): datasets, training, evaluation, export, promote
 │   ├── src/
-│   ├── data/                    # images, NOT in git (ADR-009)
 │   └── artifacts/               # one folder per training run, gitignored
+├── data/                        # the real dataset (ADR-018)
+│   ├── cells.csv                # one row per cell: digit, kind, source (in git)
+│   ├── sudoku-photos.csv        # one row per sudoku photo: source, licence, status, corners (in git)
+│   ├── kind-checks.jsonl        # blind check answers (in git)
+│   ├── STATUS.md                # summary that Finish writes (in git)
+│   ├── images/                  # cells/ and sudoku-photos/, NOT in git, or SUDOKU_IMAGES
+│   └── work/                    # journal and derived files of the labelling tool, NOT in git
 ├── contracts/                   # model contract and data formats shared by ml/ and the app
 ├── fixtures/
 │   ├── scans/                   # public-safe photos + true grids + the app's cell images (ADR-007, ADR-013)
