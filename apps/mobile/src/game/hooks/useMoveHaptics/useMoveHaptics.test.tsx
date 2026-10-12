@@ -31,6 +31,12 @@ function play(...moves: Move[]) {
 beforeEach(() => jest.clearAllMocks())
 afterEach(() => jest.mocked(useReducedMotion).mockReturnValue(false))
 
+it('gives no tap for a wrong number', () => {
+  play({ ...move(1, 'number'), mistake: true })
+  expect(Haptics.impactAsync).not.toHaveBeenCalled()
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled()
+})
+
 it('gives a light tap for each placed number', () => {
   play(move(1, 'number'), move(2, 'number'))
   expect(Haptics.impactAsync).toHaveBeenCalledTimes(2)
