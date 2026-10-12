@@ -19,7 +19,7 @@ import { styles } from './GameOverSheet.styles'
 type GameOverSheetProps = {
   onRetry(): void
   /** Without it, the sheet has no New puzzle button. */
-  onNewPuzzle?: () => void
+  onNewPuzzle?: (() => void) | undefined
   onHome(): void
 }
 
