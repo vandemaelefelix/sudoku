@@ -346,3 +346,17 @@ describe('tick', () => {
     expect(tick(game, Number.POSITIVE_INFINITY)).toBe(game)
   })
 })
+
+describe('start entries', () => {
+  it('stay the same through every action', () => {
+    const start = solvedExcept(2, 3, 40)
+    let game = at(3, start)
+    game = placed(game, 4)
+    game = toggleNote(select(game, 40), 8).game
+    game = erase(select(game, 3)).game
+    game = undo(game).game
+    game = hint(game, () => 0).game
+    game = resume(pause(tick(game, 1_000)))
+    expect(game.startEntries).toEqual(start)
+  })
+})

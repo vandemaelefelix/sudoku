@@ -59,6 +59,7 @@ stateDiagram-v2
 ```
 
 Back returns to the home screen. The game stays saved, so the player can resume it.
+ADR-016 decides how the app moves between the home, game, scan and settings screens.
 
 | State | What the screen shows |
 | --- | --- |
@@ -117,7 +118,6 @@ The Settings screen has two groups:
 
 | Question | Decided by |
 | --- | --- |
-| Navigation between home, game and settings | An ADR in issue #51 |
 | The motion sensor that tilts the finish card | An ADR in issue #43 |
 | Which cell a hint picks. V1 picks a random empty or wrong cell. Hints that teach a technique come later (ADR-011) | Issue #45, after this epic |
 | An option to turn off the entry check | Issue #46, after this epic |

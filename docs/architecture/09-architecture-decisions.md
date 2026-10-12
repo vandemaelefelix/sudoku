@@ -23,3 +23,4 @@ status: DRAFT
 | ADR-013 | Public-safe fixtures in git, real-world scans private, provenance and licence per data source, App Store privacy items | Proposed | 2026-10-09 | [ADR-013](./adr/adr-013-fixtures-and-data-licensing.md) |
 | ADR-014 | Scan overlay effects as plug-in modules on one engine and one scene, with an effect lab (dev pill, saved choice) in development builds only | Proposed | 2026-10-11 | [ADR-014](./adr/adr-014-overlay-effects.md) |
 | ADR-015 | Unistyles 3 with a three-tier token theme (primitive, semantic, component). Daylight and Midnight ship first. Theme decorations for structure, none built in v1 | Accepted | 2026-10-12 | [ADR-015](./adr/adr-015-theming.md) |
+| ADR-016 | Expo Router 57: routes in `src/app/` (Home, game, scan, settings) on a native stack. Thin route files, URL-string params, typed routes | Proposed, pending the iPhone check | 2026-10-12 | [ADR-016](./adr/adr-016-navigation.md) |

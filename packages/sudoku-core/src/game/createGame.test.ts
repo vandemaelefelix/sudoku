@@ -15,6 +15,7 @@ describe('createGame', () => {
     expect(game.hintsUsed).toBe(0)
     expect(game.playedMs).toBe(0)
     expect(game.undoSteps).toEqual([])
+    expect(game.startEntries.every((value) => value === 0)).toBe(true)
   })
 
   it('holds the givens and the solution', () => {
@@ -37,6 +38,13 @@ describe('createGame', () => {
     expect(game.entries[2]).toBe(1)
     expect(game.mistakes).toBe(0)
     expect(game.undoSteps).toEqual([])
+  })
+
+  it('keeps the entries of the start as its start entries', () => {
+    const entries = solvedExcept(2)
+    const game = createGame({ ...base, entries })
+    entries[3] = 0
+    expect(game.startEntries).toEqual(solvedExcept(2))
   })
 
   it('is won at once when the entries complete the grid', () => {

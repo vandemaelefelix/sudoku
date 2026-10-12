@@ -1,7 +1,10 @@
+import { createEmptyGrid } from '@sudoku/core'
 import type { SqlDatabase } from './sql.types'
 
 const LEVELS = "('easy', 'medium', 'hard', 'expert')"
 const SOURCES = "('generated', 'scanned')"
+/** A saved game of version 1 has no record of its start entries, so version 2 gets none. */
+const NO_START_ENTRIES = JSON.stringify(createEmptyGrid())
 
 /**
  * Migration N is the SQL at index N - 1. PRAGMA user_version holds the last migration that ran (ADR-012).
@@ -32,6 +35,11 @@ export const MIGRATIONS: readonly string[] = [
     deleted_at TEXT
   );
   CREATE INDEX game_history_best_time ON game_history (level, result, played_ms) WHERE deleted_at IS NULL;`,
+  // json_extract throws on a damaged saved game, and that failure would stop every app start.
+  // SQLite does not promise the order of AND, but CASE checks json_valid first.
+  `UPDATE game_in_progress
+    SET saved_game = json_set(saved_game, '$.version', 2, '$.startEntries', json('${NO_START_ENTRIES}'))
+    WHERE CASE WHEN json_valid(saved_game) THEN json_extract(saved_game, '$.version') END = 1;`,
 ]
 
 /**

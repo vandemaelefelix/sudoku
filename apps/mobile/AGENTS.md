@@ -28,13 +28,18 @@ Run lint, typecheck and tests before you say a task is done.
   edit or commit them. Configure native behaviour in `app.json` and config plugins.
 - Native modules need a development build, not Expo Go. Build locally with
   `pnpm exec expo run:ios`. Cloud builds (EAS) are not used yet (ADR-010).
-- Keep the folders: `src/game/` (game UI), `src/scan/` (scan UI), `src/scanner/` (scanner, entered
-  only through `src/scanner/index.ts`). Navigation is not decided yet. Do not add Expo Router
-  without an ADR.
+- Keep the folders: `src/app/` (routes), `src/home/` (home UI), `src/game/` (game UI),
+  `src/settings/` (settings UI and `SettingsRepository`: screens, components, hooks, utils,
+  constants), `src/scan/` (scan UI), `src/scanner/` (scanner, entered only through
+  `src/scanner/index.ts`) and `src/storage/` (game storage).
+- Navigation follows ADR-016: Expo Router 57. A route file in `src/app/` only renders one screen
+  from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
+  state, styles or tests in `src/app/`. A route param is a URL string. Load data from a
+  repository, not from a param.
 
 ## Layout inside a feature
 
-A feature folder (`src/scan/`, later `src/game/`) has these folders. Create a folder only when it
+A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/scan/`, `src/storage/`) has these folders. Create a folder only when it
 has a file.
 
 | Folder | Holds |
@@ -86,7 +91,9 @@ The theme follows ADR-015. `src/theme/` holds every colour value.
 1. Do not write a colour value outside `src/theme/`. `just lint` refuses hex values, `rgb()`, `hsl()` and
    the names `white`, `black` and `transparent`. It cannot see other colour names, such as `red`.
 2. Read a token from the theme in a styles file. In a Skia surface, read it with `useUnistyles()`. Make the
-   paints again when the theme changes.
+   paints again when the theme changes. To give a theme value to a native prop that is not a style,
+   such as the track colour of a `Switch`, wrap the component with `withUnistyles` from
+   `react-native-unistyles`.
 3. Do not spread a Unistyles style. It loses the theme binding. Pass an array: `[styles.cell, { left }]`.
 4. Use a semantic token in most components. Use a component token only in its own component.
 5. Do not import the `palette.ts` file of a theme. Only the folder of that theme reads it. `just lint`
