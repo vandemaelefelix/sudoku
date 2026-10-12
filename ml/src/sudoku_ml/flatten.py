@@ -32,16 +32,19 @@ def load_upright(path: Path) -> np.ndarray:
 
 
 def check_corners(corners) -> Corners:
-    """A float copy of 4 finite [x, y] points that span an area. Raises ValueError."""
+    """A float copy of 4 finite [x, y] points of a convex quad. Raises ValueError."""
     try:
         points = [[float(x), float(y)] for x, y in corners]
     except (TypeError, ValueError) as error:
         raise ValueError(f"corners must be 4 [x, y] pairs: {error}") from error
     if len(points) != 4 or not all(math.isfinite(v) for p in points for v in p):
         raise ValueError("corners must be 4 [x, y] pairs of finite numbers")
-    area = cv2.contourArea(np.array(points, dtype=np.float32))
-    if area < 1.0:
+    quad = np.array(points, dtype=np.float32)
+    if cv2.contourArea(quad) < 1.0:
         raise ValueError("the 4 corners do not span an area")
+    # A bow-tie or a quad with 3 collinear corners has an area but no valid homography.
+    if not cv2.isContourConvex(quad):
+        raise ValueError("the 4 corners must form a convex quad")
     return points
 
 

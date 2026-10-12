@@ -52,6 +52,8 @@ def test_corners_outside_the_photo_are_allowed():
         [[0, 0], [1, 0], [1, 1], [0, "x"]],
         [[0, 0], [1, 0], [1, 1], [0, float("nan")]],
         [[0, 0], [0, 0], [0, 0], [0, 0]],
+        [[0, 0], [300, 300], [300, 0], [0, 100]],
+        [[0, 0], [100, 0], [200, 0], [0, 100]],
     ],
 )
 def test_check_corners_refuses_bad_corners(bad):
