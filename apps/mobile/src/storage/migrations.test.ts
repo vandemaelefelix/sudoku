@@ -1,5 +1,8 @@
+import { place, select, toSavedGame } from '@sudoku/core'
 import { MIGRATIONS, migrate } from './migrations'
 import { openNodeDatabase, temporaryDatabaseFile, type NodeDatabase } from './nodeDatabase'
+import { newGame, testDeps } from './repositories.contract'
+import { createSqliteStorage } from './sqliteStorage'
 import type { SqlDatabase } from './sql.types'
 
 let db: NodeDatabase
@@ -117,5 +120,39 @@ describe('migrate', () => {
       second.close()
       file.remove()
     }
+  })
+})
+
+describe('migration 2', () => {
+  it('converts a saved game of version 1 to version 2 with no start entries', async () => {
+    await migrate(db, MIGRATIONS.slice(0, 1))
+    const played = place(select(newGame(), 2), 4).game
+    const { startEntries: _startEntries, ...rest } = toSavedGame(played)
+    const at = '2026-01-01T00:00:00.000Z'
+    await db.runAsync(
+      `INSERT INTO game_in_progress (id, level, source, saved_game, created_at, updated_at)
+        VALUES ('old', 'easy', 'scanned', ?, ?, ?)`,
+      [JSON.stringify({ ...rest, version: 1 }), at, at],
+    )
+
+    await migrate(db)
+    const current = await createSqliteStorage(db, testDeps()).puzzles.current()
+
+    expect(current?.id).toBe('old')
+    expect(current?.game).toEqual(played)
+    expect(current?.game.startEntries.every((value) => value === 0)).toBe(true)
+  })
+  it('keeps a saved game that is not JSON', async () => {
+    await migrate(db, MIGRATIONS.slice(0, 1))
+    const at = '2026-01-01T00:00:00.000Z'
+    await db.runAsync(
+      `INSERT INTO game_in_progress (id, level, source, saved_game, created_at, updated_at)
+        VALUES ('broken', 'easy', 'generated', 'not json', ?, ?)`,
+      [at, at],
+    )
+
+    await expect(migrate(db)).resolves.toBe(MIGRATIONS.length)
+    const row = await db.getFirstAsync<{ saved_game: string }>('SELECT saved_game FROM game_in_progress', [])
+    expect(row?.saved_game).toBe('not json')
   })
 })
