@@ -103,7 +103,13 @@ def make_server(
                 elif url.path == "/api/check":
                     self._json(store.check_start())
                 elif url.path == "/api/status":
-                    self._json({"photos": len(check.pending()) if check else 0, **store.status()})
+                    self._json(
+                        {
+                            "photos": len(check.pending()) if check is not None else 0,
+                            "photos_total": check.total() if check is not None else 0,
+                            **store.status(),
+                        }
+                    )
                 elif url.path == "/api/progress":
                     self._json(store.progress())
                 elif url.path == "/api/digits":
@@ -178,11 +184,14 @@ def prelabel_new_cells(ml_root: Path) -> int:
 
     try:
         run = default_run(ml_root)
-    except FileNotFoundError:
+    except (OSError, KeyError):
         run = None
     if run is None or not (run / "model.pt").exists():
         raise ValueError(NO_MODEL)
-    return write_prelabels(ml_root / "data" / "cells", run, ml_root / "data" / "prelabels.json")
+    try:
+        return write_prelabels(ml_root / "data" / "cells", run, ml_root / "data" / "prelabels.json")
+    except (OSError, RuntimeError, KeyError) as error:
+        raise ValueError(f"The pre-label failed: {error}") from error
 
 
 def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
