@@ -23,14 +23,32 @@ test('refuses every colour form', () => {
     'hsla(0,0%,0%,1)',
     'white',
     'Black',
+    'transparent',
+    '0 1px 2px rgba(0,0,0,0.3)',
+    '1px solid #ccc',
+    'inset 0 0 4px #00000080',
   ]) {
     assert.equal(reports(literal(value)), 1, value)
   }
   assert.equal(reports(template('#fff')), 1)
+  assert.equal(reports(template('0 1px ', ' rgba(0,0,0,0.3)')), 1)
 })
 
 test('keeps strings that are not colours', () => {
-  for (const value of ['#1', '#12', '#12345', 'whiteboard', 'red', 'row', '', 42, null]) {
+  for (const value of [
+    '#1',
+    '#12',
+    '#12345',
+    'issue #1234567',
+    'cell#fff2',
+    'whiteboard',
+    'red',
+    'row',
+    'colorgb(',
+    '',
+    42,
+    null,
+  ]) {
     assert.equal(reports(literal(value)), 0, String(value))
   }
   assert.equal(reports(template('cell-', '')), 0)

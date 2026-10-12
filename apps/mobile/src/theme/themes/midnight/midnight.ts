@@ -24,6 +24,7 @@ const colors: Theme['colors'] = {
 
 export const midnight: Theme = {
   name: 'midnight',
+  statusBar: 'light',
   colors,
   type: SHARED_TYPE,
   space: SHARED_SPACE,

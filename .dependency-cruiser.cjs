@@ -72,6 +72,13 @@ module.exports = {
       },
     },
     {
+      name: 'palette-stays-in-its-theme',
+      comment: 'Only the folder of a theme reads its primitive tokens (ADR-015, points 3 and 7).',
+      severity: 'error',
+      from: { pathNot: '^apps/mobile/src/theme/themes/[^/]+/[^/]+$' },
+      to: { path: '^apps/mobile/src/theme/themes/[^/]+/palette\\.ts$' },
+    },
+    {
       name: 'components-and-hooks-do-not-import-screens',
       comment: 'A screen composes components and hooks, not the other way round.',
       severity: 'error',

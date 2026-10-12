@@ -12,6 +12,8 @@ export type TypeRole = {
 
 export type Theme = {
   name: ThemeName
+  /** The style of the status bar text over colors.background. */
+  statusBar: 'dark' | 'light'
   colors: {
     background: string
     surface: string

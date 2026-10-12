@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
 import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
@@ -11,6 +12,7 @@ type Phase = { phase: 'live' } | { phase: 'review'; result: RecogniseResult }
 
 /** Holds the scan phase. No router: the capture transition needs the camera and the correction screen on one screen. */
 export function ScanFlow() {
+  const { theme } = useUnistyles()
   const { width, height } = useWindowDimensions()
   const { top, bottom, left, right } = useSafeAreaInsets()
   const layout = useMemo(
@@ -30,7 +32,7 @@ export function ScanFlow() {
   if (phase.phase === 'review') {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style={theme.statusBar} />
         <CorrectionScreen result={phase.result} layout={layout} onRetake={retake} />
       </>
     )

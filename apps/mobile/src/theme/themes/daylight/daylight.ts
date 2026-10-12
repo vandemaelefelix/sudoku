@@ -24,6 +24,7 @@ const colors: Theme['colors'] = {
 
 export const daylight: Theme = {
   name: 'daylight',
+  statusBar: 'dark',
   colors,
   type: SHARED_TYPE,
   space: SHARED_SPACE,

@@ -1,7 +1,9 @@
 // ADR-015, point 7: only apps/mobile/src/theme/ holds raw colour values.
-const HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
-const FUNCTION = /^(?:rgba?|hsla?)\(/i
-const NAMED = new Set(['white', 'black'])
+// Anywhere in the string, so a boxShadow or border string with a colour also fails.
+const HEX = /(?:^|[\s(,])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])/i
+const FUNCTION = /\b(?:rgba?|hsla?)\(/i
+// Only these names: the other CSS names (red, ...) are also ordinary words.
+const NAMED = new Set(['white', 'black', 'transparent'])
 const MESSAGE = 'A colour literal belongs in src/theme/ (ADR-015). Use a theme token.'
 
 function isColour(value) {

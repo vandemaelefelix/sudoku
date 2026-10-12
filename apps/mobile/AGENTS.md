@@ -83,12 +83,14 @@ effect: `<name>.effect.ts`, `<name>.constants.ts` and an `index.ts`. The effect 
 
 The theme follows ADR-015. `src/theme/` holds every colour value.
 
-1. Do not write a colour value outside `src/theme/`. `just lint` refuses it.
+1. Do not write a colour value outside `src/theme/`. `just lint` refuses hex values, `rgb()`, `hsl()` and
+   the names `white`, `black` and `transparent`. It cannot see other colour names, such as `red`.
 2. Read a token from the theme in a styles file. In a Skia surface, read it with `useUnistyles()`. Make the
    paints again when the theme changes.
 3. Do not spread a Unistyles style. It loses the theme binding. Pass an array: `[styles.cell, { left }]`.
 4. Use a semantic token in most components. Use a component token only in its own component.
-5. Do not import the `palette.ts` file of a theme. Only the folder of that theme reads it.
+5. Do not import the `palette.ts` file of a theme. Only the folder of that theme reads it. `just lint`
+   checks this rule.
 6. To add a theme, add a folder in `src/theme/themes/`. Register the theme in `src/theme/unistyles.ts`.
 
 ### Worklets
