@@ -3,10 +3,12 @@ import io
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
 import pytest
 from photos import grid_photo, save_photo
 from PIL import Image
 
+from sudoku_ml.flatten import load_upright, warp_grid
 from sudoku_ml.kind_log import read_records
 from sudoku_ml.photo_check import MIN_CELLS, PhotoCheck, PhotoDecision
 from sudoku_ml.photo_import import PhotoPaths, import_folder
@@ -120,3 +122,53 @@ def test_corners_that_give_no_valid_grid_are_a_value_error(tmp_path: Path):
     for corners in (bow_tie, collinear):
         with pytest.raises(ValueError):
             check.usable(stem, corners)
+
+
+def origin_rows(paths: PhotoPaths) -> list[dict[str, str]]:
+    with paths.origins.open(newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def test_a_cell_knows_its_photo_row_and_column(tmp_path: Path):
+    check, paths, stem = checked(tmp_path, grid_photo())
+    result = check.accept(stem, FULL)
+    row = {o["cell"]: o for o in origin_rows(paths)}[result["new_cells"][5]]
+    found = check.origin(result["new_cells"][5][:16])
+    assert found == {
+        "photo": stem,
+        "row": int(row["row"]),
+        "col": int(row["col"]),
+        "origin": "phone",
+        "licence": "own",
+    }
+    assert check.origin("0" * 16) is None
+
+
+def test_the_origin_picture_outlines_the_cell_on_the_flat_grid(tmp_path: Path):
+    check, _, stem = checked(tmp_path, grid_photo())
+    result = check.accept(stem, FULL)
+    cell = result["new_cells"][0][:16]
+    found = check.origin(cell)
+    picture = np.asarray(Image.open(io.BytesIO(check.origin_png(cell))).convert("RGB"))
+    assert picture.shape == (576, 576, 3)
+    plain = warp_grid(load_upright(paths_photo(tmp_path)), FULL)
+    x, y = found["col"] * 64, found["row"] * 64
+    assert tuple(picture[y + 30, x + 1]) == (255, 215, 0)
+    assert not np.array_equal(picture[y + 30, x + 1], plain[y + 30, x + 1])
+    assert check.origin_png("0" * 16) is None
+
+
+def paths_photo(tmp_path: Path) -> Path:
+    return next((tmp_path / "ml" / "data" / "photos").iterdir())
+
+
+def test_the_origins_file_is_read_again_after_a_second_accept(tmp_path: Path):
+    check, paths, stem = checked(tmp_path, grid_photo())
+    first = check.accept(stem, FULL)["new_cells"][0][:16]
+    assert check.origin(first)["photo"] == stem
+    save_photo(grid_photo(seed=3), tmp_path / "in2" / "q.png")
+    import_folder(tmp_path / "in2", paths, origin="phone", licence="own")
+    second_stem = check.pending()[0]
+    second = check.accept(second_stem, FULL)["new_cells"][0][:16]
+    assert check.origin(second)["photo"] == second_stem
+    assert check.origin(first)["photo"] == stem
