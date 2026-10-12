@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from PIL import Image
 
 from sudoku_ml.flatten import load_upright, warp_grid
 from sudoku_ml.kind_log import read_records
-from sudoku_ml.photo_check import MIN_CELLS, PhotoCheck, PhotoDecision
+from sudoku_ml.photo_check import MIN_CELLS, PhotoCheck, PhotoDecision, clear_temp
 from sudoku_ml.photo_import import PhotoPaths, import_folder
 
 FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
@@ -172,3 +173,38 @@ def test_the_origins_file_is_read_again_after_a_second_accept(tmp_path: Path):
     second = check.accept(second_stem, FULL)["new_cells"][0][:16]
     assert check.origin(second)["photo"] == second_stem
     assert check.origin(first)["photo"] == stem
+
+
+def test_a_decision_drops_the_detection_of_that_photo(tmp_path: Path):
+    check, paths, stem = checked(tmp_path, grid_photo())
+    assert len(json.loads(paths.detections.read_text())) == 1
+    check.reject(stem, "blurred")
+    assert json.loads(paths.detections.read_text()) == {}
+
+
+def test_a_missing_detections_file_is_computed_again_for_a_pending_photo(tmp_path: Path):
+    check, paths, stem = checked(tmp_path, grid_photo())
+    paths.detections.unlink()
+    shown = check.next()
+    assert shown["stem"] == stem and len(shown["corners"]) == 4
+    assert len(json.loads(paths.detections.read_text())) == 1
+    assert check.accept(stem, FULL)["decision"] == "accepted"
+
+
+def test_the_cut_leaves_no_temporary_file_and_never_one_in_a_cell_folder(tmp_path: Path):
+    check, paths, stem = checked(tmp_path, grid_photo())
+    check.accept(stem, FULL)
+    assert list(paths.tmp.glob("*")) == []
+    assert all(len(p.stem) == 16 for p in paths.cells.glob("*/*.png"))
+
+
+def test_clear_temp_deletes_the_leftovers_of_a_stopped_cut(tmp_path: Path):
+    paths = PhotoPaths.under(tmp_path / "ml")
+    paths.tmp.mkdir(parents=True)
+    (paths.tmp / "half.png").write_bytes(b"x")
+    old = paths.cells / "unlabeled"
+    old.mkdir(parents=True)
+    (old / "tmp-cut.png").write_bytes(b"x")
+    assert clear_temp(paths) == 2
+    assert list(paths.tmp.glob("*")) == [] and list(old.glob("*")) == []
+    assert clear_temp(paths) == 0

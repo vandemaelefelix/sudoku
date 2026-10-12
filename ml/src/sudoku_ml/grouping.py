@@ -1,4 +1,5 @@
-"""Groups of similar cells per digit folder, for the labelling page. Writes ml/data/work/groups.json."""
+"""Groups of similar cells per digit folder, for the labelling page.
+Writes ml/data/work/groups.json."""
 
 import json
 import sys
