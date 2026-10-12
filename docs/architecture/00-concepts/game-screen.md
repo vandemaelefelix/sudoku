@@ -64,6 +64,8 @@ stateDiagram-v2
 | Solving | A short pause for the solve **pulse**. The controls do not act |
 | Finished | The **finish card** over a scrim, with New puzzle and Back to home below it |
 
+These are screen moments, not core statuses. The core has the game statuses playing, paused, lost and won. Game over shows a lost game. Solving and Finished show a won game.
+
 ### Pulses
 
 A correct number can complete a row, a column, a box, all nine of a number, or the whole
