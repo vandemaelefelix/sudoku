@@ -404,6 +404,19 @@ describe('CorrectionScreen edits', () => {
     expect(screen.queryByTestId('correction-pad')).toBeNull()
   })
 
+  it('shows no conflict mark during the transition', () => {
+    render(
+      <CorrectionScreen
+        result={okResult({ 0: given, 8: given })}
+        layout={layout}
+        onRetake={jest.fn()}
+        clock={clock(1.5)}
+      />,
+    )
+    expect(screen.queryByTestId('correction-fill-0')).toBeNull()
+    expect(screen.queryByTestId('correction-fill-8')).toBeNull()
+  })
+
   it('labels each cell for VoiceOver', () => {
     render(ui(okResult({ 0: given, 1: entry })))
     expect(screen.getByLabelText('Row 1, column 1, given 5')).toBeTruthy()

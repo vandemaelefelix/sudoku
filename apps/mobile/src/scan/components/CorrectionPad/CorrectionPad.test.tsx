@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
+import { PANEL_HEIGHT, PANEL_PADDING } from '@/scan/constants/correction.constants'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { daylight } from '@/theme/themes/daylight'
 import { CorrectionPad } from './CorrectionPad'
@@ -71,7 +72,7 @@ it('makes every row one touch target high, so three rows fit in the panel', () =
   for (const row of ['correction-pad-kinds', 'correction-pad-row-0', 'correction-pad-row-1']) {
     expect(style(row).height).toBe(daylight.size.touch)
   }
-  expect(3 * daylight.size.touch + 2 * daylight.space.xs).toBeLessThanOrEqual(168 - 2 * 12)
+  expect(3 * daylight.size.touch + 2 * daylight.space.xs).toBeLessThanOrEqual(PANEL_HEIGHT - 2 * PANEL_PADDING)
 })
 
 it('takes its colours from the semantic tokens', () => {

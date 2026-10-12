@@ -18,6 +18,7 @@ import { drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/util
 import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
+import { PANEL_PADDING } from '@/scan/constants/correction.constants'
 
 export type CorrectionProps = {
   result: RecogniseResult | null
@@ -47,7 +48,7 @@ export function CorrectionScreen({
   const cellSize = grid.width / 9
 
   const { looks, selected, conflicts, toCheck, actions } = useCorrectionEdits(result)
-  // The player edits only the finished screen. During the transition the cells are not pressable.
+  // The player edits only the finished screen. During the transition the cells are not pressable and show no edit marks.
   const editable = clock == null && result?.ok === true
   const selectedLook = editable && selected !== null ? looks[selected] : undefined
   const conflictCount = conflicts.filter(Boolean).length
@@ -116,7 +117,7 @@ export function CorrectionScreen({
           left={grid.x + (n % 9) * cellSize}
           top={grid.y + Math.floor(n / 9) * cellSize}
           selected={editable && selected === n}
-          conflict={conflicts[n] ?? false}
+          conflict={editable && (conflicts[n] ?? false)}
           onSelect={editable ? actions.select : undefined}
           clock={clock}
           resultsAt={resultsAt}
@@ -142,6 +143,7 @@ export function CorrectionScreen({
               top: panel.y,
               width: panel.width,
               height: panel.height,
+              padding: PANEL_PADDING,
             },
             panelStyle,
           ]}

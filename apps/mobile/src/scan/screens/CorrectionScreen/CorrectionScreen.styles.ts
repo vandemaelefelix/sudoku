@@ -10,7 +10,6 @@ export const styles = StyleSheet.create((theme) => ({
   panel: {
     position: 'absolute',
     borderRadius: 24,
-    padding: 12,
     gap: 9,
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,

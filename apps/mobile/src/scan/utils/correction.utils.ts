@@ -2,7 +2,7 @@ import type { Rect, ViewSize } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import { PaintStyle, Skia, type SkCanvas, type SkPaint } from '@shopify/react-native-skia'
 import { project, type Homography } from '@/utils/homography.utils'
-import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
+import { PANEL_HEIGHT, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 import type { Theme } from '@/theme/theme.types'
 
 export type Insets = { top: number; bottom: number; left: number; right: number }
@@ -13,7 +13,6 @@ const TITLE_TOP = 8
 const TITLE_HEIGHT = 52
 const GAP = 12
 const PANEL_SIDE = 10
-const PANEL_HEIGHT = 168
 
 /** Points, not rounded. The transition and the correction screen both read this, so the last frame matches the screen. */
 export function correctionLayout(view: ViewSize, insets: Insets): CorrectionLayout {

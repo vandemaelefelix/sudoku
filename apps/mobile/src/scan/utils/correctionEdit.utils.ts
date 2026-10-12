@@ -75,12 +75,12 @@ export function correctedGrid(looks: readonly CellLook[]): CorrectedGrid {
   return { givens, entries }
 }
 
-/** The VoiceOver label of a correction cell, for example "Row 1, column 3, entry 7, check this cell". */
-/** The place of a cell for VoiceOver, for example "Row 1, column 3". cell: the index, row-major. */
+/** For example "Row 1, column 3". cell: the index, row-major. */
 export function cellPlace(cell: number): string {
   return `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`
 }
 
+/** The VoiceOver label of a correction cell, for example "Row 1, column 3, entry 7, check this cell". */
 export function correctionCellLabel(cell: number, look: CellLook, conflict: boolean): string {
   const parts = [cellPlace(cell)]
   parts.push(look.style === 'empty' ? 'empty' : `${look.style} ${look.digit}`)
