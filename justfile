@@ -86,11 +86,11 @@ dataset-manifest:
 
 # Copy a folder of sudoku photos into the image store and find the grid in each. Options: --source, --licence
 import-photos folder *flags:
-    uv run --directory ml python -m sudoku_ml.photo_import "$(realpath "{{folder}}")" {{flags}}
+    folder="$(realpath "{{folder}}")" && uv run --directory ml python -m sudoku_ml.photo_import "$folder" {{flags}}
 
 # Move cells to the digits in a relabel CSV (header file,new_label), then rewrite data/cells.csv
 relabel file:
-    uv run --directory ml python -m sudoku_ml.relabel "$(realpath "{{file}}")"
+    file="$(realpath "{{file}}")" && uv run --directory ml python -m sudoku_ml.relabel "$file"
     just dataset-manifest
 
 # Rank the likely wrong digit and kind labels into data/work/suspects.csv, for the Review screen
@@ -117,3 +117,7 @@ check-data:
 label-rollback session:
     uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
     just dataset-manifest
+
+# Copy the old layout (<old_ml_root>/datasets and data/) into data/ and the image store. Dry run without --apply
+migrate-layout old_ml_root *flags:
+    old="$(realpath "{{old_ml_root}}")" && uv run --directory ml python -m sudoku_ml.migrate_layout "$old" {{flags}}
