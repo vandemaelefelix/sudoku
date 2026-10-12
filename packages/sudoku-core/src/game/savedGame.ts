@@ -3,7 +3,7 @@ import { MAX_MISTAKES, UNDO_LIMIT } from './constants'
 import { createGame } from './createGame'
 import type { Digit, Game, GameStatus, UndoStep } from './types'
 
-export const SAVED_GAME_VERSION = 1
+export const SAVED_GAME_VERSION = 2
 
 /** A game as plain JSON data. Change SAVED_GAME_VERSION when this shape changes. */
 export type SavedGame = {
@@ -11,6 +11,7 @@ export type SavedGame = {
   givens: number[]
   solution: number[]
   entries: number[]
+  startEntries: number[]
   notes: number[][]
   selected: number | null
   mistakes: number
@@ -28,6 +29,7 @@ export function toSavedGame(game: Game): SavedGame {
     givens: [...game.givens],
     solution: [...game.solution],
     entries: [...game.entries],
+    startEntries: [...game.startEntries],
     notes: game.notes.map((cellNotes) => [...cellNotes]),
     selected: game.selected,
     mistakes: game.mistakes,
@@ -47,11 +49,16 @@ export function fromSavedGame(value: unknown): Game {
   if (saved.version !== SAVED_GAME_VERSION) {
     throw new RangeError(`The saved game version ${String(saved.version)} is not ${SAVED_GAME_VERSION}`)
   }
-  const board = createGame({
+  const start = createGame({
     givens: numbers(saved.givens, 'givens'),
     solution: numbers(saved.solution, 'solution'),
-    entries: numbers(saved.entries, 'entries'),
+    entries: numbers(saved.startEntries, 'startEntries'),
   })
+  // The player can change a cell with a start entry, so the entries need not keep the start entries.
+  const board: Game = {
+    ...createGame({ givens: start.givens, solution: start.solution, entries: numbers(saved.entries, 'entries') }),
+    startEntries: start.startEntries,
+  }
   const steps = list(saved.undoSteps, 'undoSteps')
   if (steps.length > UNDO_LIMIT) throw new RangeError(`More than ${UNDO_LIMIT} undo steps`)
   const undoSteps: UndoStep[] = steps.map((item, index) => {

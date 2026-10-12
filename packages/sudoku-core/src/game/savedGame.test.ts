@@ -21,6 +21,11 @@ describe('saved game', () => {
     expect(fromSavedGame(roundTrip(toSavedGame(game)))).toEqual(game)
   })
 
+  it('keeps the start entries', () => {
+    const saved = roundTrip(toSavedGame(gameInProgress()))
+    expect(fromSavedGame(saved).startEntries).toEqual(solvedExcept(2, 3, 40))
+  })
+
   it('writes the version', () => {
     expect(toSavedGame(gameInProgress()).version).toBe(SAVED_GAME_VERSION)
   })
@@ -31,8 +36,31 @@ describe('saved game', () => {
   })
 
   it('refuses another version', () => {
-    const saved = { ...toSavedGame(gameInProgress()), version: 2 }
+    const saved = toSavedGame(gameInProgress())
+    expect(() => fromSavedGame({ ...saved, version: 1 })).toThrow(RangeError)
+    expect(() => fromSavedGame({ ...saved, version: 3 })).toThrow(RangeError)
+  })
+
+  it('refuses start entries that do not fit the givens', () => {
+    const onGiven = toSavedGame(gameInProgress())
+    onGiven.startEntries[0] = 5
+    expect(() => fromSavedGame(onGiven)).toThrow(RangeError)
+    const short = toSavedGame(gameInProgress())
+    expect(() => fromSavedGame({ ...short, startEntries: [0] })).toThrow(RangeError)
+  })
+
+  it('refuses entries that do not fit the givens', () => {
+    const saved = toSavedGame(gameInProgress())
+    saved.entries[0] = 5
     expect(() => fromSavedGame(saved)).toThrow(RangeError)
+    expect(() => fromSavedGame({ ...saved, entries: [0] })).toThrow(RangeError)
+  })
+
+  it('loads entries that differ from the start entries', () => {
+    const saved = toSavedGame(gameInProgress())
+    saved.entries[5] = 0
+    expect(fromSavedGame(saved).entries[5]).toBe(0)
+    expect(fromSavedGame(saved).startEntries[5]).toBe(8)
   })
 
   it('refuses grids that do not fit together', () => {

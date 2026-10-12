@@ -28,6 +28,7 @@ export function createGame({ givens, solution, entries }: NewGame): Game {
     givens: [...givens],
     solution: [...solution],
     entries: [...start],
+    startEntries: [...start],
     notes: start.map(() => []),
     selected: null,
     mistakes: 0,
