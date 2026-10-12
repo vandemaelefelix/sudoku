@@ -251,6 +251,9 @@ importers:
       '@types/react':
         specifier: ~19.2.2
         version: 19.2.18
+      babel-preset-expo:
+        specifier: ~57.0.14
+        version: 57.0.14(f8ff9a3999c1e3bbe38e053bfd598f3e)
       jest:
         specifier: ~29.7.0
         version: 29.7.0(@types/node@26.6.4)(supports-color@8.1.1)
