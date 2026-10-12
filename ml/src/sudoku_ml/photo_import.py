@@ -40,6 +40,11 @@ class PhotoPaths:
     checks: Path  # photo-checks.jsonl
     origins: Path  # cell-origins.csv
     cells: Path
+    work: Path  # ml/data/work/: detections.json and tmp/ live here (ADR-009)
+
+    @property
+    def tmp(self) -> Path:
+        return self.work / "tmp"
 
     @classmethod
     def under(cls, ml_root: Path) -> "PhotoPaths":
@@ -47,10 +52,11 @@ class PhotoPaths:
         return cls(
             data / "photos",
             datasets / "photos.csv",
-            data / "import" / "detections.json",
+            data / "work" / "detections.json",
             datasets / "photo-checks.jsonl",
             datasets / "cell-origins.csv",
             data / "cells",
+            data / "work",
         )
 
 

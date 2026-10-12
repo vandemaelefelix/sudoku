@@ -209,7 +209,8 @@ def prelabel_new_cells(ml_root: Path) -> int:
     if run is None or not (run / "model.pt").exists():
         raise ValueError(NO_MODEL)
     try:
-        return write_prelabels(ml_root / "data" / "cells", run, ml_root / "data" / "prelabels.json")
+        paths = Paths.under(ml_root)
+        return write_prelabels(paths.cells, run, paths.prelabels)
     except (OSError, RuntimeError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise ValueError(f"The pre-label failed: {error}") from error
 

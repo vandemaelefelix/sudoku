@@ -32,7 +32,7 @@ def add_unlabeled(cells: Path, seed: int) -> str:
 
 
 def test_each_unlabeled_cell_gets_a_digit_a_probability_and_a_kind(tmp_path: Path):
-    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "prelabels.json"
+    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     ids = [add_unlabeled(cells, s) for s in range(3)]
     assert write_prelabels(cells, make_run(tmp_path), out) == 3
     value = json.loads(out.read_text())
@@ -43,7 +43,7 @@ def test_each_unlabeled_cell_gets_a_digit_a_probability_and_a_kind(tmp_path: Pat
 
 
 def test_only_new_cells_are_computed_and_gone_cells_are_dropped(tmp_path: Path):
-    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "prelabels.json"
+    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     run = make_run(tmp_path)
     first = add_unlabeled(cells, 1)
     gone = add_unlabeled(cells, 2)
@@ -67,7 +67,7 @@ def add_cell_in(cells: Path, folder: str, seed: int) -> str:
 
 
 def test_each_prelabel_keeps_the_probability_of_its_kind(tmp_path: Path):
-    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "prelabels.json"
+    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     add_unlabeled(cells, 1)
     write_prelabels(cells, make_run(tmp_path), out)
     for entry in json.loads(out.read_text())["cells"].values():
@@ -75,7 +75,7 @@ def test_each_prelabel_keeps_the_probability_of_its_kind(tmp_path: Path):
 
 
 def test_an_old_entry_without_kp_is_computed_again(tmp_path: Path):
-    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "prelabels.json"
+    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     run = make_run(tmp_path)
     cell = add_unlabeled(cells, 1)
     other = add_unlabeled(cells, 2)
@@ -89,7 +89,7 @@ def test_an_old_entry_without_kp_is_computed_again(tmp_path: Path):
 
 
 def test_cells_in_digit_folders_get_pre_labels_and_cells_that_left_are_dropped(tmp_path: Path):
-    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "prelabels.json"
+    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     run = make_run(tmp_path)
     waiting = add_unlabeled(cells, 1)
     seven = add_cell_in(cells, "7", 2)

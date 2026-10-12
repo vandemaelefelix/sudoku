@@ -74,7 +74,7 @@ def ml_tree(tmp_path: Path, colours: dict[str, list[int]]) -> Path:
 
 def test_write_groups_covers_every_digit_cell(tmp_path: Path):
     run = ml_tree(tmp_path, {"7": [10, 20, 30], "empty": [200]})
-    out = tmp_path / "data" / "groups.json"
+    out = tmp_path / "data" / "work" / "groups.json"
     assert write_groups(tmp_path, run, out, k=30, seed=0) == 3
     groups = json.loads(out.read_text())
     assert groups["run"] == "run-1" and list(groups["folders"]) == ["7"]

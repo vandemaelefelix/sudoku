@@ -54,20 +54,23 @@ class Paths:
     groups: Path
     suspects: Path
     config: Path  # the training config: its seed and split define the test split
-    prelabels: Path | None = None  # ml/data/prelabels.json: the Digits screen's proposals
+    work: Path  # ml/data/work/: derived files only, safe to delete (ADR-009)
+    prelabels: Path | None = None  # work/prelabels.json: the Digits screen's proposals
 
     @classmethod
     def under(cls, ml_root: Path) -> "Paths":
         datasets, data = ml_root / "datasets", ml_root / "data"
+        work = data / "work"
         return cls(
             data / "cells",
             datasets / "cells.csv",
             datasets / "kind-log.jsonl",
             datasets / "kind-check.jsonl",
-            data / "groups.json",
-            data / "review" / "suspects.csv",
+            work / "groups.json",
+            work / "suspects.csv",
             ml_root / "configs" / "cell-classifier.toml",
-            data / "prelabels.json",
+            work,
+            work / "prelabels.json",
         )
 
 

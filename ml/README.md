@@ -36,10 +36,13 @@ ml/data/
 │   ├── empty/  1/ … 9/        one folder per digit class of the model contract
 │   ├── unlabeled/             cells that still need a label
 │   └── discarded/             cells a person rejected; training ignores them
-├── import/
-│   └── detections.json        the proposed outline per photo
-├── prelabels.json             the model's proposals: digit, kind and how sure it is of the kind
-└── photos/                    full sudoku photos
+├── photos/                    full sudoku photos
+└── work/                      derived files; outside git; safe to delete at any time
+    ├── prelabels.json         the model's proposals: digit, kind and how sure it is of the kind
+    ├── detections.json        the proposed outline per pending photo
+    ├── suspects.csv           the likely wrong labels, from just suspects
+    ├── groups.json            the groups of cells, from just group-cells
+    └── tmp/                   cells being cut; the next start deletes leftovers
 ml/datasets/
 ├── cells.csv                  id, label, kind
 ├── photos.csv                 id, file, origin, licence, attribution
