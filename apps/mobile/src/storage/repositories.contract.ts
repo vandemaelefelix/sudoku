@@ -164,6 +164,24 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       await expect(storage.history.list()).resolves.toHaveLength(3)
     })
 
+    it('runs the next task after a task that failed', async () => {
+      await expect(storage.puzzles.start({ level: 'easy', source: 'generated', game: wonGame(1_000) })).rejects.toThrow(
+        RangeError,
+      )
+      const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+      await expect(storage.puzzles.current()).resolves.toEqual(started)
+    })
+
+    it('ignores a save or a discard of a game that is not in progress', async () => {
+      const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+      await storage.puzzles.save('unknown', tick(newGame(), 9_000))
+      await storage.puzzles.discard('unknown')
+      await expect(storage.puzzles.current()).resolves.toEqual(started)
+      await storage.puzzles.save(started.id, wonGame(9_000))
+      await storage.puzzles.discard(started.id)
+      await expect(storage.history.list()).resolves.toHaveLength(1)
+    })
+
     it('saves that run together land in their order', async () => {
       const { id } = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
       await Promise.all([1_000, 2_000, 3_000].map((ms) => storage.puzzles.save(id, tick(newGame(), ms))))

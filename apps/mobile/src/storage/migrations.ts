@@ -47,6 +47,9 @@ export async function migrate(db: SqlDatabase, migrations: readonly string[] = M
     const next = current + index + 1
     // oxlint-disable-next-line no-await-in-loop -- each migration builds on the schema of the one before it.
     await db.withExclusiveTransactionAsync(async (txn) => {
+      // A second app start can migrate the same file at the same time. Only one of them runs each migration.
+      const now = await txn.getFirstAsync<{ user_version: number }>('PRAGMA user_version', [])
+      if ((now?.user_version ?? 0) >= next) return
       await txn.execAsync(source)
       await txn.execAsync(`PRAGMA user_version = ${next}`)
     })

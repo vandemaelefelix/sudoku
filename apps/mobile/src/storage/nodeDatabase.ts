@@ -37,16 +37,41 @@ export function openNodeDatabase(path: string): NodeDatabase {
       return db.prepare(source).all(...params) as T[]
     },
   }
+  let inTransaction = false
+  // expo-sqlite runs a transaction on a second connection. A write on `db` during it gets "database is locked".
+  // This adapter throws for every statement on `db` during a transaction, so a test fails first.
+  function refuseInsideTransaction(): void {
+    if (inTransaction) throw new Error('A statement ran on the database inside a transaction')
+  }
   return {
-    ...executor,
+    async execAsync(source) {
+      refuseInsideTransaction()
+      return executor.execAsync(source)
+    },
+    async runAsync(source, params) {
+      refuseInsideTransaction()
+      return executor.runAsync(source, params)
+    },
+    async getFirstAsync<T>(source: string, params: SqlValue[]) {
+      refuseInsideTransaction()
+      return executor.getFirstAsync<T>(source, params)
+    },
+    async getAllAsync<T>(source: string, params: SqlValue[]) {
+      refuseInsideTransaction()
+      return executor.getAllAsync<T>(source, params)
+    },
     async withExclusiveTransactionAsync(task) {
+      if (inTransaction) throw new Error('A transaction started inside a transaction')
       db.exec('BEGIN IMMEDIATE')
+      inTransaction = true
       try {
         await task(executor)
         db.exec('COMMIT')
       } catch (error) {
         db.exec('ROLLBACK')
         throw error
+      } finally {
+        inTransaction = false
       }
     },
     close: () => db.close(),
