@@ -29,34 +29,71 @@ it('shows the time played', () => {
   expect(screen.getByText('01:05')).toBeTruthy()
 })
 
-it('reads the time for VoiceOver in an area of 44 pt that has no action', () => {
+it('is a button of 44 pt that pauses the game', () => {
   renderInGame(<TimerPill />)
-  const area = screen.getByLabelText('Time 00:00')
-  expect(area.props.accessible).toBe(true)
-  expect(area.props.onPress).toBeUndefined()
-  expect(StyleSheet.flatten(area.props.style)).toMatchObject({ minHeight: 44 })
+  const button = screen.getByRole('button', { name: 'Pause, time 00:00' })
+  expect(StyleSheet.flatten(button.props.style)).toMatchObject({ minHeight: 44 })
+  fireEvent.press(button)
+  expect(screen.getByRole('button', { name: 'Resume, time 00:00' })).toBeTruthy()
 })
 
-it('mutes the time and drops the pause icon when the game ends', () => {
+it('stops the time during a pause and counts again after resume', () => {
+  renderInGame(<TimerPill />)
+  act(() => jest.advanceTimersByTime(2000))
+  fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:02' }))
+  act(() => jest.advanceTimersByTime(30_000))
+  expect(screen.getByText('00:02')).toBeTruthy()
+  fireEvent.press(screen.getByRole('button', { name: 'Resume, time 00:02' }))
+  act(() => jest.advanceTimersByTime(1000))
+  expect(screen.getByText('00:03')).toBeTruthy()
+})
+
+it('counts the part second before a pause', () => {
+  renderInGame(<TimerPill />)
+  act(() => jest.advanceTimersByTime(2500))
+  fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:02' }))
+  fireEvent.press(screen.getByRole('button', { name: 'Resume, time 00:02' }))
+  act(() => jest.advanceTimersByTime(500))
+  fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:02' }))
+  expect(screen.getByRole('button', { name: 'Resume, time 00:03' })).toBeTruthy()
+})
+
+it('fills the pill with the accent and shows the play icon during a pause', () => {
+  renderInGame(<TimerPill />)
+  fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:00' }))
+  expect(StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)).toMatchObject({
+    backgroundColor: daylight.colors.accent,
+  })
+  expect(StyleSheet.flatten(screen.getByText('00:00').props.style)).toMatchObject({
+    color: daylight.colors.onAccent,
+  })
+  expect(screen.getByTestId('skia-path').props.path).toBe('M8 5l11 7-11 7z')
+})
+
+it('draws the pill border and the pause icon while the game is playing', () => {
+  renderInGame(<TimerPill />)
+  expect(StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)).toMatchObject({
+    borderColor: daylight.colors.line,
+  })
+  expect(screen.getByTestId('skia-path').props.path).toBe('M9 5v14M15 5v14')
+})
+
+it('mutes the time, drops the icon and has no action when the game ends', () => {
   renderInGame(
     <>
       <TimerPill />
       <LoseButton />
     </>,
   )
-  expect(screen.getByTestId('skia-path')).toBeTruthy()
   fireEvent.press(screen.getByTestId('lose'))
   expect(screen.queryByTestId('skia-path')).toBeNull()
+  expect(screen.queryByRole('button', { name: /time/ })).toBeNull()
+  const area = screen.getByLabelText('Time 00:00')
+  expect(area.props.accessible).toBe(true)
+  expect(StyleSheet.flatten(area.props.style)).toMatchObject({ minHeight: 44 })
   expect(StyleSheet.flatten(screen.getByText('00:00').props.style)).toMatchObject({
     color: daylight.colors.textMuted,
   })
   const pill = StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)
   expect(pill.borderWidth ?? 0).toBe(0)
-})
-
-it('draws the pill border while the game is playing', () => {
-  renderInGame(<TimerPill />)
-  expect(StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)).toMatchObject({
-    borderColor: daylight.colors.line,
-  })
 })
