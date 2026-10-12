@@ -12,7 +12,7 @@ from pathlib import Path
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.flatten import load_upright
 from sudoku_ml.grid_detect import find_grid
-from sudoku_ml.manifest import csv_text, pixel_id, warn_unreadable, write_atomic
+from sudoku_ml.manifest import RESTORE, csv_text, pixel_id, warn_unreadable, write_atomic
 
 SOURCES = ("phone", "web", "wicht", "openverse", "commons", "lexski")
 LICENCES = (
@@ -47,14 +47,18 @@ def parse_corners(text: str) -> list[list[float]]:
 
 
 def read_photos(path: Path) -> list[dict[str, str]]:
-    """The rows of sudoku-photos.csv in file order: the import order."""
+    """The rows of sudoku-photos.csv in file order: the import order. Raises ValueError when the
+    file does not parse."""
     if not path.exists():
         return []
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != PHOTO_FIELDS:
-            raise ValueError(f"{path.name}: the header is not {','.join(PHOTO_FIELDS)}")
-        return [{f: row[f] or "" for f in PHOTO_FIELDS} for row in reader]
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle, strict=True)
+            if reader.fieldnames != PHOTO_FIELDS:
+                raise ValueError(f"the header is not {','.join(PHOTO_FIELDS)}")
+            return [{f: row[f] or "" for f in PHOTO_FIELDS} for row in reader]
+    except (OSError, csv.Error, UnicodeDecodeError, ValueError) as error:
+        raise ValueError(f"{path.name} cannot be read ({error}). {RESTORE}") from error
 
 
 def write_photos(path: Path, rows: list[dict[str, str]]) -> None:

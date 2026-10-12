@@ -166,6 +166,10 @@ def wrong_photo_file(paths: DataPaths):
     save_photo(grid_photo(seed=99), next(paths.photos.iterdir()))
 
 
+def unlisted_photo_file(paths: DataPaths):
+    save_photo(grid_photo(seed=42), paths.photos / "0123456789abcdef.png")
+
+
 def unknown_folder(paths: DataPaths):
     (paths.cells / "extra").mkdir()
 
@@ -206,6 +210,7 @@ def journal_with_missing_cell(paths: DataPaths):
         (unknown_source, "unknown source"),
         (wrong_photo_file, "has the id"),
         (unknown_folder, "not a known cell folder"),
+        (unlisted_photo_file, "sudoku photo files that sudoku-photos.csv does not list"),
         (journal_with_short_id, "are not full ids"),
         (journal_with_missing_cell, "match no cell"),
     ],

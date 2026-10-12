@@ -27,6 +27,8 @@ ml/data/
 ml/artifacts/
 data/images/
 data/work/
+# A write that stopped part-way leaves a .part file beside a table
+data/*.part
 
 # A model trained on real cells may not be published (ADR-013). just install-model copies it in.
 apps/mobile/assets/models/*.tflite

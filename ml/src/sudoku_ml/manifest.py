@@ -15,7 +15,7 @@ from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.dataset import FULL_ID
+from sudoku_ml.dataset import FULL_ID, RESTORE
 from sudoku_ml.journal import (
     KINDS,
     Line,
@@ -32,7 +32,6 @@ from sudoku_ml.journal import (
 CELL_FOLDERS = (*DIGIT_CLASSES, "unlabeled", "discarded")
 NO_KIND_FOLDERS = ("empty", "unlabeled", "discarded")
 CELL_FIELDS = ["cell_id", "digit", "kind", "photo_id", "row", "col"]
-RESTORE = "Restore it from git."
 UNCHANGED = "Check SUDOKU_IMAGES or restore the images. The table was not changed."
 
 
@@ -102,7 +101,7 @@ def read_cells_table(path: Path) -> dict[str, CellRow]:
     found: dict[str, CellRow] = {}
     try:
         with path.open(newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
+            reader = csv.DictReader(handle, strict=True)
             if reader.fieldnames != CELL_FIELDS:
                 raise ValueError(f"the header is not {','.join(CELL_FIELDS)}")
             for row in reader:

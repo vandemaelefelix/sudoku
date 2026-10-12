@@ -13,6 +13,7 @@ from sudoku_ml.preprocess import BT601, area_weights, to_cell_image
 from sudoku_ml.synthetic import Sample
 
 FULL_ID = re.compile(r"[0-9a-f]{64}")
+RESTORE = "Restore it from git."
 _HASH_ROWS = area_weights(64, 8)
 _HASH_COLS = area_weights(64, 9)
 
@@ -26,19 +27,28 @@ def read_ids(manifest: Path) -> dict[str, str]:
     """File stem → full cell id, from cells.csv. Raises ValueError on an id that is not 64 hex
     characters: a stop during a write can cut the last row."""
     found = {}
-    with manifest.open(newline="") as handle:
-        for line, row in enumerate(csv.DictReader(handle), start=2):
-            if not FULL_ID.fullmatch(row.get("cell_id") or ""):
-                cell = row.get("cell_id")
-                raise ValueError(f"{manifest} line {line}: {cell!r} is not a cell id")
-            found[row["cell_id"][:16]] = row["cell_id"]
+    try:
+        with manifest.open(newline="") as handle:
+            for line, row in enumerate(csv.DictReader(handle, strict=True), start=2):
+                if not FULL_ID.fullmatch(row.get("cell_id") or ""):
+                    cell = row.get("cell_id")
+                    raise ValueError(f"{manifest} line {line}: {cell!r} is not a cell id")
+                found[row["cell_id"][:16]] = row["cell_id"]
+    except csv.Error as error:
+        raise ValueError(f"{manifest} cannot be read ({error}). {RESTORE}") from error
     return found
 
 
 def read_kinds(manifest: Path) -> dict[str, str]:
-    """File stem → the kind column of cells.csv."""
-    with manifest.open(newline="") as handle:
-        return {row["cell_id"][:16]: row.get("kind") or "" for row in csv.DictReader(handle)}
+    """File stem → the kind column of cells.csv. Raises ValueError when it does not parse."""
+    try:
+        with manifest.open(newline="") as handle:
+            return {
+                row["cell_id"][:16]: row.get("kind") or ""
+                for row in csv.DictReader(handle, strict=True)
+            }
+    except (csv.Error, KeyError, TypeError) as error:
+        raise ValueError(f"{manifest} cannot be read ({error}). {RESTORE}") from error
 
 
 _DIGIT_KIND_TARGETS = {k: kind_index(k) for k in ("printed", "handwritten")}
