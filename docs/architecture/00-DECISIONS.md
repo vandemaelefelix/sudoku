@@ -39,6 +39,7 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ADR-002 | React Native (Expo, CNG) + VisionCamera 5. fast-opencv and fast-tflite by default, a Swift plugin per failing step. **Pending the walking skeleton (M0).** | Systemic | 2026-10-09 | Felix | [ADR-002](adr/adr-002-react-native-and-scanner-engine.md) |
 | ADR-008 | `@sudoku/core` is an internal package. The scanner is a module inside the app. Boundaries enforced by lint. | Cross-concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | ADR-010 | Four test layers. The real scanner is tested on the phone by a fixture runner. CI on Linux, no iOS build. | Cross-concept | 2026-10-09 | Felix | [ADR-010](adr/adr-010-testing-and-ci.md) |
+| ADR-015 | Unistyles 3 with three token tiers. Two themes first: Daylight and Midnight. Theme decorations for structure, none built in v1. **Pending a run on the iPhone (#50).** | Cross-concept | 2026-10-12 | Felix | [ADR-015](adr/adr-015-theming.md) |
 
 ### Game
 
@@ -46,7 +47,6 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | --- | --- | --- | --- | --- | --- |
 | ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints. A pool of 3 per level for instant start. | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
 | ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
-
 ### Scanning and ML
 
 | ID | Decision | Impact | Since | Owner | Source |
