@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react-native'
 import { Mat } from 'react-native-fast-opencv'
 
 describe('App when the fast-opencv probe throws', () => {
-  it('still opens on the camera screen and logs the failure', async () => {
+  it('still opens and logs the failure', async () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
     jest.mocked(Mat.create).mockImplementationOnce(() => {
       throw new Error('native module missing')
@@ -13,6 +13,6 @@ describe('App when the fast-opencv probe throws', () => {
     await waitFor(() => expect(log).toHaveBeenCalledWith(expect.stringContaining('[scanner] model parity')))
     log.mockRestore()
     render(<App />)
-    expect(screen.getByTestId('camera')).toBeTruthy()
+    expect(screen.getByLabelText('Back to home')).toBeTruthy()
   })
 })

@@ -1,5 +1,8 @@
 import { checkModelParity, formatParity, probeOpenCV, type ReferenceOutputs } from '@/scanner'
+import { useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GameScreen } from '@/game/screens/GameScreen'
+import { sampleStart } from '@/game/utils/sample.utils'
 import { ScanFlow } from '@/scan/screens/ScanFlow'
 import { devLog, errorMessage } from '@/utils/log.utils'
 
@@ -25,10 +28,14 @@ if (__DEV__) {
   logModelParity(require('./assets/models/reference-outputs.json'))
 }
 
+// Navigation waits for its ADR. A development build opens on the game with the canvas puzzle.
+const DEV_START = __DEV__ ? sampleStart() : null
+
 export default function App() {
+  const [playing, setPlaying] = useState(DEV_START !== null)
   return (
     <SafeAreaProvider>
-      <ScanFlow />
+      {playing && DEV_START !== null ? <GameScreen start={DEV_START} onBack={() => setPlaying(false)} /> : <ScanFlow />}
     </SafeAreaProvider>
   )
 }
