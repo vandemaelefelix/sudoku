@@ -1,6 +1,18 @@
-import { DEFAULT_ASSISTS, type Assists } from '@/game/constants/assists.constants'
+import { useSyncExternalStore } from 'react'
+import type { AssistName, Assists } from '@/game/constants/assists.constants'
+import { createAssistsStore } from '@/game/utils/assists.utils'
+import { kvSettings } from '@/settings/SettingsRepository'
+import { devLog, errorMessage } from '@/utils/log.utils'
 
-/** The assists that shade the grid. Every assist is on until the player can change them in the settings. */
-export function useAssists(): Assists {
-  return DEFAULT_ASSISTS
+// One store for the app: the Settings screen and the game grid must read the same assists.
+const assistsStore = createAssistsStore(kvSettings)
+
+function setAssist(name: AssistName, on: boolean): void {
+  assistsStore.set(name, on).catch((error: unknown) => devLog('assists', `assists not saved: ${errorMessage(error)}`))
+}
+
+/** The saved assists. A change reaches every reader at once. setAssist keeps its identity. */
+export function useAssists(): { assists: Assists; setAssist(name: AssistName, on: boolean): void } {
+  const assists = useSyncExternalStore(assistsStore.subscribe, assistsStore.get)
+  return { assists, setAssist }
 }
