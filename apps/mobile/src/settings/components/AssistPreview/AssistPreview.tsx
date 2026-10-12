@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { View } from 'react-native'
 import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { Grid } from '@/game/components/Grid'
@@ -7,7 +8,7 @@ import { styles } from './AssistPreview.styles'
 const PREVIEW_BOARD = previewBoard()
 
 /** The real game grid at preview size. Grid reads the live assists itself, so the preview follows each switch. */
-export function AssistPreview() {
+export const AssistPreview = memo(function AssistPreview() {
   return (
     <View style={styles.well}>
       <DisplayGameProvider board={PREVIEW_BOARD}>
@@ -17,4 +18,4 @@ export function AssistPreview() {
       </DisplayGameProvider>
     </View>
   )
-}
+})

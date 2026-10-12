@@ -3,6 +3,7 @@ import Storage from 'expo-sqlite/kv-store'
 import { StyleSheet } from 'react-native'
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
+import { useThemePreference } from '@/settings/hooks/useThemePreference'
 import { THEME_PREFERENCE_KEY } from '@/theme/preference'
 import { daylight } from '@/theme/themes/daylight'
 import { SettingsScreen } from './SettingsScreen'
@@ -17,6 +18,9 @@ afterEach(async () => {
     names.forEach((name) => result.current.setAssist(name, true))
   })
   unmount()
+  const theme = renderHook(() => useThemePreference())
+  await act(async () => theme.result.current.choose('system'))
+  theme.unmount()
   await Storage.setItemAsync(THEME_PREFERENCE_KEY, 'system')
 })
 

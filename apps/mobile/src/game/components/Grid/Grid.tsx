@@ -17,8 +17,7 @@ type GridProps = {
   digitSize?: DigitSize
 }
 
-/** 81 cells in nine boxes. BOXES lists the cells of each box row by row. A pulse runs in the cells, not here. */
-// The default {} is for the render-count tests: they call Grid() as a plain function, without props.
+/** 81 cells in nine boxes. BOXES lists the cells of each box row by row. A pulse runs in the cells, not here. The props default to {}: GameScreen.renders.test calls Grid() as a plain function. */
 export function Grid({ interactive = true, digitSize = 'full' }: GridProps = {}) {
   const views = useCellViews()
   const { select } = useGameActions()
