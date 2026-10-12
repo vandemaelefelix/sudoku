@@ -314,8 +314,12 @@ function drawQuad() {
 }
 
 async function refreshPreview() {
-  $("flat").src = `/flat/${photo.stem}.png?c=${cornerQuery()}`;
-  const value = await api(`/api/photos/usable?photo=${photo.stem}&c=${cornerQuery()}`);
+  const stem = photo.stem;
+  const query = cornerQuery();
+  $("flat").src = `/flat/${stem}.png?c=${query}`;
+  const value = await api(`/api/photos/usable?photo=${stem}&c=${query}`);
+  // The person can accept, skip or leave the photo while the request runs.
+  if (!photo || photo.stem !== stem || !$("usable")) return;
   $("usable").textContent = `${value.usable} of 81 cells are inside the photo.`;
   drawQuad();
 }
@@ -332,7 +336,7 @@ function clickCorner(event) {
   drawQuad();
 }
 
-function renderPhoto() {
+async function renderPhoto() {
   $("grid").innerHTML = "";
   if (!photo) {
     $("photos").innerHTML = "";
@@ -346,7 +350,8 @@ function renderPhoto() {
   $("photo").onload = drawQuad;
   $("wrap").onclick = clickCorner;
   if (corners) {
-    run(refreshPreview);
+    // Not wrapped in run: the callers already hold the busy guard, and run would drop the call.
+    await refreshPreview();
   } else {
     $("usable").textContent = "No grid found. Click the 4 corners: top left, top right, bottom right, bottom left.";
   }
@@ -357,7 +362,7 @@ async function loadPhoto(after) {
   corners = photo && photo.corners;
   clicks = [];
   render();  // the nav, the help and the buttons of the Photos screen
-  renderPhoto();
+  await renderPhoto();
 }
 
 async function acceptPhoto() {
@@ -388,7 +393,7 @@ function clearCorners() {
   if (!photo) return;
   clicks = [];
   corners = photo.corners;
-  renderPhoto();
+  renderPhoto().catch((error) => say(error.message));
 }
 
 async function loadDigits(next) {
