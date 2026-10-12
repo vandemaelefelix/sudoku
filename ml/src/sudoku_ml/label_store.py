@@ -1,5 +1,6 @@
 """State and rules of the labelling page. label_server.py only translates HTTP to these calls."""
 
+import csv
 import json
 import tomllib
 from collections import Counter
@@ -27,7 +28,7 @@ from sudoku_ml.kind_log import (
     undone_actions,
 )
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
-from sudoku_ml.manifest import pixel_id
+from sudoku_ml.manifest import pixel_id, warn_unreadable
 from sudoku_ml.preprocess import to_cell_image
 from sudoku_ml.relabel import move_cells
 from sudoku_ml.synthetic import Sample
@@ -86,17 +87,31 @@ class LabelStore:
         self._actions = 0
         self._registered: dict[str, str] = {}
         self._load()
-        self.groups = (
-            json.loads(paths.groups.read_text())["folders"] if paths.groups.exists() else {}
-        )
+        self.groups = self._read_groups()
         self._dups: tuple[list[tuple[str, str]], set[str]] | None = None
+        self._suspects_ok = True
         self._pre_cache: tuple[tuple[int, int], dict[str, dict]] | None = None
+
+    def _read_groups(self) -> dict:
+        if not self.paths.groups.exists():
+            return {}
+        try:
+            return json.loads(self.paths.groups.read_text())["folders"]
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            warn_unreadable(self.paths.groups, error)
+            return {}
 
     def _log_size(self) -> int:
         return self.paths.log.stat().st_size if self.paths.log.exists() else 0
 
     def _load(self) -> None:
-        self._stem_ids = {**read_ids(self.paths.manifest), **self._registered}
+        try:
+            listed = read_ids(self.paths.manifest)
+        except (OSError, ValueError, KeyError) as error:
+            # The start rebuilds cells.csv from the folders, as after a stopped session.
+            warn_unreadable(self.paths.manifest, error)
+            listed = {}
+        self._stem_ids = {**listed, **self._registered}
         self.folder: dict[str, str] = {}
         for path in self.paths.cells.glob("*/*.png"):
             if path.stem not in self._stem_ids:
@@ -114,6 +129,7 @@ class LabelStore:
         """Drop the kind of a cell that sits in empty/. A stop between the file move and the log
         line of `move` leaves one. The folder is the truth for the digit (ADR-009). The lines
         carry their own session, so undo and rollback never reverse them."""
+        self._refresh()
         session = f"{self.session}-repair"
         t, kinds = self._t(), self.kinds()
         lines = [
@@ -334,7 +350,12 @@ class LabelStore:
         stat = self.paths.prelabels.stat()
         key = (stat.st_mtime_ns, stat.st_size)
         if self._pre_cache is None or self._pre_cache[0] != key:
-            self._pre_cache = (key, json.loads(self.paths.prelabels.read_text())["cells"])
+            try:
+                cells = json.loads(self.paths.prelabels.read_text())["cells"]
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                warn_unreadable(self.paths.prelabels, error)
+                cells = {}
+            self._pre_cache = (key, cells)
         return self._pre_cache[1]
 
     def digit_screen(self, digit: str, kinds: str = "handwritten") -> dict:
@@ -403,6 +424,15 @@ class LabelStore:
             self._dups = (pairs, {ids[i] for i in test})
         return self._dups
 
+    def _model_items(self, current) -> list:
+        self._suspects_ok = True
+        try:
+            return model_items(self.paths.suspects, self._stem_ids, current)
+        except (OSError, ValueError, KeyError, TypeError, csv.Error) as error:
+            warn_unreadable(self.paths.suspects, error)
+            self._suspects_ok = False
+            return []
+
     def review_items(self) -> list[dict]:
         self._refresh()
         kinds = self.kinds()
@@ -412,7 +442,7 @@ class LabelStore:
 
         items = (
             near_duplicate_items(self._near_duplicates()[0], self.lines)
-            + model_items(self.paths.suspects, self._stem_ids, current)
+            + self._model_items(current)
             + check_items(self.checks, current)
         )
         merged: dict[tuple[str, str], dict] = {}
@@ -439,7 +469,7 @@ class LabelStore:
         return {
             "items": items[:SCREEN_SIZE],
             "open": len(items),
-            "suspects": self.paths.suspects.exists(),
+            "suspects": self.paths.suspects.exists() and self._suspects_ok,
         }
 
     # Check screen

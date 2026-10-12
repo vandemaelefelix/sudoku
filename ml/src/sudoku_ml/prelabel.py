@@ -13,7 +13,7 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
 from sudoku_ml.grouping import default_run
 from sudoku_ml.label_store import Paths
-from sudoku_ml.manifest import pixel_id
+from sudoku_ml.manifest import pixel_id, warn_unreadable, write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
 
@@ -57,7 +57,14 @@ def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:
     """Pre-label the cells in unlabeled/ and in the digit folders that have no current pre-label
     of this run. Drop the pre-labels of cells that left those folders. An entry without `kp`
     is old and is computed again. Returns the number of new pre-labels."""
-    stored = json.loads(out.read_text()) if out.exists() else {}
+    stored = {}
+    if out.exists():
+        try:
+            stored = json.loads(out.read_text())
+        except (OSError, ValueError) as error:
+            warn_unreadable(out, error)
+    if not isinstance(stored, dict):
+        stored = {}
     known = stored.get("cells", {}) if stored.get("run") == run.name else {}
     paths = sorted(p for f in PRELABEL_FOLDERS for p in (cells_dir / f).glob("*.png"))
     ids = {p: pixel_id(p) for p in paths}
@@ -66,8 +73,7 @@ def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:
     if todo:
         for path, entry in zip(todo, _predict(run, todo), strict=True):
             cells[ids[path]] = entry
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"run": run.name, "cells": cells}))
+    write_atomic(out, json.dumps({"run": run.name, "cells": cells}))
     return len(todo)
 
 

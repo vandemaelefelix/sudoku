@@ -1,6 +1,7 @@
 """Real cells, near-duplicate groups and a split that keeps each group on one side."""
 
 import csv
+import re
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND, digit_index, kind_in
 from sudoku_ml.preprocess import BT601, area_weights, to_cell_image
 from sudoku_ml.synthetic import Sample
 
+FULL_ID = re.compile(r"[0-9a-f]{64}")
 _HASH_ROWS = area_weights(64, 8)
 _HASH_COLS = area_weights(64, 9)
 
@@ -21,9 +23,15 @@ def cell_paths(cells_dir: Path) -> list[Path]:
 
 
 def read_ids(manifest: Path) -> dict[str, str]:
-    """File stem → full cell id, from cells.csv."""
+    """File stem → full cell id, from cells.csv. Raises ValueError on an id that is not 64 hex
+    characters: a stop during a write can cut the last row."""
+    found = {}
     with manifest.open(newline="") as handle:
-        return {row["id"][:16]: row["id"] for row in csv.DictReader(handle)}
+        for line, row in enumerate(csv.DictReader(handle), start=2):
+            if not FULL_ID.fullmatch(row.get("id") or ""):
+                raise ValueError(f"{manifest} line {line}: {row.get('id')!r} is not a cell id")
+            found[row["id"][:16]] = row["id"]
+    return found
 
 
 def read_kinds(manifest: Path) -> dict[str, str]:

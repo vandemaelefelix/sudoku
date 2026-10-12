@@ -1,6 +1,7 @@
 """Find cells whose digit or kind label is probably wrong (cross-validated ranking, R-13)."""
 
 import csv
+import io
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +11,7 @@ from sudoku_ml.augment import augment
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, kind_index
 from sudoku_ml.dataset import cell_paths, group_ids, load_cells, stack
 from sudoku_ml.label_store import Paths
+from sudoku_ml.manifest import write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.train import _device, _logits, loss
@@ -56,12 +58,11 @@ def rank_kind_suspects(
 
 
 def write_suspects(rows: list[dict], path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
+    buffer = io.StringIO(newline="")
+    writer = csv.DictWriter(buffer, fieldnames=FIELDS)
+    writer.writeheader()
+    writer.writerows(rows)
+    write_atomic(path, buffer.getvalue())
 
 
 def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:

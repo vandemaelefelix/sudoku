@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sudoku_ml.flatten import load_upright
 from sudoku_ml.grid_detect import find_grid
-from sudoku_ml.manifest import pixel_id
+from sudoku_ml.manifest import pixel_id, warn_unreadable, write_atomic
 
 ORIGINS = ("phone", "web", "wicht", "openverse", "commons", "lexski")
 LICENCES = (
@@ -87,15 +87,19 @@ def write_photos(manifest: Path, rows: list[dict[str, str]]) -> None:
 
 
 def read_detections(path: Path) -> dict[str, dict]:
-    return json.loads(path.read_text()) if path.exists() else {}
+    if not path.exists():
+        return {}
+    try:
+        found = json.loads(path.read_text())
+    except (OSError, ValueError) as error:
+        warn_unreadable(path, error)
+        return {}
+    return found if isinstance(found, dict) else {}
 
 
 def write_detections(path: Path, detections: dict[str, dict]) -> None:
     """Replace the file in one step: a stop in the middle must not leave half a file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    part = path.with_name(path.name + ".part")
-    part.write_text(json.dumps(detections))
-    part.replace(path)
+    write_atomic(path, json.dumps(detections))
 
 
 def detect_outline(rgb) -> dict:
