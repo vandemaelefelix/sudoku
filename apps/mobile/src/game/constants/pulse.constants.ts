@@ -23,5 +23,5 @@ export const POP_PEAK_AT = 0.4
 
 export const POP_SCALE = 1.3
 
-/** The longest solve pulse: from a corner to the opposite corner is 16 steps. The finish card waits this long. */
+/** The longest solve pulse: from a corner to the opposite corner is 16 steps. */
 export const SOLVE_PULSE_MS = 16 * PULSE_STEP_MS + WAVE_MS

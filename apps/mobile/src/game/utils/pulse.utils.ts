@@ -53,7 +53,7 @@ function easeOut(x: number): number {
   return 1 - (1 - x) * (1 - x)
 }
 
-/** 0, up to 1 at peakAt, down to 0 at the end. t is the part of the animation, 0 to 1. Each half eases out, as a CSS keyframe does. */
+/** 0, up to 1 at peakAt, down to 0 at the end. t is the part of the animation, 0 to 1. Each half eases out, close to a CSS ease-out keyframe. */
 function keyframe(t: number, peakAt: number): number {
   'worklet'
   if (t <= 0 || t >= 1) return 0
