@@ -133,3 +133,17 @@ export function hint(game: Game, random: Random): MoveResult {
     undoSteps: withUndoStep(game),
   })
 }
+
+export function pause(game: Game): Game {
+  return game.status === 'playing' ? { ...game, status: 'paused' } : game
+}
+
+export function resume(game: Game): Game {
+  return game.status === 'paused' ? { ...game, status: 'playing' } : game
+}
+
+/** The app measures `elapsedMs`. SUD-04: the core never reads a clock. */
+export function tick(game: Game, elapsedMs: number): Game {
+  if (game.status !== 'playing' || !Number.isFinite(elapsedMs) || elapsedMs <= 0) return game
+  return { ...game, playedMs: game.playedMs + elapsedMs }
+}

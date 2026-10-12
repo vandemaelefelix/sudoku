@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { erase, hint, place, select, toggleNote, undo } from './actions'
+import { erase, hint, pause, place, resume, select, tick, toggleNote, undo } from './actions'
 import { NOTHING_COMPLETED } from './completion'
 import { UNDO_LIMIT } from './constants'
 import { createGame } from './createGame'
@@ -234,5 +234,55 @@ describe('hint', () => {
   it('does nothing when the game is won', () => {
     const won = newGame(solvedExcept())
     expect(hint(won, first).game).toBe(won)
+  })
+})
+
+describe('pause and resume', () => {
+  it('pauses a game in play and resumes it', () => {
+    const paused = pause(at(2))
+    expect(paused.status).toBe('paused')
+    expect(resume(paused).status).toBe('playing')
+  })
+
+  it('refuses every action except resume while paused', () => {
+    const paused = pause(placed(at(2), 4))
+    expect(select(paused, 40)).toBe(paused)
+    expect(place(paused, 5).game).toBe(paused)
+    expect(toggleNote(paused, 5).game).toBe(paused)
+    expect(erase(paused).game).toBe(paused)
+    expect(undo(paused).game).toBe(paused)
+    expect(hint(paused, first).game).toBe(paused)
+    expect(pause(paused)).toBe(paused)
+  })
+
+  it('cannot pause or resume a game that ended', () => {
+    const won = newGame(solvedExcept())
+    expect(pause(won)).toBe(won)
+    expect(resume(won)).toBe(won)
+  })
+})
+
+describe('tick', () => {
+  it('adds the elapsed time while the game is in play', () => {
+    expect(tick(tick(newGame(), 1000), 250).playedMs).toBe(1250)
+  })
+
+  it('does not count a pause', () => {
+    const game = resume(tick(pause(tick(newGame(), 1000)), 5000))
+    expect(game.playedMs).toBe(1000)
+  })
+
+  it('does not count after the game ended', () => {
+    const lost = placed(placed(placed(at(2), 1), 2), 3)
+    expect(tick(lost, 1000)).toBe(lost)
+    const won = newGame(solvedExcept())
+    expect(tick(won, 1000)).toBe(won)
+  })
+
+  it('ignores a time that is negative or not a number', () => {
+    const game = newGame()
+    expect(tick(game, -5)).toBe(game)
+    expect(tick(game, Number.NaN)).toBe(game)
+    expect(tick(game, Number.POSITIVE_INFINITY)).toBe(game)
   })
 })
