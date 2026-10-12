@@ -16,6 +16,10 @@ from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
 
 BATCH = 1024
+NO_MODEL = (
+    "No model run found, so no pre-labels. The Digits screen stays empty. "
+    "Install a model with just install-model, or pass a run: just prelabel-cells <run>"
+)
 
 
 def _predict(run: Path, paths: list[Path]) -> list[dict]:
@@ -67,11 +71,7 @@ def main(argv: list[str], ml_root: Path = Path(__file__).parents[2]) -> int:
     except FileNotFoundError:
         run = None
     if run is None or not (run / "model.pt").exists():
-        print(
-            "No model run found, so no pre-labels. The Digits screen stays empty. "
-            "Install a model with just install-model, or pass a run: just prelabel-cells <run>",
-            file=sys.stderr,
-        )
+        print(NO_MODEL, file=sys.stderr)
         return 0
     cells, out = ml_root / "data" / "cells", ml_root / "data" / "prelabels.json"
     print(f"Pre-labelled {write_prelabels(cells, run, out)} new cells with {run.name}.")

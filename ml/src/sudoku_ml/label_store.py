@@ -449,6 +449,18 @@ class LabelStore:
             "check": summary(self.checks),
         }
 
+    def status(self) -> dict:
+        """Counts for the steps bar. Cheap: it does not read the cells, unlike progress."""
+        self._refresh()
+        kinds = self.kinds()
+        pre = self._prelabels()
+        waiting = [c for c, f in self.folder.items() if f == "unlabeled"]
+        return {
+            "digits": sum(c in pre for c in waiting),
+            "not_prelabelled": sum(c not in pre for c in waiting),
+            "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
+        }
+
     def label_state(self) -> dict:
         self._refresh()
         kinds = self.kinds()

@@ -120,7 +120,7 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
             pass
 
     monkeypatch.setattr(
-        "sudoku_ml.label_server.make_server", lambda store, check=None: Interrupted()
+        "sudoku_ml.label_server.make_server", lambda store, check=None, prelabel=None: Interrupted()
     )
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], tmp_path) == 0
@@ -219,10 +219,61 @@ def test_the_server_starts_without_groups(tmp_path, monkeypatch):
             pass
 
     monkeypatch.setattr(
-        "sudoku_ml.label_server.make_server", lambda store, check=None: Interrupted()
+        "sudoku_ml.label_server.make_server", lambda store, check=None, prelabel=None: Interrupted()
     )
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], tmp_path) == 0
+
+
+def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
+    port, _, u, _ = served_photos
+    status, data = request(port, "GET", "/api/status")
+    assert status == 200
+    assert json.loads(data) == {"photos": 1, "digits": 2, "not_prelabelled": 0, "kind": 1}
+    request(port, "POST", "/api/photos/reject", {"photo": served_photos[3], "reason": "rejected"})
+    assert json.loads(request(port, "GET", "/api/status")[1])["photos"] == 0
+
+
+def test_the_status_without_a_photo_check_counts_zero_photos(served):
+    port, _, _ = served
+    status, data = request(port, "GET", "/api/status")
+    assert status == 200 and json.loads(data)["photos"] == 0
+
+
+def serve_with(tmp_path: Path, prelabel):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    server = make_server(LabelStore(paths, Clock()), prelabel=prelabel, port=0)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+def test_prelabel_returns_the_number_from_the_stub(tmp_path: Path):
+    server = serve_with(tmp_path, lambda: 5)
+    try:
+        status, data = request(server.server_port, "POST", "/api/prelabel", {})
+        assert status == 200 and json.loads(data) == {"result": 5}
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_prelabel_without_a_function_answers_404(served):
+    port, _, _ = served
+    status, data = request(port, "POST", "/api/prelabel", {})
+    assert status == 404 and json.loads(data) == {"error": "no prelabel"}
+
+
+def test_a_prelabel_error_gets_a_400_with_the_reason(tmp_path: Path):
+    def refuse() -> int:
+        raise ValueError("No model run found")
+
+    server = serve_with(tmp_path, refuse)
+    try:
+        status, data = request(server.server_port, "POST", "/api/prelabel", {})
+        assert status == 400 and "No model run" in json.loads(data)["error"]
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_the_page_explains_the_photos_and_digits_screens(served):
