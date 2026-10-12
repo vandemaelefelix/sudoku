@@ -1,5 +1,6 @@
-"""The model's digit and kind for each cell in cells/unlabeled/, for the Digits screen. Writes
-ml/data/prelabels.json. A pre-label is a proposal: only a person's confirmation is a label."""
+"""The model's digit and kind for each cell in cells/unlabeled/ and in the digit folders, for
+the Digits and Label kind screens. Writes ml/data/prelabels.json. A pre-label is a proposal:
+only a person's confirmation is a label."""
 
 import json
 import sys
@@ -16,6 +17,8 @@ from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
 
 BATCH = 1024
+# The kind needs a pre-label after the digit pass moved a cell out of unlabeled/.
+PRELABEL_FOLDERS = ("unlabeled", *(str(d) for d in range(1, 10)))
 NO_MODEL = (
     "No model run found, so no pre-labels. The Digits screen stays empty. "
     "Install a model with just install-model, or pass a run: just prelabel-cells <run>"
@@ -43,19 +46,21 @@ def _predict(run: Path, paths: list[Path]) -> list[dict]:
                         "digit": DIGIT_CLASSES[int(d.argmax())],
                         "p": round(float(d.max()), 4),
                         "kind": KIND_CLASSES[int(k.argmax())],
+                        "kp": round(float(k.max()), 4),
                     }
                 )
     return results
 
 
 def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:
-    """Pre-label the cells in unlabeled/ that have no pre-label of this run yet. Drop the
-    pre-labels of cells that left unlabeled/. Returns the number of new pre-labels."""
+    """Pre-label the cells in unlabeled/ and in the digit folders that have no current pre-label
+    of this run. Drop the pre-labels of cells that left those folders. An entry without `kp`
+    is old and is computed again. Returns the number of new pre-labels."""
     stored = json.loads(out.read_text()) if out.exists() else {}
     known = stored.get("cells", {}) if stored.get("run") == run.name else {}
-    paths = sorted((cells_dir / "unlabeled").glob("*.png"))
+    paths = sorted(p for f in PRELABEL_FOLDERS for p in (cells_dir / f).glob("*.png"))
     ids = {p: pixel_id(p) for p in paths}
-    cells = {ids[p]: known[ids[p]] for p in paths if ids[p] in known}
+    cells = {ids[p]: known[ids[p]] for p in paths if "kp" in known.get(ids[p], {})}
     todo = [p for p in paths if ids[p] not in cells]
     if todo:
         for path, entry in zip(todo, _predict(run, todo), strict=True):
