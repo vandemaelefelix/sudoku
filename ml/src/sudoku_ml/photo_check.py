@@ -96,8 +96,8 @@ class PhotoCheck:
     def _usable(self, stem: str, corners) -> tuple[list[list[float]], list[bool]]:
         checked = check_corners(corners)
         height, width = self._image(stem).shape[:2]
-        # A bow-tie or a thin quad can pass check_corners and still have a singular homography.
-        # The server maps only ValueError to a client error.
+        # Defensive guard: the server maps only ValueError to a client error (400), so an error
+        # from cv2 or numpy must not reach it as another type.
         try:
             return checked, usable_cells(checked, width, height)
         except (np.linalg.LinAlgError, cv2.error) as error:
