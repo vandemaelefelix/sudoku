@@ -157,7 +157,9 @@ describe('migration 2', () => {
   })
   it('keeps its shipped text', () => {
     const zeros = Array.from({ length: 81 }, () => 0).join(',')
-    expect(MIGRATIONS[1]).toContain(`json('[${zeros}]')`)
+    expect(MIGRATIONS[1]).toBe(`UPDATE game_in_progress
+    SET saved_game = json_set(saved_game, '$.version', 2, '$.startEntries', json('[${zeros}]'))
+    WHERE CASE WHEN json_valid(saved_game) THEN json_extract(saved_game, '$.version') END = 1;`)
   })
 
   it('leaves a saved game of version 2 as it is', async () => {

@@ -49,11 +49,15 @@ describe('saved game', () => {
     expect(() => fromSavedGame({ ...short, startEntries: [0] })).toThrow(RangeError)
   })
 
-  it('refuses entries that do not fit the givens', () => {
+  it('refuses entries of the wrong length', () => {
+    const saved = toSavedGame(gameInProgress())
+    expect(() => fromSavedGame({ ...saved, entries: [0] })).toThrow(RangeError)
+  })
+
+  it('refuses an entry on a given', () => {
     const saved = toSavedGame(gameInProgress())
     saved.entries[0] = 5
     expect(() => fromSavedGame(saved)).toThrow(RangeError)
-    expect(() => fromSavedGame({ ...saved, entries: [0] })).toThrow(RangeError)
   })
 
   it('loads entries that differ from the start entries', () => {
