@@ -118,6 +118,6 @@ label-rollback session:
     uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
     just dataset-manifest
 
-# Copy the old layout (<old_ml_root>/datasets and data/) into data/ and the image store. Dry run without --apply
+# Copy the old layout (<old_ml_root>/datasets and data/) into data/ and the image store. Dry run without --apply. Flags: --apply, --force, --prefer-log
 migrate-layout old_ml_root *flags:
     old="$(realpath "{{old_ml_root}}")" && uv run --directory ml python -m sudoku_ml.migrate_layout "$old" {{flags}}
