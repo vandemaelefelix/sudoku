@@ -35,7 +35,7 @@ status: DRAFT
 | Armed (lock-on) | A scene that may lock on automatically. The first scene is armed. A scene after a Retake arms only after the grid is gone for 0.5 s after the warm-up, or jumps to another place. The shutter does not need it. See the scan-pipeline concept |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
-| Notes | Small pencil marks in a cell. Recognised as a kind, loaded as an empty cell |
+| Notes | Small pencil marks in a cell. In a scan: a kind, loaded as an empty cell. In the game: the candidate numbers that the player sets in notes mode |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
 | Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007). Until M3, Install is the one exception (ADR-007). |
 | Review rate | The share of cells that the correction screen marks as uncertain. Reports give the accuracy at a review rate, for example 99.7 % at 5 % |
@@ -82,3 +82,24 @@ status: DRAFT
 | Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
 | Daylight | The light theme (ADR-015) |
 | Midnight | The dark theme (ADR-015) |
+| Game | One puzzle in progress: the givens, the solution, the entries, the notes, the mistakes, the hints used and the time played. `@sudoku/core` holds its rules |
+| Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
+| Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
+| Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
+| Hint | A move that fills one cell with its correct number. It counts once. ADR-011 decides which cell the hint picks |
+| Complete number | A number with all nine placed correctly. Its key is disabled. Wrong placements do not count |
+| Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
+| Pulse | The short wave of colour that spreads from a cell when a correct number completes a row, column, box, number or the whole grid. A haptic tap goes with it |
+| Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
+| Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
+| Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level |
+| Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
+| Undo step | The entries and notes before one move. Undo restores the last undo step. It does not restore the mistake count |
+| Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
+| Theme preference | The player's choice in Settings: System, Daylight or Midnight. System follows the light or dark setting of the iPhone |
+| Adaptive theme | The theme that follows the iPhone setting: Daylight in light mode, Midnight in dark mode |
+| Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
+| Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
+| Solution | The full grid that the givens allow. A playable puzzle has exactly one |
+| Time played | The time a game counted while its status was playing. The app tells the core how much time passed. The core never reads a clock |
+| Saved game | A game as a plain object with a version number, so the app can store it and load it again (ADR-012) |
