@@ -22,6 +22,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | Every binding rule and decision | `docs/architecture/00-DECISIONS.md` |
 | Repository layout and boundaries | `docs/architecture/05-building-block-view.md` |
 | How a scan works | `docs/architecture/00-concepts/scan-pipeline.md` |
+| How the game screen works | `docs/architecture/00-concepts/game-screen.md` |
 | What the model must accept and return | `docs/architecture/00-concepts/model-contract.md` |
 | Words and their meaning | `docs/architecture/12-glossary.md` |
 | Commands (setup, test, lint) | `justfile`, or run `just --list` |
@@ -118,14 +119,19 @@ Work is tracked in GitHub issues. Use the `gh` CLI.
    create it without approval.
 2. Each issue has one `type:` label, one `area:` label and a milestone (`M0` to `M3`).
 3. Use the templates in `.github/ISSUE_TEMPLATE/`. Acceptance criteria are a checklist.
-4. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
-5. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
-6. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.
-7. Tick an acceptance criterion in the issue when it is met.
-8. Before a pull request is merged, a second agent reviews it without this session's context.
-   Fix its findings, or answer them in the pull request.
-9. When work proves or changes a decision, update the ADR in the same pull request and link it
-   from the issue.
+4. An epic groups the issues of one player goal. It uses the `epic.md` template and the label
+   `type: epic`. Each issue of the epic is a GitHub sub-issue, with "blocked by" links for its
+   order.
+5. A pull request for the docs of an epic says `Part of #<epic>`. Only the last sub-issue
+   closes an epic.
+6. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
+7. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
+8. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.
+9. Tick an acceptance criterion in the issue when it is met.
+10. Before a pull request is merged, a second agent reviews it without this session's context.
+    Fix its findings, or answer them in the pull request.
+11. When work proves or changes a decision, update the ADR in the same pull request and link it
+    from the issue.
 
 ## Git
 
