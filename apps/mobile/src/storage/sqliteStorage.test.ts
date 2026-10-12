@@ -7,7 +7,7 @@ import type { Level } from './storage.types'
 
 const open: NodeDatabase[] = []
 
-async function openStorage(path = ':memory:', deps = testDeps()) {
+async function openStorage(path?: string, deps = testDeps()) {
   const db = openNodeDatabase(path)
   open.push(db)
   await migrate(db)
@@ -18,7 +18,7 @@ afterEach(() => {
   for (const db of open.splice(0)) db.close()
 })
 
-describeGameStorage('the SQLite storage', async (deps) => (await openStorage(':memory:', deps)).storage)
+describeGameStorage('the SQLite storage', async (deps) => (await openStorage(undefined, deps)).storage)
 
 describe('createSqliteStorage', () => {
   it('resumes after the app is killed', async () => {

@@ -56,9 +56,15 @@ The first repositories make these points of the decision concrete:
 1. **Snapshots, not moves.** A save writes the whole game as its saved game (JSON) in one row. Undo steps are part of the saved game. A saved game that does not load stays in the table: `current()` gives no game, and only the start of a new game soft-deletes it. A new saved game version needs a migration that converts `saved_game`.
 2. **One game in progress.** Starting a game soft-deletes the game in progress before it.
 3. **Finish in one transaction.** The last save of a won or lost game soft-deletes the game in progress and writes its history entry in the same transaction. The history entry takes the id of the game.
-4. **Numbered migrations.** The migrations are an ordered list in `apps/mobile/src/storage/migrations.ts`. `PRAGMA user_version` holds the last one that ran. An app refuses a database that is newer than itself.
-5. **Saves run in order.** A save waits for the save before it, so the last move always wins. The queue belongs to one storage, so the app opens the storage once.
-6. **Jest runs the real SQL.** The repositories use a small SQL interface. In Jest it runs on the SQLite that Node has built in, so the tests check the SQL, the migrations and the transactions. Like expo-sqlite, the Jest adapter refuses a statement outside the transaction while a transaction is open. The in-memory fake passes the same contract tests.
+4. **Numbered migrations.** The migrations are an ordered list in `apps/mobile/src/storage/migrations.ts`. `PRAGMA user_version` holds the last one that ran. An app refuses a database that is newer than itself. Each migration reads the version again inside its transaction, so it never runs twice. A migration that meets another writer fails with "database is locked", writes nothing, and runs at the next call of `openStorage()`.
+5. **Saves run in order.** A save waits for the save before it, so the last move always wins. The queue belongs to one storage. `openStorage()` gives the same storage to every call, so the app has one connection and one queue.
+6. **Jest runs the real SQL.** The repositories use a small SQL interface. In Jest it runs on the SQLite that Node has built in, so the tests check the SQL, the migrations and the transactions. The Jest adapter does what expo-sqlite 57 does on the phone:
+   - The database file uses the write-ahead log (WAL).
+   - `withExclusiveTransactionAsync` opens a second connection and runs a plain (deferred) `BEGIN` on it.
+   - No connection has a busy timeout. A write while another connection writes fails at once with "database is locked".
+   - A read on the main connection during a transaction sees the last commit.
+
+   The in-memory fake passes the same contract tests.
 7. **Best time without hints.** The best time of a level counts only won games with zero hints.
 
 The time played is saved with each move. Time after the last move and before the app is killed is lost.

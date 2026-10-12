@@ -37,6 +37,7 @@ export const MIGRATIONS: readonly string[] = [
 /**
  * Runs each migration that is newer than the database, each in its own transaction.
  * Returns the schema version. Throws a RangeError, and writes nothing, when the database is newer than the app.
+ * Throws "database is locked" when another connection migrates at the same time. A new call then continues.
  */
 export async function migrate(db: SqlDatabase, migrations: readonly string[] = MIGRATIONS): Promise<number> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version', [])
@@ -48,7 +49,8 @@ export async function migrate(db: SqlDatabase, migrations: readonly string[] = M
     const next = current + index + 1
     // oxlint-disable-next-line no-await-in-loop -- each migration builds on the schema of the one before it.
     await db.withExclusiveTransactionAsync(async (txn) => {
-      // A second app start can migrate the same file at the same time. Only one of them runs each migration.
+      // Another connection can run this migration after the read above, so read the version again.
+      // While that connection writes, this transaction fails with "database is locked" and writes nothing.
       const now = await txn.getFirstAsync<{ user_version: number }>('PRAGMA user_version', [])
       if ((now?.user_version ?? 0) >= next) return
       await txn.execAsync(source)

@@ -1,10 +1,11 @@
 import { MIGRATIONS, migrate } from './migrations'
-import { openNodeDatabase, type NodeDatabase } from './nodeDatabase'
+import { openNodeDatabase, temporaryDatabaseFile, type NodeDatabase } from './nodeDatabase'
+import type { SqlDatabase } from './sql.types'
 
 let db: NodeDatabase
 
 beforeEach(() => {
-  db = openNodeDatabase(':memory:')
+  db = openNodeDatabase()
 })
 
 afterEach(() => {
@@ -70,5 +71,51 @@ describe('migrate', () => {
     await db.execAsync(`PRAGMA user_version = ${MIGRATIONS.length + 1}`)
     await expect(migrate(db)).rejects.toThrow(RangeError)
     expect(await version()).toBe(MIGRATIONS.length + 1)
+  })
+
+  it('runs each migration once when two app starts migrate one file together', async () => {
+    const file = temporaryDatabaseFile()
+    const first = openNodeDatabase(file.path)
+    const second = openNodeDatabase(file.path)
+    try {
+      const results = await Promise.allSettled([migrate(first), migrate(second)])
+      expect(results.filter((result) => result.status === 'fulfilled')).not.toHaveLength(0)
+      const reasons = results.flatMap((result) => (result.status === 'rejected' ? [String(result.reason)] : []))
+      expect(reasons).toEqual(reasons.map(() => expect.stringContaining('database is locked')))
+      await expect(migrate(second)).resolves.toBe(MIGRATIONS.length)
+      const tables = await second.getAllAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+        [],
+      )
+      expect(tables.map((table) => table.name)).toEqual(['game_history', 'game_in_progress'])
+    } finally {
+      first.close()
+      second.close()
+      file.remove()
+    }
+  })
+
+  it('skips a migration that another app start ran after this one read the version', async () => {
+    const file = temporaryDatabaseFile()
+    const first = openNodeDatabase(file.path)
+    const second = openNodeDatabase(file.path)
+    try {
+      const gate = Promise.withResolvers<void>()
+      const late: SqlDatabase = {
+        ...second,
+        withExclusiveTransactionAsync: async (task) => {
+          await gate.promise
+          return second.withExclusiveTransactionAsync(task)
+        },
+      }
+      const lateMigration = migrate(late)
+      await migrate(first)
+      gate.resolve()
+      await expect(lateMigration).resolves.toBe(MIGRATIONS.length)
+    } finally {
+      first.close()
+      second.close()
+      file.remove()
+    }
   })
 })
