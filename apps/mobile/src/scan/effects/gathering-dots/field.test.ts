@@ -33,8 +33,11 @@ const VIEW = { width: 402, height: 874 }
 
 type World = { scene: Scene; field: FieldState }
 
-function world(): World {
-  return { scene: createScene(VIEW), field: createField(VIEW) }
+/** lockOn: false keeps the scene in its warm-up forever, so it never locks on and follows every move of the grid. */
+function world(lockOn = true): World {
+  const scene = createScene(VIEW)
+  if (!lockOn) scene.startedAt = Number.POSITIVE_INFINITY
+  return { scene, field: createField(VIEW) }
 }
 
 function gridAt(x: number, y: number, size = 300): Quad {
@@ -81,8 +84,8 @@ function largestMove(before: { x: number; y: number }[], after: { x: number; y: 
 
 /** Gathers a grid, then pans it for 3 s with a new quad object every 2nd frame. Returns the largest free-dot move and the margin check. */
 function pan() {
-  const w = run(world(), null, 0, 1)
-  // The grid creeps at 35 pt/s while the dots gather. A still grid would lock the scene, and a locked scene ignores the pan.
+  const w = run(world(false), null, 0, 1)
+  // The scene never locks on, so it follows the whole pan. The grid creeps at 35 pt/s while the dots gather.
   for (let t = 1; t <= 2.5 + 1e-9; t += 1 / 60) frame(w, gridAt(50 + 35 * (t - 1), 300), t)
   let quad: Quad | null = null
   let before = positions(w)
@@ -146,7 +149,7 @@ describe('stepField', () => {
   })
 
   it('keeps 15 % of the wobble while the grid moves', () => {
-    const w = run(world(), null, 0, 1)
+    const w = run(world(false), null, 0, 1)
     for (let t = 1; t < 3; t += 1 / 60) frame(w, gridAt(50 + 60 * (t - 1), 300), t)
     expect(w.scene.motion).toBeGreaterThan(0.9)
     const points = intersections(unitToQuad(w.scene.quad!)!)

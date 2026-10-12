@@ -6,8 +6,10 @@ import {
   MOTION_TIME,
   STEADY_MOTION,
   LOCK_DWELL,
+  DRIFT_WINDOW,
+  DRIFT_LIMIT,
+  DRIFT_MIN_SPAN,
   WARMUP,
-  REARM_LOST,
   MIN_GRID_WIDTH,
   GRID_WIDTH_HYSTERESIS,
   JUMP,
@@ -21,11 +23,12 @@ export type GridEvent = 'found' | 'lost' | 'none'
  * The facts about the grid that every effect reads. Effects never change it. Times: seconds. Sizes: view points.
  * quad, m and inverse are null together when there is no usable grid. m maps the unit square to the view, inverse maps the view to the unit square.
  * event is for this frame only. A jump to another grid gives 'found', with lostAt and foundAt both at t.
- * presence and motion: 0..1. steadyAt: the time the scene last became steady. speed and changedAt belong to stepScene.
+ * presence and motion: 0..1. motion and steady drive the overlay. steadyAt: the time the scene last became steady. speed and changedAt belong to stepScene.
+ * drift: the largest net corner move over the last DRIFT_WINDOW, in points per second, measured in every frame. 0 until the track spans DRIFT_MIN_SPAN.
+ * track: the detections of the last DRIFT_WINDOW, oldest first.
+ * movedAt: the last time the drift was above DRIFT_LIMIT, or -1. Lock-on reads the drift, not steady, because a hand never holds a phone still (ADR-019).
  * lockProgress: 0..1, see LOCK_DWELL. lockedAt: the time of lock-on, or -1. From lock-on, the scene keeps the locked quad and ignores new detections.
- * armed: lock-on can happen. A scene that is not armed arms on a jump, or after REARM_LOST without a grid.
- * That time without a grid counts from the end of the warm-up at the earliest (scan-pipeline concept).
- * startedAt: the time of the first frame, or -1. lostSince: the time the grid was last lost, or the first frame when it has no grid; -1 while a grid is in view.
+ * startedAt: the time of the first frame, or -1.
  * bigSince: the time the grid became at least MIN_GRID_WIDTH wide, or -1 while there is no such grid. See GRID_WIDTH_HYSTERESIS.
  * capture: the transition channels in the capture phase, where advanceCapture moves the quad; null in the live phase.
  */
@@ -46,11 +49,12 @@ export type Scene = {
   motion: number
   steady: boolean
   steadyAt: number
+  drift: number
+  track: { quad: Quad; t: number }[]
+  movedAt: number
   lockProgress: number
   lockedAt: number
-  armed: boolean
   startedAt: number
-  lostSince: number
   bigSince: number
   speed: number
   changedAt: number
@@ -91,8 +95,7 @@ function gridWidth(quad: Quad): number {
   )
 }
 
-/** armed: false after a scan or a Retake, so the scene does not lock on again on the same puzzle. */
-export function createScene(view: ViewSize, armed = true): Scene {
+export function createScene(view: ViewSize): Scene {
   'worklet'
   return {
     t: -1,
@@ -111,11 +114,12 @@ export function createScene(view: ViewSize, armed = true): Scene {
     motion: 1,
     steady: false,
     steadyAt: -1,
+    drift: 0,
+    track: [],
+    movedAt: -1,
     lockProgress: 0,
     lockedAt: -1,
-    armed,
     startedAt: -1,
-    lostSince: -1,
     bigSince: -1,
     speed: STEADY_SPEED,
     changedAt: -1,
@@ -159,23 +163,32 @@ export function stepScene(scene: Scene, detected: Quad | null, t: number, reduce
   const steady = grid != null && scene.motion < STEADY_MOTION
   if (steady && !scene.steady) scene.steadyAt = t
   scene.steady = steady
+  // A new grid starts a new track, so a jump never counts as a move. The oldest entry is the newest detection that is at least DRIFT_WINDOW old.
+  if (grid == null || scene.event === 'found') {
+    scene.track = grid == null ? [] : [{ quad: grid, t }]
+    scene.drift = 0
+  } else {
+    if (changed) scene.track.push({ quad: grid, t })
+    const track = scene.track
+    while (track.length > 1 && t - track[1]!.t >= DRIFT_WINDOW) track.shift()
+    const oldest = track[0]
+    const span = oldest == null ? 0 : t - oldest.t
+    scene.drift = oldest != null && span >= DRIFT_MIN_SPAN ? largestCornerStep(grid, oldest.quad) / span : 0
+  }
+  const moving = scene.drift > DRIFT_LIMIT
+  if (moving) scene.movedAt = t
   if (grid == null) {
-    if (scene.lostSince < 0) scene.lostSince = t
     scene.bigSince = -1
   } else {
-    scene.lostSince = -1
     const limit = scene.bigSince >= 0 ? MIN_GRID_WIDTH - GRID_WIDTH_HYSTERESIS : MIN_GRID_WIDTH
     const big = gridWidth(grid) >= limit * scene.width
     if (!big) scene.bigSince = -1
     else if (scene.bigSince < 0) scene.bigSince = t
   }
-  // Camera start-up frames have no grid while the old puzzle may still be in view, so the warm-up does not count as a loss.
-  const absent = grid == null && t - Math.max(scene.lostSince, scene.startedAt + WARMUP) >= REARM_LOST
-  if (!scene.armed && (jumped || absent)) scene.armed = true
   if (scene.lockedAt < 0) {
-    // foundAt also moves on a jump, so a switch to another grid starts the dwell again.
-    const since = Math.max(scene.steadyAt, scene.foundAt, scene.startedAt + WARMUP, scene.bigSince)
-    const ready = scene.armed && steady && scene.bigSince >= 0
+    // foundAt also moves on a jump, so a switch to another grid starts the dwell again. movedAt does the same after a pan.
+    const since = Math.max(scene.foundAt, scene.movedAt, scene.startedAt + WARMUP, scene.bigSince)
+    const ready = !moving && scene.bigSince >= 0
     scene.lockProgress = ready ? Math.min(1, Math.max(0, (t - since) / LOCK_DWELL)) : 0
     if (scene.lockProgress >= 1) scene.lockedAt = t
   }
@@ -184,4 +197,50 @@ export function stepScene(scene: Scene, detected: Quad | null, t: number, reduce
   scene.inverse = grid == null ? null : inverse
   if (grid != null) scene.lastQuad = grid
   return scene
+}
+
+/** The lock-on rules of this frame. width: the grid width as a share of the view width, 0 without a grid. motion, progress: 0..1. speed, drift: points per second. */
+export type LockReport = {
+  grid: boolean
+  steady: boolean
+  motion: number
+  speed: number
+  drift: number
+  moving: boolean
+  width: number
+  big: boolean
+  warm: boolean
+  progress: number
+  locked: boolean
+}
+
+export function lockReport(scene: Scene): LockReport {
+  'worklet'
+  return {
+    grid: scene.quad != null,
+    steady: scene.steady,
+    motion: scene.motion,
+    speed: scene.speed,
+    drift: scene.drift,
+    moving: scene.drift > DRIFT_LIMIT,
+    width: scene.quad == null || scene.width <= 0 ? 0 : gridWidth(scene.quad) / scene.width,
+    big: scene.bigSince >= 0,
+    warm: scene.startedAt >= 0 && scene.t - scene.startedAt >= WARMUP,
+    progress: scene.lockProgress,
+    locked: scene.lockedAt >= 0,
+  }
+}
+
+function yesNo(value: boolean): string {
+  return value ? 'yes' : 'no'
+}
+
+export function formatLockReport(report: LockReport): string {
+  return (
+    `grid ${yesNo(report.grid)}, ` +
+    `steady ${yesNo(report.steady)} (motion ${report.motion.toFixed(2)}, speed ${report.speed.toFixed(1)} pt/s), ` +
+    `drift ${report.drift.toFixed(1)} pt/s moving ${yesNo(report.moving)}, ` +
+    `width ${report.width.toFixed(2)} big ${yesNo(report.big)}, warm ${yesNo(report.warm)}, ` +
+    `progress ${report.progress.toFixed(2)}, locked ${yesNo(report.locked)}`
+  )
 }

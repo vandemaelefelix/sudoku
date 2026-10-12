@@ -1,12 +1,13 @@
-import { createScene, type Scene, stepScene } from './scene'
+import { createScene, formatLockReport, lockReport, type Scene, stepScene } from './scene'
 import type { Quad } from '@/utils/geometry.utils'
 import {
+  DRIFT_LIMIT,
+  DRIFT_WINDOW,
   GRID_WIDTH_HYSTERESIS,
   LOCK_DWELL,
   MAX_STEP,
   MIN_GRID_WIDTH,
   PRESENCE_TIME,
-  REARM_LOST,
   WARMUP,
 } from './scene.constants'
 
@@ -158,27 +159,30 @@ describe('stepScene', () => {
 
 describe('lock-on', () => {
   const FRAME = 1 / 60
-  // The grid comes into view after the warm-up, so the dwell counts from steadyAt.
+  // The grid comes into view after the warm-up, so the dwell counts from the found time.
   const AFTER = WARMUP + 0.5
 
   /** A scene that sees no grid until AFTER. */
-  function warm(armed = true) {
-    return run(createScene(VIEW, armed), null, 0, AFTER - FRAME)
+  function warm() {
+    return run(createScene(VIEW), null, 0, AFTER - FRAME)
   }
 
-  it('grows the progress from the time the scene becomes steady', () => {
+  it('grows the progress from the time the grid is found', () => {
     const scene = run(warm(), gridAt(50, 300), AFTER, AFTER + 0.5)
-    expect(scene.steady).toBe(true)
-    expect(scene.steadyAt).toBeGreaterThan(AFTER)
-    expect(scene.lockProgress).toBeCloseTo((scene.t - scene.steadyAt) / LOCK_DWELL, 6)
+    expect(scene.lockProgress).toBeCloseTo((scene.t - AFTER) / LOCK_DWELL, 6)
     expect(scene.lockProgress).toBeGreaterThan(0)
     expect(scene.lockedAt).toBe(-1)
   })
 
-  it('locks on LOCK_DWELL after the scene becomes steady', () => {
+  it('locks on LOCK_DWELL after the grid is found', () => {
     const scene = run(warm(), gridAt(50, 300), AFTER, AFTER + 3)
     expect(scene.lockProgress).toBe(1)
-    expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+    expect(Math.abs(scene.lockedAt - (AFTER + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+  })
+
+  it('locks on a grid that is in view from the first frame, after the warm-up and the dwell', () => {
+    const scene = run(createScene(VIEW), gridAt(50, 300), 0, WARMUP + LOCK_DWELL + 0.5)
+    expect(Math.abs(scene.lockedAt - (WARMUP + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
   })
 
   it('resets the progress when the grid is lost', () => {
@@ -237,7 +241,8 @@ describe('lock-on', () => {
   describe('minimum grid size', () => {
     // 120 pt and 150 pt in a view 402 pt wide: below and above MIN_GRID_WIDTH.
     const small = gridAt(140, 300, 120)
-    const big = gridAt(130, 295, 150)
+    // Same centre as small, so the growth moves each corner 21 pt. Over DRIFT_WINDOW that is 71 pt/s, below DRIFT_LIMIT.
+    const big = gridAt(125, 285, 150)
 
     it('uses test grids on both sides of the limit', () => {
       expect(120 / VIEW.width).toBeLessThan(MIN_GRID_WIDTH)
@@ -335,86 +340,145 @@ describe('lock-on', () => {
       expect(scene.lockedAt).toBeGreaterThan(0)
     })
   })
+})
 
-  describe('a scene that starts not armed', () => {
-    it('starts armed by default', () => {
-      expect(createScene(VIEW).armed).toBe(true)
-      expect(createScene(VIEW, false).armed).toBe(false)
-    })
+/** Detections at 30 fps, frames at 120 fps: each detection lasts 4 frames. at(t) gives the corners of a detection at time t. */
+function camera(scene: Scene, at: (t: number, k: number) => Quad, t0: number, t1: number) {
+  let quad: Quad | null = null
+  let k = 0
+  for (let t = t0; t <= t1 + 1e-9; t += 1 / 120, k++) {
+    if (k % 4 === 0) quad = at(t, k)
+    stepScene(scene, quad, t, false)
+  }
+  return scene
+}
 
-    it('never locks on the grid that is in view from the start', () => {
-      const scene = createScene(VIEW, false)
-      for (let t = 0; t <= 5; t += FRAME) {
-        stepScene(scene, detection(gridAt(50, 300)), t, false)
-        expect(scene.lockProgress).toBe(0)
-      }
-      expect(scene.steady).toBe(true)
-      expect(scene.armed).toBe(false)
-      expect(scene.lockedAt).toBe(-1)
-    })
+/** A still page in a hand: every corner moves up to 3 pt per detection, and the hand sways 5 pt at 1 Hz. */
+function handHeld(t: number, k: number): Quad {
+  const sway = 5 * Math.sin(2 * Math.PI * t)
+  return gridAt(50, 300).map((p, i) => ({
+    x: p.x + sway + 3 * Math.sin(k * 1.3 + i * 2.1),
+    y: p.y + 3 * Math.cos(k * 0.7 + i * 1.7),
+  })) as Quad
+}
 
-    it('arms after the grid is lost for REARM_LOST, then locks on after the dwell', () => {
-      const grid = gridAt(50, 300)
-      const scene = run(createScene(VIEW, false), grid, 0, 2)
-      run(scene, null, 2 + FRAME, 2 + 0.6)
-      expect(scene.armed).toBe(true)
-      const back = 2 + 0.6 + FRAME
-      run(scene, grid, back, back + 3)
-      expect(scene.lockedAt).toBeGreaterThan(back + LOCK_DWELL)
-      expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
-    })
+/** A pan over the page: the grid sweeps 100 pt left and right at 200 pt/s. */
+function panning(t: number): Quad {
+  const phase = (t * 2) % 2
+  return gridAt(20 + 100 * (phase < 1 ? phase : 2 - phase), 300, 250)
+}
 
-    it('does not arm when the grid is lost for less than REARM_LOST', () => {
-      expect(0.3).toBeLessThan(REARM_LOST)
-      const grid = gridAt(50, 300)
-      const scene = run(createScene(VIEW, false), grid, 0, 2)
-      run(scene, null, 2 + FRAME, 2 + 0.3)
-      const back = 2 + 0.3 + FRAME
-      run(scene, grid, back, back + 3)
-      expect(scene.armed).toBe(false)
-      expect(scene.lockProgress).toBe(0)
-      expect(scene.lockedAt).toBe(-1)
-    })
+describe('lock-on on a tracked grid', () => {
+  it('locks on a hand-held grid after the warm-up and the dwell', () => {
+    const scene = camera(createScene(VIEW), handHeld, 0, WARMUP + LOCK_DWELL + 0.5)
+    expect(scene.lockedAt).toBeGreaterThanOrEqual(WARMUP + LOCK_DWELL)
+    expect(scene.lockedAt).toBeLessThanOrEqual(WARMUP + LOCK_DWELL + 0.05)
+  })
 
-    it('does not arm on start-up frames without a grid, longer than REARM_LOST but inside the warm-up', () => {
-      expect(0.8).toBeGreaterThan(REARM_LOST)
-      expect(0.8).toBeLessThan(WARMUP)
-      const scene = run(createScene(VIEW, false), null, 0, 0.8)
-      run(scene, gridAt(50, 300), 0.8 + FRAME, 5)
-      expect(scene.armed).toBe(false)
-      expect(scene.lockedAt).toBe(-1)
-    })
+  it('keeps the drift of a hand-held grid below DRIFT_LIMIT', () => {
+    const scene = createScene(VIEW)
+    let most = 0
+    camera(
+      scene,
+      (t, k) => {
+        most = Math.max(most, scene.drift)
+        return handHeld(t, k)
+      },
+      0,
+      WARMUP,
+    )
+    expect(most).toBeGreaterThan(0)
+    expect(most).toBeLessThanOrEqual(DRIFT_LIMIT)
+  })
 
-    it('arms REARM_LOST after the warm-up when there is no grid from the start, then locks on a new grid', () => {
-      const scene = run(createScene(VIEW, false), null, 0, WARMUP + REARM_LOST - 2 * FRAME)
-      expect(scene.armed).toBe(false)
-      run(scene, null, WARMUP + REARM_LOST - FRAME, 2)
-      expect(scene.armed).toBe(true)
-      const found = 2 + FRAME
-      run(scene, gridAt(50, 300), found, found + 3)
-      expect(scene.lockedAt).toBeGreaterThan(found + LOCK_DWELL - FRAME)
-      expect(Math.abs(scene.lockedAt - (scene.steadyAt + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
-    })
+  it('stops lock-on within DRIFT_LIMIT × DRIFT_WINDOW of a pan that starts late in the dwell', () => {
+    for (const start of [1.6, 1.7, 1.8, 1.9, 1.95]) {
+      const at = (t: number) => detection(gridAt(30 + 300 * Math.max(0, t - start), 300, 250)) as Quad
+      const scene = camera(createScene(VIEW), at, 0, start + 0.35)
+      const moved = scene.lockedAt < 0 ? 0 : 300 * Math.max(0, scene.lockedAt - start)
+      // One detection step of slack: the camera sees the grid at 30 fps.
+      expect(moved).toBeLessThanOrEqual(DRIFT_LIMIT * DRIFT_WINDOW + 300 / 30)
+    }
+  })
 
-    it('counts a loss inside the warm-up from the end of the warm-up', () => {
-      const scene = run(createScene(VIEW, false), gridAt(50, 300), 0, 0.3)
-      run(scene, null, 0.3 + FRAME, WARMUP + REARM_LOST - 2 * FRAME)
-      expect(scene.armed).toBe(false)
-      run(scene, null, WARMUP + REARM_LOST - FRAME, WARMUP + REARM_LOST + FRAME)
-      expect(scene.armed).toBe(true)
-    })
+  it('never locks on while the player pans over the page', () => {
+    const scene = camera(createScene(VIEW), (t) => panning(t), 0, 5)
+    expect(scene.lockedAt).toBe(-1)
+    expect(scene.drift).toBeGreaterThan(0)
+  })
 
-    it('arms when the grid jumps to another place, then locks on after the dwell', () => {
-      const scene = run(createScene(VIEW, false), gridAt(50, 100, 200), 0, 2)
-      expect(scene.armed).toBe(false)
-      const jump = 2 + FRAME
-      stepScene(scene, gridAt(50, 550, 200), jump, false)
-      expect(scene.event).toBe('found')
-      expect(scene.armed).toBe(true)
-      run(scene, gridAt(50, 550, 200), jump + FRAME, jump + 3)
-      // The scene stays steady through the jump, so the dwell counts from foundAt.
-      expect(scene.foundAt).toBe(jump)
-      expect(Math.abs(scene.lockedAt - (jump + LOCK_DWELL))).toBeLessThanOrEqual(FRAME)
+  it('reports moving during a pan', () => {
+    const scene = createScene(VIEW)
+    let seen = false
+    camera(
+      scene,
+      (t) => {
+        seen = seen || lockReport(scene).moving
+        return panning(t)
+      },
+      0,
+      2,
+    )
+    expect(seen).toBe(true)
+  })
+
+  it('locks on LOCK_DWELL after a pan stops', () => {
+    const scene = camera(createScene(VIEW), (t) => panning(t), 0, 2)
+    const still = scene.quad!
+    camera(scene, () => still, 2 + 1 / 120, 4)
+    expect(scene.lockedAt).toBeGreaterThanOrEqual(2 + LOCK_DWELL)
+    expect(scene.lockedAt).toBeLessThanOrEqual(2 + LOCK_DWELL + 2 * DRIFT_WINDOW + 0.05)
+  })
+})
+
+describe('lockReport', () => {
+  it('reports no grid and a width of 0 when no grid is in view', () => {
+    const report = lockReport(run(createScene(VIEW), null, 0, 2))
+    expect(report.grid).toBe(false)
+    expect(report.width).toBe(0)
+    expect(report.big).toBe(false)
+    expect(report.steady).toBe(false)
+    expect(report.progress).toBe(0)
+  })
+
+  it('reports not warm in the warm-up', () => {
+    const report = lockReport(run(createScene(VIEW), gridAt(50, 300), 0, WARMUP / 2))
+    expect(report.grid).toBe(true)
+    expect(report.warm).toBe(false)
+    expect(report.progress).toBe(0)
+  })
+
+  it('reports every rule as passed for a steady big grid after the warm-up', () => {
+    const report = lockReport(run(createScene(VIEW), gridAt(50, 300), 0, WARMUP + LOCK_DWELL / 2))
+    expect(report).toMatchObject({ grid: true, steady: true, big: true, warm: true, locked: false })
+    expect(report.width).toBeCloseTo(300 / VIEW.width)
+    expect(report.motion).toBeLessThan(0.5)
+    expect(report.progress).toBeGreaterThan(0)
+    expect(report.progress).toBeLessThan(1)
+  })
+
+  it('reports locked after the dwell', () => {
+    const report = lockReport(run(createScene(VIEW), gridAt(50, 300), 0, WARMUP + LOCK_DWELL + 0.1))
+    expect(report.locked).toBe(true)
+    expect(report.progress).toBe(1)
+  })
+
+  it('formats one line with every rule', () => {
+    const line = formatLockReport({
+      grid: true,
+      steady: false,
+      motion: 0.618,
+      speed: 18.56,
+      drift: 12.34,
+      moving: false,
+      width: 0.7462,
+      big: true,
+      warm: true,
+      progress: 0,
+      locked: false,
     })
+    expect(line).toBe(
+      'grid yes, steady no (motion 0.62, speed 18.6 pt/s), drift 12.3 pt/s moving no, width 0.75 big yes, warm yes, progress 0.00, locked no',
+    )
   })
 })
