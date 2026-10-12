@@ -2,12 +2,14 @@ import { useCallback, useState } from 'react'
 import { View } from 'react-native'
 import type { NewGame } from '@sudoku/core'
 import { Board } from '@/game/components/Board'
+import { FinishCard } from '@/game/components/FinishCard'
 import { GameOverSheet } from '@/game/components/GameOverSheet'
 import { GameProvider } from '@/game/components/GameProvider'
 import { Header } from '@/game/components/Header'
 import { Keypad } from '@/game/components/Keypad'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { Tools } from '@/game/components/Tools'
+import type { FinishInfo } from '@/game/utils/finish.utils'
 import { styles } from './GameScreen.styles'
 
 type GameScreenProps = {
@@ -21,6 +23,8 @@ type GameScreenProps = {
    * Without it, the screen restarts the puzzle itself.
    */
   onRetry?: (() => void) | undefined
+  /** The level, source, seed and best time of the game. Without it, the screen shows no finish card. */
+  finish?: FinishInfo | undefined
 }
 
 /**
@@ -28,7 +32,7 @@ type GameScreenProps = {
  * A local retry gives GameProvider a new key, so the core creates the game from start again.
  * The screen reads no theme hook, so a theme switch does not render the grid again (ADR-015).
  */
-export function GameScreen({ start, onBack, onNewPuzzle, onRetry }: GameScreenProps) {
+export function GameScreen({ start, onBack, onNewPuzzle, onRetry, finish }: GameScreenProps) {
   const [round, setRound] = useState(0)
   const restart = useCallback(() => setRound((previous) => previous + 1), [])
   return (
@@ -40,6 +44,7 @@ export function GameScreen({ start, onBack, onNewPuzzle, onRetry }: GameScreenPr
         <Tools />
         <Keypad />
         <GameOverSheet onRetry={onRetry ?? restart} onNewPuzzle={onNewPuzzle} onHome={onBack} />
+        {finish && <FinishCard info={finish} onNewPuzzle={onNewPuzzle} onHome={onBack} />}
       </View>
     </GameProvider>
   )
