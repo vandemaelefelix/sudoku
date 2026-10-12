@@ -69,12 +69,25 @@ the size of the dataset.
    paper scraper has a `manifest.jsonl`, so it needs no options.
 2. Run `just label-cells`. Open the **Photos** screen. Accept each photo, fix its 4 corners or
    reject it. Accepted photos give cells in `cells/unlabeled/`.
-3. Stop the server with Ctrl-C. Run `just label-cells` again. It pre-labels the new cells.
+3. Press **Pre-label new cells** on the Digits screen. The next start of `just label-cells` also
+   pre-labels the new cells.
 4. Open the **Digits** screen. Click the cells that are not the digit in the title. Press Enter.
 5. Label the kind of the new cells on the Groups screen, as below.
 
-Commit `ml/datasets/photos.csv`, `photo-checks.jsonl`, `cell-origins.csv`, `kind-log.jsonl` and
-`cells.csv` after a session.
+6. Press **Finish** in the header. It checks the data, rewrites `cells.csv` and deletes the
+   derived files in `ml/data/work/`. It is safe to press twice. Your unlabelled cells and pending
+   photos stay.
+7. Commit the lists: `git add ml/datasets` and commit.
+
+The tool works on the real data in `ml/data/` and `ml/datasets/`. It has no scratch copy. You can
+stop at any time: Ctrl-C, a closed terminal or a crash. Every label you saved stays. Unlabelled
+cells stay in `cells/unlabeled/`. Pending photos stay pending. The next start repairs what the
+stop left, deletes leftover files in `ml/data/work/tmp/` and prints how many cells and photos wait.
+
+Every cell and photo has a SHA-256 pixel id, and no id appears twice. Run `just check-data` to
+test this. It also tests that the manifests match the files. It prints a short report and exits
+with 1 on a problem. The report says how many cells are linked to their photo, row and column.
+Cells cut before the link existed have no link.
 
 ## Label the kind
 
