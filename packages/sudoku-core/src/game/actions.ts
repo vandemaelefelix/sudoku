@@ -52,14 +52,17 @@ export function select(game: Game, cell: number | null): Game {
 
 export function place(game: Game, digit: Digit): MoveResult {
   const cell = editableCell(game)
-  if (cell === null || completeDigits(game).includes(digit)) return noCompletion(game)
-  if (game.entries[cell] === digit) {
+  if (cell === null) return noCompletion(game)
+  const complete = completeDigits(game).includes(digit)
+  // A wrong entry of a complete number must stay clearable with its own key.
+  if (game.entries[cell] === digit && !(complete && digit === game.solution[cell])) {
     return noCompletion({
       ...game,
       entries: replaceAt(game.entries, cell, 0),
       undoSteps: withUndoStep(game),
     })
   }
+  if (complete) return noCompletion(game)
   const next: Game = { ...game, ...withNumber(game, cell, digit), undoSteps: withUndoStep(game) }
   if (digit !== game.solution[cell]) {
     const mistakes = game.mistakes + 1

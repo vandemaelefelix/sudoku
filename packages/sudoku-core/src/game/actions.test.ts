@@ -84,6 +84,20 @@ describe('place', () => {
     expect(place(game, 9).game).toBe(game)
   })
 
+  it('clears a wrong entry of a complete number when that number is placed again', () => {
+    const entries = solvedExcept()
+    entries[2] = 9
+    const game = placed(at(2, entries), 9)
+    expect(game.entries[2]).toBe(0)
+    expect(game.mistakes).toBe(0)
+  })
+
+  it('keeps a correct entry of a complete number when that number is placed again', () => {
+    const nine = at(29, solvedExcept(2))
+    expect(nine.entries[29]).toBe(9)
+    expect(place(nine, 9).game).toBe(nine)
+  })
+
   it('removes a wrong number from the notes of its peers too', () => {
     const game = placed(select(noted(at(3), 1, 7), 2), 1)
     expect(game.mistakes).toBe(1)
