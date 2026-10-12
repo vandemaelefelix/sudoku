@@ -58,7 +58,7 @@ status: DRAFT
 | Lock-on progress | 0 to 1: how long the grid has been steady, divided by `LOCK_DWELL`. It resets when the grid is lost, found again or jumps. At 1 the scan locks on. The gathered dots show it |
 | Shutter | The button on the camera screen that captures at any time, also without lock-on |
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
-| Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake |
+| Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake. The player can fix a digit and its kind there |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
 | Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
 | Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, and when the photo conversion fails |
@@ -107,3 +107,13 @@ status: DRAFT
 | Game in progress | The one game that the app saves after every move, so the player can resume it. Starting a new game discards it (ADR-012) |
 | History | The list of won and lost games: level, source, result, time played, mistakes, hints and date (ADR-012) |
 | Best time | The shortest time played of a won game at one level |
+| Home screen | The first screen of the app. It lists the levels, offers Continue for the game in progress, and links to Scan and Settings |
+| Continue | The home screen button that resumes the game in progress at its last move, with its time played |
+| Route | One screen that the app can show, at one path, such as `/game`. A file in `src/app/` defines it (ADR-016) |
+| Route file | A file in `src/app/` that renders one screen from a feature folder and nothing else (ADR-016) |
+| Native stack | The stack of screens that uses the iOS screen stack: the push animation and the swipe back. Expo Router gives it (ADR-016) |
+| Save queue | The queue in front of `PuzzleRepository.save`. One write runs at a time, and only the newest game waits |
+| Pause layer | The layer over the grid while a game is paused. It says "Paused" and "Tap to resume". It hides every digit and note |
+| Correction pad | The edit pad on the correction screen: a Given and Entry switch, the keys 1 to 9 and Clear |
+| Given conflict | Two givens with the same digit in one row, column or box. The correction screen marks both |
+| Assist preview | The small live grid on the settings screen. It shows the assists that are on |
