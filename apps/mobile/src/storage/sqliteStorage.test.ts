@@ -28,9 +28,8 @@ describe('createSqliteStorage', () => {
       const { id } = await first.storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
       const moved = tick(newGame(), 125_000)
       await first.storage.puzzles.save(id, moved)
-      first.db.close()
-      open.splice(open.indexOf(first.db), 1)
 
+      // A killed app never closes its connection: the second one opens while the first stays open.
       const second = await openStorage(file.path)
       const current = await second.storage.puzzles.current()
       expect(current?.id).toBe(id)
@@ -40,6 +39,22 @@ describe('createSqliteStorage', () => {
       for (const db of open.splice(0)) db.close()
       file.remove()
     }
+  })
+
+  it('rolls back a finish whose history entry fails', async () => {
+    const { db, storage } = await openStorage()
+    const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+    const at = '2026-01-01T00:00:00.000Z'
+    await db.runAsync(
+      `INSERT INTO game_history
+        (id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at)
+        VALUES (?, 'easy', 'generated', 'lost', 1, 3, 0, ?, ?, ?)`,
+      [started.id, at, at, at],
+    )
+
+    await expect(storage.puzzles.save(started.id, wonGame(50_000))).rejects.toThrow('UNIQUE constraint failed')
+    await expect(storage.puzzles.current()).resolves.toEqual(started)
+    await expect(storage.history.list()).resolves.toEqual([expect.objectContaining({ result: 'lost', playedMs: 1 })])
   })
 
   it('keeps a saved game that does not load, and gives null', async () => {
