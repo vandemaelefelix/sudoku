@@ -82,6 +82,10 @@ install-model run version="1.0.0":
 dataset-manifest:
     uv run --directory ml python -m sudoku_ml.manifest
 
+# Copy a folder of sudoku photos into ml/data/photos/ and find the grid in each. Options: --origin, --licence
+import-photos folder *flags:
+    uv run --directory ml python -m sudoku_ml.photo_import "$(realpath "{{folder}}")" {{flags}}
+
 # Move cells to the labels in a relabel CSV, then rewrite the manifest
 relabel file="data/review/relabels.csv":
     uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
