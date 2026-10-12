@@ -13,6 +13,13 @@ export const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.line,
     borderRadius: theme.shape.radius.pill,
   },
+  // The canvas shows plain muted time after the end: no border, no icon.
+  endedPill: {
+    height: theme.size.pill.height,
+    paddingHorizontal: theme.size.pill.paddingHorizontal,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   time: {
     ...roleFont(theme.type.timer),
     fontSize: theme.type.timer.scale,

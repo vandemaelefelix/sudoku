@@ -13,7 +13,7 @@ export function TimerPill() {
   const time = formatClock(playedMs)
   return (
     <View style={styles.area} accessible accessibilityLabel={`Time ${time}`}>
-      <View style={styles.pill}>
+      <View testID="timer-pill" style={ended ? styles.endedPill : styles.pill}>
         <Text style={ended ? styles.endedTime : styles.time}>{time}</Text>
         {!ended && <Icon name="pause" tone="text" size={16} />}
       </View>

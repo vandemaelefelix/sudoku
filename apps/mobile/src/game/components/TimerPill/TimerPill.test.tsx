@@ -50,4 +50,13 @@ it('mutes the time and drops the pause icon when the game ends', () => {
   expect(StyleSheet.flatten(screen.getByText('00:00').props.style)).toMatchObject({
     color: daylight.colors.textMuted,
   })
+  const pill = StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)
+  expect(pill.borderWidth ?? 0).toBe(0)
+})
+
+it('draws the pill border while the game is playing', () => {
+  renderInGame(<TimerPill />)
+  expect(StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)).toMatchObject({
+    borderColor: daylight.colors.line,
+  })
 })
