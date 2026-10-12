@@ -1,4 +1,6 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
+# A git-ignored .env can hold SUDOKU_IMAGES: one image store for all worktrees (ADR-018)
+set dotenv-load := true
 
 # Show every recipe
 default:
@@ -60,7 +62,7 @@ bundle:
 
 # Check relative links in the docs
 docs-check:
-    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md
+    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md
 
 # Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
 preprocess-fixtures:
@@ -78,20 +80,20 @@ export run:
 install-model run version="1.0.0":
     uv run --directory ml python -m sudoku_ml.install {{run}} ../apps/mobile/assets/models {{version}}
 
-# Rewrite ml/datasets/cells.csv from the folders in ml/data/cells/
+# Rewrite data/cells.csv from the cell folders and the journal
 dataset-manifest:
     uv run --directory ml python -m sudoku_ml.manifest
 
-# Copy a folder of sudoku photos into ml/data/photos/ and find the grid in each. Options: --origin, --licence
+# Copy a folder of sudoku photos into the image store and find the grid in each. Options: --source, --licence
 import-photos folder *flags:
     uv run --directory ml python -m sudoku_ml.photo_import "$(realpath "{{folder}}")" {{flags}}
 
-# Move cells to the labels in a relabel CSV, then rewrite the manifest
-relabel file="data/review/relabels.csv":
-    uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
+# Move cells to the digits in a relabel CSV (header file,new_label), then rewrite data/cells.csv
+relabel file:
+    uv run --directory ml python -m sudoku_ml.relabel "$(realpath "{{file}}")"
     just dataset-manifest
 
-# Rank the likely wrong digit and kind labels into ml/data/work/suspects.csv, for the Review screen
+# Rank the likely wrong digit and kind labels into data/work/suspects.csv, for the Review screen
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
 
@@ -99,19 +101,19 @@ suspects:
 group-cells run="":
     uv run --directory ml python -m sudoku_ml.grouping {{run}}
 
-# Pre-label the cells in ml/data/cells/unlabeled/ for the Digits screen. The run path is relative to ml/
+# Pre-label the cells in cells/unlabeled/ for the Digits screen. The run path is relative to ml/
 prelabel-cells run="":
     uv run --directory ml python -m sudoku_ml.prelabel {{run}}
 
-# Open the labelling page on 127.0.0.1. At the start it repairs a stopped session, rewrites the manifest and pre-labels new cells
+# Open the labelling page on 127.0.0.1. At the start it repairs a stopped session, rewrites data/cells.csv and pre-labels new cells
 label-cells:
     uv run --directory ml python -m sudoku_ml.label_server
 
-# Check that cells, photos and manifests agree, and print a report. Exit code 1 on a problem
+# Check that the images and the two tables in data/ agree, and print a report. Exit code 1 on a problem
 check-data:
     uv run --directory ml python -m sudoku_ml.data_check
 
-# Reverse every change of one labelling session
+# Reverse every change of one unfinished labelling session. A finished session needs git
 label-rollback session:
     uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
     just dataset-manifest

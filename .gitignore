@@ -22,9 +22,11 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
-# ML: images and runs stay out of git (ADR-009)
+# ML: images and runs stay out of git (ADR-009, ADR-018). ml/data/ is the old image location.
 ml/data/
 ml/artifacts/
+data/images/
+data/work/
 
 # A model trained on real cells may not be published (ADR-013). just install-model copies it in.
 apps/mobile/assets/models/*.tflite

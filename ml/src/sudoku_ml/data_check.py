@@ -1,19 +1,31 @@
-"""Check that the real data agrees with its manifests, and print a short report (ADR-009).
-Reads files only. It never changes a file."""
+"""The data check: the images agree with the two tables, and the tables follow their rules
+(ADR-018). It prints a short report. It reads files only. It never changes a file."""
 
 import csv
-import json
 import sys
 from collections import Counter
 from pathlib import Path
 
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import FULL_ID
-from sudoku_ml.kind_log import read_log
-from sudoku_ml.label_store import Paths
-from sudoku_ml.manifest import LABELS, pixel_id
-from sudoku_ml.photo_import import PhotoPaths, read_photos
+from sudoku_ml.journal import KINDS, read_journal
+from sudoku_ml.manifest import (
+    CELL_FIELDS,
+    CELL_FOLDERS,
+    NO_KIND_FOLDERS,
+    parse_cell_source,
+    pixel_id,
+)
+from sudoku_ml.photo_import import (
+    LICENCES,
+    PHOTO_FIELDS,
+    PHOTO_STATUSES,
+    SOURCES,
+    parse_corners,
+)
 
 MAX_PROBLEMS = 20
+DIGIT_FOLDERS = tuple(str(d) for d in range(1, 10))
 _LINK_NOTE = (
     "Cells without a link come from before links existed, or from a cut that stopped part-way."
 )
@@ -23,37 +35,29 @@ def link_line(linked: int, total: int) -> str:
     return f"Linked {linked} of {total} cells. {_LINK_NOTE}"
 
 
-def _rows(path: Path) -> list[dict[str, str]]:
+def _table(path: Path, fields: list[str], problems: list[str]) -> list[dict[str, str]]:
     if not path.exists():
         return []
-    with path.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            if reader.fieldnames != fields:
+                problems.append(f"{path.name}: the header is not {','.join(fields)}")
+                return []
+            return [{f: row[f] or "" for f in fields} for row in reader]
+    except (OSError, csv.Error, UnicodeDecodeError) as error:
+        problems.append(f"{path.name} cannot be read: {error}")
+        return []
 
 
-def _decisions(path: Path) -> dict[str, str]:
-    """Photo id → its newest decision. Raises ValueError on a line that is not a decision."""
-    found: dict[str, str] = {}
-    if not path.exists():
-        return found
-    for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        if not text.strip():
-            continue
-        try:
-            entry = json.loads(text)
-            found[entry["photo"]] = entry["decision"]
-        except (json.JSONDecodeError, KeyError, TypeError) as error:
-            raise ValueError(f"{path.name} line {number} is not a photo decision") from error
-    return found
-
-
-def _cells(paths: Paths, problems: list[str]) -> dict[str, str]:
+def _cells(paths: DataPaths, problems: list[str]) -> dict[str, str]:
     """Full cell id → folder. Reports misnamed files and ids that appear twice."""
     found: dict[str, str] = {}
     where: dict[str, Path] = {}
     if paths.cells.exists():
         for folder in sorted(paths.cells.iterdir()):
-            if folder.is_dir() and folder.name not in LABELS:
-                problems.append(f"{folder} is not a known label folder")
+            if folder.is_dir() and folder.name not in CELL_FOLDERS:
+                problems.append(f"{folder} is not a known cell folder")
     for path in sorted(paths.cells.glob("*/*.png")):
         try:
             cell_id = pixel_id(path)
@@ -69,101 +73,148 @@ def _cells(paths: Paths, problems: list[str]) -> dict[str, str]:
     return found
 
 
-def _photos(photo_paths: PhotoPaths, problems: list[str]) -> set[str]:
-    ids: set[str] = set()
-    for row in read_photos(photo_paths.manifest):
-        if row["id"] in ids:
-            problems.append(f"photo {row['id'][:16]} is twice in {photo_paths.manifest.name}")
+def _photo_row(row: dict[str, str], problems: list[str]) -> None:
+    stem, name = row["photo_id"][:16], "sudoku-photos.csv"
+    if row["source"] not in SOURCES:
+        problems.append(f"sudoku photo {stem}: unknown source {row['source']!r} in {name}")
+    if row["licence"] not in LICENCES:
+        problems.append(f"sudoku photo {stem}: unknown licence {row['licence']!r} in {name}")
+    if row["status"] not in PHOTO_STATUSES:
+        problems.append(f"sudoku photo {stem}: unknown status {row['status']!r} in {name}")
+    if row["status"] == "accepted":
+        try:
+            parse_corners(row["corners"])
+        except ValueError:
+            problems.append(f"sudoku photo {stem}: accepted without 4 corners in {name}")
+    elif row["corners"]:
+        problems.append(f"sudoku photo {stem}: corners on a {row['status']} photo in {name}")
+
+
+def _photos(paths: DataPaths, problems: list[str]) -> dict[str, str]:
+    """Photo id → status. Checks each row and that each file exists and has its id."""
+    statuses: dict[str, str] = {}
+    for row in _table(paths.photos_csv, PHOTO_FIELDS, problems):
+        photo_id = row["photo_id"]
+        if not FULL_ID.fullmatch(photo_id):
+            problems.append(f"{photo_id!r} in sudoku-photos.csv is not a photo id")
             continue
-        ids.add(row["id"])
-        path = photo_paths.photos / row["file"]
-        if not path.exists():
-            problems.append(f"photo file {path} does not exist")
+        if photo_id in statuses:
+            problems.append(f"sudoku photo {photo_id[:16]} is twice in sudoku-photos.csv")
+            continue
+        statuses[photo_id] = row["status"]
+        _photo_row(row, problems)
+        path = paths.photos / row["file"]
+        if not row["file"] or not path.is_file():
+            problems.append(f"sudoku photo file {path} does not exist")
             continue
         try:
             actual = pixel_id(path)
         except (OSError, ValueError) as error:
-            problems.append(f"photo file {path} cannot be read: {error}")
+            problems.append(f"sudoku photo file {path} cannot be read: {error}")
             continue
-        if actual != row["id"]:
-            problems.append(f"photo file {path} has the id {actual[:16]}, not {row['id'][:16]}")
-    return ids
+        if actual != photo_id:
+            problems.append(
+                f"sudoku photo file {path} has the id {actual[:16]}, not {photo_id[:16]}"
+            )
+    return statuses
 
 
-def _manifest(paths: Paths, cells: dict[str, str], problems: list[str]) -> None:
-    listed = {r["id"]: r["label"] for r in _rows(paths.manifest)}
-    name = paths.manifest.name
-    missing = sorted(set(cells) - set(listed))
-    extra = sorted(set(listed) - set(cells))
-    wrong = sorted(c for c in set(cells) & set(listed) if cells[c] != listed[c])
-    for what, ids in (
-        (f"cells on disk that {name} does not list", missing),
-        (f"rows of {name} without a cell on disk", extra),
-        (f"rows of {name} with another folder than the cell has", wrong),
-    ):
-        if ids:
-            problems.append(f"{len(ids)} {what}, e.g. {ids[0][:16]}. Run: just dataset-manifest")
+def _report_ids(problems: list[str], what: str, ids: list[str], hint: str = "") -> None:
+    if ids:
+        problems.append(f"{len(ids)} {what}, e.g. {ids[0][:16]}.{hint}")
 
 
-def _origins(
-    photo_paths: PhotoPaths, cells: dict[str, str], photos: set[str], problems: list[str]
-) -> set[str]:
-    linked: set[str] = set()
-    for row in _rows(photo_paths.origins):
-        cell, photo = row["cell"], row["photo"]
-        if cell not in cells:
-            problems.append(f"origin of {cell[:16]}: the cell does not exist")
-        if photo not in photos:
-            problems.append(f"origin of {cell[:16]}: photo {photo[:16]} is not in photos.csv")
-        if cell in linked:
-            problems.append(f"cell {cell[:16]} has two origins")
-        linked.add(cell)
-    return linked & set(cells)
+def _cell_rows(
+    paths: DataPaths, cells: dict[str, str], photos: dict[str, str], problems: list[str]
+) -> tuple[Counter, set[str]]:
+    """Checks every row of cells.csv. Returns the kinds of the digit cells and the linked
+    cells."""
+    rows = _table(paths.cells_csv, CELL_FIELDS, problems)
+    listed: dict[str, dict[str, str]] = {}
+    twice, bad_kind, no_photo, bad_source = [], [], [], []
+    for row in rows:
+        cell = row["cell_id"]
+        if not FULL_ID.fullmatch(cell):
+            problems.append(f"{cell!r} in cells.csv is not a cell id")
+            continue
+        if cell in listed:
+            twice.append(cell)
+            continue
+        listed[cell] = row
+        kind = row["kind"]
+        if (row["digit"] in NO_KIND_FOLDERS and kind) or (kind and kind not in KINDS):
+            bad_kind.append(cell)
+        try:
+            source = parse_cell_source(row["photo_id"], row["row"], row["col"])
+        except ValueError:
+            bad_source.append(cell)
+            continue
+        if source is not None and source[0] not in photos:
+            no_photo.append(cell)
+    hint = " Run: just dataset-manifest"
+    _report_ids(problems, "cells are twice in cells.csv", twice)
+    _report_ids(
+        problems,
+        "cells on disk that cells.csv does not list",
+        sorted(set(cells) - set(listed)),
+        hint,
+    )
+    _report_ids(
+        problems, "rows of cells.csv without a cell on disk", sorted(set(listed) - set(cells)), hint
+    )
+    wrong = sorted(c for c in set(cells) & set(listed) if cells[c] != listed[c]["digit"])
+    _report_ids(
+        problems, "rows of cells.csv with another digit than the folder of the cell", wrong, hint
+    )
+    _report_ids(
+        problems, "rows of cells.csv with a kind that is not allowed for the digit", bad_kind
+    )
+    _report_ids(problems, "rows of cells.csv with a bad source (photo_id, row, col)", bad_source)
+    _report_ids(
+        problems, "rows of cells.csv with a photo_id that sudoku-photos.csv does not list", no_photo
+    )
+    kinds = Counter(
+        row["kind"] or "without"
+        for cell, row in listed.items()
+        if cell in cells and cells[cell] in DIGIT_FOLDERS
+    )
+    linked = {c for c, row in listed.items() if c in cells and row["photo_id"]}
+    return kinds, linked
 
 
-def _kind_log(paths: Paths, cells: dict[str, str], problems: list[str]) -> None:
-    """Every cell id in the log is a full id of a cell that exists in some folder."""
+def _journal(paths: DataPaths, cells: dict[str, str], problems: list[str]) -> None:
+    """Every cell id in the journal is a full id of a cell that exists in some folder."""
     try:
-        lines = read_log(paths.log)
+        lines = read_journal(paths.journal)
     except (ValueError, KeyError, TypeError) as error:
-        problems.append(f"{paths.log.name} cannot be read: {error}")
+        problems.append(f"{paths.journal.name} cannot be read: {error}")
         return
     bad = sorted({x.cell for x in lines if not FULL_ID.fullmatch(x.cell)})
     gone = sorted({x.cell for x in lines if FULL_ID.fullmatch(x.cell) and x.cell not in cells})
     if bad:
-        problems.append(f"{len(bad)} ids in {paths.log.name} are not full ids, e.g. {bad[0]}")
-    if gone:
-        problems.append(f"{len(gone)} ids in {paths.log.name} match no cell, e.g. {gone[0][:16]}")
+        problems.append(f"{len(bad)} ids in {paths.journal.name} are not full ids, e.g. {bad[0]}")
+    _report_ids(problems, f"ids in {paths.journal.name} match no cell", gone)
 
 
-def check_data(paths: Paths, photo_paths: PhotoPaths) -> dict:
+def check_data(paths: DataPaths) -> dict:
     """Returns `problems` (empty when the data is sound) and the counts of the report."""
     problems: list[str] = []
     cells = _cells(paths, problems)
-    photos = _photos(photo_paths, problems)
-    _manifest(paths, cells, problems)
-    linked = _origins(photo_paths, cells, photos, problems)
-    _kind_log(paths, cells, problems)
-    try:
-        decisions = _decisions(photo_paths.checks)
-    except ValueError as error:
-        problems.append(str(error))
-        decisions = {}
-    for photo in decisions:
-        if photo not in photos:
-            problems.append(f"{photo_paths.checks.name}: photo {photo[:16]} is not in photos.csv")
+    photos = _photos(paths, problems)
+    kinds, linked = _cell_rows(paths, cells, photos, problems)
+    _journal(paths, cells, problems)
     per_folder = Counter(cells.values())
-    per_decision = Counter(decisions[p] for p in photos if p in decisions)
-    pending = len(photos - set(decisions))
+    per_status = Counter(photos.values())
     return {
         "problems": problems,
-        "cells": {label: per_folder[label] for label in LABELS if per_folder[label]},
-        "photos": {**per_decision, "pending": pending},
+        "cells": {folder: per_folder[folder] for folder in CELL_FOLDERS if per_folder[folder]},
+        "kinds": {k: kinds[k] for k in ("printed", "handwritten", "unsure", "without")},
+        "photos": {s: per_status[s] for s in PHOTO_STATUSES if per_status[s]},
         "linked": len(linked),
         "total_cells": len(cells),
         "link_line": link_line(len(linked), len(cells)),
         "waiting_cells": per_folder["unlabeled"],
-        "pending_photos": pending,
+        "pending_photos": per_status["pending"],
     }
 
 
@@ -177,17 +228,18 @@ def format_report(report: dict) -> str:
     else:
         lines.append("No problems.")
     lines.append("Cells: " + ", ".join(f"{k} {v}" for k, v in report["cells"].items()))
-    lines.append("Photos: " + ", ".join(f"{k} {v}" for k, v in report["photos"].items()))
+    lines.append("Kinds: " + ", ".join(f"{k} {v}" for k, v in report["kinds"].items()))
+    lines.append("Sudoku photos: " + ", ".join(f"{k} {v}" for k, v in report["photos"].items()))
     lines.append(report["link_line"])
     lines.append(
         f"Waiting: {report['waiting_cells']} cells in unlabeled/, "
-        f"{report['pending_photos']} photos pending."
+        f"{report['pending_photos']} sudoku photos pending."
     )
     return "\n".join(lines)
 
 
-def main(ml_root: Path = Path(__file__).parents[2]) -> int:
-    report = check_data(Paths.under(ml_root), PhotoPaths.under(ml_root))
+def main(paths: DataPaths | None = None) -> int:
+    report = check_data(paths or DataPaths.under())
     print(format_report(report))
     return 1 if report["problems"] else 0
 

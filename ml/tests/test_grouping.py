@@ -6,6 +6,7 @@ import pytest
 import torch
 from PIL import Image
 
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.grouping import features, group_folder, ink_colour, kmeans, write_groups
 from sudoku_ml.manifest import pixel_id, write_cells_manifest
 from sudoku_ml.model import CellClassifier
@@ -56,15 +57,15 @@ def test_the_least_sure_cell_comes_first_and_the_largest_group_first():
 
 
 def ml_tree(tmp_path: Path, colours: dict[str, list[int]]) -> Path:
-    cells = tmp_path / "data" / "cells"
+    paths = DataPaths.under(tmp_path / "data")
+    cells = paths.cells
     for folder, values in colours.items():
         (cells / folder).mkdir(parents=True)
         for value in values:
             tmp = cells / "tmp.png"
             Image.new("RGB", (71, 71), (value, 255 - value, 128)).save(tmp)
             tmp.rename(cells / folder / f"{pixel_id(tmp)[:16]}.png")
-    (tmp_path / "datasets").mkdir()
-    write_cells_manifest(cells, tmp_path / "datasets" / "cells.csv")
+    write_cells_manifest(paths)
     run = tmp_path / "artifacts" / "run-1"
     run.mkdir(parents=True)
     torch.manual_seed(0)
@@ -74,8 +75,9 @@ def ml_tree(tmp_path: Path, colours: dict[str, list[int]]) -> Path:
 
 def test_write_groups_covers_every_digit_cell(tmp_path: Path):
     run = ml_tree(tmp_path, {"7": [10, 20, 30], "empty": [200]})
-    out = tmp_path / "data" / "work" / "groups.json"
-    assert write_groups(tmp_path, run, out, k=30, seed=0) == 3
+    paths = DataPaths.under(tmp_path / "data")
+    out = paths.groups
+    assert write_groups(paths, run, k=30, seed=0) == 3
     groups = json.loads(out.read_text())
     assert groups["run"] == "run-1" and list(groups["folders"]) == ["7"]
     assert sum(len(g["cells"]) for g in groups["folders"]["7"]) == 3
@@ -83,7 +85,8 @@ def test_write_groups_covers_every_digit_cell(tmp_path: Path):
 
 def test_write_groups_refuses_cells_missing_from_the_manifest(tmp_path: Path):
     run = ml_tree(tmp_path, {"7": [10]})
-    stray = tmp_path / "data" / "cells" / "7" / ("f" * 16 + ".png")
+    paths = DataPaths.under(tmp_path / "data")
+    stray = paths.cells / "7" / ("f" * 16 + ".png")
     Image.new("RGB", (71, 71), (1, 2, 3)).save(stray)
     with pytest.raises(ValueError, match="just dataset-manifest"):
-        write_groups(tmp_path, run, tmp_path / "groups.json")
+        write_groups(paths, run)

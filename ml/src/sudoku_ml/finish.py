@@ -1,38 +1,38 @@
-"""The Finish step of the labelling page: check the data, rewrite cells.csv and delete the
-derived files in ml/data/work/ (ADR-009). It never touches cells/, photos/ or datasets/ except
-the cells.csv rewrite."""
+"""The Finish step of the labelling page (ADR-018): fold the journal into cells.csv, run the data
+check, write STATUS.md, then delete the journal and the derived files in data/work/. It never
+touches the images. Of the tracked files it writes only cells.csv and STATUS.md."""
 
 import json
 
 from sudoku_ml.data_check import check_data, format_report
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
-from sudoku_ml.photo_import import PhotoPaths, read_detections, write_detections
+from sudoku_ml.photo_import import read_detections, read_photos, write_detections
+from sudoku_ml.status import write_status
 
 PROBLEMS_SHOWN = 5
 
 
-def _decided(photo_paths: PhotoPaths) -> set[str]:
-    # The same rule as PhotoCheck: a photo with any line in photo-checks.jsonl is decided.
-    if not photo_paths.checks.exists():
-        return set()
-    lines = photo_paths.checks.read_text(encoding="utf-8").splitlines()
-    return {json.loads(line)["photo"] for line in lines if line.strip()}
+def _prelabel_run(store: LabelStore) -> str | None:
+    try:
+        return json.loads(store.paths.prelabels.read_text())["run"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
-def finish(store: LabelStore, photo_paths: PhotoPaths) -> dict:
+def finish(store: LabelStore) -> dict:
     """Raises ValueError, with nothing deleted, when the data check finds a problem.
 
-    The manifest is rewritten before the check: the check compares it with the folders, and a
-    session always leaves it behind. The rewrite only reads the folders and the log. The call may
-    append `repair` lines to kind-log.jsonl through `store.repair()`."""
+    cells.csv is rewritten before the check: the check compares it with the folders. The call
+    may append `repair` lines to the journal through `store.repair()`. After a Finish, Undo
+    cannot reverse the finished changes: git keeps the old tables."""
     paths = store.paths
-    store.repair()
     try:
-        write_cells_manifest(paths.cells, paths.manifest, paths.log)
+        store.repair()
+        write_cells_manifest(paths)
     except ValueError as error:
         raise ValueError(f"Finish stopped and deleted nothing. {error}") from error
-    report = check_data(paths, photo_paths)
+    report = check_data(paths)
     if report["problems"]:
         shown = "; ".join(report["problems"][:PROBLEMS_SHOWN])
         more = len(report["problems"]) - PROBLEMS_SHOWN
@@ -40,25 +40,26 @@ def finish(store: LabelStore, photo_paths: PhotoPaths) -> dict:
             f"Finish stopped and deleted nothing. {len(report['problems'])} problems: {shown}"
             + (f"; and {more} more. Run just check-data for the full list." if more > 0 else "")
         )
+    write_status(paths.status, report, store.now(), _prelabel_run(store))
     removed = []
-    derived = (paths.prelabels, paths.suspects, paths.groups)
-    for path in (p for p in derived if p is not None and p.exists()):
-        path.unlink()
-        removed.append(path.name)
+    for path in (paths.journal, paths.prelabels, paths.suspects, paths.groups):
+        if path.exists():
+            path.unlink()
+            removed.append(path.name)
     store.groups = {}
-    detections = read_detections(photo_paths.detections)
+    detections = read_detections(paths.detections)
     if detections:
-        decided = _decided(photo_paths)
-        pending = {k: v for k, v in detections.items() if k not in decided}
-        if not pending:
-            photo_paths.detections.unlink()
-            removed.append(photo_paths.detections.name)
-        elif len(pending) < len(detections):
-            write_detections(photo_paths.detections, pending)
-            removed.append(f"{photo_paths.detections.name} (decided photos only)")
-    elif photo_paths.detections.exists():
-        photo_paths.detections.unlink()
-        removed.append(photo_paths.detections.name)
+        pending = {r["photo_id"] for r in read_photos(paths.photos_csv) if r["status"] == "pending"}
+        kept = {k: v for k, v in detections.items() if k in pending}
+        if not kept:
+            paths.detections.unlink()
+            removed.append(paths.detections.name)
+        elif len(kept) < len(detections):
+            write_detections(paths.detections, kept)
+            removed.append(f"{paths.detections.name} (decided photos only)")
+    elif paths.detections.exists():
+        paths.detections.unlink()
+        removed.append(paths.detections.name)
     return {
         "report": report,
         "text": format_report(report),

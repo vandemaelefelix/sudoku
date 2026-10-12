@@ -9,8 +9,8 @@ import torch
 
 from sudoku_ml.augment import augment
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, kind_index
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import cell_paths, group_ids, load_cells, stack
-from sudoku_ml.label_store import Paths
 from sudoku_ml.manifest import write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
@@ -84,11 +84,10 @@ def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:
     return model
 
 
-def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
-    """Rank digit and kind suspects with cross-validation. Writes ml/data/work/suspects.csv."""
-    cells_dir = ml_root / "data" / "cells"
-    paths = cell_paths(cells_dir)
-    samples = load_cells(cells_dir, ml_root / "datasets" / "cells.csv")
+def find_suspects(data: DataPaths, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
+    """Rank digit and kind suspects with cross-validation. Writes data/work/suspects.csv."""
+    paths = cell_paths(data.cells)
+    samples = load_cells(data.cells, data.cells_csv)
     if len(paths) != len(samples):
         raise ValueError(f"{len(paths)} files but {len(samples)} cells")
     images, digit, kind = stack(samples)
@@ -111,10 +110,9 @@ def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 15
     names = [p.stem for p in paths]
     rows = rank_suspects(names, digit.tolist(), digit_probs, top)
     rows += rank_kind_suspects(names, kind.tolist(), kind_probs)
-    out = Paths.under(ml_root).suspects
-    write_suspects(rows, out)
-    return out
+    write_suspects(rows, data.suspects)
+    return data.suspects
 
 
 if __name__ == "__main__":
-    print(find_suspects(Path(__file__).parents[2]))
+    print(find_suspects(DataPaths.under()))

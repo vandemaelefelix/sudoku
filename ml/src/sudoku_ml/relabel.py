@@ -4,11 +4,12 @@ import csv
 import sys
 from pathlib import Path
 
-from sudoku_ml.manifest import LABELS
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.manifest import CELL_FOLDERS
 
 
 def move_cells(cells_dir: Path, wanted: dict[str, str]) -> int:
-    """Move each cell (file stem → label folder). Check every move before any file moves."""
+    """Move each cell (file stem → digit folder). Check every move before any file moves."""
     current: dict[str, Path] = {}
     for path in sorted(cells_dir.glob("*/*.png")):
         if path.stem in current:
@@ -17,7 +18,7 @@ def move_cells(cells_dir: Path, wanted: dict[str, str]) -> int:
         current[path.stem] = path
     moves = []
     for name, label in wanted.items():
-        if label not in LABELS:
+        if label not in CELL_FOLDERS:
             raise ValueError(f"{name}: unknown label {label!r}")
         if name not in current:
             raise ValueError(f"{name}: no such cell")
@@ -54,4 +55,4 @@ def apply_relabels(cells_dir: Path, relabels: Path) -> int:
 
 
 if __name__ == "__main__":
-    print(apply_relabels(Path(sys.argv[1]), Path(sys.argv[2])))
+    print(apply_relabels(DataPaths.under().cells, Path(sys.argv[1])))

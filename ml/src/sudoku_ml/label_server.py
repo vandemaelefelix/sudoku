@@ -12,16 +12,15 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
 from sudoku_ml.finish import finish
-from sudoku_ml.label_store import LabelStore, Paths
+from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_check import PhotoCheck, clear_temp
-from sudoku_ml.photo_import import PhotoPaths
 
 PAGE = Path(__file__).with_name("label_page.html")
-PHOTO_ROUTES = ("/api/photos/", "/photo/", "/flat/", "/api/origin", "/origin/")
+PHOTO_ROUTES = ("/api/photos/", "/photo/", "/flat/", "/api/source", "/source/")
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
-ML_ROOT = Path(__file__).parents[2]
 
 
 def parse_corners(text: str) -> list[list[float]]:
@@ -50,10 +49,10 @@ def make_server(
         store.register(result["new_cells"])
         return result
 
-    def reject(stem: str, reason: str) -> None:
+    def reject(stem: str) -> None:
         if check is None:
             raise ValueError("no photo check")
-        check.reject(stem, reason)
+        check.reject(stem)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -129,12 +128,12 @@ def make_server(
                     self._json(store.digit_screen(q["digit"], q.get("kinds", "handwritten")))
                 elif check is None and url.path.startswith(PHOTO_ROUTES):
                     self._json({"error": "no photo check"}, 404)
-                elif url.path == "/api/origin":
-                    self._json(check.origin(q["cell"]))
-                elif url.path.startswith("/origin/"):
-                    body = check.origin_png(url.path.removeprefix("/origin/").removesuffix(".png"))
+                elif url.path == "/api/source":
+                    self._json(check.source(q["cell"]))
+                elif url.path.startswith("/source/"):
+                    body = check.source_png(url.path.removeprefix("/source/").removesuffix(".png"))
                     if body is None:
-                        self._json({"error": "no origin"}, 404)
+                        self._json({"error": "no source"}, 404)
                         return
                     self._send(200, body, "image/png")
                 elif url.path == "/api/photos/next":
@@ -182,7 +181,7 @@ def make_server(
                 "/api/prelabel": lambda b: prelabel(),
                 "/api/finish": lambda b: finish(),
                 "/api/photos/accept": lambda b: accept(b["photo"], b["corners"]),
-                "/api/photos/reject": lambda b: reject(b["photo"], b["reason"]),
+                "/api/photos/reject": lambda b: reject(b["photo"]),
             }
             route = routes.get(urlparse(self.path).path)
             if route is None:
@@ -204,19 +203,20 @@ def make_server(
     return HTTPServer((host, port), Handler)
 
 
-def prelabel_new_cells(ml_root: Path) -> int:
+def prelabel_new_cells(
+    paths: DataPaths, ml_root: Path = ML_ROOT, artifacts: Path = ARTIFACTS
+) -> int:
     # torch loads slowly. Import it here so the server starts fast and the tests need no model.
     from sudoku_ml.grouping import default_run
     from sudoku_ml.prelabel import NO_MODEL, write_prelabels
 
     try:
-        run = default_run(ml_root)
+        run = default_run(ml_root, artifacts)
     except (OSError, KeyError):
         run = None
     if run is None or not (run / "model.pt").exists():
         raise ValueError(NO_MODEL)
     try:
-        paths = Paths.under(ml_root)
         return write_prelabels(paths.cells, run, paths.prelabels)
     except (OSError, RuntimeError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise ValueError(f"The pre-label failed: {error}") from error
@@ -224,35 +224,42 @@ def prelabel_new_cells(ml_root: Path) -> int:
 
 def waiting_line(store: LabelStore, check: PhotoCheck) -> str:
     cells = sum(folder == "unlabeled" for folder in store.folder.values())
-    return f"Waiting: {cells} cells in unlabeled/, {len(check.pending())} photos pending."
+    return f"Waiting: {cells} cells in unlabeled/, {len(check.pending())} sudoku photos pending."
 
 
-def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
-    paths = Paths.under(ml_root)
-    photo_paths = PhotoPaths.under(ml_root)
+def main(argv: list[str], paths: DataPaths | None = None) -> int:
+    paths = paths or DataPaths.under()
     if argv[1:2] == ["rollback"]:
-        store = LabelStore(paths)
-        print(f"Reversed {store.rollback(argv[2])} lines.")
+        try:
+            store = LabelStore(paths)
+            print(f"Reversed {store.rollback(argv[2])} lines.")
+        except ValueError as error:
+            print(error, file=sys.stderr)
+            return 1
         return 0
     # Only after the rollback branch: a rollback in a second terminal must not delete the
     # temporary file of a cut that runs in the server. A stopped cut leaves one (ADR-009).
-    clear_temp(photo_paths)
-    store = LabelStore(paths)
-    check = PhotoCheck(photo_paths, store.session, lambda: datetime.now(UTC))
-    repaired = store.repair()
-    if repaired:
-        print(f"Repaired {repaired} kinds on empty cells after a stop.")
-    write_cells_manifest(paths.cells, paths.manifest, paths.log)
+    clear_temp(paths)
     try:
-        print(f"Pre-labelled {prelabel_new_cells(ml_root)} new cells.")
+        store = LabelStore(paths)
+        repaired = store.repair()
+        write_cells_manifest(paths)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
+    if repaired:
+        print(f"Repaired {repaired} kinds of cells outside the digit folders after a stop.")
+    check = PhotoCheck(paths, store.session, lambda: datetime.now(UTC))
+    try:
+        print(f"Pre-labelled {prelabel_new_cells(paths)} new cells.")
     except ValueError as error:
         print(error)
     print(waiting_line(store, check))
     server = make_server(
         store,
         check=check,
-        prelabel=lambda: prelabel_new_cells(ml_root),
-        finish=lambda: finish(store, photo_paths),
+        prelabel=lambda: prelabel_new_cells(paths),
+        finish=lambda: finish(store),
     )
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Session {store.session}. Open {url}. Stop with Ctrl-C.")
@@ -264,8 +271,8 @@ def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
     finally:
         server.server_close()
         # Ctrl-C also stops `just`, so a recipe line after this one never runs.
-        write_cells_manifest(paths.cells, paths.manifest, paths.log)
-        print(f"Rewrote {paths.manifest}.")
+        write_cells_manifest(paths)
+        print(f"Rewrote {paths.cells_csv}.")
     return 0
 
 

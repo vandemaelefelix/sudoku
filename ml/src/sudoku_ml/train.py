@@ -14,9 +14,10 @@ import torch.nn.functional as F
 
 from sudoku_ml.augment import augment
 from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, UNKNOWN_KIND, kind_index
+from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
 from sudoku_ml.dataset import group_ids, load_cells, split_by_group, stack
 from sudoku_ml.fixtures import FIXTURE_SEED
-from sudoku_ml.label_store import LabelStore, Paths
+from sudoku_ml.label_store import LabelStore
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.synthetic import font_files, generate
@@ -106,10 +107,10 @@ def label_state_lines(state: dict, kind_accuracy_real: float | None, n_kind_test
     return "".join(line + "\n" for line in lines)
 
 
-def _label_state(ml_root: Path) -> dict:
+def _label_state(data: DataPaths) -> dict:
     # A stale cells.csv must not stop a run. The card then says the state is unknown.
     try:
-        return LabelStore(Paths.under(ml_root)).label_state()
+        return LabelStore(data).label_state()
     except (ValueError, OSError) as error:
         return {"error": str(error)}
 
@@ -144,15 +145,22 @@ def _logits(model, images: torch.Tensor, device) -> tuple[torch.Tensor, torch.Te
     return torch.cat(digit_out), torch.cat(kind_out)
 
 
-def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> Path:
+def train(
+    config: Config,
+    data: DataPaths | None = None,
+    artifacts_dir: Path = ARTIFACTS,
+    ml_root: Path = ML_ROOT,
+) -> Path:
+    """`data` holds the real cells (default: the repository's data/). `ml_root` holds fonts/."""
     started = time.time()
+    data = data or DataPaths.under()
     real = []
     if config.real_cells:
-        cells_dir = ml_root / "data" / "cells"
+        cells_dir = data.cells
         missing = [c for c in DIGIT_CLASSES if not (cells_dir / c).is_dir()]
         if missing:
             raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
-        real = load_cells(cells_dir, ml_root / "datasets" / "cells.csv")
+        real = load_cells(cells_dir, data.cells_csv)
         if not real:
             raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
@@ -235,7 +243,7 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         ),
         "kind_accuracy_real": kind_accuracy_real,
         "n_kind_test": n_kind_test,
-        "label_state": _label_state(ml_root) if real else None,
+        "label_state": _label_state(data) if real else None,
         "n_train": n_train,
         "n_val": len(eval_sets["val"]),
         "n_test": len(eval_sets["test"]),
@@ -243,13 +251,15 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         "seconds": round(time.time() - started, 1),
         "config": asdict(config),
     }
-    run = (artifacts_dir or ml_root / "artifacts") / f"{datetime.now():%Y%m%d-%H%M%S}-{config.name}"
+    run = artifacts_dir / f"{datetime.now():%Y%m%d-%H%M%S}-{config.name}"
     run.mkdir(parents=True)
     torch.save(model.cpu().state_dict(), run / "model.pt")
     (run / "metrics.json").write_text(json.dumps(metrics, indent=2))
-    manifest = ml_root / "datasets" / "cells.csv"
+    manifest = data.cells_csv
     manifest_hash = (
-        hashlib.sha256(manifest.read_bytes()).hexdigest()[:16] if manifest.exists() else "none"
+        hashlib.sha256(manifest.read_bytes()).hexdigest()[:16]
+        if real and manifest.exists()
+        else "none"
     )
     label_lines = (
         label_state_lines(metrics["label_state"], kind_accuracy_real, n_kind_test) if real else ""
@@ -270,4 +280,4 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
 
 
 if __name__ == "__main__":
-    print(train(load_config(Path(sys.argv[1])), Path(__file__).parents[2]))
+    print(train(load_config(Path(sys.argv[1]))))

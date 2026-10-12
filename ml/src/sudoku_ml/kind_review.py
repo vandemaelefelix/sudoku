@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from sudoku_ml.journal import Line, format_time, undone_actions
 from sudoku_ml.kind_check import CheckLine
-from sudoku_ml.kind_log import Line, current_kinds, format_time, undone_actions
 
 Current = Callable[[str, str], str | None]
 _LABELLED = {"printed", "handwritten"}
@@ -22,9 +22,12 @@ class ReviewItem:
     since: str  # time of the evidence. A review line at or after it closes the item
 
 
-def near_duplicate_items(pairs: list[tuple[str, str]], lines: list[Line]) -> list[ReviewItem]:
-    """Only direct pairs count: chains of near-duplicates join cells that do not look alike."""
-    kinds = current_kinds(lines)
+def near_duplicate_items(
+    pairs: list[tuple[str, str]], kinds: dict[str, str | None], lines: list[Line]
+) -> list[ReviewItem]:
+    """Only direct pairs count: chains of near-duplicates join cells that do not look alike.
+    The evidence time is the newest kind change in the journal. A pair of finished kinds has
+    none, so it stays closed until one of its kinds changes."""
     changed = {x.cell: x.t for x in lines if x.field == "kind" and x.screen != "review"}
     items = []
     for pair in pairs:
@@ -71,10 +74,16 @@ def check_items(checks: list[CheckLine], current: Current) -> list[ReviewItem]:
     ]
 
 
-def open_items(items: list[ReviewItem], lines: list[Line]) -> list[ReviewItem]:
+def open_items(
+    items: list[ReviewItem], lines: list[Line], last_finish: str = ""
+) -> list[ReviewItem]:
+    """Items whose evidence is newer than the last Finish and than their newest review line.
+    Finish closes every open item (ADR-018)."""
     undone = undone_actions(lines)
     reviewed: dict[tuple[str, str], str] = {}
     for x in lines:
         if x.screen == "review" and x.action not in undone:
             reviewed[(x.cell, x.field)] = max(reviewed.get((x.cell, x.field), ""), x.t)
-    return [i for i in items if reviewed.get((i.cell, i.field), "") < i.since]
+    return [
+        i for i in items if i.since > last_finish and reviewed.get((i.cell, i.field), "") < i.since
+    ]

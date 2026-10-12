@@ -1,7 +1,6 @@
 import http.client
 import json
 import threading
-from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -9,11 +8,11 @@ import pytest
 from photos import grid_photo, save_photo
 from test_label_store import Clock, build
 
-from sudoku_ml.kind_log import read_log
+from sudoku_ml.journal import read_journal
 from sudoku_ml.label_server import main, make_server, prelabel_new_cells
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_check import PhotoCheck
-from sudoku_ml.photo_import import PhotoPaths, import_folder
+from sudoku_ml.photo_import import import_folder
 from sudoku_ml.prelabel import NO_MODEL
 
 
@@ -57,7 +56,7 @@ def test_a_post_without_json_content_type_is_refused_and_writes_nothing(served):
     body = {"screen": "groups", "cells": [{"id": ids["7"][0], "kind": "printed"}]}
     status, _ = request(port, "POST", "/api/save", body, content_type="text/plain")
     assert status == 415
-    assert read_log(paths.log) == []
+    assert read_journal(paths.journal) == []
 
 
 def test_a_save_round_trips(served):
@@ -65,7 +64,7 @@ def test_a_save_round_trips(served):
     body = {"screen": "groups", "cells": [{"id": ids["7"][0], "kind": "printed"}]}
     status, data = request(port, "POST", "/api/save", body)
     assert status == 200 and json.loads(data) == {"result": 1}
-    assert [x.new for x in read_log(paths.log)] == ["printed"]
+    assert [x.new for x in read_journal(paths.journal)] == ["printed"]
     status, data = request(port, "GET", "/api/screen?folder=7&group=0&page=0")
     assert json.loads(data)["cells"][0]["kind"] == "printed"
 
@@ -152,8 +151,8 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
 
     monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Interrupted())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
-    assert main(["label_server"], tmp_path) == 0
-    assert paths.manifest.read_text().splitlines()[1].endswith(",handwritten")
+    assert main(["label_server"], paths) == 0
+    assert paths.cells_csv.read_text().splitlines()[1].endswith(",handwritten,,,")
 
 
 FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
@@ -162,7 +161,6 @@ FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 @pytest.fixture
 def served_photos(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
-    paths = replace(paths, prelabels=tmp_path / "data" / "work" / "prelabels.json")
     u = ids["unlabeled"]
     prelabels = {
         u[0]: {"digit": "2", "p": 0.6, "kind": "handwritten"},
@@ -170,11 +168,10 @@ def served_photos(tmp_path: Path):
     }
     paths.prelabels.write_text(json.dumps({"run": "test", "cells": prelabels}))
     save_photo(grid_photo(), tmp_path / "in" / "p.png")
-    photo_paths = PhotoPaths.under(tmp_path)
-    import_folder(tmp_path / "in", photo_paths, origin="phone", licence="own")
+    import_folder(tmp_path / "in", paths, source="phone", licence="own")
     store = LabelStore(paths, Clock())
     moment = datetime(2026, 10, 12, tzinfo=UTC)
-    check = PhotoCheck(photo_paths, store.session, lambda: moment)
+    check = PhotoCheck(paths, store.session, lambda: moment)
     server = make_server(store, check, port=0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -229,7 +226,7 @@ def test_an_accepted_photo_serves_its_new_cells(served_photos):
 
 def test_a_rejected_photo_leaves_the_queue(served_photos):
     port, _, _, stem = served_photos
-    status, _ = request(port, "POST", "/api/photos/reject", {"photo": stem, "reason": "rejected"})
+    status, _ = request(port, "POST", "/api/photos/reject", {"photo": stem})
     assert status == 200
     assert json.loads(request(port, "GET", "/api/photos/next")[1]) is None
 
@@ -249,7 +246,7 @@ def test_the_server_starts_without_groups(tmp_path, monkeypatch):
 
     monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Interrupted())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
-    assert main(["label_server"], tmp_path) == 0
+    assert main(["label_server"], paths) == 0
 
 
 def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
@@ -265,7 +262,7 @@ def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
         "digit_cells": 1,
         "kind": 1,
     }
-    request(port, "POST", "/api/photos/reject", {"photo": served_photos[3], "reason": "rejected"})
+    request(port, "POST", "/api/photos/reject", {"photo": served_photos[3]})
     assert json.loads(request(port, "GET", "/api/status")[1])["photos"] == 0
 
 
@@ -325,7 +322,7 @@ def test_a_missing_model_gets_a_400_with_the_message(tmp_path: Path):
 
 def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
     root = tmp_path / "ml"
-    build(root, {"unlabeled": 1}, {})
+    paths, _ = build(root, {"unlabeled": 1}, {})
     manifest = tmp_path / "apps" / "mobile" / "assets" / "models" / "manifest.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text(json.dumps({"run": "r1"}))
@@ -333,7 +330,10 @@ def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
     run.mkdir(parents=True)
     (run / "model.pt").write_bytes(b"not a model")
     (run / "metrics.json").write_text(json.dumps({"temperature": 1.0}))
-    server = serve_with(tmp_path / "other", lambda: prelabel_new_cells(root))
+    server = serve_with(
+        tmp_path / "other",
+        lambda: prelabel_new_cells(paths, root, root / "artifacts"),
+    )
     try:
         status, data = request(server.server_port, "POST", "/api/prelabel", {})
         assert status == 400 and json.loads(data)["error"].startswith("The pre-label failed")
@@ -369,7 +369,7 @@ def test_the_page_explains_the_photos_and_digits_screens(served):
         "1 Check photos",
         "T · Turn grid 90°",
         "Digits sideways? Press T.",
-        "From photo ${found.photo}, row ${found.row + 1}, ",
+        "From sudoku photo ${found.photo}, row ${found.row + 1}, ",
         "Press T after the 4 corners to turn the grid.",
         "Click the 4 corners first. Then press T to turn the grid.",
         "Finish the 4 corners first. Then press T.",
@@ -378,21 +378,21 @@ def test_the_page_explains_the_photos_and_digits_screens(served):
         assert text in page
 
 
-def test_a_cell_of_an_accepted_photo_serves_its_origin(served_photos):
+def test_a_cell_of_an_accepted_photo_serves_its_source(served_photos):
     port, _, _, stem = served_photos
     status, data = request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
     cell = json.loads(data)["result"]["new_cells"][0][:16]
-    status, data = request(port, "GET", f"/api/origin?cell={cell}")
+    status, data = request(port, "GET", f"/api/source?cell={cell}")
     assert status == 200 and json.loads(data)["photo"] == stem
-    status, data = request(port, "GET", f"/origin/{cell}.png")
+    status, data = request(port, "GET", f"/source/{cell}.png")
     assert status == 200 and data[:4] == b"\x89PNG"
-    assert request(port, "GET", f"/origin/{'0' * 16}.png")[0] == 404
-    assert json.loads(request(port, "GET", f"/api/origin?cell={'0' * 16}")[1]) is None
+    assert request(port, "GET", f"/source/{'0' * 16}.png")[0] == 404
+    assert json.loads(request(port, "GET", f"/api/source?cell={'0' * 16}")[1]) is None
 
 
-def test_the_origin_routes_answer_404_without_a_photo_check(served):
+def test_the_source_routes_answer_404_without_a_photo_check(served):
     port, _, _ = served
-    for path in ("/api/origin?cell=abc", "/origin/abc.png"):
+    for path in ("/api/source?cell=abc", "/source/abc.png"):
         status, data = request(port, "GET", path)
         assert status == 404 and json.loads(data) == {"error": "no photo check"}
 
@@ -447,3 +447,17 @@ def test_the_progress_route_says_how_many_cells_are_linked(served_photos):
     request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
     _, data = request(port, "GET", "/api/progress")
     assert json.loads(data)["link_line"].startswith("Linked 35 of 38 cells.")
+
+
+def test_a_rollback_of_a_finished_session_says_to_use_git(tmp_path: Path, capsys):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    assert main(["label_server", "rollback", "20200101-000000"], paths) == 1
+    assert "This session is finished. Use git to go back." in capsys.readouterr().err
+
+
+def test_the_start_refuses_a_table_that_does_not_parse(tmp_path: Path, capsys):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths.cells_csv.write_text("id,label,kind\n")
+    assert main(["label_server"], paths) == 1
+    assert "Restore it from git." in capsys.readouterr().err
+    assert paths.cells_csv.read_text() == "id,label,kind\n"

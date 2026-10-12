@@ -1,13 +1,12 @@
-"""State and rules of the Photos screen: one decision per imported photo, and the cut of the
-cells of an accepted photo into cells/unlabeled/ (ADR-009, amendment of 2026-10-12)."""
+"""State and rules of the Photos screen: one decision per imported sudoku photo, and the cut of
+the cells of an accepted sudoku photo into cells/unlabeled/ (ADR-018). The decision is the
+`status` column of sudoku-photos.csv. The cut adds a `source` line to the journal per new cell."""
 
-import csv
 import io
 import sys
 import uuid
 from collections import OrderedDict
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import datetime
 
 import cv2
@@ -16,6 +15,7 @@ from PIL import Image
 
 from sudoku_ml.contract import CELL_SIZE
 from sudoku_ml.data_check import link_line
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.flatten import (
     GRID_CELLS,
     check_corners,
@@ -24,34 +24,32 @@ from sudoku_ml.flatten import (
     usable_cells,
     warp_grid,
 )
-from sudoku_ml.kind_log import append_records, format_time, read_records
-from sudoku_ml.manifest import pixel_id
+from sudoku_ml.journal import (
+    Line,
+    Source,
+    append_records,
+    current_sources,
+    format_source,
+    format_time,
+    read_journal,
+)
+from sudoku_ml.manifest import base_sources, pixel_id, read_cells_table
 from sudoku_ml.photo_import import (
-    PhotoPaths,
     detect_outline,
+    format_corners,
+    parse_corners,
     read_detections,
     read_photos,
     write_detections,
+    write_photos,
 )
 
 MIN_CELLS = 10  # fewer usable cells are not worth the labelling time
 DISPLAY_SIZE = 1600
-ORIGIN_FIELDS = ["cell", "photo", "row", "col"]
 FLAT_CACHE = 16  # flattened grids: the person moves across the cells of several photos
 
 
-@dataclass(frozen=True)
-class PhotoDecision:
-    t: str
-    session: str
-    photo: str  # full photo id
-    decision: str  # "accepted", "rejected" or "too-few-cells"
-    reason: str
-    corners: list[list[float]] | None
-    cells: int  # cells cut
-
-
-def clear_temp(paths: PhotoPaths) -> int:
+def clear_temp(paths: DataPaths) -> int:
     """Delete the cells that a stopped cut left behind. `unlabeled/tmp-cut.png` is the name of
     the earlier cut. Returns the number of files deleted."""
     leftovers = [*paths.tmp.glob("*"), paths.cells / "unlabeled" / "tmp-cut.png"]
@@ -64,28 +62,26 @@ def clear_temp(paths: PhotoPaths) -> int:
 
 
 class PhotoCheck:
-    def __init__(self, paths: PhotoPaths, session: str, now: Callable[[], datetime]):
+    def __init__(self, paths: DataPaths, session: str, now: Callable[[], datetime]):
         self.paths, self.session, self._now = paths, session, now
         self._upright: tuple[str, np.ndarray] | None = None
-        self._origins: tuple[tuple[int, int], dict[str, tuple[str, int, int]]] | None = None
+        self._sources: tuple[tuple[int, int], dict[str, Source]] | None = None
         self._flats: OrderedDict[str, np.ndarray] = OrderedDict()
+        self._cuts = 0
 
     def _rows(self) -> dict[str, dict[str, str]]:
-        return {r["id"][:16]: r for r in read_photos(self.paths.manifest)}
-
-    def _decided(self) -> set[str]:
-        return {d.photo for d in read_records(self.paths.checks, PhotoDecision)}
+        return {r["photo_id"][:16]: r for r in read_photos(self.paths.photos_csv)}
 
     def total(self) -> int:
         return len(self._rows())
 
     def pending(self) -> list[str]:
-        decided = self._decided()
-        # A missing file would fail the Photos screen. The data check reports it.
+        # A missing file would fail the Photos screen. The data check reports it. A `legacy`
+        # sudoku photo was cut before checks existed: it is never offered.
         return [
             stem
             for stem, row in self._rows().items()
-            if row["id"] not in decided and (self.paths.photos / row["file"]).exists()
+            if row["status"] == "pending" and (self.paths.photos / row["file"]).exists()
         ]
 
     def _outline(self, stem: str, photo_id: str) -> dict:
@@ -98,9 +94,9 @@ class PhotoCheck:
 
     def photo(self, stem: str) -> dict:
         row = self._rows()[stem]
-        found = self._outline(stem, row["id"])
+        found = self._outline(stem, row["photo_id"])
         return {
-            "id": row["id"],
+            "id": row["photo_id"],
             "stem": stem,
             "width": found["width"],
             "height": found["height"],
@@ -161,62 +157,60 @@ class PhotoCheck:
         Image.fromarray(flat.astype(np.uint8)).save(out, "PNG")
         return out.getvalue()
 
-    def _origin_rows(self) -> dict[str, tuple[str, int, int]]:
-        # Accept appends to the file in the same session, so a new mtime means a reload.
-        if not self.paths.origins.exists():
-            return {}
-        info = self.paths.origins.stat()
-        mtime = (info.st_mtime_ns, info.st_size)
-        if self._origins is None or self._origins[0] != mtime:
-            with self.paths.origins.open(newline="", encoding="utf-8") as handle:
-                rows = {
-                    r["cell"][:16]: (r["photo"], int(r["row"]), int(r["col"]))
-                    for r in csv.DictReader(handle)
-                }
-            self._origins = (mtime, rows)
-        return self._origins[1]
+    def _source_of(self) -> dict[str, Source]:
+        """Cell stem → source: cells.csv with the journal on top. A cut appends to the journal
+        and Finish rewrites cells.csv, so a change of either means a reload."""
+        journal, table = self.paths.journal, self.paths.cells_csv
+        stamp = (
+            journal.stat().st_size if journal.exists() else 0,
+            table.stat().st_mtime_ns if table.exists() else 0,
+        )
+        if self._sources is None or self._sources[0] != stamp:
+            found = current_sources(read_journal(journal), base_sources(read_cells_table(table)))
+            self._sources = (stamp, {cell[:16]: source for cell, source in found.items()})
+        return self._sources[1]
 
     def link_line(self, cells: list[str]) -> str:
-        """How many of `cells` (full ids) have an origin row. Cheap, for the Progress page."""
-        rows = self._origin_rows()
-        linked = sum(cell[:16] in rows for cell in cells)
+        """How many of `cells` (full ids) have a source. Cheap, for the Progress page."""
+        sources = self._source_of()
+        linked = sum(cell[:16] in sources for cell in cells)
         return link_line(linked, len(cells))
 
-    def _accepted_corners(self, photo_id: str) -> list[list[float]] | None:
-        found = None
-        for d in read_records(self.paths.checks, PhotoDecision):
-            if d.photo == photo_id and d.decision == "accepted":
-                found = d.corners
-        return found
+    def _accepted(self, photo_id: str) -> dict[str, str] | None:
+        row = self._rows().get(photo_id[:16])
+        if row is None or row["photo_id"] != photo_id or row["status"] != "accepted":
+            return None
+        return row
 
-    def origin(self, cell_stem: str) -> dict | None:
-        """The photo, row and column (0-based) that a cell was cut from. None if unknown."""
-        found = self._origin_rows().get(cell_stem)
-        if found is None or self._accepted_corners(found[0]) is None:
+    def source(self, cell_stem: str) -> dict | None:
+        """The sudoku photo, row and column (0-based) that a cell was cut from. None if unknown
+        or if the sudoku photo has no accepted corners."""
+        found = self._source_of().get(cell_stem)
+        if found is None:
             return None
         photo_id, row, col = found
-        manifest = next((r for r in self._rows().values() if r["id"] == photo_id), None)
-        if manifest is None:
+        accepted = self._accepted(photo_id)
+        if accepted is None:
             return None
         return {
             "photo": photo_id[:16],
             "row": row,
             "col": col,
-            "origin": manifest["origin"],
-            "licence": manifest["licence"],
+            "source": accepted["source"],
+            "licence": accepted["licence"],
         }
 
-    def origin_png(self, cell_stem: str) -> bytes | None:
-        """The flattened grid of the cell's photo with the cell outlined. None if unknown."""
-        found = self.origin(cell_stem)
+    def source_png(self, cell_stem: str) -> bytes | None:
+        """The flattened grid of the cell's sudoku photo with the cell outlined. None if
+        unknown."""
+        found = self.source(cell_stem)
         if found is None:
             return None
         stem = found["photo"]
         if stem not in self._flats:
             row = self._rows()[stem]
-            corners = self._accepted_corners(row["id"])
             image = load_upright(self.paths.photos / row["file"])
-            self._flats[stem] = warp_grid(image, check_corners(corners))
+            self._flats[stem] = warp_grid(image, check_corners(parse_corners(row["corners"])))
             while len(self._flats) > FLAT_CACHE:
                 self._flats.popitem(last=False)
         flat = self._flats[stem].copy()
@@ -230,29 +224,29 @@ class PhotoCheck:
 
     def _open(self, stem: str) -> dict[str, str]:
         row = self._rows()[stem]
-        if row["id"] in self._decided():
+        if row["status"] != "pending":
             raise ValueError(f"{stem}: already checked")
         return row
 
-    def _decide(self, photo_id, decision, reason, corners, cells) -> None:
-        line = PhotoDecision(
-            format_time(self._now()), self.session, photo_id, decision, reason, corners, cells
-        )
-        append_records(self.paths.checks, [line])
+    def _decide(self, photo_id: str, status: str, corners: str) -> None:
+        rows = read_photos(self.paths.photos_csv)
+        for row in rows:
+            if row["photo_id"] == photo_id:
+                row["status"], row["corners"] = status, corners
+        write_photos(self.paths.photos_csv, rows)
         detections = read_detections(self.paths.detections)
         if detections.pop(photo_id, None) is not None:
             write_detections(self.paths.detections, detections)
 
-    def reject(self, stem: str, reason: str) -> None:
+    def reject(self, stem: str) -> None:
         row = self._open(stem)
-        self._decide(row["id"], "rejected", reason, None, 0)
+        self._decide(row["photo_id"], "rejected", "")
 
     def accept(self, stem: str, corners) -> dict:
         row = self._open(stem)
         checked, usable = self._usable(stem, corners)
-        rounded = [[round(x, 1), round(y, 1)] for x, y in checked]
         if sum(usable) < MIN_CELLS:
-            self._decide(row["id"], "too-few-cells", f"{sum(usable)} usable cells", rounded, 0)
+            self._decide(row["photo_id"], "too-few-cells", "")
             return {"decision": "too-few-cells", "cells": 0, "duplicates": 0, "new_cells": []}
         target = self.paths.cells / "unlabeled"
         target.mkdir(parents=True, exist_ok=True)
@@ -260,7 +254,9 @@ class PhotoCheck:
         # cell folder (ADR-009).
         self.paths.tmp.mkdir(parents=True, exist_ok=True)
         existing = {p.stem for p in self.paths.cells.glob("*/*.png")}
-        new_cells, origins, duplicates = [], [], 0
+        new_cells, links, duplicates = [], [], 0
+        self._cuts += 1
+        t, action = format_time(self._now()), f"{self.session}-cut-{self._cuts}"
         cells = slice_cells(warp_grid(self._image(stem), checked))
         for n, (cell, ok) in enumerate(zip(cells, usable, strict=True)):
             if not ok:
@@ -275,16 +271,14 @@ class PhotoCheck:
             tmp.replace(target / f"{cell_id[:16]}.png")
             existing.add(cell_id[:16])
             new_cells.append(cell_id)
-            r, c = divmod(n, GRID_CELLS)
-            origins.append({"cell": cell_id, "photo": row["id"], "row": r, "col": c})
-        new_file = not self.paths.origins.exists()
-        self.paths.origins.parent.mkdir(parents=True, exist_ok=True)
-        with self.paths.origins.open("a", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=ORIGIN_FIELDS)
-            if new_file:
-                writer.writeheader()
-            writer.writerows(origins)
-        self._decide(row["id"], "accepted", "", rounded, len(new_cells))
+            source = format_source((row["photo_id"], *divmod(n, GRID_CELLS)))
+            links.append(Line(t, self.session, action, cell_id, "source", None, source, "photos"))
+        # The links before the status: a stop between the two leaves the sudoku photo pending,
+        # and its next cut skips the cells that exist.
+        if links:
+            append_records(self.paths.journal, links)
+        rounded = [[round(x, 1), round(y, 1)] for x, y in checked]
+        self._decide(row["photo_id"], "accepted", format_corners(rounded))
         return {
             "decision": "accepted",
             "cells": len(new_cells),

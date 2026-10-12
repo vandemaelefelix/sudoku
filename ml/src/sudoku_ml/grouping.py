@@ -1,5 +1,5 @@
 """Groups of similar cells per digit folder, for the labelling page.
-Writes ml/data/work/groups.json."""
+Writes data/work/groups.json."""
 
 import json
 import sys
@@ -9,8 +9,8 @@ import numpy as np
 import torch
 from PIL import Image
 
+from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
 from sudoku_ml.dataset import read_ids
-from sudoku_ml.label_store import Paths
 from sudoku_ml.manifest import write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import BT601, preprocess_cell, to_cell_image
@@ -99,12 +99,13 @@ def group_folder(ids: list[str], x: np.ndarray, k: int, seed: int) -> list[dict]
     return groups
 
 
-def write_groups(ml_root: Path, run: Path, out: Path, k: int = 30, seed: int = 0) -> int:
-    """Group every digit folder with the model of `run`. Returns the number of grouped cells."""
+def write_groups(data: DataPaths, run: Path, k: int = 30, seed: int = 0) -> int:
+    """Group every digit folder with the model of `run` into data.groups. Returns the number of
+    grouped cells."""
     model = CellClassifier()
     model.load_state_dict(torch.load(run / "model.pt", map_location="cpu"))
-    ids = read_ids(ml_root / "datasets" / "cells.csv")
-    cells_dir = ml_root / "data" / "cells"
+    ids = read_ids(data.cells_csv)
+    cells_dir = data.cells
     folders: dict[str, list[dict]] = {}
     for folder in DIGIT_FOLDERS:
         paths = sorted((cells_dir / folder).glob("*.png"))
@@ -119,17 +120,18 @@ def write_groups(ml_root: Path, run: Path, out: Path, k: int = 30, seed: int = 0
         images = np.stack([to_cell_image(np.asarray(Image.open(p).convert("RGB"))) for p in paths])
         x = features(model, images)
         folders[folder] = group_folder([ids[p.stem] for p in paths], x, k, seed)
-    write_atomic(out, json.dumps({"run": run.name, "seed": seed, "k": k, "folders": folders}))
+    write_atomic(
+        data.groups, json.dumps({"run": run.name, "seed": seed, "k": k, "folders": folders})
+    )
     return sum(len(g["cells"]) for groups in folders.values() for g in groups)
 
 
-def default_run(ml_root: Path) -> Path:
+def default_run(ml_root: Path = ML_ROOT, artifacts: Path = ARTIFACTS) -> Path:
     """The run of the model that the app uses."""
     manifest = ml_root.parent / "apps" / "mobile" / "assets" / "models" / "manifest.json"
-    return ml_root / "artifacts" / json.loads(manifest.read_text())["run"]
+    return artifacts / json.loads(manifest.read_text())["run"]
 
 
 if __name__ == "__main__":
-    root = Path(__file__).parents[2]
-    chosen = root / sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else default_run(root)
-    print(write_groups(root, chosen, Paths.under(root).groups))
+    chosen = ML_ROOT / sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else default_run()
+    print(write_groups(DataPaths.under(), chosen))

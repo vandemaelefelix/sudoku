@@ -2,11 +2,15 @@ from datetime import timedelta
 
 import pytest
 
+from sudoku_ml.journal import Line, current_kinds, last_kind_times, parse_time
 from sudoku_ml.kind_check import CheckLine, NotEnoughCells, draw_sample, summary
-from sudoku_ml.kind_log import Line, parse_time
 
 OLD, NEW = "2026-10-01T09:00:00Z", "2026-10-10T09:00:00Z"
 NOW = parse_time("2026-10-11T09:00:00Z")
+
+
+def draw(lines: list[Line], *args, **kwargs) -> list[str]:
+    return draw_sample(current_kinds(lines), last_kind_times(lines), *args, **kwargs)
 
 
 def ids(n: int, start: int = 0) -> list[str]:
@@ -19,7 +23,7 @@ def labelled(cells: list[str], t: str = OLD, kind: str = "printed") -> list[Line
 
 def test_only_labels_seven_days_old_or_older_qualify():
     old, new = ids(10), ids(10, start=100)
-    sample = draw_sample(labelled(old) + labelled(new, NEW), [], set(), NOW, n=10)
+    sample = draw(labelled(old) + labelled(new, NEW), [], set(), NOW, n=10)
     assert sorted(sample) == old
 
 
@@ -27,37 +31,37 @@ def test_unsure_and_unlabelled_cells_never_qualify():
     cells = ids(4)
     lines = labelled(cells[:2]) + labelled(cells[2:3], kind="unsure")
     with pytest.raises(NotEnoughCells) as error:
-        draw_sample(lines, [], set(), NOW, n=3)
+        draw(lines, [], set(), NOW, n=3)
     assert error.value.count == 2
 
 
 def test_half_of_the_sample_comes_from_the_test_split():
     test, other = ids(50), ids(50, start=100)
-    sample = draw_sample(labelled(test + other), [], set(test), NOW, n=20)
+    sample = draw(labelled(test + other), [], set(test), NOW, n=20)
     assert len(set(sample) & set(test)) == 10
 
 
 def test_a_small_test_split_is_filled_from_the_other_cells():
     test, other = ids(3), ids(50, start=100)
-    sample = draw_sample(labelled(test + other), [], set(test), NOW, n=20)
+    sample = draw(labelled(test + other), [], set(test), NOW, n=20)
     assert len(sample) == 20 and set(test) <= set(sample)
 
 
 def test_checked_cells_are_not_drawn_again():
     cells = ids(12)
     checks = [CheckLine(OLD, "c", c, "printed", "printed") for c in cells[:2]]
-    sample = draw_sample(labelled(cells), checks, set(), NOW, n=10)
+    sample = draw(labelled(cells), checks, set(), NOW, n=10)
     assert not set(sample) & set(cells[:2])
 
 
 def test_the_draw_is_deterministic():
     lines = labelled(ids(40))
-    assert draw_sample(lines, [], set(), NOW, n=10) == draw_sample(lines, [], set(), NOW, n=10)
+    assert draw(lines, [], set(), NOW, n=10) == draw(lines, [], set(), NOW, n=10)
 
 
 def test_min_age_is_configurable():
     lines = labelled(ids(5), NEW)
-    assert len(draw_sample(lines, [], set(), NOW, n=5, min_age=timedelta(hours=1))) == 5
+    assert len(draw(lines, [], set(), NOW, n=5, min_age=timedelta(hours=1))) == 5
 
 
 def test_summary_covers_the_newest_session_only():
@@ -78,3 +82,11 @@ def test_summary_covers_the_newest_session_only():
         "date": "2026-10-10",
     }
     assert summary([]) is None
+
+
+def test_a_finished_kind_counts_as_old_enough():
+    finished = {c: "printed" for c in ids(10)}
+    recent = labelled(ids(10, start=100), NEW)
+    kinds = current_kinds(recent, finished)
+    sample = draw_sample(kinds, last_kind_times(recent), [], set(), NOW, n=10)
+    assert sorted(sample) == ids(10)
