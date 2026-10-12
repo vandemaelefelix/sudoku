@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-015: Unistyles 3 with a three-tier token theme, two themes first
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-12 |
 | Contact | Felix      |
 
@@ -46,7 +46,13 @@ Every styling library handles values and variants. None of them handles structur
 ## Decision
 
 1. **Unistyles 3 styles the app.** Components use `StyleSheet.create(theme => …)` from
-   `react-native-unistyles`. **Pending a run in the development build on the iPhone** (#50).
+   `react-native-unistyles`. It runs with Expo 57, React Native 0.86 and Reanimated 4.5 in the
+   development build on the iPhone. The run on 2026-10-12 gave these results:
+   - The scan flow works. The camera runs at 30 fps, detection takes about 10 ms and the overlay
+     runs at about 120 fps.
+   - Two captures were recognised, and both moved into the correction screen.
+   - The iOS Dark and Light setting changes the theme and the status bar without a restart.
+   - The Midnight contrast on the correction screen is readable.
 2. **The app ships two themes: Daylight and Midnight.** They follow the system setting. The
    player can override it with System, Daylight or Midnight in Settings. The choice is saved
    through `SettingsRepository` (ADR-012).
@@ -92,6 +98,11 @@ Every styling library handles values and variants. None of them handles structur
 - `app.json` changes `userInterfaceStyle` from `light` to `automatic`, so the app can follow
   the system setting (#50).
 - A theme switch does not re-render the grid.
+- Three canvas values changed for WCAG AA: the Daylight entry is `#2952c6`, the Midnight entry
+  is `#90abff` and the Midnight note is `#9aa1b2`.
+- Unistyles follows the system only with themes named `light` and `dark`. So Unistyles
+  registers Daylight as `light` and Midnight as `dark`. The player sees the names Daylight and
+  Midnight.
 - Fonts and assets of every theme ship inside the app, because the app works offline (SUD-01).
 - The scan overlay effects keep their own look for now. If an effect must follow the theme, the
   ADR-014 draw kit must remake its paints on a theme change.
