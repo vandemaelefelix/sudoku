@@ -4,6 +4,7 @@ SUD-08)."""
 import json
 import sys
 import webbrowser
+from collections.abc import Callable
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -30,6 +31,7 @@ def parse_corners(text: str) -> list[list[float]]:
 def make_server(
     store: LabelStore,
     check: PhotoCheck | None = None,
+    prelabel: Callable[[], int] | None = None,
     host: str = "127.0.0.1",
     port: int = 8765,
 ) -> HTTPServer:
@@ -100,6 +102,8 @@ def make_server(
                     self._json(store.review_screen())
                 elif url.path == "/api/check":
                     self._json(store.check_start())
+                elif url.path == "/api/status":
+                    self._json({"photos": len(check.pending()) if check else 0, **store.status()})
                 elif url.path == "/api/progress":
                     self._json(store.progress())
                 elif url.path == "/api/digits":
@@ -146,12 +150,16 @@ def make_server(
                 "/api/undo": lambda b: store.undo(),
                 "/api/check": lambda b: store.check_answer(b["answers"]),
                 "/api/assign": lambda b: store.assign(b["cells"], b["screen"]),
+                "/api/prelabel": lambda b: prelabel(),
                 "/api/photos/accept": lambda b: accept(b["photo"], b["corners"]),
                 "/api/photos/reject": lambda b: reject(b["photo"], b["reason"]),
             }
             route = routes.get(urlparse(self.path).path)
             if route is None:
                 self._json({"error": "not found"}, 404)
+                return
+            if prelabel is None and urlparse(self.path).path == "/api/prelabel":
+                self._json({"error": "no prelabel"}, 404)
                 return
             try:
                 length = int(self.headers.get("Content-Length", 0))
@@ -163,6 +171,20 @@ def make_server(
     return HTTPServer((host, port), Handler)
 
 
+def prelabel_new_cells(ml_root: Path) -> int:
+    # torch loads slowly. Import it here so the server starts fast and the tests need no model.
+    from sudoku_ml.grouping import default_run
+    from sudoku_ml.prelabel import NO_MODEL, write_prelabels
+
+    try:
+        run = default_run(ml_root)
+    except FileNotFoundError:
+        run = None
+    if run is None or not (run / "model.pt").exists():
+        raise ValueError(NO_MODEL)
+    return write_prelabels(ml_root / "data" / "cells", run, ml_root / "data" / "prelabels.json")
+
+
 def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
     paths = Paths.under(ml_root)
     store = LabelStore(paths)
@@ -170,7 +192,7 @@ def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
     if argv[1:2] == ["rollback"]:
         print(f"Reversed {store.rollback(argv[2])} lines.")
         return 0
-    server = make_server(store, check=check)
+    server = make_server(store, check=check, prelabel=lambda: prelabel_new_cells(ml_root))
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Session {store.session}. Open {url}. Stop with Ctrl-C.")
     webbrowser.open(url)
