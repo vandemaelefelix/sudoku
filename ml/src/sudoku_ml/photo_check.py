@@ -51,6 +51,9 @@ class PhotoCheck:
     def _decided(self) -> set[str]:
         return {d.photo for d in read_records(self.paths.checks, PhotoDecision)}
 
+    def total(self) -> int:
+        return len(self._rows())
+
     def pending(self) -> list[str]:
         detections, decided = read_detections(self.paths.detections), self._decided()
         return [
