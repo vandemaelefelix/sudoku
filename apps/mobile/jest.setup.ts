@@ -73,6 +73,7 @@ jest.mock('expo-sqlite/kv-store', () => {
     __esModule: true,
     default: {
       getItemAsync: jest.fn(async (key: string) => mockItems.get(key) ?? null),
+      getItemSync: jest.fn((key: string) => mockItems.get(key) ?? null),
       setItemAsync: jest.fn(async (key: string, value: string) => {
         mockItems.set(key, value)
       }),
