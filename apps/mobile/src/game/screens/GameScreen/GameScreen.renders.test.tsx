@@ -64,22 +64,23 @@ function renderScreen() {
   mockRenders.cell = 0
 }
 
-it('does not render the grid again on a clock tick', () => {
-  renderScreen()
-  act(() => jest.advanceTimersByTime(3000))
-  expect(screen.getByText('00:03')).toBeTruthy()
-  expect(mockRenders).toEqual({ grid: 0, cell: 0 })
-})
-
-it('does not render the grid again on a theme switch', () => {
-  renderScreen()
-  switchTheme()
-  expect(mockRenders).toEqual({ grid: 0, cell: 0 })
-})
-
-it('renders only the cells that a move changes', () => {
+it('renders the grid and the changed cells on a move, and nothing on a clock tick', () => {
   renderScreen()
   fireEvent.press(screen.getByTestId('cell-2'))
   expect(mockRenders.grid).toBe(1)
+  expect(mockRenders.cell).toBeGreaterThan(0)
   expect(mockRenders.cell).toBeLessThan(81)
+  const afterMove = { ...mockRenders }
+  act(() => jest.advanceTimersByTime(3000))
+  expect(screen.getByText('00:03')).toBeTruthy()
+  expect(mockRenders).toEqual(afterMove)
+})
+
+it('renders nothing of the grid again on a theme switch', () => {
+  renderScreen()
+  fireEvent.press(screen.getByTestId('cell-2'))
+  const afterMove = { ...mockRenders }
+  expect(afterMove.cell).toBeGreaterThan(0)
+  switchTheme()
+  expect(mockRenders).toEqual(afterMove)
 })
