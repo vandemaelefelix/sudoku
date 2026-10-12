@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import Animated, { useAnimatedStyle } from 'react-native-reanimated'
-import { useUnistyles } from 'react-native-unistyles'
 import { CorrectionRing } from '@/scan/components/CorrectionRing'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { digitAlpha, shiftOf, type SweepTiming } from '@/scan/utils/transition.utils'
@@ -26,7 +25,6 @@ export const CorrectionCell = memo(function CorrectionCell({
   resultsAt,
   reduceMotion,
 }: CorrectionCellProps) {
-  const { theme } = useUnistyles()
   const row = Math.floor(n / 9)
   const col = n % 9
   const digitStyle = useAnimatedStyle(() => {
@@ -57,7 +55,6 @@ export const CorrectionCell = memo(function CorrectionCell({
           size={size}
           left={left}
           top={top}
-          color={theme.colors.warning}
           clock={clock}
           resultsAt={resultsAt}
           reduceMotion={reduceMotion}
