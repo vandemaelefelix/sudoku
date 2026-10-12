@@ -255,6 +255,33 @@ it('Try this puzzle again starts the same puzzle as a new saved game', async () 
   expect(await storage.history.list()).toHaveLength(1)
 })
 
+it('Try this puzzle again keeps the start entries', async () => {
+  const storage = createMemoryStorage()
+  const { givens, solution } = generate('easy', 11)
+  // loseGame plays the first empty cell, so the start entries go on the two empty cells after it.
+  const scanned = givens.flatMap((digit, cell) => (digit === 0 ? [cell] : [])).slice(1, 3)
+  const entries = givens.map((_, cell) => (scanned.includes(cell) ? (solution[cell] ?? 0) : 0))
+  await storage.puzzles.start({ level: 'easy', source: 'scanned', game: createGame({ givens, solution, entries }) })
+  renderApp(storage)
+  fireEvent.press(await screen.findByRole('button', { name: 'Continue, Easy' }))
+  await waitFor(() => expect(screen).toHavePathname('/game'))
+  await layOutBoard()
+  const lost = await inProgress(storage)
+  loseGame(lost.game)
+  await waitForLostEntry(storage)
+  fireEvent.press(screen.getByRole('button', { name: 'Try this puzzle again' }))
+  await waitFor(() => expect(screen.queryByTestId('game-over')).toBeNull())
+  const retried = await inProgress(storage)
+  expect(retried.id).not.toBe(lost.id)
+  expect(retried.source).toBe('scanned')
+  expect(retried.game.entries).toEqual(entries)
+  expect(retried.game.mistakes).toBe(0)
+  await layOutBoard()
+  for (const cell of scanned) {
+    expect(screen.getByTestId(`cell-${cell}`).props.accessibilityLabel).toMatch(new RegExp(`, ${solution[cell]}$`))
+  }
+})
+
 it('Back to home after a loss shows no Continue', async () => {
   const storage = renderApp()
   const lost = await startGame(storage)

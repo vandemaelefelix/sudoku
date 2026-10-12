@@ -79,7 +79,9 @@ export function PlayScreen() {
   }, [restartWith])
 
   const retry = useCallback(() => {
-    void restartWith(({ game }) => createGame({ givens: game.givens, solution: game.solution }))
+    void restartWith(({ game }) =>
+      createGame({ givens: game.givens, solution: game.solution, entries: game.startEntries }),
+    )
   }, [restartWith])
 
   if (progress === null || save === null) return null
