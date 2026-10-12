@@ -25,6 +25,9 @@ status: DRAFT
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
 | Op table | `tflite_2_17_ops.json`: the highest version of each TFLite operator that the 2.17 runtime supports. Export checks the model against it (ADR-005) |
 | Contact sheet | An image of numbered cells with their labels. Replaced by the Review screen of the labelling page |
+| Work folder | `ml/data/work/`. It holds the derived files of the labelling tool. Outside git. A person may delete it at any time (ADR-009) |
+| Finish | The button of the labelling page that runs the data check, rewrites `cells.csv` and deletes the derived files (ADR-009) |
+| Data check | `just check-data`. It tests that ids and files are unique and agree with the manifests. It prints a report (ADR-009) |
 | Technique solver | The solver in `@sudoku/core` that will solve like a person. It will grade difficulty and give hints (ADR-011). v1 does not have it |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |

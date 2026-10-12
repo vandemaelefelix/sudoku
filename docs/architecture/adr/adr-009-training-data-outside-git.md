@@ -74,6 +74,34 @@ exactly which images trained it.
 - The cell folder `discarded/` holds cells that a person rejected: bad cuts, unreadable marks.
   Training ignores it. `cells.csv` lists these cells with the label `discarded`.
 
+## Amendment: work folder, Finish and data check (2026-10-12)
+
+- The labelling tool runs on the real data in `ml/data/` and `ml/datasets/`. It does not use a
+  scratch copy.
+- Every cell has one SHA-256 pixel id. Every photo has one SHA-256 pixel id. No id appears twice.
+  The data check tests this.
+- A cell is linked to its photo, row and column in `cell-origins.csv`. Cells cut before the link
+  existed have no row. This is allowed. The data check reports the count.
+- The sources of truth are the images in `ml/data/cells/` and `ml/data/photos/`, and the files in
+  `ml/datasets/`. The folder of a cell is its digit. The kind log holds the kinds.
+- Derived files live in `ml/data/work/`, outside git. They are `prelabels.json`,
+  `detections.json`, `suspects.csv` and `groups.json`. The tool creates each file when it needs
+  it. A person can delete the whole folder at any time. The old locations `ml/data/prelabels.json`,
+  `ml/data/groups.json`, `ml/data/review/` and `ml/data/import/` are not read any more. A person
+  may delete them.
+- A cut writes each cell to `ml/data/work/tmp/` first. It then renames the file into
+  `cells/unlabeled/`. The next start deletes a leftover file in `work/tmp/`.
+- A save is durable when its call returns. The files move first. The log lines follow. If the
+  process stops between the two, the cell is in the right folder and has no log line. The folder
+  gives the digit and the log gives the kind. The next start tolerates this state.
+- **Finish** is a button on the labelling page. It runs the data check. If the check fails, it
+  stops and deletes nothing. Otherwise it rewrites `cells.csv`. Then it deletes the derived files
+  and the detections of decided photos. It never touches `cells/`, `photos/` or `datasets/`.
+  Finish is safe to press twice.
+- A person can stop at any time. Ctrl-C, a closed terminal and a crash keep every label. Unlabelled
+  cells stay in `unlabeled/`. Pending photos stay pending.
+- `just check-data` is the **data check**. It prints a report and exits with 1 on a problem.
+
 ## Consequences
 
 - Until DVC, a lost laptop means rebuilding the real data from backups. `ml/data/` must have
