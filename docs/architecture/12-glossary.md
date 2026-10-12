@@ -12,6 +12,7 @@ status: DRAFT
 | Walking skeleton | Milestone M0: the thinnest real path from camera to model on the iPhone. Production code that proves ADR-002 and ADR-005 |
 | Digit head | The classifier output that says `empty` or 1–9 |
 | Entry | A digit the player filled in. In a scan: a `handwritten` digit. Editable |
+| Start entries | The entries that come with the start of a game and that the player did not make, such as handwritten digits from a scan. A retry keeps them |
 | Expo | The React Native framework and tooling used for the app. Development builds, since native modules are needed |
 | fast-opencv | `react-native-fast-opencv`, OpenCV functions callable from JS and frame processors over JSI |
 | fast-tflite | `react-native-fast-tflite`, runs TFLite models from JS and frame processors. This project uses the CPU delegate: Metal is not supported, Core ML is opt-in |
@@ -82,7 +83,7 @@ status: DRAFT
 | Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
 | Daylight | The light theme (ADR-015) |
 | Midnight | The dark theme (ADR-015) |
-| Game | One puzzle in progress: the givens, the solution, the entries, the notes, the mistakes, the hints used and the time played. `@sudoku/core` holds its rules |
+| Game | One puzzle in progress: the givens, the solution, the entries, the start entries, the notes, the mistakes, the hints used and the time played. `@sudoku/core` holds its rules |
 | Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
 | Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
@@ -117,3 +118,4 @@ status: DRAFT
 | Correction pad | The edit pad on the correction screen: a Given and Entry switch, the keys 1 to 9 and Clear |
 | Given conflict | Two givens with the same digit in one row, column or box. The correction screen marks both |
 | Assist preview | The small live grid on the settings screen. It shows the assists that are on |
+| Display grid | The real game grid in read-only mode: no taps, no haptics, no pulse. The settings preview uses it, and later the finish card |
