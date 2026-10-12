@@ -1,25 +1,16 @@
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useRef, useState } from 'react'
-import { Alert } from 'react-native'
 import type { Level } from '@sudoku/core'
 import { newGeneratedGame } from '@/game/utils/start.utils'
 import { HomeMenu } from '@/home/components/HomeMenu'
+import { useConfirmReplace } from '@/home/hooks/useConfirmReplace'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import { REPLACE_CANCEL, REPLACE_CONFIRM, REPLACE_MESSAGE, REPLACE_TITLE } from './HomeScreen.constants'
-
-function confirmReplace(): Promise<boolean> {
-  return new Promise((resolve) => {
-    Alert.alert(REPLACE_TITLE, REPLACE_MESSAGE, [
-      { text: REPLACE_CANCEL, style: 'cancel', onPress: () => resolve(false) },
-      { text: REPLACE_CONFIRM, style: 'destructive', onPress: () => resolve(true) },
-    ])
-  })
-}
 
 export function HomeScreen() {
   const router = useRouter()
   const { puzzles } = useGameStorage()
+  const confirmReplace = useConfirmReplace()
   const [continueLevel, setContinueLevel] = useState<Level | null>(null)
   // start() discards the game before it, so a second tap must not start a second game.
   const busy = useRef(false)

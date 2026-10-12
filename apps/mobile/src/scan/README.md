@@ -7,7 +7,7 @@ Camera screen, outline, transition and correction screen. Imports the scanner on
 | --- | --- |
 | `screens/` | `ScanFlow` (live or review), `CameraScreen`, `CorrectionScreen` |
 | `components/` | `CameraPermission`, `TransitionCanvas`, `CorrectionCell`, `CorrectionRing`, `CorrectionPad` |
-| `hooks/` | `useCapture`, `useFrameTracking`, `useCaptureTransition`, `useTransitionClock`, `useCorrectionEdits` |
-| `utils/` | `tracking`, `preview`, `transition`, `correction` and `correctionEdit` helpers |
+| `hooks/` | `useCapture`, `useFrameTracking`, `useCaptureTransition`, `useTransitionClock`, `useCorrectionEdits`, `useScannedStart` |
+| `utils/` | `tracking`, `preview`, `transition`, `correction`, `correctionEdit` and `play` helpers |
 | `constants/` | The tuning values of those helpers |
 | `effects/` | The overlay effects, their engine and the effect lab |
