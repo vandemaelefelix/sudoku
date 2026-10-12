@@ -1,4 +1,4 @@
-"""Groups of similar cells per digit folder, for the labelling page. Writes ml/data/groups.json."""
+"""Groups of similar cells per digit folder, for the labelling page. Writes ml/data/work/groups.json."""
 
 import json
 import sys
@@ -9,6 +9,7 @@ import torch
 from PIL import Image
 
 from sudoku_ml.dataset import read_ids
+from sudoku_ml.label_store import Paths
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import BT601, preprocess_cell, to_cell_image
 
@@ -130,4 +131,4 @@ def default_run(ml_root: Path) -> Path:
 if __name__ == "__main__":
     root = Path(__file__).parents[2]
     chosen = root / sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else default_run(root)
-    print(write_groups(root, chosen, root / "data" / "groups.json"))
+    print(write_groups(root, chosen, Paths.under(root).groups))

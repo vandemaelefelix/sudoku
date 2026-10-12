@@ -91,7 +91,7 @@ relabel file="data/review/relabels.csv":
     uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
     just dataset-manifest
 
-# Rank the likely wrong digit and kind labels into ml/data/review/suspects.csv, for the Review screen
+# Rank the likely wrong digit and kind labels into ml/data/work/suspects.csv, for the Review screen
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
 

@@ -160,7 +160,7 @@ FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 @pytest.fixture
 def served_photos(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
-    paths = replace(paths, prelabels=tmp_path / "data" / "prelabels.json")
+    paths = replace(paths, prelabels=tmp_path / "data" / "work" / "prelabels.json")
     u = ids["unlabeled"]
     prelabels = {
         u[0]: {"digit": "2", "p": 0.6, "kind": "handwritten"},

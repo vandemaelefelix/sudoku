@@ -1,5 +1,5 @@
 """The model's digit and kind for each cell in cells/unlabeled/ and in the digit folders, for
-the Digits and Label kind screens. Writes ml/data/prelabels.json. A pre-label is a proposal:
+the Digits and Label kind screens. Writes ml/data/work/prelabels.json. A pre-label is a proposal:
 only a person's confirmation is a label."""
 
 import json
@@ -12,6 +12,7 @@ from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
 from sudoku_ml.grouping import default_run
+from sudoku_ml.label_store import Paths
 from sudoku_ml.manifest import pixel_id
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
@@ -78,7 +79,8 @@ def main(argv: list[str], ml_root: Path = Path(__file__).parents[2]) -> int:
     if run is None or not (run / "model.pt").exists():
         print(NO_MODEL, file=sys.stderr)
         return 0
-    cells, out = ml_root / "data" / "cells", ml_root / "data" / "prelabels.json"
+    paths = Paths.under(ml_root)
+    cells, out = paths.cells, paths.prelabels
     print(f"Pre-labelled {write_prelabels(cells, run, out)} new cells with {run.name}.")
     return 0
 

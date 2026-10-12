@@ -13,7 +13,7 @@ from sudoku_ml.label_store import LabelStore
 def with_prelabels(tmp_path: Path, entries: dict[int, tuple[str, float, str]]):
     """Four unlabelled cells. entries: cell index → (digit, p, kind)."""
     paths, ids = build(tmp_path, {"unlabeled": 4, "3": 1}, {})
-    paths = replace(paths, prelabels=tmp_path / "data" / "prelabels.json")
+    paths = replace(paths, prelabels=tmp_path / "data" / "work" / "prelabels.json")
     cells = {
         ids["unlabeled"][i]: {"digit": d, "p": p, "kind": k} for i, (d, p, k) in entries.items()
     }
@@ -104,7 +104,7 @@ def with_kind_guesses(tmp_path: Path, guesses: dict[int, tuple[str, float] | Non
     """Five cells in folder 4, none in a stored group. guesses: index → (kind, kp) or None."""
     paths, ids = build(tmp_path, {"4": 5, "unlabeled": 1}, {})
     paths.groups.unlink()
-    paths = replace(paths, prelabels=tmp_path / "data" / "prelabels.json")
+    paths = replace(paths, prelabels=tmp_path / "data" / "work" / "prelabels.json")
     cells = {
         ids["4"][i]: {"digit": "4", "p": 0.9, "kind": g[0], "kp": g[1]}
         for i, g in guesses.items()
@@ -187,6 +187,6 @@ def test_a_guessed_cell_keeps_the_model_kind_apart_from_the_logged_kind(tmp_path
 def test_the_review_screen_tells_a_missing_suspects_file_from_nothing_flagged(tmp_path: Path):
     store, _, _ = with_kind_guesses(tmp_path, GUESSES)
     assert store.review_screen()["suspects"] is False
-    store.paths.suspects.parent.mkdir(parents=True)
+    store.paths.suspects.parent.mkdir(parents=True, exist_ok=True)
     store.paths.suspects.write_text("file,field,label,predicted,p_label,p_predicted\n")
     assert store.review_screen()["suspects"] is True

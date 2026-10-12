@@ -9,6 +9,7 @@ import torch
 from sudoku_ml.augment import augment
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, kind_index
 from sudoku_ml.dataset import cell_paths, group_ids, load_cells, stack
+from sudoku_ml.label_store import Paths
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.train import _device, _logits, loss
@@ -56,6 +57,7 @@ def rank_kind_suspects(
 
 def write_suspects(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDS)
         writer.writeheader()
@@ -82,7 +84,7 @@ def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:
 
 
 def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
-    """Rank digit and kind suspects with cross-validation. Writes ml/data/review/suspects.csv."""
+    """Rank digit and kind suspects with cross-validation. Writes ml/data/work/suspects.csv."""
     cells_dir = ml_root / "data" / "cells"
     paths = cell_paths(cells_dir)
     samples = load_cells(cells_dir, ml_root / "datasets" / "cells.csv")
@@ -108,7 +110,7 @@ def find_suspects(ml_root: Path, folds: int = 5, epochs: int = 12, top: int = 15
     names = [p.stem for p in paths]
     rows = rank_suspects(names, digit.tolist(), digit_probs, top)
     rows += rank_kind_suspects(names, kind.tolist(), kind_probs)
-    out = ml_root / "data" / "review" / "suspects.csv"
+    out = Paths.under(ml_root).suspects
     write_suspects(rows, out)
     return out
 

@@ -53,10 +53,12 @@ def build(tmp_path: Path, folders: dict[str, int], groups: dict[str, list[list[i
         tmp_path / "datasets" / "cells.csv",
         tmp_path / "datasets" / "kind-log.jsonl",
         tmp_path / "datasets" / "kind-check.jsonl",
-        tmp_path / "data" / "groups.json",
-        tmp_path / "data" / "review" / "suspects.csv",
+        tmp_path / "data" / "work" / "groups.json",
+        tmp_path / "data" / "work" / "suspects.csv",
         ML / "configs" / "cell-classifier.toml",
+        tmp_path / "data" / "work",
     )
+    paths.work.mkdir(parents=True)
     folders_json = {
         f: [
             {"cells": [ids[f][i] for i in g], "sureness": [float(n) for n in range(len(g))]}
@@ -177,7 +179,7 @@ def test_review_merges_the_reasons_of_one_cell(tmp_path: Path):
     cell = ids["7"][0]
     store = LabelStore(paths, Clock())
     store.save(kinds_of([cell], "printed"), "groups")
-    paths.suspects.parent.mkdir(parents=True)
+    paths.suspects.parent.mkdir(parents=True, exist_ok=True)
     paths.suspects.write_text(
         "field,file,label,predicted,p_label,p_predicted\n"
         f"kind,{cell[:16]},printed,handwritten,0.02,0.98\n"
