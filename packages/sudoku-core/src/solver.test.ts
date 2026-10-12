@@ -52,10 +52,18 @@ describe('solve', () => {
   })
 
   it('does not change the puzzle and returns a new array', () => {
-    const puzzle = [...EASY]
+    const puzzle = [...EASY_SOLUTION]
     const result = solve(puzzle)
-    expect(puzzle).toEqual(EASY)
-    expect(result.count === 1 && result.solution).not.toBe(puzzle)
+    expect(puzzle).toEqual(EASY_SOLUTION)
+    expect(result.count).toBe(1)
+    if (result.count === 1) expect(result.solution).not.toBe(puzzle)
+  })
+
+  it('throws for a bad value even when an earlier given breaks a rule', () => {
+    const puzzle = [...EASY]
+    puzzle[2] = 5
+    puzzle[80] = Number.NaN
+    expect(() => solve(puzzle)).toThrow(RangeError)
   })
 
   it.each([
