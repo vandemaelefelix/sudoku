@@ -1,6 +1,9 @@
+import { DIGITS } from './game/completion'
+import { GRID_CELLS } from './grid'
 import { createRandom, shuffled } from './random'
 import { solve } from './solver'
 import type { Grid } from './types'
+import { BOXES } from './units'
 
 export type Level = 'easy' | 'medium' | 'hard' | 'expert'
 
@@ -24,13 +27,10 @@ export type Puzzle = {
   solution: Grid
 }
 
-const CELLS = 81
-const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const
+const CELLS = GRID_CELLS
 const CELL_ORDER = Array.from({ length: CELLS }, (_, cell) => cell)
 
-function boxOf(cell: number): number {
-  return Math.floor(cell / 27) * 3 + Math.floor((cell % 9) / 3)
-}
+const BOX_OF = Array.from({ length: CELLS }, (_, cell) => BOXES.findIndex((box) => box.includes(cell)))
 
 function givensCount(grid: readonly number[]): number {
   return grid.filter((digit) => digit !== 0).length
@@ -47,7 +47,7 @@ export function fullGrid(random: () => number): Grid {
     if (cell === CELLS) return true
     const row = Math.floor(cell / 9)
     const col = cell % 9
-    const box = boxOf(cell)
+    const box = BOX_OF[cell]!
     for (const digit of shuffled(DIGITS, random)) {
       const bit = 1 << digit
       if ((rows[row]! | cols[col]! | boxes[box]!) & bit) continue
