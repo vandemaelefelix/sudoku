@@ -39,6 +39,14 @@ should not force a storage rewrite.
 5. Schema migrations are numbered SQL files run at startup. Whether to add a query builder
    (such as Drizzle) is decided when the schema has more than a handful of tables.
 
+## Amendment: the seed and the best time (2026-10-12)
+
+- Migration 3 adds a nullable `seed INTEGER` column to `game_in_progress` and `game_history`.
+  A generated game stores its seed (ADR-011, amendment "the puzzle number"). A scanned game
+  and a game saved before migration 3 store null.
+- The best time of a level is the shortest time played of a won **generated** game without
+  hints. A scanned game never counts, because its level is an estimate (ADR-011).
+
 ## Consequences
 
 - The repository interfaces are where Jest tests (ADR-010 layer 2) swap in an in-memory fake.

@@ -41,13 +41,14 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ADR-010 | Four test layers. The real scanner is tested on the phone by a fixture runner. CI on Linux, no iOS build. | Cross-concept | 2026-10-09 | Felix | [ADR-010](adr/adr-010-testing-and-ci.md) |
 | ADR-015 | Unistyles 3 with three token tiers. Two themes first: Daylight and Midnight. Theme decorations for structure, none built in v1. | Cross-concept | 2026-10-12 | Felix | [ADR-015](adr/adr-015-theming.md) |
 | ADR-016 | Expo Router 57 with a native stack. Route files in `src/app/` only render a feature screen. Params are URL strings, data comes from the repositories. **Pending the iPhone check of #51.** | Cross-concept | 2026-10-12 | Felix | [ADR-016](adr/adr-016-navigation.md) |
+| ADR-017 | The finish card tilts with Reanimated's useAnimatedSensor. No new dependency. No tilt with Reduce Motion. | Concept | 2026-10-12 | Felix | [ADR-017](adr/adr-017-card-motion-sensor.md) |
 
 ### Game
 
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
-| ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints, later. v1: the level comes from the number of givens, a hint reveals a random cell, no pool (amendment 2026-10-12). A scanned puzzle takes the level of the nearest givens target (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
-| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
+| ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints, later. v1: the level comes from the number of givens, a hint reveals a random cell, no pool (amendment 2026-10-12). A scanned puzzle takes the level of the nearest givens target (amendment 2026-10-12). The app draws seeds below 1 000 000. The seed is the puzzle number (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
+| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. The seed is stored. The best time counts only generated games (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
 ### Scanning and ML
 
 | ID | Decision | Impact | Since | Owner | Source |
