@@ -62,11 +62,11 @@ export function PlayScreen() {
   // Each restart is a new game in progress with a new id: save() moved a lost game to the history,
   // so the store ignores later saves under the old id. A failed start keeps the old screen.
   const restartWith = useCallback(
-    async (source: PuzzleSource, makeGame: (current: SavedProgress) => Game) => {
+    async (source: PuzzleSource, make: (current: SavedProgress) => { game: Game; seed: number | null }) => {
       if (progress === null) return
       try {
-        const game = makeGame(progress)
-        setProgress(await puzzles.start({ level: progress.level, source, game }))
+        const { game, seed } = make(progress)
+        setProgress(await puzzles.start({ level: progress.level, source, seed, game }))
       } catch (error) {
         devWarn('storage', `The game does not start: ${errorMessage(error)}`)
       }
@@ -80,9 +80,10 @@ export function PlayScreen() {
 
   const retry = useCallback(() => {
     if (progress === null) return
-    void restartWith(progress.source, ({ game }) =>
-      createGame({ givens: game.givens, solution: game.solution, entries: game.startEntries }),
-    )
+    void restartWith(progress.source, ({ game, seed }) => ({
+      game: createGame({ givens: game.givens, solution: game.solution, entries: game.startEntries }),
+      seed,
+    }))
   }, [restartWith, progress])
 
   if (progress === null || save === null) return null

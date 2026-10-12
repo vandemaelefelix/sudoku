@@ -46,7 +46,8 @@ export function HomeScreen() {
     once(async () => {
       // Ask from the stored state at the tap: the focus refresh can still be on its way.
       if ((await puzzles.current()) !== null && !(await confirmReplace())) return
-      await puzzles.start({ level, source: 'generated', game: newGeneratedGame(level, Math.random) })
+      const { game, seed } = newGeneratedGame(level, Math.random)
+      await puzzles.start({ level, source: 'generated', seed, game })
       router.push('/game')
     })
 
