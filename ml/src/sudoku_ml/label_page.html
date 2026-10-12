@@ -297,6 +297,9 @@ function renderActions() {
   }
 }
 
+// The corner query that refreshPreview last showed. Enter cuts only the corners that it shows.
+let previewQuery = null;
+
 function cornerQuery() {
   return corners.flat().map((v) => v.toFixed(1)).join(",");
 }
@@ -321,6 +324,7 @@ async function refreshPreview() {
   // The person can accept, skip or leave the photo while the request runs.
   if (!photo || photo.stem !== stem || !$("usable")) return;
   $("usable").textContent = `${value.usable} of 81 cells are inside the photo.`;
+  previewQuery = query;
   drawQuad();
 }
 
@@ -331,7 +335,7 @@ function clickCorner(event) {
   if (clicks.length === 4) {
     corners = clicks;
     clicks = [];
-    run(refreshPreview);
+    refreshPreview().catch((error) => say(error.message));
   }
   drawQuad();
 }
@@ -361,6 +365,7 @@ async function loadPhoto(after) {
   photo = await api(`/api/photos/next${after ? `?after=${after}` : ""}`);
   corners = photo && photo.corners;
   clicks = [];
+  previewQuery = null;
   render();  // the nav, the help and the buttons of the Photos screen
   await renderPhoto();
 }
@@ -368,6 +373,9 @@ async function loadPhoto(after) {
 async function acceptPhoto() {
   if (!photo) return;
   if (!corners) return say("Click the 4 corners first.");
+  if (cornerQuery() !== previewQuery) {
+    return say("The preview is not up to date. Wait a moment and press Enter again.");
+  }
   const result = (await api("/api/photos/accept", { photo: photo.stem, corners })).result;
   const text = result.decision === "accepted"
     ? `Saved ${result.cells} cells. ${result.duplicates} were already known.`
@@ -393,6 +401,7 @@ function clearCorners() {
   if (!photo) return;
   clicks = [];
   corners = photo.corners;
+  previewQuery = null;
   renderPhoto().catch((error) => say(error.message));
 }
 
