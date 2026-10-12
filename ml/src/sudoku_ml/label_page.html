@@ -209,6 +209,9 @@ const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "empty"];
 
 const DO = {
   photos: "Do the red lines follow the grid? Press Enter. If not, click the 4 corners, then press Enter.",
+  guessPrinted: "The model thinks these cells are printed. Click each cell that is not. Then press Enter.",
+  guessHandwritten: "The model thinks these cells are handwritten. Click each cell that is not. Then press Enter.",
+  guessOther: "The model is not sure about these cells. Press P or H, click the odd ones, then press Enter.",
   groups: "Press P if most cells are printed, or H if most are handwritten. Click the odd ones. Press Enter.",
   review: "Click each cell with the wrong kind. Then press Enter.",
   check: "Label each cell again without looking back. Press Enter.",
@@ -242,6 +245,10 @@ function reasonText(cell) {
 }
 
 function detailText(cell) {
+  if (mode === "groups" && cell.kp !== undefined) {
+    return cell.start ? `The model reads ${cell.start} (${Math.round(cell.kp * 100)} %).`
+      : `The model is not sure (${Math.round(cell.kp * 100)} %).`;
+  }
   if (mode === "digits") return `The model reads ${screen.digit} (${Math.round(cell.p * 100)} %).`;
   if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
   const twins = nearDuplicates(cell);
@@ -291,7 +298,7 @@ function title() {
   let text = "";
   if (mode === "groups") {
     text = !screen ? "Every grouped cell has a kind." :
-      `Digit ${screen.folder} · ${screen.ungrouped ? "cells added after grouping" : `group ${screen.group + 1} of ${screen.groups}`}` +
+      `Digit ${screen.folder} · ${screen.predicted ? `model guess: ${screen.predicted}` : screen.ungrouped ? "cells added after grouping" : `group ${screen.group + 1} of ${screen.groups}`}` +
       `${screen.pages > 1 ? ` · screen ${screen.page + 1} of ${screen.pages}` : ""}` +
       ` · folder ${screen.folder}/: ${screen.progress.labelled} of ${screen.progress.cells} labelled`;
   } else if (mode === "review") {
@@ -315,7 +322,7 @@ const goTo = (label, target) => [label, () => open(target)];
 async function prelabel() {
   say("Pre-labelling. The first run takes a while.");
   const count = (await api("/api/prelabel", {})).result;
-  await loadDigits();
+  await reload();
   say(`Pre-labelled ${count} new cells.`);
 }
 
@@ -357,8 +364,15 @@ function bannerFor() {
     return ["All digits are confirmed. Next: Label kind.", [goTo("Open Label kind", "groups")]];
   }
   if (mode === "groups") {
-    return screen ? [DO.groups, []]
-      : [`Every cell has a kind. ${STOP_SUSPECTS}`, [goTo("Open Review", "review")]];
+    const n = lastStatus ? lastStatus.kind_not_prelabelled : 0;
+    const missing = n ? [`${n} ${n === 1 ? "cell has" : "cells have"} no model guess yet.`,
+      [["Pre-label new cells", () => run(prelabel)]]] : ["", []];
+    const join = (text) => [[text, missing[0]].filter(Boolean).join(" "), missing[1]];
+    if (screen) {
+      const guess = { printed: DO.guessPrinted, handwritten: DO.guessHandwritten, other: DO.guessOther };
+      return join(guess[screen.predicted] || DO.groups);
+    }
+    return [`Every cell has a kind. ${STOP_SUSPECTS}`, [goTo("Open Review", "review")]];
   }
   if (mode === "review") {
     return screen && !screen.open ? [`Nothing to review. ${STOP_SUSPECTS}`, []] : [DO.review, []];
@@ -618,6 +632,8 @@ function setScreen(value) {
   render();
   if (mode === "groups" && screen && screen.cells.every((c) => !c.start)) {
     say("Press P or H to start this screen.");
+  } else if (mode === "groups" && screen && screen.predicted) {
+    say("The cells start with the model's guess. Fix the exceptions, then press Enter.");
   } else if (mode === "groups") {
     say("The cells start with the kind most cells in this group have. Fix the exceptions, then press Enter.");
   }

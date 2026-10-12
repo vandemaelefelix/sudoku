@@ -103,6 +103,12 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Run <code>just suspects</code>",
         "This cell is in folder",
         "An empty cell has no kind.",
+        "The model thinks these cells are printed. Click each cell that is not. Then press Enter.",
+        "The model thinks these cells are handwritten.",
+        "The model is not sure about these cells. Press P or H, click the odd ones, then",
+        "model guess: ${screen.predicted}",
+        "The model reads ${cell.start} (",
+        "no model guess yet.",
     ):
         assert text in page
 
@@ -235,6 +241,7 @@ def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
         "photos_total": 1,
         "digits": 2,
         "not_prelabelled": 0,
+        "kind_not_prelabelled": 1,
         "kind": 1,
     }
     request(port, "POST", "/api/photos/reject", {"photo": served_photos[3], "reason": "rejected"})
