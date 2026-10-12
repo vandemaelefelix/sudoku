@@ -233,6 +233,11 @@ it('opens Settings', async () => {
   renderApp()
   fireEvent.press(await screen.findByRole('button', { name: 'Settings' }))
   await waitFor(() => expect(screen).toHavePathname('/settings'))
+  expect(screen.getByRole('header', { name: 'Settings' })).toBeTruthy()
+  expect(screen.getByRole('header', { name: 'Assists' })).toBeTruthy()
+  fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+  await waitFor(() => expect(screen).toHavePathname('/'))
+  expect(await screen.findByRole('button', { name: 'Easy' })).toBeTruthy()
 })
 
 it('New puzzle starts a new game at the same level, and the lost game is in the history', async () => {

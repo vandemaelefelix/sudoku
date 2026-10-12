@@ -1,5 +1,7 @@
-import { SettingsPlaceholderScreen } from '@/settings/screens/SettingsPlaceholderScreen'
+import { useRouter } from 'expo-router'
+import { SettingsScreen } from '@/settings/screens/SettingsScreen'
 
 export default function SettingsRoute() {
-  return <SettingsPlaceholderScreen />
+  const router = useRouter()
+  return <SettingsScreen onBack={() => router.back()} />
 }
