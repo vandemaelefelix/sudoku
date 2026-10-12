@@ -25,3 +25,4 @@ status: DRAFT
 | ADR-015 | Unistyles 3 with a three-tier token theme (primitive, semantic, component). Daylight and Midnight ship first. Theme decorations for structure, none built in v1 | Accepted | 2026-10-12 | [ADR-015](./adr/adr-015-theming.md) |
 | ADR-016 | Expo Router 57: routes in `src/app/` (Home, game, scan, settings) on a native stack. Thin route files, URL-string params, typed routes | Proposed, pending the iPhone check | 2026-10-12 | [ADR-016](./adr/adr-016-navigation.md) |
 | ADR-017 | The finish card tilts with Reanimated's useAnimatedSensor (rotation), no new dependency, no tilt with Reduce Motion | Proposed | 2026-10-12 | [ADR-017](./adr/adr-017-card-motion-sensor.md) |
+| ADR-019 | Lock-on on a tracked grid: the same grid for LOCK_DWELL and a drift below DRIFT_LIMIT, not a still phone. Supersedes the lock-on condition of ADR-004. A Retake starts a fresh scan | Accepted | 2026-10-12 | [ADR-019](./adr/adr-019-lock-on-tracked-grid.md) |
