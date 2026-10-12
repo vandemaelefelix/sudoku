@@ -37,6 +37,10 @@ export function solve(puzzle: readonly number[]): SolveResult {
     if (!Number.isInteger(digit) || digit < 0 || digit > 9) {
       throw new RangeError(`Cell ${cell} holds ${digit}, not an integer from 0 to 9`)
     }
+  }
+
+  for (let cell = 0; cell < CELLS; cell++) {
+    const digit = puzzle[cell]!
     if (digit === 0) continue
     const bit = 1 << digit
     const row = ROW_OF[cell]!

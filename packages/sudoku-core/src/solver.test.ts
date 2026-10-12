@@ -55,8 +55,8 @@ describe('solve', () => {
     const puzzle = [...EASY_SOLUTION]
     const result = solve(puzzle)
     expect(puzzle).toEqual(EASY_SOLUTION)
-    expect(result.count).toBe(1)
-    if (result.count === 1) expect(result.solution).not.toBe(puzzle)
+    expect(result).toEqual({ count: 1, solution: EASY_SOLUTION })
+    expect((result as { solution: number[] }).solution).not.toBe(puzzle)
   })
 
   it('throws for a bad value even when an earlier given breaks a rule', () => {
