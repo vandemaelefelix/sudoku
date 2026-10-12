@@ -84,7 +84,10 @@ def test_stack_shapes():
 
 
 def write_manifest(path: Path, rows: list[tuple[str, str, str]]) -> None:
-    path.write_text("id,label,kind\n" + "".join(f"{i},{lab},{k}\n" for i, lab, k in rows))
+    path.write_text(
+        "cell_id,digit,kind,photo_id,row,col\n"
+        + "".join(f"{i},{lab},{k},,,\n" for i, lab, k in rows)
+    )
 
 
 def test_kinds_come_from_the_manifest(tmp_path: Path):

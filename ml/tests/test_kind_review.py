@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from sudoku_ml.journal import Line, current_kinds, parse_time
 from sudoku_ml.kind_check import CheckLine
-from sudoku_ml.kind_log import Line, parse_time
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
 
 A, B, C = "a" * 64, "b" * 64, "c" * 64
@@ -18,7 +18,7 @@ def kind(second: int, cell: str, new: str, screen: str = "groups", old=None) -> 
 
 def test_near_duplicates_with_different_kinds_both_go_to_review():
     lines = [kind(1, A, "printed"), kind(2, B, "handwritten"), kind(3, C, "printed")]
-    items = near_duplicate_items([(A, B)], lines)
+    items = near_duplicate_items([(A, B)], current_kinds(lines), lines)
     assert sorted(i.cell for i in items) == [A, B]
     assert items[0].since == "2026-10-12T09:00:02Z"
     assert items[0].evidence["group"] == [A, B]
@@ -26,25 +26,25 @@ def test_near_duplicates_with_different_kinds_both_go_to_review():
 
 def test_only_a_direct_pair_counts_not_a_chain_of_pairs():
     lines = [kind(1, A, "printed"), kind(2, B, "printed"), kind(3, C, "handwritten")]
-    items = near_duplicate_items([(A, B), (B, C)], lines)
+    items = near_duplicate_items([(A, B), (B, C)], current_kinds(lines), lines)
     assert sorted(i.cell for i in items) == [B, C]
 
 
 def test_unsure_does_not_count_as_a_disagreement():
     lines = [kind(1, A, "printed"), kind(2, B, "unsure")]
-    assert near_duplicate_items([(A, B)], lines) == []
+    assert near_duplicate_items([(A, B)], current_kinds(lines), lines) == []
 
 
 def test_a_review_line_after_the_evidence_closes_the_item():
     lines = [kind(1, A, "printed"), kind(2, B, "handwritten")]
-    items = near_duplicate_items([(A, B)], lines)
+    items = near_duplicate_items([(A, B)], current_kinds(lines), lines)
     lines += [kind(5, A, "printed", "review", "printed")]
     assert [i.cell for i in open_items(items, lines)] == [B]
 
 
 def test_a_review_line_before_the_evidence_does_not_close_the_item():
     lines = [kind(1, A, "printed", "review"), kind(2, A, "printed"), kind(3, B, "handwritten")]
-    items = near_duplicate_items([(A, B)], lines)
+    items = near_duplicate_items([(A, B)], current_kinds(lines), lines)
     assert len(open_items(items, lines)) == 2
 
 
@@ -113,3 +113,17 @@ def test_an_undone_review_confirmation_reopens_the_item(tmp_path: Path):
     items = model_items(path, {A[:16]: A}, lambda c, f: "printed")
     assert open_items(items, [*lines, confirm]) == []
     assert len(open_items(items, [*lines, confirm, undo])) == 1
+
+
+def test_a_pair_of_finished_kinds_stays_closed():
+    finished = {A: "printed", B: "handwritten"}
+    items = near_duplicate_items([(A, B)], finished, [])
+    assert open_items(items, []) == []
+
+
+def test_finish_closes_the_evidence_before_it():
+    checks = [CheckLine("2026-10-12T09:00:00Z", "c", A, "printed", "handwritten")]
+    items = check_items(checks, lambda c, f: "printed")
+    assert len(open_items(items, [])) == 1
+    assert open_items(items, [], "2026-10-12T10:00:00Z") == []
+    assert len(open_items(items, [], "2026-10-12T08:00:00Z")) == 1
