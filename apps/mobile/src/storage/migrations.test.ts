@@ -155,4 +155,23 @@ describe('migration 2', () => {
     const row = await db.getFirstAsync<{ saved_game: string }>('SELECT saved_game FROM game_in_progress', [])
     expect(row?.saved_game).toBe('not json')
   })
+  it('keeps its shipped text', () => {
+    const zeros = Array.from({ length: 81 }, () => 0).join(',')
+    expect(MIGRATIONS[1]).toContain(`json('[${zeros}]')`)
+  })
+
+  it('leaves a saved game of version 2 as it is', async () => {
+    await migrate(db, MIGRATIONS.slice(0, 1))
+    const text = JSON.stringify(toSavedGame(place(select(newGame(), 2), 4).game))
+    const at = '2026-01-01T00:00:00.000Z'
+    await db.runAsync(
+      `INSERT INTO game_in_progress (id, level, source, saved_game, created_at, updated_at)
+        VALUES ('new', 'easy', 'generated', ?, ?, ?)`,
+      [text, at, at],
+    )
+
+    await migrate(db)
+    const row = await db.getFirstAsync<{ saved_game: string }>('SELECT saved_game FROM game_in_progress', [])
+    expect(row?.saved_game).toBe(text)
+  })
 })

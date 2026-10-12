@@ -36,9 +36,10 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX game_history_best_time ON game_history (level, result, played_ms) WHERE deleted_at IS NULL;`,
   // json_extract throws on a damaged saved game, and that failure would stop every app start.
+  // SQLite does not promise the order of AND, but CASE checks json_valid first.
   `UPDATE game_in_progress
     SET saved_game = json_set(saved_game, '$.version', 2, '$.startEntries', json('${NO_START_ENTRIES}'))
-    WHERE json_valid(saved_game) AND json_extract(saved_game, '$.version') = 1;`,
+    WHERE CASE WHEN json_valid(saved_game) THEN json_extract(saved_game, '$.version') END = 1;`,
 ]
 
 /**
