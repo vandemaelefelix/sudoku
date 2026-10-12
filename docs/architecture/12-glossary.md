@@ -124,7 +124,7 @@ status: DRAFT
 | Display grid | The real game grid in read-only mode: no taps, no haptics, no pulse. The settings preview uses it, and later the finish card |
 | Photo check | The Photos screen of the labelling page: a person accepts, corrects or rejects the grid outline of an imported photo. See ADR-009 |
 | Usable cell | A cell whose 4 corners lie inside the photo after the flatten. Only usable cells are cut |
-| Pre-label | The model's proposed digit and kind for an unlabelled cell. A proposal, not a label |
+| Pre-label | The model's proposed digit and kind for an unlabelled cell, with how sure it is of each. A proposal, not a label |
 | Digit pass | The Digits screen: a person confirms a screen of pre-labelled cells per digit and corrects the exceptions |
 | Discarded cell | A cell that a person rejected in the digit pass. It stays in `cells/discarded/`. Training ignores it |
 | Cell origin | The photo, row and column that a cut cell comes from, in `cell-origins.csv` |

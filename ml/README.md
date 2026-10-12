@@ -14,7 +14,7 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just suspects`: rank the cells whose digit or kind label the model doubts most. The Review screen shows them.
 - `just group-cells [run]`: group similar cells per digit folder for the labelling page.
 - `just import-photos <folder> [--origin O] [--licence L]`: copy new sudoku photos into `ml/data/photos/` and find the grid in each.
-- `just prelabel-cells [run]`: let a model propose a digit for each cell in `unlabeled/`. `just label-cells` runs it first.
+- `just prelabel-cells [run]`: let a model propose a digit and a kind for each cell in `unlabeled/` and a kind for each cell in the digit folders. `just label-cells` runs it first.
 - `just label-cells`: open the labelling page on 127.0.0.1.
 - `just label-rollback <session>`: reverse every change of one labelling session.
 - `just relabel [file]`: apply the labels from a relabel CSV to the cells.
@@ -38,7 +38,7 @@ ml/data/
 │   └── discarded/             cells a person rejected; training ignores them
 ├── import/
 │   └── detections.json        the proposed outline per photo
-├── prelabels.json             the model's proposals for unlabelled cells
+├── prelabels.json             the model's proposals: digit, kind and how sure it is of the kind
 └── photos/                    full sudoku photos
 ml/datasets/
 ├── cells.csv                  id, label, kind
@@ -78,6 +78,9 @@ Commit `ml/datasets/photos.csv`, `photo-checks.jsonl`, `cell-origins.csv`, `kind
 1. Run `just group-cells`. It groups the cells of each digit folder.
 2. Run `just label-cells`. The page opens in the browser.
 3. On the Groups screen, press P or H for the whole screen. Click the exceptions. Press Enter.
+   New cells that no stored group holds start with the model's guess. The groups are
+   "printed", "handwritten" and "other". The least sure cells come first. Click only the cells
+   that are wrong, then press Enter. In the "other" group, press P or H first.
 4. After a labelling pass, run `just suspects`. Then work through the Review screen.
 5. At least 7 days later, run the Check screen. It shows how often you agree with your labels.
 
