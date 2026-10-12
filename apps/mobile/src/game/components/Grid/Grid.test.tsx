@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
+import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { GameProvider } from '@/game/components/GameProvider'
 import { sampleStart } from '@/game/utils/sample.utils'
+import { reduceSession, startSession } from '@/game/utils/session.utils'
 import { daylight } from '@/theme/themes/daylight'
 import { Grid } from './Grid'
 
@@ -33,4 +35,27 @@ it('selects a cell on a tap', () => {
   expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).not.toMatchObject(selected)
   fireEvent.press(screen.getByTestId('cell-40'))
   expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).toMatchObject(selected)
+})
+
+it('shows a board that cannot be tapped and that VoiceOver skips', () => {
+  const board = reduceSession(startSession(sampleStart()), { type: 'select', cell: 40 }).game
+  render(
+    <DisplayGameProvider board={board}>
+      <Grid interactive={false} digitSize="small" />
+    </DisplayGameProvider>,
+  )
+  const hidden = { includeHiddenElements: true }
+  expect(screen.getAllByTestId(/^cell-\d+$/, hidden)).toHaveLength(81)
+  expect(screen.queryAllByRole('button', hidden)).toHaveLength(0)
+  expect(screen.getByTestId('grid', hidden).props.accessibilityElementsHidden).toBe(true)
+})
+
+it('keeps the game grid open to VoiceOver by default', () => {
+  render(
+    <GameProvider start={sampleStart()}>
+      <Grid />
+    </GameProvider>,
+  )
+  expect(screen.getByTestId('grid').props.accessibilityElementsHidden).toBe(false)
+  expect(screen.getAllByRole('button')).toHaveLength(81)
 })

@@ -103,3 +103,28 @@ it('lets a tap through the wave', () => {
   fireEvent.press(screen.getByTestId('cell-2'))
   expect(onSelect).toHaveBeenCalledWith(2)
 })
+
+it('shows the board without a button when it is not interactive', () => {
+  const onSelect = jest.fn()
+  render(<Cell {...base} digit={5} digitStyle="given" interactive={false} onSelect={onSelect} />)
+  expect(screen.queryByRole('button', { includeHiddenElements: true })).toBeNull()
+  fireEvent.press(screen.getByTestId('cell-2'))
+  expect(onSelect).not.toHaveBeenCalled()
+  expect(screen.getByText('5')).toBeTruthy()
+})
+
+it('draws small digits at the note size', () => {
+  render(<Cell {...base} digit={5} digitStyle="given" digitSize="small" onSelect={jest.fn()} />)
+  expect(StyleSheet.flatten(screen.getByText('5').props.style).fontSize).toBe(daylight.type.note.scale)
+})
+
+it('draws no notes in a small cell', () => {
+  render(<Cell {...base} notes="39" digitSize="small" onSelect={jest.fn()} />)
+  expect(screen.queryAllByTestId(/^note-slot-/)).toHaveLength(0)
+})
+
+it('stays a button with full-size digits by default', () => {
+  render(<Cell {...base} digit={5} digitStyle="given" onSelect={jest.fn()} />)
+  expect(screen.getByRole('button')).toBeTruthy()
+  expect(StyleSheet.flatten(screen.getByText('5').props.style).fontSize).toBe(daylight.type.given.scale)
+})

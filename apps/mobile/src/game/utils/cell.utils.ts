@@ -6,6 +6,9 @@ export type CellFill = 'plain' | 'peer' | 'same' | 'conflict' | 'selected'
 
 export type DigitStyle = 'given' | 'entry' | 'wrong'
 
+/** small: digits at the note size and no notes, for a grid of about 20 pt cells. */
+export type DigitSize = 'full' | 'small'
+
 /** What one cell shows. digit 0: no digit. notes: the note digits in order, for example "35". */
 export type CellView = {
   digit: number
