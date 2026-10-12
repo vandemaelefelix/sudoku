@@ -48,6 +48,16 @@ it('stops the time during a pause and counts again after resume', () => {
   expect(screen.getByText('00:03')).toBeTruthy()
 })
 
+it('counts the part second before a pause', () => {
+  renderInGame(<TimerPill />)
+  act(() => jest.advanceTimersByTime(2500))
+  fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:02' }))
+  fireEvent.press(screen.getByRole('button', { name: 'Resume, time 00:02' }))
+  act(() => jest.advanceTimersByTime(500))
+  fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:02' }))
+  expect(screen.getByRole('button', { name: 'Resume, time 00:03' })).toBeTruthy()
+})
+
 it('fills the pill with the accent and shows the play icon during a pause', () => {
   renderInGame(<TimerPill />)
   fireEvent.press(screen.getByRole('button', { name: 'Pause, time 00:00' }))

@@ -17,14 +17,19 @@ export type GameSession = { state: GameState; playedMs: number; actions: GameAct
 export function useGameSession(start: NewGame): GameSession {
   const [session, dispatch] = useReducer(reduceSession, start, startSession)
   const onElapsed = useCallback((elapsedMs: number) => dispatch({ type: 'tick', elapsedMs }), [])
-  useGameClock(session.game.status === 'playing', onElapsed)
+  const flushClock = useGameClock(session.game.status === 'playing', onElapsed)
   useMoveHaptics(session.move)
+  // The flush comes first: the core ignores a tick once the game is paused.
+  const pause = useCallback(() => {
+    flushClock()
+    dispatch({ type: 'pause' })
+  }, [flushClock])
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
-      if (next !== 'active') dispatch({ type: 'pause' })
+      if (next !== 'active') pause()
     })
     return () => subscription.remove()
-  }, [])
+  }, [pause])
   const { board, notesMode, move } = session
   const state = useMemo<GameState>(() => ({ board, notesMode, move }), [board, notesMode, move])
   const actions = useMemo<GameActions>(
@@ -35,10 +40,10 @@ export function useGameSession(start: NewGame): GameSession {
       undo: () => dispatch({ type: 'undo' }),
       hint: () => dispatch({ type: 'hint', random: Math.random }),
       toggleNotesMode: () => dispatch({ type: 'toggleNotesMode' }),
-      pause: () => dispatch({ type: 'pause' }),
+      pause,
       resume: () => dispatch({ type: 'resume' }),
     }),
-    [],
+    [pause],
   )
   return { state, playedMs: session.game.playedMs, actions }
 }

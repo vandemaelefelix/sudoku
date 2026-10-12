@@ -26,6 +26,24 @@ it('counts the time played while playing, and not while paused', () => {
   expect(result.current.playedMs).toBe(2000)
 })
 
+it('counts the time since the last clock report when the player pauses', () => {
+  const { result } = renderHook(() => useGameSession(sampleStart()))
+  act(() => jest.advanceTimersByTime(2500))
+  act(() => result.current.actions.pause())
+  expect(result.current.playedMs).toBe(2500)
+})
+
+it('keeps the play time over many short plays between pauses', () => {
+  const { result } = renderHook(() => useGameSession(sampleStart()))
+  for (let round = 0; round < 60; round += 1) {
+    act(() => jest.advanceTimersByTime(900))
+    act(() => result.current.actions.pause())
+    act(() => jest.advanceTimersByTime(100))
+    act(() => result.current.actions.resume())
+  }
+  expect(result.current.playedMs).toBe(54_000)
+})
+
 it('keeps the same state object on a clock tick', () => {
   const { result } = renderHook(() => useGameSession(sampleStart()))
   const before = result.current.state
@@ -60,6 +78,18 @@ it.each<AppStateStatus>(['inactive', 'background'])('pauses the game when the ap
   expect(result.current.state.board.status).toBe('paused')
   act(() => jest.advanceTimersByTime(60_000))
   expect(result.current.playedMs).toBe(2000)
+})
+
+it('keeps the play time when the app flips between active and inactive', () => {
+  const { listener } = captureAppState()
+  const { result } = renderHook(() => useGameSession(sampleStart()))
+  for (let round = 0; round < 10; round += 1) {
+    act(() => jest.advanceTimersByTime(700))
+    act(() => listener.change('inactive'))
+    act(() => listener.change('active'))
+    act(() => result.current.actions.resume())
+  }
+  expect(result.current.playedMs).toBe(7000)
 })
 
 it('stays paused when the app comes back, until the player resumes', () => {
