@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native-unistyles'
 import { roleFont } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
+  area: { minHeight: theme.size.touch, justifyContent: 'center' },
   pill: {
     height: theme.size.pill.height,
     paddingHorizontal: theme.size.pill.paddingHorizontal,
@@ -16,6 +17,12 @@ export const styles = StyleSheet.create((theme) => ({
     ...roleFont(theme.type.timer),
     fontSize: theme.type.timer.scale,
     color: theme.colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  endedTime: {
+    ...roleFont(theme.type.timer),
+    fontSize: theme.type.timer.scale,
+    color: theme.colors.textMuted,
     fontVariant: ['tabular-nums'],
   },
 }))
