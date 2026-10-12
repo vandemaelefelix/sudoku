@@ -15,7 +15,8 @@ import { CorrectionPad } from '@/scan/components/CorrectionPad'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
 import { drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
-import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
+import { checkPlay, type ScannedStart } from '@/scan/utils/play.utils'
+import { FAILURE_SLIDE_MS, PANEL_HIDDEN, PLAY_BLOCK_TEXT } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { PANEL_PADDING } from '@/scan/constants/correction.constants'
@@ -24,6 +25,8 @@ export type CorrectionProps = {
   result: RecogniseResult | null
   layout: CorrectionLayout
   onRetake: () => void
+  /** Play this puzzle. Without it, the button stays off: the transition shows the panel but cannot start a game. */
+  onPlay?: (start: ScannedStart) => void
   /** The transition clock. Without it, everything shows (the review phase). */
   clock?: SharedValue<number>
   reduceMotion?: boolean
@@ -37,6 +40,7 @@ export function CorrectionScreen({
   result,
   layout,
   onRetake,
+  onPlay,
   clock,
   reduceMotion = false,
   waiting,
@@ -47,11 +51,19 @@ export function CorrectionScreen({
   const failed = result != null && !result.ok
   const cellSize = grid.width / 9
 
-  const { looks, selected, conflicts, toCheck, actions } = useCorrectionEdits(result)
+  const { looks, selected, conflicts, toCheck, grid: corrected, actions } = useCorrectionEdits(result)
   // The player edits only the finished screen. During the transition the cells are not pressable and show no edit marks.
   const editable = clock == null && result?.ok === true
   const selectedLook = editable && selected !== null ? looks[selected] : undefined
   const conflictCount = conflicts.filter(Boolean).length
+  // The solver runs once when the pad closes, never per key and never while the transition clock runs.
+  const check = useMemo(
+    () => (editable && selected === null ? checkPlay(corrected, conflicts) : null),
+    [editable, selected, corrected, conflicts],
+  )
+  const start = check?.ok ? check.start : null
+  const blockText = check !== null && !check.ok ? PLAY_BLOCK_TEXT[check.block] : null
+  const canPlay = start !== null && onPlay !== undefined
 
   // The picture is made again when the theme changes (ADR-015, point 10).
   const board = useMemo(() => {
@@ -180,12 +192,19 @@ export function CorrectionScreen({
                   conflictCount === 0 && <Text style={styles.sure}>All cells look sure</Text>
                 )}
               </View>
+              {blockText !== null && (
+                <Text testID="play-blocked" style={styles.blocked}>
+                  {blockText}
+                </Text>
+              )}
               <Pressable
                 testID="play"
                 accessibilityRole="button"
-                accessibilityState={{ disabled: true }}
-                disabled
-                style={styles.play}
+                accessibilityState={{ disabled: !canPlay }}
+                accessibilityHint={blockText ?? undefined}
+                disabled={!canPlay}
+                onPress={start !== null && onPlay ? () => onPlay(start) : undefined}
+                style={[styles.play, !canPlay && styles.playDisabled]}
               >
                 <Text style={styles.playText}>Play this puzzle</Text>
               </Pressable>

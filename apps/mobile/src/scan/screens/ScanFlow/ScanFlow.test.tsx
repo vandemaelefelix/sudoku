@@ -5,11 +5,13 @@ import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { ScanFlow } from './ScanFlow'
 import { useCapture } from '@/scan/hooks/useCapture'
+import { useScannedStart } from '@/scan/hooks/useScannedStart'
 
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), useGridDetector: jest.fn(() => undefined) }))
 jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
 jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: () => null }))
 jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: () => null }))
+jest.mock('@/scan/hooks/useScannedStart', () => ({ useScannedStart: jest.fn() }))
 
 const mockMounts: number[] = []
 jest.mock('@/scan/effects/components/EffectCanvas', () => ({
@@ -60,8 +62,11 @@ function lastCanvas() {
   return jest.mocked(EffectCanvas).mock.calls.at(-1)![0]
 }
 
+const mockPlay = jest.fn()
+
 beforeEach(() => {
   jest.clearAllMocks()
+  jest.mocked(useScannedStart).mockReturnValue(mockPlay)
   mockMounts.length = 0
   givenPhase({ phase: 'live' })
 })
@@ -117,4 +122,10 @@ it('mounts a new camera screen and a new effect canvas on Retake from the transi
   expect(lastCanvas().capture!.value).toBeNull()
   expect(jest.mocked(CameraScreen).mock.calls.at(-1)![0].armed).toBe(false)
   expect(lastCanvas().armed).toBe(false)
+})
+
+it('hands Play of the review to the scanned start', () => {
+  render(<ScanFlow />)
+  act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
+  expect(jest.mocked(CorrectionScreen).mock.calls.at(-1)![0].onPlay).toBe(mockPlay)
 })

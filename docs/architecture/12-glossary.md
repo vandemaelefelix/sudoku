@@ -59,7 +59,9 @@ status: DRAFT
 | Lock-on progress | 0 to 1: how long the grid has been steady, divided by `LOCK_DWELL`. It resets when the grid is lost, found again or jumps. At 1 the scan locks on. The gathered dots show it |
 | Shutter | The button on the camera screen that captures at any time, also without lock-on |
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
-| Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake. The player can fix a digit and its kind there |
+| Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake. The player can fix a digit and its kind there. Play this puzzle loads it when the play gate passes |
+| Play gate | The check before "Play this puzzle" loads a scan. Given conflicts, no solution, several solutions and a grid that is already solved block it. Uncertain cells and wrong entries do not |
+| Scanned puzzle | A puzzle loaded from a scan. Its source is scanned. Its level is the level of the nearest givens target (ADR-011) |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
 | Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
 | Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, and when the photo conversion fails |

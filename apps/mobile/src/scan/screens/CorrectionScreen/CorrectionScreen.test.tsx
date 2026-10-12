@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
+import { generate } from '@sudoku/core'
 import type { CellResult, RecogniseResult } from '@/scanner'
+import * as playUtils from '@/scan/utils/play.utils'
+import type { ScannedStart } from '@/scan/utils/play.utils'
 import { createPicture, Skia } from '@shopify/react-native-skia'
 import type { Theme } from '@/theme/theme.types'
 import { daylight } from '@/theme/themes/daylight'
@@ -431,5 +434,130 @@ describe('CorrectionScreen edits', () => {
     press('correction-kind-entry')
     press('correction-key-2')
     expect(result).toEqual(before)
+  })
+})
+
+const puzzle = generate('hard', 5)
+const firstOpen = puzzle.givens.findIndex((digit) => digit === 0)
+const wrongDigit = ((puzzle.solution[firstOpen] ?? 0) % 9) + 1
+
+/** A recognised result with every given of `givens` printed, and `over` on top. */
+function scanOf(givens: readonly number[], over: { [n: number]: Partial<CellResult> } = {}): RecogniseResult {
+  const printed: { [n: number]: Partial<CellResult> } = {}
+  givens.forEach((digit, n) => {
+    if (digit !== 0) printed[n] = { digit, kind: 'printed', confidence: 1 }
+  })
+  return okResult({ ...printed, ...over })
+}
+
+const playUi = (result: RecogniseResult, onPlay = jest.fn<void, [ScannedStart]>()) => {
+  render(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} onPlay={onPlay} />)
+  return onPlay
+}
+const playOn = () => screen.getByTestId('play').props.accessibilityState.disabled === false
+
+describe('CorrectionScreen play gate', () => {
+  const checkSpy = jest.spyOn(playUtils, 'checkPlay')
+  beforeEach(() => checkSpy.mockClear())
+  afterAll(() => checkSpy.mockRestore())
+
+  it('turns Play on for givens with one solution, and hands over the plain grid', () => {
+    const onPlay = playUi(
+      scanOf(puzzle.givens, { [firstOpen]: { digit: wrongDigit, kind: 'handwritten', confidence: 1 } }),
+    )
+    expect(playOn()).toBe(true)
+    expect(style('play').opacity).toBeUndefined()
+    expect(screen.queryByTestId('play-blocked')).toBeNull()
+    press('play')
+    expect(onPlay).toHaveBeenCalledTimes(1)
+    const start = onPlay.mock.calls[0]![0]
+    expect(start.level).toBe('hard')
+    expect(start.puzzle.givens).toEqual(puzzle.givens)
+    expect(start.puzzle.solution).toEqual(puzzle.solution)
+    expect(start.puzzle.entries[firstOpen]).toBe(wrongDigit)
+  })
+
+  it('keeps Play on with uncertain cells', () => {
+    const shaky = puzzle.givens.findIndex((digit) => digit !== 0)
+    playUi(scanOf(puzzle.givens, { [shaky]: { digit: puzzle.givens[shaky] ?? 0, kind: 'printed', confidence: 0.2 } }))
+    expect(screen.getByText('● 1 cell to check')).toBeTruthy()
+    expect(playOn()).toBe(true)
+  })
+
+  it('blocks two givens in conflict, and the chip says why', () => {
+    playUi(okResult({ 0: given, 8: given }))
+    expect(playOn()).toBe(false)
+    expect(screen.getByText('● 2 givens in conflict')).toBeTruthy()
+    expect(screen.queryByTestId('play-blocked')).toBeNull()
+  })
+
+  it('blocks givens with no solution and says so', () => {
+    const givens = puzzle.givens.map((_, cell) => (cell < 8 ? cell + 1 : cell === 17 ? 9 : 0))
+    playUi(scanOf(givens))
+    expect(playOn()).toBe(false)
+    expect(screen.getByTestId('play-blocked')).toHaveTextContent('This puzzle has no solution. Check the marked cells.')
+    expect(style('play-blocked')).toMatchObject({ color: daylight.colors.danger })
+  })
+
+  it('blocks givens with several solutions and says so', () => {
+    const onPlay = playUi(scanOf(puzzle.givens.map((digit, cell) => (cell < 40 ? 0 : digit))))
+    expect(playOn()).toBe(false)
+    expect(screen.getByTestId('play-blocked')).toHaveTextContent('A given is missing or wrong.')
+    expect(screen.getByTestId('play').props.accessibilityHint).toBe('A given is missing or wrong.')
+    press('play')
+    expect(onPlay).not.toHaveBeenCalled()
+  })
+
+  it('blocks a scan that is already solved', () => {
+    const over: { [n: number]: Partial<CellResult> } = {}
+    puzzle.solution.forEach((digit, n) => {
+      if (puzzle.givens[n] === 0) over[n] = { digit, kind: 'handwritten', confidence: 1 }
+    })
+    playUi(scanOf(puzzle.givens, over))
+    expect(playOn()).toBe(false)
+    expect(screen.getByTestId('play-blocked')).toHaveTextContent('This puzzle is already solved.')
+  })
+
+  it('follows an edit: a fixed conflict turns Play on', () => {
+    // A misread gives the second given of row 1 the digit of the first.
+    const row = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter((cell) => puzzle.givens[cell] !== 0)
+    const [first, second] = row as [number, number]
+    playUi(scanOf(puzzle.givens, { [second]: { digit: puzzle.givens[first] ?? 0, kind: 'printed', confidence: 1 } }))
+    expect(playOn()).toBe(false)
+    press(`correction-press-${second}`)
+    press(`correction-key-${puzzle.givens[second]}`)
+    press('correction-done')
+    expect(playOn()).toBe(true)
+  })
+
+  it('keeps Play off without onPlay', () => {
+    render(<CorrectionScreen result={scanOf(puzzle.givens)} layout={layout} onRetake={jest.fn()} />)
+    expect(playOn()).toBe(false)
+  })
+
+  it('does not check the givens during the transition', () => {
+    render(
+      <CorrectionScreen
+        result={scanOf(puzzle.givens)}
+        layout={layout}
+        onRetake={jest.fn()}
+        onPlay={jest.fn()}
+        clock={clock(1.5)}
+      />,
+    )
+    expect(playOn()).toBe(false)
+    expect(screen.queryByTestId('play-blocked')).toBeNull()
+    expect(checkSpy).not.toHaveBeenCalled()
+  })
+
+  it('checks the givens once when the pad closes, not per key', () => {
+    playUi(scanOf(puzzle.givens))
+    expect(checkSpy).toHaveBeenCalledTimes(1)
+    press(`correction-press-${firstOpen}`)
+    press(`correction-key-${wrongDigit}`)
+    press(`correction-key-${puzzle.solution[firstOpen] ?? 1}`)
+    expect(checkSpy).toHaveBeenCalledTimes(1)
+    press('correction-done')
+    expect(checkSpy).toHaveBeenCalledTimes(2)
   })
 })

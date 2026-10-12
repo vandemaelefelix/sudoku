@@ -67,6 +67,18 @@ until the technique solver exists:
 - Consequence: two puzzles at the same level can differ a lot in difficulty, because the number
   of givens is a poor measure (see Context). v1 accepts this.
 
+## Amendment: a level for scanned puzzles (2026-10-12)
+
+The game in progress and the history need a level for every game (ADR-012). So a scanned puzzle
+gets a level in v1, against the bullet "Scanned puzzles get no level in v1" above.
+
+- A scanned puzzle takes the level whose givens target is nearest to its number of givens. The
+  targets are the targets of the generator: easy 40, medium 34, hard 29, expert 25.
+- A tie goes to the easier level. More than 40 givens is easy. Fewer than 25 givens is expert.
+- The source of a scanned game is `scanned` (ADR-012). The finish card and the history show it.
+- The technique solver (#53) replaces this rule. Then a scanned puzzle gets the level of its
+  techniques (point 5).
+
 ## Consequences
 
 - The technique set grows over time. Each new technique makes hints better and grading finer,
