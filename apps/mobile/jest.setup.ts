@@ -166,3 +166,7 @@ jest.mock('@shopify/react-native-skia', () => {
     },
   }
 })
+
+// The Unistyles mock resolves every StyleSheet.create with the first registered theme, so configure must run before a styles file loads.
+// oxlint-disable-next-line import/no-unassigned-import -- the module registers the themes as its side effect.
+require('@/theme/unistyles')
