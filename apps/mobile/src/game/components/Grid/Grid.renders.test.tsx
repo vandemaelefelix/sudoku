@@ -1,4 +1,5 @@
 import { act, render } from '@testing-library/react-native'
+import { useEffect } from 'react'
 import type { NewGame } from '@sudoku/core'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions, type GameActions } from '@/game/hooks/useGameActions'
@@ -31,7 +32,10 @@ function rowAlmostDone(): NewGame {
 const remote: { actions: GameActions | null } = { actions: null }
 
 function Remote() {
-  remote.actions = useGameActions()
+  const actions = useGameActions()
+  useEffect(() => {
+    remote.actions = actions
+  }, [actions])
   return null
 }
 
