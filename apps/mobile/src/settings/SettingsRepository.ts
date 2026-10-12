@@ -3,18 +3,22 @@ import Storage from 'expo-sqlite/kv-store'
 /** App settings as string pairs (ADR-012). Screens use this interface, never the store. */
 export type SettingsRepository = {
   get(key: string): Promise<string | null>
+  /** Blocks the JS thread. Use it only before the first frame. */
+  getSync(key: string): string | null
   set(key: string, value: string): Promise<void>
 }
 
 /** The part of the expo-sqlite key-value store that settings use. */
 export type KeyValueStore = {
   getItemAsync(key: string): Promise<string | null>
+  getItemSync(key: string): string | null
   setItemAsync(key: string, value: string): Promise<void>
 }
 
 export function createSettingsRepository(store: KeyValueStore): SettingsRepository {
   return {
     get: (key) => store.getItemAsync(key),
+    getSync: (key) => store.getItemSync(key),
     set: (key, value) => store.setItemAsync(key, value),
   }
 }

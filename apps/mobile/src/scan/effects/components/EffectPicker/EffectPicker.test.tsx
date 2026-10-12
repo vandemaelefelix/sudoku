@@ -100,6 +100,7 @@ describe('EffectPicker', () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {})
     const failing: SettingsRepository = {
       get: () => Promise.reject(new Error('disk')),
+      getSync: () => null,
       set: () => Promise.reject(new Error('disk')),
     }
     const effect = await renderPicker(failing)
@@ -119,6 +120,7 @@ describe('EffectPicker', () => {
         new Promise<string | null>((done) => {
           resolve = done
         }),
+      getSync: () => null,
       set: async () => undefined,
     }
     const effect = shared(DEFAULT_INDEX)

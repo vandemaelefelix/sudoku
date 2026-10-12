@@ -16,9 +16,10 @@ app:
 # Run every test
 test: test-ts test-ml
 
-# Vitest (core) and Jest (app)
+# Vitest (core), Jest (app) and the lint plugin test
 test-ts:
     pnpm -r test
+    node --test 'scripts/oxlint/*.test.mjs'
 
 # pytest (ml)
 test-ml:

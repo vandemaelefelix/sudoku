@@ -1,6 +1,6 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
 import { useMemo } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -8,11 +8,17 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
+import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
-import { useColors } from '@/theme/colors'
 import { CorrectionCell } from '@/scan/components/CorrectionCell'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
-import { cellLook, cellsToCheck, drawGridLines, type CorrectionLayout } from '@/scan/utils/correction.utils'
+import {
+  cellLook,
+  cellsToCheck,
+  drawGridLines,
+  gridLineStyle,
+  type CorrectionLayout,
+} from '@/scan/utils/correction.utils'
 import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
@@ -39,7 +45,7 @@ export function CorrectionScreen({
   waiting,
   resultsAt,
 }: CorrectionProps) {
-  const colors = useColors()
+  const { theme } = useUnistyles()
   const { title, grid, panel } = layout
   const failed = result != null && !result.ok
   const cellSize = grid.width / 9
@@ -47,19 +53,24 @@ export function CorrectionScreen({
   const looks = useMemo(() => (result?.ok ? result.cells.map(cellLook) : []), [result])
   const toCheck = result?.ok ? cellsToCheck(result.cells) : 0
 
-  // The inset keeps the 2 pt outer box line inside the canvas.
+  // The picture is made again when the theme changes (ADR-015, point 10).
   const board = useMemo(() => {
     const side = grid.width
+    const lines = gridLineStyle(theme)
+    // Half the frame width inside each edge, so the canvas does not clip the frame.
+    const inset = lines.frameWidth / 2
+    // The transition canvas fills the cells with the same token, so nothing jumps at the handoff.
+    const cellFill = theme.components.cell.fill
     return createPicture(
       (canvas) => {
         const fill = Skia.Paint()
-        fill.setColor(Skia.Color(colors.surface))
+        fill.setColor(Skia.Color(cellFill))
         canvas.drawRect(Skia.XYWHRect(0, 0, side, side), fill)
-        drawGridLines(canvas, Skia.Paint(), [side - 2, 0, 1, 0, side - 2, 1, 0, 0], 1, colors.ink, colors.line)
+        drawGridLines(canvas, Skia.Paint(), [side - 2 * inset, 0, inset, 0, side - 2 * inset, inset, 0, 0], 1, lines)
       },
       { x: 0, y: 0, width: side, height: side },
     )
-  }, [grid.width, colors])
+  }, [grid.width, theme])
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
   // A failure keeps the results gate closed, so the clock never reaches the panel ramp. The failure panel slides in on its own
@@ -83,10 +94,7 @@ export function CorrectionScreen({
   const waitingStyle = useAnimatedStyle(() => ({ opacity: waiting?.value ? 1 : 0 }))
 
   return (
-    <View
-      testID="correction-screen"
-      style={[StyleSheet.absoluteFill, !clock && { backgroundColor: colors.background }]}
-    >
+    <View testID="correction-screen" style={[styles.screen, !clock && styles.screenFilled]}>
       {!clock && (
         <Canvas style={{ position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height }}>
           <Picture picture={board} />
@@ -96,8 +104,8 @@ export function CorrectionScreen({
         pointerEvents="none"
         style={[styles.title, { left: title.x, top: title.y, width: title.width, height: title.height }, titleStyle]}
       >
-        <Text style={[styles.titleText, { color: colors.text }]}>Check the scan</Text>
-        <Text style={[styles.subtitle, { color: colors.muted }]}>Tap a digit to fix it</Text>
+        <Text style={styles.titleText}>Check the scan</Text>
+        <Text style={styles.subtitle}>Tap a digit to fix it</Text>
       </Animated.View>
       {looks.map((look, n) => (
         <CorrectionCell
@@ -108,7 +116,6 @@ export function CorrectionScreen({
           size={cellSize}
           left={grid.x + (n % 9) * cellSize}
           top={grid.y + Math.floor(n / 9) * cellSize}
-          colors={colors}
           clock={clock}
           resultsAt={resultsAt}
           reduceMotion={reduceMotion}
@@ -120,7 +127,7 @@ export function CorrectionScreen({
           pointerEvents="none"
           style={[styles.waiting, { left: grid.x, top: grid.y, width: grid.width, height: grid.height }, waitingStyle]}
         >
-          <ActivityIndicator color={colors.muted} />
+          <ActivityIndicator color={theme.colors.textMuted} />
         </Animated.View>
       )}
       {result != null && (
@@ -133,25 +140,21 @@ export function CorrectionScreen({
               top: panel.y,
               width: panel.width,
               height: panel.height,
-              backgroundColor: colors.surface,
-              shadowColor: colors.shadow,
             },
             panelStyle,
           ]}
         >
           {failed ? (
             <View testID="correction-failure" style={styles.failure}>
-              <Text style={[styles.failureTitle, { color: colors.text }]}>The scan failed</Text>
-              <Text style={[styles.failureReason, { color: colors.muted }]}>{result.reason}</Text>
+              <Text style={styles.failureTitle}>The scan failed</Text>
+              <Text style={styles.failureReason}>{result.reason}</Text>
             </View>
           ) : toCheck > 0 ? (
-            <View style={[styles.chip, { backgroundColor: colors.warningSurface }]}>
-              <Text
-                style={[styles.chipText, { color: colors.warningText }]}
-              >{`● ${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
+            <View style={styles.chip}>
+              <Text style={styles.chipText}>{`● ${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
             </View>
           ) : (
-            <Text style={[styles.sure, { color: colors.muted }]}>All cells look sure</Text>
+            <Text style={styles.sure}>All cells look sure</Text>
           )}
           {!failed && (
             <Pressable
@@ -159,13 +162,13 @@ export function CorrectionScreen({
               accessibilityRole="button"
               accessibilityState={{ disabled: true }}
               disabled
-              style={[styles.play, { backgroundColor: colors.accent }]}
+              style={styles.play}
             >
-              <Text style={[styles.playText, { color: colors.onAccent }]}>Play this puzzle</Text>
+              <Text style={styles.playText}>Play this puzzle</Text>
             </Pressable>
           )}
           <Pressable testID="retake" accessibilityRole="button" onPress={onRetake} hitSlop={8}>
-            <Text style={[styles.retake, { color: colors.accent }]}>Retake</Text>
+            <Text style={styles.retake}>Retake</Text>
           </Pressable>
         </Animated.View>
       )}

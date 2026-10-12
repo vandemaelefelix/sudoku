@@ -62,11 +62,37 @@ module.exports = {
       to: { pathNot: '\\.constants\\.ts$', dependencyTypesNot: ['type-only'] },
     },
     {
-      name: 'styles-import-only-react-native',
-      comment: 'A styles file holds a static StyleSheet. Styles that need the theme stay in the component.',
+      name: 'styles-import-only-react-native-and-the-theme',
+      comment:
+        'A styles file holds StyleSheet.create from react-native-unistyles. It may read React Native and the fixed colours of src/theme/, nothing else (ADR-015).',
       severity: 'error',
       from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
-      to: { pathNot: '/node_modules/react-native/' },
+      to: {
+        pathNot: ['/node_modules/react-native/', '/node_modules/react-native-unistyles/', '^apps/mobile/src/theme/'],
+      },
+    },
+    {
+      name: 'palette-stays-in-its-theme',
+      comment: 'Only the folder of a theme reads its primitive tokens (ADR-015, points 3 and 7).',
+      severity: 'error',
+      from: { pathNot: '^apps/mobile/src/theme/themes/[^/]+/[^/]+$' },
+      to: { path: '^apps/mobile/src/theme/themes/[^/]+/palette\\.ts$' },
+    },
+    {
+      name: 'a-theme-does-not-import-another-theme',
+      comment:
+        'Each theme is one folder with its own tokens (ADR-015, point 11). Shared values live in src/theme/shared.tokens.ts.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/theme/themes/([^/]+)/' },
+      to: { path: '^apps/mobile/src/theme/themes/', pathNot: '^apps/mobile/src/theme/themes/$1/' },
+    },
+    {
+      name: 'styles-read-the-theme-argument',
+      comment:
+        'A styles file reads the theme through StyleSheet.create(theme => ...). An imported theme object does not change on a theme switch (ADR-015).',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
+      to: { path: '^apps/mobile/src/theme/themes/' },
     },
     {
       name: 'components-and-hooks-do-not-import-screens',

@@ -1,7 +1,6 @@
 import { createPicture, type SkImage } from '@shopify/react-native-skia'
 import { render, screen } from '@testing-library/react-native'
 import { useSharedValue } from 'react-native-reanimated'
-import { LIGHT } from '@/theme/colors'
 import { TransitionCanvas } from './TransitionCanvas'
 import { type CaptureFrame, transitionAt } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
@@ -35,7 +34,6 @@ function Harness({ crossFade }: { crossFade: boolean }) {
       ]}
       crossFade={crossFade}
       side={320}
-      colors={LIGHT}
     />
   )
 }

@@ -1,9 +1,11 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native-unistyles'
 
-export const styles = StyleSheet.create({
+export const styles = StyleSheet.create((theme) => ({
+  screen: { ...StyleSheet.absoluteFillObject },
+  screenFilled: { backgroundColor: theme.colors.background },
   title: { position: 'absolute', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  titleText: { fontSize: 17, fontWeight: '600' },
-  subtitle: { fontSize: 13 },
+  titleText: { fontSize: 17, fontWeight: '600', color: theme.colors.text },
+  subtitle: { fontSize: 13, color: theme.colors.textMuted },
   waiting: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   panel: {
     position: 'absolute',
@@ -11,18 +13,32 @@ export const styles = StyleSheet.create({
     padding: 12,
     gap: 9,
     justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 8,
   },
-  chip: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999 },
-  chipText: { fontSize: 13, fontWeight: '600' },
-  sure: { fontSize: 13, fontWeight: '500' },
-  play: { alignItems: 'center', paddingVertical: 12, borderRadius: 14, opacity: 0.5 },
-  playText: { fontSize: 16, fontWeight: '600' },
-  retake: { fontSize: 15, fontWeight: '500', textAlign: 'center' },
+  chip: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderRadius: theme.shape.radius.pill,
+    backgroundColor: theme.colors.warningSurface,
+  },
+  chipText: { fontSize: 13, fontWeight: '600', color: theme.colors.warningText },
+  sure: { fontSize: 13, fontWeight: '500', color: theme.colors.textMuted },
+  play: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    opacity: 0.5,
+    backgroundColor: theme.colors.accent,
+  },
+  playText: { fontSize: 16, fontWeight: '600', color: theme.colors.onAccent },
+  retake: { fontSize: 15, fontWeight: '500', textAlign: 'center', color: theme.colors.accent },
   failure: { gap: 4 },
-  failureTitle: { fontSize: 16, fontWeight: '600' },
-  failureReason: { fontSize: 13 },
-})
+  failureTitle: { fontSize: 16, fontWeight: '600', color: theme.colors.text },
+  failureReason: { fontSize: 13, color: theme.colors.textMuted },
+}))

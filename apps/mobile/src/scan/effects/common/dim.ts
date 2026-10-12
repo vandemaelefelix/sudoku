@@ -1,5 +1,6 @@
 import { FillType, type SkCanvas, type SkPaint, Skia } from '@shopify/react-native-skia'
 import type { Quad } from '@/utils/geometry.utils'
+import { FIXED_COLORS } from '@/theme/fixed.colors'
 
 function viewPath(width: number, height: number) {
   'worklet'
@@ -28,7 +29,7 @@ export function drawDim(
 ): void {
   'worklet'
   if (alpha <= 0) return
-  paint.setColor(Skia.Color('#000000'))
+  paint.setColor(Skia.Color(FIXED_COLORS.dim))
   paint.setAlphaf(Math.min(1, alpha))
   canvas.drawPath(quad == null ? viewPath(width, height) : withHole(width, height, quad), paint)
 }

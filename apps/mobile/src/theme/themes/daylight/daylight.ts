@@ -1,0 +1,57 @@
+import { SHARED_MOTION, SHARED_SHAPE, SHARED_SPACE, SHARED_TYPE } from '@/theme/shared.tokens'
+import type { Theme } from '@/theme/theme.types'
+import { palette as p } from './palette'
+
+const colors: Theme['colors'] = {
+  background: p.paper050,
+  surface: p.white,
+  text: p.ink950,
+  textMuted: p.slate600,
+  accent: p.blue600,
+  onAccent: p.white,
+  accentSoft: p.blue100,
+  line: p.slate250,
+  lineStrong: p.ink900,
+  danger: p.red700,
+  dangerSurface: p.red100,
+  warning: p.amber500,
+  warningText: p.amber800,
+  warningSurface: p.amber100,
+  shadow: p.black,
+  scrim: p.paperScrim,
+  scrimStrong: p.paperScrimStrong,
+}
+
+export const daylight: Theme = {
+  name: 'daylight',
+  statusBar: 'dark',
+  colors,
+  type: SHARED_TYPE,
+  space: SHARED_SPACE,
+  shape: SHARED_SHAPE,
+  elevation: {
+    key: '0 1px 2px rgba(20,24,33,0.10)',
+    sheet: '0 24px 60px -20px rgba(0,0,0,0.35)',
+    panel: '0 -6px 12px rgba(0,0,0,0.12)',
+  },
+  motion: SHARED_MOTION,
+  components: {
+    grid: { frame: colors.lineStrong, boxLine: colors.lineStrong, cellLine: colors.line },
+    cell: {
+      fill: colors.surface,
+      peer: p.slate100,
+      same: p.blue200,
+      selected: p.blue150,
+      conflictFill: colors.dangerSurface,
+      ring: colors.accent,
+      given: colors.text,
+      // Darker than the accent: the accent on the same-number fill is below 4.5 : 1.
+      entry: p.blue650,
+      conflict: colors.danger,
+      note: colors.textMuted,
+    },
+    key: { fill: p.white, digit: colors.text, noteDigit: colors.accent },
+    switch: { on: colors.accent, off: p.slate300, knob: p.white },
+    segmented: { track: p.slate150, selected: colors.surface },
+  },
+}

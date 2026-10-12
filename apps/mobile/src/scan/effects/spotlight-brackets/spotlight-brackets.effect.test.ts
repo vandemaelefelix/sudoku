@@ -3,6 +3,9 @@ import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import { bracketPath, spotlightBrackets } from './spotlight-brackets.effect'
 import type { Quad } from '@/utils/geometry.utils'
 import { BRACKET_BASE, BRACKET_STEADY, BRACKET_WIDTH, DIM_BASE, DIM_STEADY } from './spotlight-brackets.constants'
+import { daylight } from '@/theme/themes/daylight'
+
+const INK = daylight.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 
@@ -37,12 +40,12 @@ describe('spotlightBrackets', () => {
   it('draws nothing before a grid is found', () => {
     const scene = stepScene(createScene(VIEW), null, 0, false)
     const canvas = fakeCanvas()
-    spotlightBrackets.draw(canvas as never, null, scene, makeDrawKit([]))
+    spotlightBrackets.draw(canvas as never, null, scene, makeDrawKit([], INK))
     expect(canvas.drawPath).not.toHaveBeenCalled()
   })
 
   it('dims outside the grid and draws short brackets while the corners move', () => {
-    const kit = makeDrawKit([])
+    const kit = makeDrawKit([], INK)
     const canvas = fakeCanvas()
     spotlightBrackets.draw(canvas as never, null, sceneWith(1, 0), kit)
     expect(canvas.drawPath).toHaveBeenCalledTimes(2)
@@ -57,7 +60,7 @@ describe('spotlightBrackets', () => {
   })
 
   it('deepens the dim and grows the brackets when the scan locks on', () => {
-    const kit = makeDrawKit([])
+    const kit = makeDrawKit([], INK)
     const canvas = fakeCanvas()
     spotlightBrackets.draw(canvas as never, null, sceneWith(1, 1), kit)
     expect(mocked(kit.fill).setAlphaf).toHaveBeenCalledWith(DIM_BASE + DIM_STEADY)
@@ -66,14 +69,14 @@ describe('spotlightBrackets', () => {
   })
 
   it('fades the dim and the brackets in with the presence', () => {
-    const kit = makeDrawKit([])
+    const kit = makeDrawKit([], INK)
     spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(0.5, 0), kit)
     expect(mocked(kit.fill).setAlphaf).toHaveBeenCalledWith(0.5 * DIM_BASE)
     expect(mocked(kit.stroke).setAlphaf).toHaveBeenCalledWith(0.5)
   })
 
   it('scales the bracket stroke from the prototype phone to the view', () => {
-    const kit = makeDrawKit([])
+    const kit = makeDrawKit([], INK)
     spotlightBrackets.draw(fakeCanvas() as never, null, sceneWith(1, 0), kit)
     expect(mocked(kit.stroke).setStrokeWidth.mock.calls[0]?.[0]).toBeCloseTo((BRACKET_WIDTH * 402) / 220, 9)
   })

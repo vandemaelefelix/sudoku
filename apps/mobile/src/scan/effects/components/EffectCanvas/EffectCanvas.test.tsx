@@ -4,6 +4,9 @@ import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-nati
 import { transitionAt, type CaptureFrame } from '@/scan/utils/transition.utils'
 import { EffectCanvas } from './EffectCanvas'
 import * as engine from '@/scan/effects/engine'
+import * as drawKit from '@/scan/effects/kit'
+import { daylight } from '@/theme/themes/daylight'
+import { midnight } from '@/theme/themes/midnight'
 import { DEFAULT_INDEX, effectIndex } from '@/scan/effects/registry'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 
@@ -129,6 +132,28 @@ describe('EffectCanvas', () => {
     renderCanvas(VIEW)
     expect(screen.getByTestId('skia-canvas').props.pointerEvents).toBe('none')
     expect(screen.getByTestId('skia-picture')).toBeTruthy()
+  })
+
+  it('makes the draw kit with the box-line ink of the theme', () => {
+    const make = jest.spyOn(drawKit, 'makeDrawKit')
+    renderCanvas(VIEW)
+    expect(make).toHaveBeenCalledWith(expect.any(Array), daylight.components.grid.boxLine)
+    make.mockRestore()
+  })
+
+  it('makes a new kit with the new ink when the theme changes', () => {
+    const make = jest.spyOn(drawKit, 'makeDrawKit')
+    // The mock module itself: a namespace import gets a Babel interop copy that the component does not read.
+    const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
+    const theming = jest.spyOn(unistyles, 'useUnistyles')
+    const props = renderCanvas(VIEW)
+    expect(make).toHaveBeenCalledTimes(1)
+    theming.mockReturnValue({ theme: midnight, rt: unistyles.UnistylesRuntime } as never)
+    screen.rerender(<EffectCanvas {...props} />)
+    expect(make).toHaveBeenCalledTimes(2)
+    expect(make).toHaveBeenLastCalledWith(expect.any(Array), midnight.components.grid.boxLine)
+    theming.mockRestore()
+    make.mockRestore()
   })
 
   it('waits for the view size', () => {

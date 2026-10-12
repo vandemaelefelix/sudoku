@@ -1,5 +1,4 @@
 import { PaintStyle, type SkRuntimeEffect, Skia, StrokeCap, StrokeJoin } from '@shopify/react-native-skia'
-import { LIGHT } from '@/theme/colors'
 import { makeStarSprite } from './common/sprite'
 import type { AnyEffect, DrawKit } from './types'
 import { devLog, errorMessage } from '@/utils/log.utils'
@@ -27,8 +26,11 @@ function rgb(hex: string): [number, number, number] {
   return [((value >> 16) & 0xff) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255]
 }
 
-/** Runs once on the JS thread. Skia objects are host objects, so the frame worklet can capture the kit. */
-export function makeDrawKit(effects: readonly AnyEffect[]): DrawKit {
+/**
+ * Runs on the JS thread, once per theme. Skia objects are host objects, so the frame worklet can capture the kit.
+ * ink: '#rrggbb'.
+ */
+export function makeDrawKit(effects: readonly AnyEffect[], ink: string): DrawKit {
   const fill = Skia.Paint()
   fill.setAntiAlias(true)
   const stroke = Skia.Paint()
@@ -51,7 +53,6 @@ export function makeDrawKit(effects: readonly AnyEffect[]): DrawKit {
     atlas,
     shader,
     shaders,
-    // The correction screen is light only for now (theme/colors.ts), so the dots land in the light ink.
-    ink: rgb(LIGHT.ink),
+    ink: rgb(ink),
   }
 }

@@ -1,6 +1,10 @@
 import { PaintStyle, Skia, StrokeCap, StrokeJoin } from '@shopify/react-native-skia'
 import { makeDrawKit } from './kit'
 import type { AnyEffect } from './types'
+import { daylight } from '@/theme/themes/daylight'
+import { midnight } from '@/theme/themes/midnight'
+
+const INK = daylight.components.grid.boxLine
 
 const make = jest.mocked(Skia.RuntimeEffect.Make)
 
@@ -20,7 +24,7 @@ beforeEach(() => jest.clearAllMocks())
 
 describe('makeDrawKit', () => {
   it('compiles the shader of each effect once, by id', () => {
-    const kit = makeDrawKit([fakeEffect('a', 'half4 main(float2 p) { return half4(1); }'), fakeEffect('b')])
+    const kit = makeDrawKit([fakeEffect('a', 'half4 main(float2 p) { return half4(1); }'), fakeEffect('b')], INK)
     expect(make).toHaveBeenCalledTimes(1)
     expect(make).toHaveBeenCalledWith('half4 main(float2 p) { return half4(1); }')
     expect(kit.shaders.a).not.toBeNull()
@@ -32,7 +36,7 @@ describe('makeDrawKit', () => {
     make.mockImplementationOnce(() => {
       throw new Error('Error in sksl: bad')
     })
-    const kit = makeDrawKit([fakeEffect('bad', 'x'), fakeEffect('good', 'y')])
+    const kit = makeDrawKit([fakeEffect('bad', 'x'), fakeEffect('good', 'y')], INK)
     expect(kit.shaders.bad).toBeNull()
     expect(kit.shaders.good).not.toBeNull()
     expect(log).toHaveBeenCalledWith('[fx] bad shader failed: Error in sksl: bad')
@@ -40,18 +44,20 @@ describe('makeDrawKit', () => {
   })
 
   it('sets up the stroke paint once, with round caps and joins', () => {
-    const stroke = makeDrawKit([]).stroke as unknown as Record<string, jest.Mock>
+    const stroke = makeDrawKit([], INK).stroke as unknown as Record<string, jest.Mock>
     expect(stroke.setStyle).toHaveBeenCalledWith(PaintStyle.Stroke)
     expect(stroke.setStrokeCap).toHaveBeenCalledWith(StrokeCap.Round)
     expect(stroke.setStrokeJoin).toHaveBeenCalledWith(StrokeJoin.Round)
   })
 
-  it('gives the ink colour of the light theme as RGB from 0 to 1', () => {
-    expect(makeDrawKit([]).ink).toEqual([0x1d / 255, 0x23 / 255, 0x30 / 255])
+  it.each([daylight, midnight])('gives the $name ink it is given as RGB from 0 to 1', (theme) => {
+    const ink = theme.components.grid.boxLine
+    const value = Number.parseInt(ink.slice(1), 16)
+    expect(makeDrawKit([], ink).ink).toEqual([(value >> 16) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255])
   })
 
   it('makes the star sprite once', () => {
-    makeDrawKit([])
+    makeDrawKit([], INK)
     expect(jest.mocked(Skia.Surface.Make)).toHaveBeenCalledTimes(1)
   })
 })

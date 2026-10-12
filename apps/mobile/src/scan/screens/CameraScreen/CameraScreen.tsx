@@ -14,10 +14,10 @@ import {
   useCameraPermission,
   usePhotoOutput,
 } from 'react-native-vision-camera'
+import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import type { RecogniseResult } from '@/scanner'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { useColors } from '@/theme/colors'
 import { CameraPermission } from '@/scan/components/CameraPermission'
 import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
@@ -60,11 +60,12 @@ export function CameraScreen({
     qualityPrioritization: device?.supportsSpeedQualityPrioritization === true ? 'speed' : 'balanced',
   })
   const { state, capture, sharedImage } = useCapture(photoOutput)
-  const colors = useColors()
   const reduceMotion = useReducedMotion()
   const { frameOutput, detection, outline, frameQuad } = useFrameTracking(viewSize)
   const { startCapture, capturing, crossFade, clock, waiting, resultsAt, captureFrame, stepClock } =
     useCaptureTransition({ state, capture, layout, onDone, detection, viewSize, reduceMotion })
+  const { theme } = useUnistyles()
+  // True once the theme background covers the camera: the bar then takes the theme style, not the light style over the camera.
   const [darkBar, setDarkBar] = useState(false)
 
   const flashStyle = useAnimatedStyle(() => ({ opacity: FLASH_PEAK * (captureFrame.value?.channels.flash ?? 0) }))
@@ -95,7 +96,7 @@ export function CameraScreen({
         viewSize.set({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })
       }}
     >
-      <StatusBar style={darkBar ? 'dark' : 'light'} />
+      <StatusBar style={darkBar ? theme.statusBar : 'light'} />
       {/* When the photo draws, the camera stops. The photo covers the last preview frame. */}
       <Camera
         style={StyleSheet.absoluteFill}
@@ -112,7 +113,6 @@ export function CameraScreen({
           locked={capturing.quad}
           crossFade={crossFade}
           side={layout.grid.width}
-          colors={colors}
         />
       )}
       <EffectCanvas

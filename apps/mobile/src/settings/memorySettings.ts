@@ -5,6 +5,7 @@ export function createMemorySettings(initial: Record<string, string> = {}): Sett
   const items = new Map(Object.entries(initial))
   return {
     get: async (key) => items.get(key) ?? null,
+    getSync: (key) => items.get(key) ?? null,
     set: async (key, value) => {
       items.set(key, value)
     },
