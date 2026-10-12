@@ -5,7 +5,6 @@ import json
 import tomllib
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,24 +12,36 @@ import numpy as np
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES
-from sudoku_ml.dataset import cell_paths, dhash, group_ids, read_ids, split_by_group
-from sudoku_ml.kind_check import CheckLine, NotEnoughCells, draw_sample, summary
-from sudoku_ml.kind_log import (
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.dataset import cell_paths, dhash, group_ids, split_by_group
+from sudoku_ml.journal import (
     KINDS,
     Line,
+    Source,
     append_records,
     current_kinds,
+    current_sources,
     format_time,
-    read_log,
+    last_kind_times,
+    read_journal,
     read_records,
     rollback_lines,
     undo_lines,
     undone_actions,
 )
+from sudoku_ml.kind_check import CheckLine, NotEnoughCells, draw_sample, summary
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
-from sudoku_ml.manifest import pixel_id, warn_unreadable
+from sudoku_ml.manifest import (
+    base_kinds,
+    base_sources,
+    pixel_id,
+    read_cells_table,
+    repair_lines,
+    warn_unreadable,
+)
 from sudoku_ml.preprocess import to_cell_image
 from sudoku_ml.relabel import move_cells
+from sudoku_ml.status import read_last_finish
 from sudoku_ml.synthetic import Sample
 
 SCREEN_SIZE = 50
@@ -47,41 +58,12 @@ def _predicted(kind: str) -> str:
     return kind if kind in _LABELLED else "other"
 
 
-@dataclass(frozen=True)
-class Paths:
-    cells: Path
-    manifest: Path
-    log: Path
-    checks: Path
-    groups: Path
-    suspects: Path
-    config: Path  # the training config: its seed and split define the test split
-    work: Path  # ml/data/work/: derived files only, safe to delete (ADR-009)
-    prelabels: Path | None = None  # work/prelabels.json: the Digits screen's proposals
-
-    @classmethod
-    def under(cls, ml_root: Path) -> "Paths":
-        datasets, data = ml_root / "datasets", ml_root / "data"
-        work = data / "work"
-        return cls(
-            data / "cells",
-            datasets / "cells.csv",
-            datasets / "kind-log.jsonl",
-            datasets / "kind-check.jsonl",
-            work / "groups.json",
-            work / "suspects.csv",
-            ml_root / "configs" / "cell-classifier.toml",
-            work,
-            work / "prelabels.json",
-        )
-
-
 def _pages(count: int) -> int:
     return max(1, -(-count // SCREEN_SIZE))
 
 
 class LabelStore:
-    def __init__(self, paths: Paths, now: Callable[[], datetime] = lambda: datetime.now(UTC)):
+    def __init__(self, paths: DataPaths, now: Callable[[], datetime] = lambda: datetime.now(UTC)):
         self.paths, self._now = paths, now
         self.session = now().strftime("%Y%m%d-%H%M%S")
         self._actions = 0
@@ -101,16 +83,19 @@ class LabelStore:
             warn_unreadable(self.paths.groups, error)
             return {}
 
-    def _log_size(self) -> int:
-        return self.paths.log.stat().st_size if self.paths.log.exists() else 0
+    def _stamp(self) -> tuple[int, int]:
+        journal, table = self.paths.journal, self.paths.cells_csv
+        return (
+            journal.stat().st_size if journal.exists() else 0,
+            table.stat().st_mtime_ns if table.exists() else 0,
+        )
 
     def _load(self) -> None:
-        try:
-            listed = read_ids(self.paths.manifest)
-        except (OSError, ValueError, KeyError) as error:
-            # The start rebuilds cells.csv from the folders, as after a stopped session.
-            warn_unreadable(self.paths.manifest, error)
-            listed = {}
+        """Raises ValueError when cells.csv does not parse: it holds the finished kinds and
+        sources, so the store refuses to start without it (ADR-018)."""
+        table = read_cells_table(self.paths.cells_csv)
+        self._base_kinds, self._base_sources = base_kinds(table), base_sources(table)
+        listed = {cell[:16]: cell for cell in table}
         self._stem_ids = {**listed, **self._registered}
         self.folder: dict[str, str] = {}
         for path in self.paths.cells.glob("*/*.png"):
@@ -121,29 +106,25 @@ class LabelStore:
                     raise ValueError(f"{path} is not named after its pixels ({cell_id[:16]})")
                 self._stem_ids[path.stem] = cell_id
             self.folder[self._stem_ids[path.stem]] = path.parent.name
-        self.lines = read_log(self.paths.log)
-        self.checks = read_records(self.paths.checks, CheckLine)
-        self._seen_size = self._log_size()
+        self.lines = read_journal(self.paths.journal)
+        self.checks = read_records(self.paths.kind_checks, CheckLine)
+        self._seen = self._stamp()
 
     def repair(self) -> int:
-        """Drop the kind of a cell that sits in empty/. A stop between the file move and the log
-        line of `move` leaves one. The folder is the truth for the digit (ADR-009). The lines
-        carry their own session, so undo and rollback never reverse them."""
+        """Drop the kind of each cell in empty/, unlabeled/ or discarded/ (see repair_lines)."""
         self._refresh()
-        session = f"{self.session}-repair"
-        t, kinds = self._t(), self.kinds()
-        lines = [
-            Line(t, session, f"{session}-1", cell, "kind", kinds[cell], None, "repair")
-            for cell, folder in self.folder.items()
-            if folder == "empty" and kinds.get(cell) is not None
-        ]
+        lines = repair_lines(self.folder, self.kinds(), self._t(), f"{self.session}-repair")
         self._write(lines)
         return len(lines)
 
     def _refresh(self) -> None:
-        # `just label-rollback` in another terminal appends to the log and moves files.
-        if self._log_size() != self._seen_size:
+        # `just label-rollback` in another terminal appends to the journal and moves files. A cut
+        # appends source lines. Finish deletes the journal and rewrites cells.csv.
+        if self._stamp() != self._seen:
             self._load()
+
+    def now(self) -> datetime:
+        return self._now()
 
     def _t(self) -> str:
         return format_time(self._now())
@@ -153,9 +134,11 @@ class LabelStore:
         return f"{self.session}-{self._actions}"
 
     def _write(self, lines: list[Line]) -> None:
-        append_records(self.paths.log, lines)
+        if not lines:
+            return
+        append_records(self.paths.journal, lines)
         self.lines.extend(lines)
-        self._seen_size = self._log_size()
+        self._seen = self._stamp()
 
     def _apply_digits(self, lines: list[Line]) -> None:
         # One move_cells call: it reads every cell folder once, and 16k cells make that slow.
@@ -171,7 +154,12 @@ class LabelStore:
                 self.folder[line.cell] = line.new
 
     def kinds(self) -> dict[str, str | None]:
-        return current_kinds(self.lines)
+        return current_kinds(self.lines, self._base_kinds)
+
+    def sources(self) -> dict[str, Source]:
+        """Full cell id → the sudoku photo, row and col (0-8) it was cut from."""
+        self._refresh()
+        return current_sources(self.lines, self._base_sources)
 
     def cell_file(self, stem: str) -> Path:
         self._refresh()
@@ -441,12 +429,12 @@ class LabelStore:
             return kinds.get(cell) if field == "kind" else self.folder.get(cell)
 
         items = (
-            near_duplicate_items(self._near_duplicates()[0], self.lines)
+            near_duplicate_items(self._near_duplicates()[0], kinds, self.lines)
             + self._model_items(current)
             + check_items(self.checks, current)
         )
         merged: dict[tuple[str, str], dict] = {}
-        for item in open_items(items, self.lines):
+        for item in open_items(items, self.lines, read_last_finish(self.paths.status)):
             if item.cell not in self.folder:
                 continue
             entry = merged.setdefault(
@@ -478,11 +466,13 @@ class LabelStore:
         self._refresh()
         test_ids = self._near_duplicates()[1]
         try:
-            cells = draw_sample(self.lines, self.checks, test_ids, self._now(), n)
+            cells = draw_sample(
+                self.kinds(), last_kind_times(self.lines), self.checks, test_ids, self._now(), n
+            )
         except NotEnoughCells as error:
             return {
                 "error": f"Only {error.count} cells have a label that is 7 days old or older. "
-                f"The check needs {n}."
+                f"The check needs {n}. A finished kind counts as old enough."
             }
         return {"cells": [{"id": c, "stem": c[:16]} for c in cells]}
 
@@ -501,7 +491,7 @@ class LabelStore:
             if kinds.get(cell) not in _LABELLED:
                 raise ValueError(f"{cell[:16]}: has no printed or handwritten label")
             records.append(CheckLine(t, self.session, cell, kinds[cell], value))
-        append_records(self.paths.checks, records)
+        append_records(self.paths.kind_checks, records)
         self.checks.extend(records)
         return summary(self.checks)
 

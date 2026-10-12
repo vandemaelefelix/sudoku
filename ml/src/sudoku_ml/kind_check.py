@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from sudoku_ml.kind_log import Line, current_kinds, last_kind_times, parse_time
+from sudoku_ml.journal import parse_time
 
 # Long enough that the developer no longer remembers the first answer.
 MIN_AGE = timedelta(days=7)
@@ -17,7 +17,7 @@ class CheckLine:
     t: str
     session: str
     cell: str
-    label: str  # the kind in the log when the check ran
+    label: str  # the current kind when the check ran
     answer: str  # printed, handwritten or unsure
 
 
@@ -28,7 +28,8 @@ class NotEnoughCells(ValueError):
 
 
 def draw_sample(
-    lines: list[Line],
+    kinds: dict[str, str | None],
+    times: dict[str, str],
     checks: list[CheckLine],
     test_ids: set[str],
     now: datetime,
@@ -36,14 +37,18 @@ def draw_sample(
     seed: int = 0,
     min_age: timedelta = MIN_AGE,
 ) -> list[str]:
-    """n cell ids, half from the test split when it has enough. Raises NotEnoughCells."""
-    kinds, times = current_kinds(lines), last_kind_times(lines)
+    """n cell ids, half from the test split when it has enough. Raises NotEnoughCells.
+
+    `times` holds the time of the newest kind line in the journal. A kind without one comes from
+    cells.csv: it is finished and counts as old enough (ADR-018)."""
     checked = {c.cell for c in checks}
     cutoff = now - min_age
     eligible = sorted(
         cell
         for cell, kind in kinds.items()
-        if kind in _CHECKABLE and parse_time(times[cell]) <= cutoff and cell not in checked
+        if kind in _CHECKABLE
+        and (cell not in times or parse_time(times[cell]) <= cutoff)
+        and cell not in checked
     )
     if len(eligible) < n:
         raise NotEnoughCells(len(eligible), n)

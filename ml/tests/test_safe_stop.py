@@ -48,7 +48,7 @@ def test_a_stop_between_the_file_move_and_the_log_line_is_repaired(tmp_path: Pat
     assert store.folder[cell] == "empty"
     assert store.repair() == 1
     assert store.kinds()[cell] is None
-    assert write_cells_manifest(paths.cells, paths.manifest, paths.log) == 1
+    assert write_cells_manifest(paths) == 1
     assert reopened(paths).repair() == 0
 
 
@@ -57,7 +57,7 @@ def test_cells_that_the_manifest_does_not_list_are_read_after_a_stop(tmp_path: P
     stray = add_cell(paths.cells, "unlabeled", pattern(777))
     store = reopened(paths)
     assert store.folder[stray] == "unlabeled"
-    assert write_cells_manifest(paths.cells, paths.manifest, paths.log) == 2
+    assert write_cells_manifest(paths) == 2
 
 
 def test_a_leftover_temporary_file_does_not_break_the_store_or_the_manifest(tmp_path: Path):
@@ -66,7 +66,7 @@ def test_a_leftover_temporary_file_does_not_break_the_store_or_the_manifest(tmp_
     tmp.mkdir()
     (tmp / "half.png").write_bytes(b"not a png")
     assert reopened(paths).folder
-    assert write_cells_manifest(paths.cells, paths.manifest, paths.log) == 1
+    assert write_cells_manifest(paths) == 1
 
 
 def test_the_start_cleans_leftovers_and_prints_what_waits(tmp_path: Path, monkeypatch, capsys):
@@ -87,7 +87,7 @@ def test_the_start_cleans_leftovers_and_prints_what_waits(tmp_path: Path, monkey
 
     monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Stop())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
-    assert main(["label_server"], tmp_path) == 0
+    assert main(["label_server"], paths) == 0
     out = capsys.readouterr().out
-    assert "Waiting: 2 cells in unlabeled/, 0 photos pending." in out
+    assert "Waiting: 2 cells in unlabeled/, 0 sudoku photos pending." in out
     assert list(tmp.glob("*")) == [] and not (paths.cells / "unlabeled" / "tmp-cut.png").exists()

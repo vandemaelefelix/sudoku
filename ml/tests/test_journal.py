@@ -3,14 +3,16 @@ from pathlib import Path
 
 import pytest
 
-from sudoku_ml.kind_log import (
+from sudoku_ml.journal import (
+    FINISHED,
     Line,
     append_records,
     current_kinds,
+    current_sources,
     format_time,
     last_kind_times,
     parse_time,
-    read_log,
+    read_journal,
     rollback_lines,
     undo_lines,
 )
@@ -28,18 +30,18 @@ def test_append_then_read_round_trips(tmp_path: Path):
     lines = [line(1, "s1", "s1-1", A, "kind", None, "printed")]
     append_records(path, lines)
     append_records(path, lines)
-    assert read_log(path) == lines * 2
+    assert read_journal(path) == lines * 2
 
 
 def test_a_missing_log_is_empty(tmp_path: Path):
-    assert read_log(tmp_path / "none.jsonl") == []
+    assert read_journal(tmp_path / "none.jsonl") == []
 
 
 def test_a_bad_line_names_its_line_number(tmp_path: Path):
     path = tmp_path / "log.jsonl"
     path.write_text('{"t": "x"}\n')
     with pytest.raises(ValueError, match=":1:"):
-        read_log(path)
+        read_journal(path)
 
 
 def test_the_current_kind_is_the_last_kind_line():
@@ -111,3 +113,41 @@ def test_a_second_rollback_of_the_same_session_does_nothing():
 def test_times_round_trip():
     moment = datetime(2026, 10, 12, 9, 0, 1, tzinfo=UTC)
     assert parse_time(format_time(moment)) == moment
+
+
+def test_the_journal_applies_on_top_of_the_base():
+    lines = [line(1, "s1", "s1-1", A, "kind", "printed", None)]
+    assert current_kinds(lines, {A: "printed", B: "handwritten"}) == {A: None, B: "handwritten"}
+
+
+def test_a_source_line_links_a_cell_to_its_photo():
+    photo = "f" * 64
+    lines = [line(1, "s1", "s1-1", A, "source", None, f"{photo} 2 8", "photos")]
+    assert current_sources(lines, {B: (photo, 0, 0)}) == {A: (photo, 2, 8), B: (photo, 0, 0)}
+
+
+def test_undo_skips_the_source_lines_of_a_cut():
+    photo = "f" * 64
+    lines = [
+        line(1, "s1", "s1-1", A, "kind", None, "printed"),
+        line(2, "s1", "s1-cut-1", B, "source", None, f"{photo} 0 0", "photos"),
+    ]
+    undo = undo_lines(lines, LATER, "s1")
+    assert [(u.cell, u.field) for u in undo] == [(A, "kind")]
+
+
+def test_rollback_skips_the_source_lines_of_a_cut():
+    photo = "f" * 64
+    lines = [
+        line(1, "s1", "s1-cut-1", B, "source", None, f"{photo} 0 0", "photos"),
+        line(2, "s1", "s1-1", B, "kind", None, "printed"),
+    ]
+    back = rollback_lines(lines, "s1", LATER, "s2")
+    assert [(b.field, b.new) for b in back] == [("kind", None)]
+    assert current_sources(lines + back) == {B: (photo, 0, 0)}
+
+
+def test_rollback_of_a_finished_session_points_to_git():
+    with pytest.raises(ValueError, match="This session is finished. Use git to go back."):
+        rollback_lines([], "s1", LATER, "s2")
+    assert FINISHED == "This session is finished. Use git to go back."

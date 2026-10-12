@@ -7,8 +7,12 @@ import pytest
 import torch
 from PIL import Image
 
-from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND
+from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND, kind_index
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.dataset import load_cells, read_kinds
 from sudoku_ml.fixtures import FIXTURE_SEED
+from sudoku_ml.journal import Line, append_records
+from sudoku_ml.manifest import pixel_id, write_cells_manifest
 from sudoku_ml.train import (
     expected_calibration_error,
     fit_temperature,
@@ -67,7 +71,7 @@ def test_temperature_and_calibration_are_finite():
 
 
 def test_smoke_run_writes_artifacts(tmp_path: Path):
-    run = train(load_config(ML / "configs" / "smoke.toml"), ML, artifacts_dir=tmp_path)
+    run = train(load_config(ML / "configs" / "smoke.toml"), artifacts_dir=tmp_path)
     metrics = json.loads((run / "metrics.json").read_text())
     assert (run / "model.pt").exists()
     assert {
@@ -100,19 +104,18 @@ def smoke_config(tmp_path: Path, **changes) -> Path:
 
 def test_real_cells_without_data_raise(tmp_path: Path):
     config = load_config(smoke_config(tmp_path, real_cells=True))
-    root = tmp_path / "ml"
+    data = DataPaths.under(tmp_path / "data")
     with pytest.raises(ValueError, match="real data is not present"):
-        train(config, root, artifacts_dir=tmp_path / "out")
+        train(config, data, artifacts_dir=tmp_path / "out")
 
 
 def test_real_cells_with_empty_folders_raise(tmp_path: Path):
-    root = tmp_path / "ml"
-    (root / "fonts").mkdir(parents=True)
+    data = DataPaths.under(tmp_path / "data")
     for label in DIGIT_CLASSES:
-        (root / "data" / "cells" / label).mkdir(parents=True)
+        (data.cells / label).mkdir(parents=True)
     config = load_config(smoke_config(tmp_path, real_cells=True))
     with pytest.raises(ValueError, match="real data is not present"):
-        train(config, root, artifacts_dir=tmp_path / "out")
+        train(config, data, artifacts_dir=tmp_path / "out")
 
 
 @pytest.mark.parametrize("seed", [FIXTURE_SEED, FIXTURE_SEED - 1])
@@ -122,28 +125,45 @@ def test_seed_that_reaches_the_fixture_seed_is_rejected(tmp_path: Path, seed: in
 
 
 def test_model_card_has_ece_and_test_size(tmp_path: Path):
-    run = train(load_config(ML / "configs" / "smoke.toml"), ML, artifacts_dir=tmp_path)
+    run = train(load_config(ML / "configs" / "smoke.toml"), artifacts_dir=tmp_path)
     card = (run / "model-card.md").read_text()
     assert "ECE:" in card and "Test cells:" in card
     assert "Kind labels" not in card  # only real-cell runs carry the label state
 
 
-def test_real_run_model_card_reports_the_label_state(tmp_path: Path):
-    root = tmp_path / "ml"
-    root.mkdir()
-    (root / "fonts").symlink_to(ML / "fonts")
+def real_tree(tmp_path: Path) -> DataPaths:
+    data = DataPaths.under(tmp_path / "data")
     rng = np.random.default_rng(0)
     for label in DIGIT_CLASSES:
-        (root / "data" / "cells" / label).mkdir(parents=True)
-        for n in range(12):
+        (data.cells / label).mkdir(parents=True)
+        for _ in range(12):
             pixels = rng.integers(0, 256, (64, 64, 3), dtype=np.uint8)
-            Image.fromarray(pixels).save(root / "data" / "cells" / label / f"{label}{n:02d}.png")
+            tmp = data.cells / label / "tmp.png"
+            Image.fromarray(pixels).save(tmp)
+            tmp.rename(tmp.with_name(f"{pixel_id(tmp)[:16]}.png"))
+    return data
+
+
+def test_real_run_reads_the_cells_table_in_the_new_format(tmp_path: Path):
+    data = real_tree(tmp_path)
+    sevens = sorted(pixel_id(p) for p in (data.cells / "7").glob("*.png"))
+    line = "2026-10-12T09:00:00Z"
+    append_records(
+        data.journal,
+        [Line(line, "s", "s-1", cell, "kind", None, "printed", "groups") for cell in sevens],
+    )
+    write_cells_manifest(data)
+    data.journal.unlink()
+    assert read_kinds(data.cells_csv)[sevens[0][:16]] == "printed"
+    samples = load_cells(data.cells, data.cells_csv)
+    assert sum(s.kind == kind_index("printed") for s in samples) == 12
     config = load_config(smoke_config(tmp_path, real_cells=True))
-    run = train(config, root, artifacts_dir=tmp_path / "out")
+    run = train(config, data, artifacts_dir=tmp_path / "out")
     card = (run / "model-card.md").read_text()
-    # The tree has no cells.csv, so the label state cannot be read and the run still finishes.
-    assert "- Kind labels: unknown (" in card
-    assert "- Kind accuracy (real test cells): no labelled test cells" in card
+    assert "- Kind labels: 12 printed, 0 handwritten, 0 unsure" in card
+    assert "- Cells manifest: none" not in card
+    metrics = json.loads((run / "metrics.json").read_text())
+    assert metrics["eval_set"] == "real" and metrics["n_test"] > 0
 
 
 def test_label_state_lines_report_labels_review_and_check():

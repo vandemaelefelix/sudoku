@@ -29,7 +29,7 @@ TABLE = json.loads((ROOT / "ml/src/sudoku_ml/tflite_2_17_ops.json").read_text())
 @pytest.fixture(scope="module")
 def exported(tmp_path_factory) -> tuple[Path, Path]:
     run = train(
-        load_config(ROOT / "ml/configs/smoke.toml"), ROOT / "ml", tmp_path_factory.mktemp("run")
+        load_config(ROOT / "ml/configs/smoke.toml"), artifacts_dir=tmp_path_factory.mktemp("run")
     )
     return run, export(run, FIXTURES)
 

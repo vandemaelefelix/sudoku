@@ -1,4 +1,3 @@
-import csv
 import json
 import shutil
 from datetime import UTC, datetime
@@ -9,10 +8,10 @@ from photos import grid_photo, save_photo
 from PIL import Image
 
 from sudoku_ml.data_check import check_data, format_report, main
-from sudoku_ml.label_store import Paths
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.manifest import pixel_id, write_cells_manifest
 from sudoku_ml.photo_check import PhotoCheck
-from sudoku_ml.photo_import import PhotoPaths, import_folder
+from sudoku_ml.photo_import import import_folder
 
 FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 
@@ -21,129 +20,170 @@ def clock() -> datetime:
     return datetime(2026, 10, 12, 9, 0, 0, tzinfo=UTC)
 
 
-def valid_root(tmp_path: Path) -> Path:
-    """An ml root with 3 photos: one accepted (cells cut and linked), one rejected, one pending.
-    One older cell has no origin."""
-    root = tmp_path / "ml"
+def add_plain_cell(folder: Path, grey: int) -> str:
+    folder.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (64, 64), (grey,) * 3).save(folder / "tmp.png")
+    cell_id = pixel_id(folder / "tmp.png")
+    (folder / "tmp.png").rename(folder / f"{cell_id[:16]}.png")
+    return cell_id
+
+
+def valid_root(tmp_path: Path) -> DataPaths:
+    """3 sudoku photos: one accepted (cells cut and linked), one rejected, one pending. One
+    older cell in empty/ and one in discarded/ have no source."""
+    paths = DataPaths.under(tmp_path / "data")
     for n in range(3):
         save_photo(grid_photo(seed=n), tmp_path / "in" / f"p{n}.png")
-    photo_paths = PhotoPaths.under(root)
-    import_folder(tmp_path / "in", photo_paths, origin="phone", licence="own")
-    check = PhotoCheck(photo_paths, "s1", clock)
+    import_folder(tmp_path / "in", paths, source="phone", licence="own")
+    check = PhotoCheck(paths, "s1", clock)
     first, second, _ = check.pending()
     check.accept(first, FULL)
-    check.reject(second, "blurred")
-    old = photo_paths.cells / "empty"
-    old.mkdir(parents=True)
-    Image.new("RGB", (64, 64), (9, 9, 9)).save(old / "tmp.png")
-    paths = Paths.under(root)
-    bin_ = photo_paths.cells / "discarded"
-    bin_.mkdir()
-    Image.new("RGB", (64, 64), (7, 7, 7)).save(bin_ / "tmp.png")
-    binned = pixel_id(bin_ / "tmp.png")
-    (bin_ / "tmp.png").rename(bin_ / f"{binned[:16]}.png")
-    # Rows from before the licence columns have only these three.
-    rows = list(csv.DictReader(photo_paths.manifest.open()))
-    with photo_paths.manifest.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["id", "file", "origin"])
-        writer.writeheader()
-        writer.writerows({k: r[k] for k in ("id", "file", "origin")} for r in rows)
-    cell_id = pixel_id(old / "tmp.png")
-    (old / "tmp.png").rename(old / f"{cell_id[:16]}.png")
-    write_cells_manifest(paths.cells, paths.manifest, paths.log)
-    return root
-
-
-def run(root: Path) -> dict:
-    return check_data(Paths.under(root), PhotoPaths.under(root))
+    check.reject(second)
+    add_plain_cell(paths.cells / "empty", 9)
+    add_plain_cell(paths.cells / "discarded", 7)
+    write_cells_manifest(paths)
+    return paths
 
 
 def test_a_valid_root_has_no_problems_and_a_report(tmp_path: Path):
-    report = run(valid_root(tmp_path))
+    report = check_data(valid_root(tmp_path))
     assert report["problems"] == []
-    assert report["photos"] == {"accepted": 1, "rejected": 1, "pending": 1}
+    assert report["photos"] == {"pending": 1, "accepted": 1, "rejected": 1}
     assert report["waiting_cells"] > 0 and report["pending_photos"] == 1
     assert report["linked"] == report["total_cells"] - 2
     assert report["cells"]["discarded"] == 1
+    assert report["kinds"] == {"printed": 0, "handwritten": 0, "unsure": 0, "without": 0}
     text = format_report(report)
     assert f"Linked {report['linked']} of {report['total_cells']} cells. Cells without" in text
-    assert "Waiting:" in text
+    assert "Waiting:" in text and "Sudoku photos: pending 1" in text
+
+
+def test_the_kinds_count_the_digit_cells(tmp_path: Path):
+    paths = valid_root(tmp_path)
+    cell = next((paths.cells / "unlabeled").glob("*.png"))
+    (paths.cells / "4").mkdir()
+    cell.rename(paths.cells / "4" / cell.name)
+    write_cells_manifest(paths)
+    assert check_data(paths)["kinds"]["without"] == 1
 
 
 def test_main_exits_with_1_on_a_problem(tmp_path: Path, capsys: pytest.CaptureFixture):
-    root = valid_root(tmp_path)
-    assert main(root) == 0
-    next((root / "data" / "photos").iterdir()).unlink()
-    assert main(root) == 1
+    paths = valid_root(tmp_path)
+    assert main(paths) == 0
+    next(paths.photos.iterdir()).unlink()
+    assert main(paths) == 1
     assert "does not exist" in capsys.readouterr().out
 
 
-def corrupt_name(root: Path):
-    path = next((root / "data" / "cells" / "unlabeled").glob("*.png"))
+def corrupt_name(paths: DataPaths):
+    path = next((paths.cells / "unlabeled").glob("*.png"))
     path.rename(path.with_name("0" * 16 + ".png"))
 
 
-def duplicate_cell(root: Path):
-    path = next((root / "data" / "cells" / "unlabeled").glob("*.png"))
-    other = root / "data" / "cells" / "1"
+def duplicate_cell(paths: DataPaths):
+    path = next((paths.cells / "unlabeled").glob("*.png"))
+    other = paths.cells / "1"
     other.mkdir()
     shutil.copy(path, other / path.name)
 
 
-def stale_manifest(root: Path):
-    paths = Paths.under(root)
-    rows = paths.manifest.read_text().splitlines()
-    paths.manifest.write_text("\n".join(rows[:-1]) + "\n")
+def edit_rows(path: Path, change) -> None:
+    lines = path.read_text().splitlines()
+    path.write_text("\n".join(change(lines)) + "\n")
 
 
-def duplicate_photo_row(root: Path):
-    manifest = PhotoPaths.under(root).manifest
-    lines = manifest.read_text().splitlines()
-    manifest.write_text("\n".join([*lines, lines[1]]) + "\n")
+def stale_manifest(paths: DataPaths):
+    edit_rows(paths.cells_csv, lambda rows: rows[:-1])
 
 
-def wrong_photo_file(root: Path):
-    photo = next((root / "data" / "photos").iterdir())
-    save_photo(grid_photo(seed=99), photo)
+def first_cell_row(paths: DataPaths, change) -> None:
+    def apply(rows: list[str]) -> list[str]:
+        index = next(i for i, r in enumerate(rows) if ",unlabeled," in r)
+        rows[index] = ",".join(change(rows[index].split(",")))
+        return rows
+
+    edit_rows(paths.cells_csv, apply)
 
 
-def origin_of_missing_cell(root: Path):
-    origins = PhotoPaths.under(root).origins
-    with origins.open("a", newline="") as handle:
-        row = next(csv.DictReader(origins.open()))
-        csv.writer(handle).writerow(["a" * 64, row["photo"], 0, 0])
+def two_rows_for_one_cell(paths: DataPaths):
+    edit_rows(paths.cells_csv, lambda rows: [*rows, rows[-1]])
 
 
-def two_origins(root: Path):
-    origins = PhotoPaths.under(root).origins
-    rows = origins.read_text().splitlines()
-    origins.write_text("\n".join([*rows, rows[1]]) + "\n")
+def digit_other_than_folder(paths: DataPaths):
+    first_cell_row(paths, lambda r: [r[0], "5", *r[2:]])
 
 
-def decision_of_unknown_photo(root: Path):
-    checks = PhotoPaths.under(root).checks
-    with checks.open("a") as handle:
-        handle.write(json.dumps({"photo": "b" * 64, "decision": "rejected"}) + "\n")
+def kind_on_a_waiting_cell(paths: DataPaths):
+    first_cell_row(paths, lambda r: [r[0], r[1], "printed", *r[3:]])
 
 
-def unknown_folder(root: Path):
-    (root / "data" / "cells" / "extra").mkdir()
+def unknown_kind(paths: DataPaths):
+    first_cell_row(paths, lambda r: [r[0], r[1], "typed", *r[3:]])
 
 
-def log_line(cell: str) -> str:
+def source_of_an_unknown_photo(paths: DataPaths):
+    first_cell_row(paths, lambda r: [*r[:3], "b" * 64, *r[4:]])
+
+
+def half_a_source(paths: DataPaths):
+    first_cell_row(paths, lambda r: [*r[:4], "", r[5]])
+
+
+def row_out_of_range(paths: DataPaths):
+    first_cell_row(paths, lambda r: [*r[:4], "9", r[5]])
+
+
+def duplicate_photo_row(paths: DataPaths):
+    edit_rows(paths.photos_csv, lambda rows: [*rows, rows[1]])
+
+
+def photo_column(paths: DataPaths, status: str, change) -> None:
+    def apply(rows: list[str]) -> list[str]:
+        index = next(i for i, r in enumerate(rows) if f",{status}," in r)
+        rows[index] = ",".join(change(rows[index].split(",")))
+        return rows
+
+    edit_rows(paths.photos_csv, apply)
+
+
+def unknown_status(paths: DataPaths):
+    photo_column(paths, "pending", lambda r: [*r[:5], "maybe", r[6]])
+
+
+def accepted_without_corners(paths: DataPaths):
+    photo_column(paths, "accepted", lambda r: [*r[:6], "1 2 3"])
+
+
+def corners_on_a_rejected_photo(paths: DataPaths):
+    photo_column(paths, "rejected", lambda r: [*r[:6], "1 2 3 4 5 6 7 8"])
+
+
+def unknown_source(paths: DataPaths):
+    photo_column(paths, "pending", lambda r: [r[0], r[1], "reddit", *r[3:]])
+
+
+def wrong_photo_file(paths: DataPaths):
+    save_photo(grid_photo(seed=99), next(paths.photos.iterdir()))
+
+
+def unknown_folder(paths: DataPaths):
+    (paths.cells / "extra").mkdir()
+
+
+def journal_line(cell: str) -> str:
     fields = ["t", "session", "action", "cell", "field", "old", "new", "screen"]
     values = ["2026-10-12T09:00:00Z", "s", "s-1", cell, "kind", None, "printed", "groups"]
     return json.dumps(dict(zip(fields, values, strict=True))) + "\n"
 
 
-def log_with_short_id(root: Path):
-    with Paths.under(root).log.open("a") as handle:
-        handle.write(log_line("a" * 30))
+def journal_with_short_id(paths: DataPaths):
+    with paths.journal.open("a") as handle:
+        handle.write(journal_line("a" * 30))
 
 
-def log_with_missing_cell(root: Path):
-    with Paths.under(root).log.open("a") as handle:
-        handle.write(log_line("a" * 64))
+def journal_with_missing_cell(paths: DataPaths):
+    with paths.journal.open("a") as handle:
+        handle.write(journal_line("a" * 64))
 
 
 @pytest.mark.parametrize(
@@ -152,20 +192,28 @@ def log_with_missing_cell(root: Path):
         (corrupt_name, "not named after its pixels"),
         (duplicate_cell, "has the same pixels"),
         (stale_manifest, "just dataset-manifest"),
+        (two_rows_for_one_cell, "cells are twice in cells.csv"),
+        (digit_other_than_folder, "another digit than the folder"),
+        (kind_on_a_waiting_cell, "kind that is not allowed"),
+        (unknown_kind, "kind that is not allowed"),
+        (source_of_an_unknown_photo, "photo_id that sudoku-photos.csv does not list"),
+        (half_a_source, "bad source"),
+        (row_out_of_range, "bad source"),
         (duplicate_photo_row, "is twice in"),
+        (unknown_status, "unknown status"),
+        (accepted_without_corners, "accepted without 4 corners"),
+        (corners_on_a_rejected_photo, "corners on a rejected photo"),
+        (unknown_source, "unknown source"),
         (wrong_photo_file, "has the id"),
-        (origin_of_missing_cell, "the cell does not exist"),
-        (two_origins, "has two origins"),
-        (decision_of_unknown_photo, "is not in photos.csv"),
-        (unknown_folder, "not a known label folder"),
-        (log_with_short_id, "are not full ids"),
-        (log_with_missing_cell, "match no cell"),
+        (unknown_folder, "not a known cell folder"),
+        (journal_with_short_id, "are not full ids"),
+        (journal_with_missing_cell, "match no cell"),
     ],
 )
 def test_one_corrupt_thing_is_one_reported_problem(tmp_path: Path, corrupt, message):
-    root = valid_root(tmp_path)
-    corrupt(root)
-    problems = run(root)["problems"]
+    paths = valid_root(tmp_path)
+    corrupt(paths)
+    problems = check_data(paths)["problems"]
     assert any(message in p for p in problems), problems
     if corrupt is duplicate_cell:
-        assert any("rows of cells.csv with another folder" in p for p in problems), problems
+        assert any("another digit than the folder" in p for p in problems), problems

@@ -6,11 +6,10 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from sudoku_ml.kind_log import read_log
-from sudoku_ml.label_store import LabelStore, Paths
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.journal import read_journal
+from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import pixel_id, write_cells_manifest
-
-ML = Path(__file__).parents[1]
 
 
 class Clock:
@@ -38,7 +37,8 @@ def add_cell(cells: Path, folder: str, image: np.ndarray) -> str:
 
 def build(tmp_path: Path, folders: dict[str, int], groups: dict[str, list[list[int]]]):
     """folders: folder → number of cells. groups: folder → groups as indices into its cells."""
-    cells = tmp_path / "data" / "cells"
+    paths = DataPaths.under(tmp_path / "data", tmp_path / "images")
+    cells = paths.cells
     ids: dict[str, list[str]] = {}
     seed = 0
     for folder, count in folders.items():
@@ -46,18 +46,7 @@ def build(tmp_path: Path, folders: dict[str, int], groups: dict[str, list[list[i
         for _ in range(count):
             seed += 1
             ids[folder].append(add_cell(cells, folder, pattern(seed)))
-    (tmp_path / "datasets").mkdir()
-    write_cells_manifest(cells, tmp_path / "datasets" / "cells.csv")
-    paths = Paths(
-        cells,
-        tmp_path / "datasets" / "cells.csv",
-        tmp_path / "datasets" / "kind-log.jsonl",
-        tmp_path / "datasets" / "kind-check.jsonl",
-        tmp_path / "data" / "work" / "groups.json",
-        tmp_path / "data" / "work" / "suspects.csv",
-        ML / "configs" / "cell-classifier.toml",
-        tmp_path / "data" / "work",
-    )
+    write_cells_manifest(paths)
     paths.work.mkdir(parents=True)
     folders_json = {
         f: [
@@ -99,7 +88,7 @@ def test_a_save_logs_only_changed_or_new_cells(tmp_path: Path):
     store.save(kinds_of(ids["7"][:1], "printed"), "groups")
     entries = kinds_of(ids["7"][:1], "printed") + kinds_of(ids["7"][1:], "unsure")
     assert store.save(entries, "groups") == 1
-    assert [(x.cell, x.new) for x in read_log(paths.log)] == [
+    assert [(x.cell, x.new) for x in read_journal(paths.journal)] == [
         (ids["7"][0], "printed"),
         (ids["7"][1], "unsure"),
     ]
@@ -110,7 +99,7 @@ def test_a_review_save_logs_confirmations_too(tmp_path: Path):
     store = LabelStore(paths, Clock())
     store.save(kinds_of(ids["7"], "printed"), "groups")
     assert store.save(kinds_of(ids["7"], "printed"), "review", [ids["7"][0]]) == 2
-    last = read_log(paths.log)[-2:]
+    last = read_journal(paths.journal)[-2:]
     assert [(x.field, x.old, x.new, x.screen) for x in last] == [
         ("kind", "printed", "printed", "review"),
         ("digit", "7", "7", "review"),
@@ -124,7 +113,7 @@ def test_a_save_refuses_a_bad_kind_or_an_empty_cell(tmp_path: Path):
         store.save(kinds_of(ids["7"], "notes"), "groups")
     with pytest.raises(ValueError, match="digit folder"):
         store.save(kinds_of(ids["empty"], "printed"), "groups")
-    assert read_log(paths.log) == []
+    assert read_journal(paths.journal) == []
 
 
 def test_a_move_to_empty_clears_the_kind_and_undo_restores_it(tmp_path: Path):
@@ -217,7 +206,7 @@ def test_check_answers_are_logged_and_summarised(tmp_path: Path):
     ]
     result = store.check_answer(answers)
     assert result["n"] == 2 and result["agreement"] == 0.5
-    assert len(paths.checks.read_text().splitlines()) == 2
+    assert len(paths.kind_checks.read_text().splitlines()) == 2
 
 
 def test_rollback_moves_files_back_and_restores_kinds(tmp_path: Path):
@@ -252,7 +241,7 @@ def test_a_second_check_answer_for_a_cell_is_refused(tmp_path: Path):
     store.check_answer([{"id": ids["7"][0], "answer": "printed"}])
     with pytest.raises(ValueError, match="already checked"):
         store.check_answer([{"id": ids["7"][0], "answer": "printed"}])
-    assert len(paths.checks.read_text().splitlines()) == 1
+    assert len(paths.kind_checks.read_text().splitlines()) == 1
 
 
 def test_a_rollback_from_another_process_reaches_the_running_store(tmp_path: Path):
@@ -280,7 +269,7 @@ def test_near_duplicates_count_only_inside_one_folder(tmp_path: Path, other: str
     twin = pattern(1)
     twin[0, 0, 0] ^= 1
     twin_id = add_cell(paths.cells, other, twin)
-    write_cells_manifest(paths.cells, paths.manifest)
+    write_cells_manifest(paths)
     store = LabelStore(paths, Clock())
     store.save(kinds_of(ids["7"], "printed") + kinds_of([twin_id], "handwritten"), "groups")
     reasons = [r["reason"] for i in store.review_items() for r in i["reasons"]]

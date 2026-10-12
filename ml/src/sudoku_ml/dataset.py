@@ -28,24 +28,26 @@ def read_ids(manifest: Path) -> dict[str, str]:
     found = {}
     with manifest.open(newline="") as handle:
         for line, row in enumerate(csv.DictReader(handle), start=2):
-            if not FULL_ID.fullmatch(row.get("id") or ""):
-                raise ValueError(f"{manifest} line {line}: {row.get('id')!r} is not a cell id")
-            found[row["id"][:16]] = row["id"]
+            if not FULL_ID.fullmatch(row.get("cell_id") or ""):
+                cell = row.get("cell_id")
+                raise ValueError(f"{manifest} line {line}: {cell!r} is not a cell id")
+            found[row["cell_id"][:16]] = row["cell_id"]
     return found
 
 
 def read_kinds(manifest: Path) -> dict[str, str]:
     """File stem → the kind column of cells.csv."""
     with manifest.open(newline="") as handle:
-        return {row["id"][:16]: row.get("kind") or "" for row in csv.DictReader(handle)}
+        return {row["cell_id"][:16]: row.get("kind") or "" for row in csv.DictReader(handle)}
 
 
 _DIGIT_KIND_TARGETS = {k: kind_index(k) for k in ("printed", "handwritten")}
 
 
 def load_cells(cells_dir: Path, manifest: Path | None = None) -> list[Sample]:
-    """The labelled real cells. An empty cell gets `none`. A digit cell gets its kind from the
-    manifest, or UNKNOWN_KIND for `unsure`, blank or no manifest."""
+    """The labelled real cells of `cells_dir` (`<images>/cells`). An empty cell gets `none`. A
+    digit cell gets its kind from the manifest (`data/cells.csv`), or UNKNOWN_KIND for `unsure`,
+    blank or no manifest."""
     kinds = read_kinds(manifest) if manifest is not None and manifest.exists() else {}
     samples = []
     for path in cell_paths(cells_dir):

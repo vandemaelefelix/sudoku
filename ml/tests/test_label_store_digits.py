@@ -1,19 +1,17 @@
 import json
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from PIL import Image
 from test_label_store import Clock, add_cell, build, pattern
 
-from sudoku_ml.kind_log import read_log
+from sudoku_ml.journal import read_journal
 from sudoku_ml.label_store import LabelStore
 
 
 def with_prelabels(tmp_path: Path, entries: dict[int, tuple[str, float, str]]):
     """Four unlabelled cells. entries: cell index → (digit, p, kind)."""
     paths, ids = build(tmp_path, {"unlabeled": 4, "3": 1}, {})
-    paths = replace(paths, prelabels=tmp_path / "data" / "work" / "prelabels.json")
     cells = {
         ids["unlabeled"][i]: {"digit": d, "p": p, "kind": k} for i, (d, p, k) in entries.items()
     }
@@ -59,7 +57,7 @@ def test_assign_moves_the_cells_and_logs_digit_lines(tmp_path: Path):
     assert (paths.cells / "2" / f"{u[0][:16]}.png").exists()
     assert (paths.cells / "9" / f"{u[1][:16]}.png").exists()
     assert (paths.cells / "discarded" / f"{u[3][:16]}.png").exists()
-    lines = read_log(paths.log)
+    lines = read_journal(paths.journal)
     assert {(x.old, x.new, x.screen, x.field) for x in lines} == {
         ("unlabeled", "2", "digits", "digit"),
         ("unlabeled", "9", "digits", "digit"),
@@ -83,7 +81,7 @@ def test_an_unknown_label_moves_nothing(tmp_path: Path, label: str):
     with pytest.raises(ValueError):
         store.assign([{"id": u[0], "digit": "2"}, {"id": u[1], "digit": label}], "digits")
     assert len(list((paths.cells / "unlabeled").glob("*.png"))) == 4
-    assert read_log(paths.log) == []
+    assert read_journal(paths.journal) == []
 
 
 def test_a_cell_outside_unlabeled_cannot_be_assigned(tmp_path: Path):
@@ -104,7 +102,6 @@ def with_kind_guesses(tmp_path: Path, guesses: dict[int, tuple[str, float] | Non
     """Five cells in folder 4, none in a stored group. guesses: index → (kind, kp) or None."""
     paths, ids = build(tmp_path, {"4": 5, "unlabeled": 1}, {})
     paths.groups.unlink()
-    paths = replace(paths, prelabels=tmp_path / "data" / "work" / "prelabels.json")
     cells = {
         ids["4"][i]: {"digit": "4", "p": 0.9, "kind": g[0], "kp": g[1]}
         for i, g in guesses.items()

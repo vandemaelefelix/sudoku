@@ -1,5 +1,5 @@
 """The model's digit and kind for each cell in cells/unlabeled/ and in the digit folders, for
-the Digits and Label kind screens. Writes ml/data/work/prelabels.json. A pre-label is a proposal:
+the Digits and Label kind screens. Writes data/work/prelabels.json. A pre-label is a proposal:
 only a person's confirmation is a label."""
 
 import json
@@ -11,8 +11,8 @@ import torch
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
+from sudoku_ml.data_paths import ML_ROOT, DataPaths
 from sudoku_ml.grouping import default_run
-from sudoku_ml.label_store import Paths
 from sudoku_ml.manifest import pixel_id, warn_unreadable, write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
@@ -77,7 +77,7 @@ def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:
     return len(todo)
 
 
-def main(argv: list[str], ml_root: Path = Path(__file__).parents[2]) -> int:
+def main(argv: list[str], paths: DataPaths | None = None, ml_root: Path = ML_ROOT) -> int:
     try:
         run = ml_root / argv[1] if len(argv) > 1 and argv[1] else default_run(ml_root)
     except FileNotFoundError:
@@ -85,7 +85,7 @@ def main(argv: list[str], ml_root: Path = Path(__file__).parents[2]) -> int:
     if run is None or not (run / "model.pt").exists():
         print(NO_MODEL, file=sys.stderr)
         return 0
-    paths = Paths.under(ml_root)
+    paths = paths or DataPaths.under()
     cells, out = paths.cells, paths.prelabels
     print(f"Pre-labelled {write_prelabels(cells, run, out)} new cells with {run.name}.")
     return 0

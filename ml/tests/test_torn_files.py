@@ -1,5 +1,5 @@
-"""A stop can tear a file. A torn derived file counts as missing, and a torn cells.csv is
-rebuilt (ADR-009)."""
+"""A stop can tear a file. A torn derived file counts as missing. A torn cells.csv stops the
+tool: it holds the finished kinds and sources, so git must restore it (ADR-018)."""
 
 import json
 from pathlib import Path
@@ -8,7 +8,6 @@ import pytest
 from test_label_store import Clock, build
 
 from sudoku_ml.dataset import read_ids
-from sudoku_ml.kind_log import read_log
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_import import read_detections
@@ -16,40 +15,40 @@ from sudoku_ml.photo_import import read_detections
 
 def test_the_manifest_is_written_through_a_part_file(tmp_path: Path):
     paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    write_cells_manifest(paths.cells, paths.manifest, paths.log)
-    assert not list(paths.manifest.parent.glob("*.part"))
-    assert len(read_ids(paths.manifest)) == 1
+    write_cells_manifest(paths)
+    assert not list(paths.cells_csv.parent.glob("*.part"))
+    assert len(read_ids(paths.cells_csv)) == 1
 
 
 @pytest.mark.parametrize("bad", ["a" * 30, "g" * 64, "", "A" * 64])
 def test_read_ids_refuses_an_id_that_is_not_64_hex(tmp_path: Path, bad: str):
     manifest = tmp_path / "cells.csv"
-    manifest.write_text(f"id,label,kind\n{'a' * 64},7,\n{bad},7,\n")
+    manifest.write_text(f"cell_id,digit,kind,photo_id,row,col\n{'a' * 64},7,,,,\n{bad},7,,,,\n")
     with pytest.raises(ValueError, match=r"cells.csv line 3"):
         read_ids(manifest)
 
 
-def test_a_cut_off_manifest_is_rebuilt_and_kinds_use_the_full_id(tmp_path: Path):
+def test_a_cut_off_manifest_stops_the_store_and_the_rewrite(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
     cell = ids["7"][1]
-    rows = paths.manifest.read_text().splitlines()
-    paths.manifest.write_text("\n".join(rows[:-1]) + f"\n{cell[:30]},7,")
-    store = LabelStore(paths, Clock())
-    store.save([{"id": cell, "kind": "printed"}], "groups")
-    assert {x.cell for x in read_log(paths.log)} == {cell}
-    assert write_cells_manifest(paths.cells, paths.manifest, paths.log) == 2
-    assert set(read_ids(paths.manifest).values()) == set(ids["7"])
+    rows = paths.cells_csv.read_text().splitlines()
+    torn = "\n".join(rows[:-1]) + f"\n{cell[:30]},7,"
+    paths.cells_csv.write_text(torn)
+    with pytest.raises(ValueError, match="Restore it from git."):
+        LabelStore(paths, Clock())
+    with pytest.raises(ValueError, match="Restore it from git."):
+        write_cells_manifest(paths)
+    assert paths.cells_csv.read_text() == torn
 
 
 def test_a_missing_manifest_is_treated_like_a_cut_off_one(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    paths.manifest.unlink()
+    paths.cells_csv.unlink()
     assert LabelStore(paths, Clock()).folder == {ids["7"][0]: "7"}
 
 
 def test_a_torn_prelabels_file_counts_as_missing(tmp_path: Path):
     paths, _ = build(tmp_path, {"unlabeled": 1}, {})
-    paths = type(paths)(**{**paths.__dict__, "prelabels": paths.work / "prelabels.json"})
     paths.prelabels.write_text('{"run": "r", "cel')
     store = LabelStore(paths, Clock())
     assert store.digit_screen("1")["cells"] == []
