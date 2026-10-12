@@ -17,7 +17,7 @@ type GameScreenProps = {
   /** New puzzle on the game over sheet. Without it, the sheet has no New puzzle button. */
   onNewPuzzle?: (() => void) | undefined
   /**
-   * Try this puzzle again on the game over sheet. The caller gives the screen a new React key, so the retried game is a new game.
+   * Try this puzzle again on the game over sheet. Give the screen a new React key in this callback. The retried game is then a new game.
    * Without it, the screen restarts the puzzle itself.
    */
   onRetry?: (() => void) | undefined

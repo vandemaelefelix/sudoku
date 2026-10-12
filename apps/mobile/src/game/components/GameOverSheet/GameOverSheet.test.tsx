@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import { Pressable, StyleSheet } from 'react-native'
+import { AccessibilityInfo, Pressable, StyleSheet } from 'react-native'
 import { useReducedMotion } from 'react-native-reanimated'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
@@ -67,6 +67,15 @@ it('covers the screen with the scrim and is modal for VoiceOver', () => {
     backgroundColor: daylight.colors.scrim,
   })
   expect(screen.getByRole('header', { name: 'Out of mistakes' })).toBeTruthy()
+})
+
+it('moves the VoiceOver focus to the title', () => {
+  // The React Native Jest setup makes this a shared mock, so it keeps the calls of earlier tests.
+  const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockClear()
+  renderSheet()
+  lose()
+  expect(focus).toHaveBeenCalledTimes(1)
+  expect(focus).toHaveBeenCalledWith(expect.anything(), 'focus')
 })
 
 it('calls back from each button', () => {

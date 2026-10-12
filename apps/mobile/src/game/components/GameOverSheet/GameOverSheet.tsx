@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { AccessibilityInfo, Pressable, Text, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -40,6 +40,11 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
     if (reduceMotion) return
     rise.set(withTiming(0, { duration: theme.motion.medium, easing: Easing.out(Easing.quad) }))
   }, [reduceMotion, rise, theme.motion.medium])
+  const title = useRef<Text>(null)
+  useEffect(() => {
+    // The modal scrim hides the grid, but VoiceOver focus stays on the key that ended the game.
+    if (title.current) AccessibilityInfo.sendAccessibilityEvent(title.current, 'focus')
+  }, [])
   const riseStyle = useAnimatedStyle(() => ({
     opacity: 1 - rise.value,
     transform: [{ translateY: rise.value * RISE_OFFSET }],
@@ -47,7 +52,7 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
   return (
     <View testID="game-over" style={styles.scrim} accessibilityViewIsModal>
       <Animated.View testID="game-over-sheet" style={[styles.sheet, riseStyle]}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text ref={title} accessibilityRole="header" style={styles.title}>
           Out of mistakes
         </Text>
         <Text style={styles.body}>
