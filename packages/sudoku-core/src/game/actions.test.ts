@@ -84,6 +84,12 @@ describe('place', () => {
     expect(place(game, 9).game).toBe(game)
   })
 
+  it('removes a wrong number from the notes of its peers too', () => {
+    const game = placed(select(noted(at(3), 1, 7), 2), 1)
+    expect(game.mistakes).toBe(1)
+    expect(game.notes[3]).toEqual([7])
+  })
+
   it('reports what the number completed and wins the game on the last cell', () => {
     const result = place(at(2, solvedExcept(2)), 4)
     expect(result.completed).toEqual({
@@ -207,10 +213,13 @@ describe('undo', () => {
     expect(undo(game).game).toBe(game)
   })
 
-  it('keeps at most UNDO_LIMIT steps', () => {
+  it('keeps at most UNDO_LIMIT steps and drops the oldest', () => {
     let game = at(2)
-    for (let step = 0; step <= UNDO_LIMIT; step++) game = toggleNote(game, 5).game
+    for (let move = 0; move <= UNDO_LIMIT; move++) game = toggleNote(game, 5).game
     expect(game.undoSteps).toHaveLength(UNDO_LIMIT)
+    for (let step = 0; step < UNDO_LIMIT; step++) game = undo(game).game
+    expect(game.notes[2]).toEqual([5])
+    expect(undo(game).game).toBe(game)
   })
 
   it('takes back a hint entry but keeps the hint count', () => {
