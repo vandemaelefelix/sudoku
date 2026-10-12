@@ -7,10 +7,10 @@
     "digit": 0,
     "kind": 1
   },
-  "run": "20261009-210543-cell-classifier",
+  "run": "20261012-000755-cell-classifier",
   "metrics": {
-    "digitAccuracy": 0.987097,
-    "ece": 0.006273
+    "digitAccuracy": 0.991531,
+    "ece": 0.002562
   },
-  "installedAt": "2026-10-11"
+  "installedAt": "2026-10-12"
 }
