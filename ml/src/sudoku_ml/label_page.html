@@ -303,7 +303,7 @@ function bannerFor() {
   if (mode === "photos") {
     if (photo) {
       return [corners ? `${DO.photos} Digits sideways? Press T. You cannot undo a photo.`
-        : "No grid found. Click the 4 corners, then press Enter.", []];
+        : "No grid found. Click the 4 corners, then press Enter. Press T after the 4 corners to turn the grid.", []];
     }
     if (!lastStatus) return ["", []];
     if (lastStatus.photos_total === 0) {
@@ -509,7 +509,9 @@ async function skipPhoto() {
 
 // A cyclic shift keeps the quad convex. The cells turn 90° clockwise. Four turns return to the start.
 async function turnGrid() {
-  if (!photo || !corners) return;
+  if (!photo) return;
+  if (clicks.length) return say("Finish the 4 corners first. Then press T.");
+  if (!corners) return say("Click the 4 corners first. Then press T to turn the grid.");
   corners = [corners[3], corners[0], corners[1], corners[2]];
   clicks = [];
   previewQuery = null;
