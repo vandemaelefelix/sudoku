@@ -51,7 +51,7 @@ export function CorrectionScreen({
   const cellSize = grid.width / 9
 
   const looks = useMemo(() => (result?.ok ? result.cells.map(cellLook) : []), [result])
-  const toCheck = result?.ok ? cellsToCheck(result.cells) : 0
+  const toCheck = cellsToCheck(looks)
 
   // The picture is made again when the theme changes (ADR-015, point 10).
   const board = useMemo(() => {

@@ -43,10 +43,8 @@ export function cellLook(cell: CellResult): CellLook {
   return { digit: String(cell.digit), style: cell.kind === 'printed' ? 'given' : 'entry', uncertain }
 }
 
-export function cellsToCheck(cells: CellResult[]): number {
-  let count = 0
-  for (const cell of cells) if (cellLook(cell).uncertain) count++
-  return count
+export function cellsToCheck(looks: readonly CellLook[]): number {
+  return looks.filter((look) => look.uncertain).length
 }
 
 /** The colours and widths (points) of the grid lines. frame: the outer square. box: the lines between the 3 × 3 boxes. */
