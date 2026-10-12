@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "import", "react", "jest", "vitest"],
+  "jsPlugins": ["./scripts/oxlint/sudoku-plugin.mjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -28,8 +29,18 @@
     "react/exhaustive-deps": "warn",
     "import/no-cycle": "error",
     "import/no-self-import": "error",
-    "oxc/no-barrel-file": ["error", { "threshold": 0 }],
-    "no-warning-comments": ["error", { "terms": ["todo", "fixme", "xxx", "hack"] }],
+    "oxc/no-barrel-file": [
+      "error",
+      {
+        "threshold": 0
+      }
+    ],
+    "no-warning-comments": [
+      "error",
+      {
+        "terms": ["todo", "fixme", "xxx", "hack"]
+      }
+    ],
     "unicorn/no-abusive-eslint-disable": "error",
     "react/react-in-jsx-scope": "off",
     "react/style-prop-object": "off",
@@ -40,6 +51,18 @@
       "files": ["apps/mobile/**"],
       "rules": {
         "import/no-relative-parent-imports": "error"
+      }
+    },
+    {
+      "files": ["apps/mobile/**/*.ts", "apps/mobile/**/*.tsx", "apps/mobile/**/*.js"],
+      "rules": {
+        "sudoku/no-colour-literal": "error"
+      }
+    },
+    {
+      "files": ["apps/mobile/src/theme/**"],
+      "rules": {
+        "sudoku/no-colour-literal": "off"
       }
     }
   ]

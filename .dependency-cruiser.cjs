@@ -62,11 +62,14 @@ module.exports = {
       to: { pathNot: '\\.constants\\.ts$', dependencyTypesNot: ['type-only'] },
     },
     {
-      name: 'styles-import-only-react-native',
-      comment: 'A styles file holds a static StyleSheet. Styles that need the theme stay in the component.',
+      name: 'styles-import-only-react-native-and-the-theme',
+      comment:
+        'A styles file holds StyleSheet.create from react-native-unistyles. It may read React Native and the fixed colours of src/theme/, nothing else (ADR-015).',
       severity: 'error',
       from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
-      to: { pathNot: '/node_modules/react-native/' },
+      to: {
+        pathNot: ['/node_modules/react-native/', '/node_modules/react-native-unistyles/', '^apps/mobile/src/theme/'],
+      },
     },
     {
       name: 'components-and-hooks-do-not-import-screens',

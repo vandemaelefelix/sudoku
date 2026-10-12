@@ -51,7 +51,7 @@ there.
 | File | Holds |
 | --- | --- |
 | `<Name>.tsx` | The component, screen or hook (`<name>.ts` for a hook) |
-| `<Name>.styles.ts` | The static `StyleSheet`. Styles that need `useColors()` stay in the component |
+| `<Name>.styles.ts` | The `StyleSheet` from `react-native-unistyles`. Themed styles live here: `StyleSheet.create(theme => …)` (ADR-015) |
 | `<Name>.constants.ts` | The constants that only this module uses |
 | `<Name>.test.tsx` | The tests |
 | `index.ts` | Named re-exports of the folder's public items. Nothing else |
@@ -75,9 +75,21 @@ effect: `<name>.effect.ts`, `<name>.constants.ts` and an `index.ts`. The effect 
    dependency-cruiser `no-circular`.
 5. A utils or constants file does not import React, React Native, components, screens or hooks.
    A constants file imports only other constants files and types.
-6. A styles file imports only React Native.
+6. A styles file imports only `react-native`, `react-native-unistyles` and `src/theme/`.
 7. A component or hook does not import a screen.
 8. A test mocks the path that the code imports, which is the folder path.
+
+### Theme
+
+The theme follows ADR-015. `src/theme/` holds every colour value.
+
+1. Do not write a colour value outside `src/theme/`. `just lint` refuses it.
+2. Read a token from the theme in a styles file. In a Skia surface, read it with `useUnistyles()`. Make the
+   paints again when the theme changes.
+3. Do not spread a Unistyles style. It loses the theme binding. Pass an array: `[styles.cell, { left }]`.
+4. Use a semantic token in most components. Use a component token only in its own component.
+5. Do not import the `palette.ts` file of a theme. Only the folder of that theme reads it.
+6. To add a theme, add a folder in `src/theme/themes/`. Register the theme in `src/theme/unistyles.ts`.
 
 ### Worklets
 
