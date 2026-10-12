@@ -82,6 +82,8 @@ export type Theme = {
     long: number
     /** The delay per cell of a pulse, in milliseconds. */
     pulseStep: number
+    /** The digit pop of a pulse, in milliseconds. The wave of a pulse uses long. */
+    pop: number
   }
   components: {
     grid: { frame: string; boxLine: string; cellLine: string }
@@ -100,5 +102,7 @@ export type Theme = {
     key: { fill: string; digit: string; noteDigit: string }
     switch: { on: string; off: string; knob: string }
     segmented: { track: string; selected: string }
+    /** waveOpacity: the opacity of colors.accent at the peak of the wave. popScale: the digit scale at the peak of the pop. */
+    pulse: { waveOpacity: number; popScale: number }
   }
 }

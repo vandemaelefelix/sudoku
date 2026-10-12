@@ -1,16 +1,21 @@
 import { BOXES, COLUMNS, ROWS, type Completion, type Game } from '@sudoku/core'
-import {
-  NO_PULSE,
-  POP_MS,
-  POP_PEAK_AT,
-  POP_SCALE,
-  PULSE_STEP_MS,
-  WAVE_MS,
-  WAVE_PEAK_AT,
-  WAVE_PEAK_OPACITY,
-} from '@/game/constants/pulse.constants'
+import { LONGEST_PULSE_STEPS, NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
+import type { Theme } from '@/theme/theme.types'
 import { columnOf, rowOf } from './grid.utils'
 import type { Move } from './session.utils'
+
+/** The theme tokens of one pulse. Times in milliseconds. */
+export type PulseLook = { stepMs: number; waveMs: number; popMs: number; waveOpacity: number; popScale: number }
+
+export function pulseLook({ motion, components }: Theme): PulseLook {
+  return {
+    stepMs: motion.pulseStep,
+    waveMs: motion.long,
+    popMs: motion.pop,
+    waveOpacity: components.pulse.waveOpacity,
+    popScale: components.pulse.popScale,
+  }
+}
 
 /** The cells that a completion pulses, in any order. */
 function pulsedCells(board: Game, completed: Completion): number[] {
@@ -29,8 +34,8 @@ function pulsedCells(board: Game, completed: Completion): number[] {
   return [...cells]
 }
 
-/** One delay per cell, row by row, in ms after the move. null when the move completed nothing. */
-export function pulseDelays(board: Game, move: Move | null): number[] | null {
+/** One delay per cell, row by row, in ms after the move: stepMs per step from the cell of the move. null when the move completed nothing. */
+export function pulseDelays(board: Game, move: Move | null, stepMs: number): number[] | null {
   if (move === null || move.cell === null) return null
   const cells = pulsedCells(board, move.completed)
   if (cells.length === 0) return null
@@ -38,14 +43,19 @@ export function pulseDelays(board: Game, move: Move | null): number[] | null {
   const delays = board.solution.map(() => NO_PULSE)
   for (const cell of cells) {
     const steps = Math.abs(rowOf(cell) - rowOf(origin)) + Math.abs(columnOf(cell) - columnOf(origin))
-    delays[cell] = steps * PULSE_STEP_MS
+    delays[cell] = steps * stepMs
   }
   return delays
 }
 
-/** The wave lasts longer than the pop, so the last wave ends the pulse. */
-export function pulseDuration(delays: readonly number[]): number {
-  return Math.max(...delays) + WAVE_MS
+/** The time from the move to the end of the last wave or pop. */
+export function pulseDuration(delays: readonly number[], look: PulseLook): number {
+  return Math.max(...delays) + Math.max(look.waveMs, look.popMs)
+}
+
+/** The longest pulse of a solved grid, from any cell. */
+export function solvePulseDuration(look: PulseLook): number {
+  return LONGEST_PULSE_STEPS * look.stepMs + Math.max(look.waveMs, look.popMs)
 }
 
 function easeOut(x: number): number {
@@ -60,14 +70,14 @@ function keyframe(t: number, peakAt: number): number {
   return t < peakAt ? easeOut(t / peakAt) : 1 - easeOut((t - peakAt) / (1 - peakAt))
 }
 
-export function waveOpacity(elapsed: number, delay: number): number {
+export function waveOpacity(elapsed: number, delay: number, look: PulseLook): number {
   'worklet'
   if (delay === NO_PULSE) return 0
-  return WAVE_PEAK_OPACITY * keyframe((elapsed - delay) / WAVE_MS, WAVE_PEAK_AT)
+  return look.waveOpacity * keyframe((elapsed - delay) / look.waveMs, WAVE_PEAK_AT)
 }
 
-export function popScale(elapsed: number, delay: number): number {
+export function popScale(elapsed: number, delay: number, look: PulseLook): number {
   'worklet'
   if (delay === NO_PULSE) return 1
-  return 1 + (POP_SCALE - 1) * keyframe((elapsed - delay) / POP_MS, POP_PEAK_AT)
+  return 1 + (look.popScale - 1) * keyframe((elapsed - delay) / look.popMs, POP_PEAK_AT)
 }

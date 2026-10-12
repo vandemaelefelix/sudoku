@@ -8,7 +8,8 @@ import type { CellView } from '@/game/utils/cell.utils'
 import { NOTE_PLACES } from './Cell.constants'
 import { styles } from './Cell.styles'
 
-type CellProps = CellView & { cell: number; label: string; pulse: Pulse; onSelect(cell: number): void }
+/** Without a pulse, the cell stays still: a grid outside a game has no moves. */
+type CellProps = CellView & { cell: number; label: string; pulse?: Pulse; onSelect(cell: number): void }
 
 /**
  * One cell. The props are primitives, plus onSelect and pulse, which keep their identity for the whole game.
@@ -25,12 +26,12 @@ export const Cell = memo(function Cell({
   pulse,
   onSelect,
 }: CellProps) {
-  const { delays, elapsed } = pulse
+  const { delays, elapsed, look } = pulse ?? {}
   const waveStyle = useAnimatedStyle(() => ({
-    opacity: waveOpacity(elapsed.get(), delays.get()[cell] ?? NO_PULSE),
+    opacity: look ? waveOpacity(elapsed?.get() ?? 0, delays?.get()[cell] ?? NO_PULSE, look.get()) : 0,
   }))
   const popStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: popScale(elapsed.get(), delays.get()[cell] ?? NO_PULSE) }],
+    transform: [{ scale: look ? popScale(elapsed?.get() ?? 0, delays?.get()[cell] ?? NO_PULSE, look.get()) : 1 }],
   }))
   return (
     <Pressable
@@ -40,7 +41,7 @@ export const Cell = memo(function Cell({
       onPress={() => onSelect(cell)}
       style={[styles.cell, styles[fill], ring && styles.ring]}
     >
-      <Animated.View testID={`cell-${cell}-wave`} style={[styles.wave, waveStyle]} />
+      {pulse && <Animated.View testID={`cell-${cell}-wave`} style={[styles.wave, waveStyle]} />}
       {digit !== 0 && (
         <Animated.Text allowFontScaling={false} style={[styles[digitStyle], popStyle]}>
           {digit}
