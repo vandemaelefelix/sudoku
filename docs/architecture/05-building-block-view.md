@@ -10,8 +10,13 @@ status: DRAFT
 sudoku/
 ├── apps/
 │   └── mobile/                  # Expo / React Native app: game UI, scan UI, local storage
+│       ├── src/app/             # routes (Expo Router, ADR-016): each file renders one screen
+│       ├── src/home/            # home UI: the levels, Continue, Scan and Settings
+│       ├── src/game/            # game UI: screens/, components/, hooks/, utils/, constants/
+│       ├── src/settings/        # settings UI and SettingsRepository: assists, theme
 │       ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
 │       ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
+│       ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)
 │       ├── src/utils/           # code that more than one feature uses: geometry, homography, logs
 │       └── assets/models/       # promoted model files + manifest.json (committed)
 ├── packages/
