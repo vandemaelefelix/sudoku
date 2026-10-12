@@ -24,7 +24,8 @@ def finish(store: LabelStore, photo_paths: PhotoPaths) -> dict:
     """Raises ValueError, with nothing deleted, when the data check finds a problem.
 
     The manifest is rewritten before the check: the check compares it with the folders, and a
-    session always leaves it behind. The rewrite only reads the folders and the log."""
+    session always leaves it behind. The rewrite only reads the folders and the log. The call may
+    append `repair` lines to kind-log.jsonl through `store.repair()`."""
     paths = store.paths
     store.repair()
     try:

@@ -230,13 +230,15 @@ def waiting_line(store: LabelStore, check: PhotoCheck) -> str:
 def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
     paths = Paths.under(ml_root)
     photo_paths = PhotoPaths.under(ml_root)
-    # A stop in the middle of a cut leaves a file that must not stay (ADR-009).
+    if argv[1:2] == ["rollback"]:
+        store = LabelStore(paths)
+        print(f"Reversed {store.rollback(argv[2])} lines.")
+        return 0
+    # Only after the rollback branch: a rollback in a second terminal must not delete the
+    # temporary file of a cut that runs in the server. A stopped cut leaves one (ADR-009).
     clear_temp(photo_paths)
     store = LabelStore(paths)
     check = PhotoCheck(photo_paths, store.session, lambda: datetime.now(UTC))
-    if argv[1:2] == ["rollback"]:
-        print(f"Reversed {store.rollback(argv[2])} lines.")
-        return 0
     repaired = store.repair()
     if repaired:
         print(f"Repaired {repaired} kinds on empty cells after a stop.")

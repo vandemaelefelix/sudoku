@@ -86,21 +86,27 @@ exactly which images trained it.
   `ml/datasets/`. The folder of a cell is its digit. The kind log holds the kinds.
 - Derived files live in `ml/data/work/`, outside git. They are `prelabels.json`,
   `detections.json`, `suspects.csv` and `groups.json`. The tool creates each file when it needs
-  it. A person can delete the whole folder at any time. The old locations `ml/data/prelabels.json`,
-  `ml/data/groups.json`, `ml/data/review/` and `ml/data/import/` are not read any more. A person
-  may delete them.
+  it. A person can delete the whole folder at any time. The old files `ml/data/prelabels.json`,
+  `ml/data/groups.json`, `ml/data/review/suspects.csv` and `ml/data/import/detections.json` are
+  not read any more. A person may delete them. `ml/data/review/relabels.csv` is the input of
+  `just relabel`. Do not delete it.
+- The tool writes `cells.csv` and each derived file to a `.part` file, then renames it. A
+  derived file that does not parse is treated as missing. The tool recomputes it. A `cells.csv`
+  that does not parse is rebuilt from the folders at the next start.
 - A cut writes each cell to `ml/data/work/tmp/` first. It then renames the file into
   `cells/unlabeled/`. The next start deletes a leftover file in `work/tmp/`.
 - A save is durable when its call returns. The files move first. The log lines follow. If the
   process stops between the two, the cell is in the right folder and has no log line. The folder
   gives the digit and the log gives the kind. The next start tolerates this state.
-- **Finish** is a button on the labelling page. It runs the data check. If the check fails, it
-  stops and deletes nothing. Otherwise it rewrites `cells.csv`. Then it deletes the derived files
-  and the detections of decided photos. It never touches `cells/`, `photos/` or `datasets/`.
-  Finish is safe to press twice.
+- **Finish** is a button on the labelling page. It rewrites `cells.csv`. Then it runs the data
+  check. If the check fails, it stops and deletes nothing. Otherwise it deletes the derived files
+  and the detections of decided photos. It never touches `cells/` or `photos/`. In `datasets/`
+  it changes only `cells.csv`, and it may append `repair` lines to `kind-log.jsonl` (a kind on a
+  cell in `empty/` after a stop). Finish is safe to press twice.
 - A person can stop at any time. Ctrl-C, a closed terminal and a crash keep every label. Unlabelled
   cells stay in `unlabeled/`. Pending photos stay pending.
-- `just check-data` is the **data check**. It prints a report and exits with 1 on a problem.
+- `just check-data` is the **data check**. It prints a report and exits with 1 on a problem. It
+  also tests that every cell id in `kind-log.jsonl` is a full id of an existing cell.
 
 ## Consequences
 
