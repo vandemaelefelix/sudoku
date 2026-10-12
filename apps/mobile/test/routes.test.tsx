@@ -5,8 +5,11 @@ import 'react-native-reanimated'
 import { Stack } from 'expo-router'
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library'
 import { Alert, type AlertButton } from 'react-native'
+import { useReducedMotion } from 'react-native-reanimated'
 import { GIVENS_TARGET, createGame, generate, type Game } from '@sudoku/core'
+import { formatPuzzleNumber } from '@/game/utils/finish.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
+import { newGame, wonGame } from '@/storage/repositories.contract'
 import GameRoute from '@/app/game'
 import HomeRoute from '@/app/index'
 import ScanRoute from '@/app/scan'
@@ -74,6 +77,15 @@ function loseGame(game: Game) {
   for (const digit of wrong) fireEvent.press(screen.getByLabelText(`Enter ${digit}`))
 }
 
+// A key is disabled only when all nine of its digits are placed, so the key of each open cell still works.
+function winGame(game: Game) {
+  game.givens.forEach((given, cell) => {
+    if (given !== 0) return
+    fireEvent.press(screen.getByTestId(`cell-${cell}`))
+    fireEvent.press(screen.getByLabelText(`Enter ${game.solution[cell]}`))
+  })
+}
+
 async function waitForLostEntry(storage: GameStorage) {
   await waitFor(async () => expect(await storage.history.list()).toMatchObject([{ result: 'lost' }]))
 }
@@ -87,7 +99,10 @@ beforeEach(() => {
   })
 })
 
-afterEach(() => jest.restoreAllMocks())
+afterEach(() => {
+  jest.restoreAllMocks()
+  jest.mocked(useReducedMotion).mockReturnValue(false)
+})
 
 it('opens on the home screen without Continue when no game is in progress', async () => {
   renderApp()
@@ -358,5 +373,64 @@ it('Back to home after a loss shows no Continue', async () => {
   await waitFor(() => expect(screen).toHavePathname('/'))
   expect(await screen.findByRole('button', { name: 'Easy' })).toBeTruthy()
   expect(await storage.puzzles.current()).toBeNull()
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Continue/ })).toBeNull())
+})
+
+it('a won game shows the finish card, and New puzzle starts a new game at the same level', async () => {
+  jest.mocked(useReducedMotion).mockReturnValue(true)
+  const storage = renderApp()
+  const won = await startGame(storage, 'Medium')
+  winGame(won.game)
+  await screen.findByTestId('finish')
+  expect(screen.getByText('Solved · Medium')).toBeTruthy()
+  expect(screen.getByText('New best')).toBeTruthy()
+  expect(screen.getByText(`Puzzle ${formatPuzzleNumber(won.seed ?? -1)}`)).toBeTruthy()
+  await waitFor(async () =>
+    expect(await storage.history.list()).toMatchObject([{ id: won.id, result: 'won', seed: won.seed }]),
+  )
+  fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
+  await waitFor(() => expect(screen.queryByTestId('finish')).toBeNull())
+  const next = await inProgress(storage)
+  expect(next.id).not.toBe(won.id)
+  expect(next.level).toBe('medium')
+})
+
+it('the finish card shows no New best when the stored best time is not beaten', async () => {
+  jest.mocked(useReducedMotion).mockReturnValue(true)
+  const storage = createMemoryStorage()
+  const earlier = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+  await storage.puzzles.save(earlier.id, wonGame(0))
+  renderApp(storage)
+  const won = await startGame(storage)
+  winGame(won.game)
+  await screen.findByTestId('finish')
+  expect(screen.queryByText('New best')).toBeNull()
+})
+
+it('the next game compares against the best time of the game that just finished', async () => {
+  jest.mocked(useReducedMotion).mockReturnValue(true)
+  const storage = renderApp()
+  const first = await startGame(storage)
+  winGame(first.game)
+  await screen.findByText('New best')
+  fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
+  await waitFor(() => expect(screen.queryByTestId('finish')).toBeNull())
+  await layOutBoard()
+  const second = await inProgress(storage)
+  winGame(second.game)
+  await screen.findByTestId('finish')
+  // Both games take 0 ms of play in Jest, and an equal time is not a new best.
+  expect(screen.queryByText('New best')).toBeNull()
+})
+
+it('Back to home on the finish card shows no Continue', async () => {
+  jest.mocked(useReducedMotion).mockReturnValue(true)
+  const storage = renderApp()
+  const won = await startGame(storage)
+  winGame(won.game)
+  await screen.findByTestId('finish')
+  fireEvent.press(within(screen.getByTestId('finish')).getByRole('button', { name: 'Back to home' }))
+  await waitFor(() => expect(screen).toHavePathname('/'))
+  expect(await screen.findByRole('button', { name: 'Easy' })).toBeTruthy()
   await waitFor(() => expect(screen.queryByRole('button', { name: /^Continue/ })).toBeNull())
 })
