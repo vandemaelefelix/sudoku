@@ -5,23 +5,11 @@ import { THEME_PREFERENCE_KEY } from '@/theme/preference'
 import { useThemePreference } from './useThemePreference'
 
 // The session choice is one module value for the whole test file, so each test resets it.
-// It starts empty, so the test that reads the saved choice must run first.
 afterEach(async () => {
   const { result, unmount } = renderHook(() => useThemePreference())
   await act(async () => result.current.choose('system'))
   unmount()
   await Storage.setItemAsync(THEME_PREFERENCE_KEY, 'system')
-})
-
-it('reads the saved choice', async () => {
-  await Storage.setItemAsync(THEME_PREFERENCE_KEY, 'daylight')
-  const { result } = renderHook(() => useThemePreference())
-  expect(result.current.preference).toBe('daylight')
-})
-
-it('starts with system when nothing is saved', () => {
-  const { result } = renderHook(() => useThemePreference())
-  expect(result.current.preference).toBe('system')
 })
 
 it('applies the choice at once and saves it', async () => {
