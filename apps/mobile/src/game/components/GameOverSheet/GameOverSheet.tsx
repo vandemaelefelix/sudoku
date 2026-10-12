@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { AccessibilityInfo, Pressable, Text, View } from 'react-native'
 import Animated, {
   Easing,
@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
+import { scheduleOnRN } from 'react-native-worklets'
 import { GRID_CELLS, type Game } from '@sudoku/core'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGameTime } from '@/game/hooks/useGameTime'
@@ -34,17 +35,24 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
   const time = formatClock(useGameTime())
   const { theme } = useUnistyles()
   const reduceMotion = useReducedMotion()
+  const title = useRef<Text>(null)
+  // The modal scrim hides the grid, but VoiceOver focus stays on the key that ended the game.
+  const focusTitle = useCallback(() => {
+    if (title.current) AccessibilityInfo.sendAccessibilityEvent(title.current, 'focus')
+  }, [])
   // 1 is the start of the rise and 0 its end. With Reduce Motion the sheet starts at its end.
   const rise = useSharedValue(reduceMotion ? 0 : 1)
   useEffect(() => {
-    if (reduceMotion) return
-    rise.set(withTiming(0, { duration: theme.motion.medium, easing: Easing.out(Easing.quad) }))
-  }, [reduceMotion, rise, theme.motion.medium])
-  const title = useRef<Text>(null)
-  useEffect(() => {
-    // The modal scrim hides the grid, but VoiceOver focus stays on the key that ended the game.
-    if (title.current) AccessibilityInfo.sendAccessibilityEvent(title.current, 'focus')
-  }, [])
+    if (reduceMotion) {
+      focusTitle()
+      return
+    }
+    rise.set(
+      withTiming(0, { duration: theme.motion.medium, easing: Easing.out(Easing.quad) }, (finished) => {
+        if (finished) scheduleOnRN(focusTitle)
+      }),
+    )
+  }, [focusTitle, reduceMotion, rise, theme.motion.medium])
   const riseStyle = useAnimatedStyle(() => ({
     opacity: 1 - rise.value,
     transform: [{ translateY: rise.value * RISE_OFFSET }],

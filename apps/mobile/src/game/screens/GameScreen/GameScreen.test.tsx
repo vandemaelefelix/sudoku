@@ -102,6 +102,7 @@ it('starts the same puzzle again from Try this puzzle again', () => {
   expect(screen.getByText('00:00')).toBeTruthy()
   layoutBoard()
   expect(screen.getByLabelText('Row 1, column 3, empty')).toBeTruthy()
+  expect(screen.getByLabelText('Row 1, column 1, given 5')).toBeTruthy()
   expect(screen.getByLabelText('Hint')).toBeEnabled()
   expect(screen.getByLabelText('Undo')).toBeDisabled()
   act(() => jest.advanceTimersByTime(3000))

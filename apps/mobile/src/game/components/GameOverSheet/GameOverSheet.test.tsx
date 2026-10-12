@@ -69,13 +69,40 @@ it('covers the screen with the scrim and is modal for VoiceOver', () => {
   expect(screen.getByRole('header', { name: 'Out of mistakes' })).toBeTruthy()
 })
 
-it('moves the VoiceOver focus to the title', () => {
-  // The React Native Jest setup makes this a shared mock, so it keeps the calls of earlier tests.
-  const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockClear()
+// The React Native Jest setup makes this a shared mock, so it keeps the calls of earlier tests.
+const focusSpy = () => jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockClear()
+
+// The ref of the title is the Text component, so the test finds it by its props.
+const theTitle = expect.objectContaining({
+  props: expect.objectContaining({ accessibilityRole: 'header', children: 'Out of mistakes' }),
+})
+
+it('moves the VoiceOver focus to the title when the rise ends', () => {
+  const focus = focusSpy()
+  let endRise: ((finished?: boolean) => void) | undefined
+  jest.spyOn(reanimated, 'withTiming').mockImplementation((toValue, _config, callback) => {
+    endRise = callback
+    return toValue
+  })
+  renderSheet()
+  lose()
+  expect(focus).not.toHaveBeenCalled()
+  // The end of the rise reaches the JS thread through a microtask, which the fake timers hold.
+  act(() => {
+    endRise?.(true)
+    jest.runAllTicks()
+  })
+  expect(focus).toHaveBeenCalledTimes(1)
+  expect(focus).toHaveBeenCalledWith(theTitle, 'focus')
+})
+
+it('moves the VoiceOver focus to the title at once with Reduce Motion', () => {
+  jest.mocked(useReducedMotion).mockReturnValue(true)
+  const focus = focusSpy()
   renderSheet()
   lose()
   expect(focus).toHaveBeenCalledTimes(1)
-  expect(focus).toHaveBeenCalledWith(expect.anything(), 'focus')
+  expect(focus).toHaveBeenCalledWith(theTitle, 'focus')
 })
 
 it('calls back from each button', () => {
@@ -111,7 +138,11 @@ it('rises over the medium duration', () => {
   const timing = jest.spyOn(reanimated, 'withTiming')
   renderSheet()
   lose()
-  expect(timing).toHaveBeenCalledWith(0, expect.objectContaining({ duration: daylight.motion.medium }))
+  expect(timing).toHaveBeenCalledWith(
+    0,
+    expect.objectContaining({ duration: daylight.motion.medium }),
+    expect.any(Function),
+  )
 })
 
 it('shows the sheet at once with Reduce Motion', () => {
