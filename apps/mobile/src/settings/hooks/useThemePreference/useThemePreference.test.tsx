@@ -38,3 +38,14 @@ it('keeps the choice for this session when the save fails', async () => {
   expect(log).toHaveBeenCalledWith('[theme] theme not saved: disk full')
   log.mockRestore()
 })
+
+it('keeps the choice after the screen closes when the save failed', async () => {
+  jest.mocked(Storage.setItemAsync).mockRejectedValueOnce(new Error('disk full'))
+  const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+  const first = renderHook(() => useThemePreference())
+  await act(async () => first.result.current.choose('midnight'))
+  first.unmount()
+  const second = renderHook(() => useThemePreference())
+  expect(second.result.current.preference).toBe('midnight')
+  log.mockRestore()
+})
