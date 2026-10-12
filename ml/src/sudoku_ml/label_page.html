@@ -375,7 +375,7 @@ function bannerFor() {
     return [`Every cell has a kind. ${STOP_SUSPECTS}`, [goTo("Open Review", "review")]];
   }
   if (mode === "review") {
-    return screen && !screen.open ? [`Nothing to review. ${STOP_SUSPECTS}`, []] : [DO.review, []];
+    return screen && !screen.open ? [`Nothing to review yet. ${STOP_SUSPECTS}`, []] : [DO.review, []];
   }
   if (mode === "check") {
     if (checkDone) return ["The check is done. Next: open Review.", [goTo("Open Review", "review")]];
@@ -807,7 +807,7 @@ async function open(next, target) {
       say("Loading. The first time takes about half a minute: the server reads every cell to find near-duplicates.");
       if (mode === "review") {
         setScreen(await api("/api/review"));
-        if (screen.open) say("");
+        say("");
       } else {
         const value = await api("/api/check");
         if (value.error) { render(); return say(value.error); }
