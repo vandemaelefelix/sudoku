@@ -107,6 +107,7 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "The model thinks these cells are handwritten.",
         "The model sees no printed or handwritten digit in these cells. Press P or H, click",
         "none or notes",
+        "Nothing to review yet. ${STOP_SUSPECTS}",
         "The model reads ${cell.model_kind} (",
         "no model guess yet.",
     ):
