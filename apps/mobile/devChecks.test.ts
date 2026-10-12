@@ -29,8 +29,8 @@ describe('runDevChecks', () => {
 
   it('does nothing in a release build', () => {
     Reflect.set(globalThis, '__DEV__', false)
-    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    jest.mocked(Mat.create).mockClear()
     runDevChecks()
-    expect(log).not.toHaveBeenCalled()
+    expect(Mat.create).not.toHaveBeenCalled()
   })
 })

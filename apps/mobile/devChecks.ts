@@ -17,9 +17,13 @@ export function logModelParity(reference: ReferenceOutputs) {
     .catch((error: unknown) => devLog('scanner', `model parity FAILED: ${errorMessage(error)}`))
 }
 
-/** Runs in a development build only. Inside the __DEV__ branch, so a release bundle leaves the 450 KB reference file out. */
+/**
+ * Runs in a development build only. The require stays inside the __DEV__ branch: Metro then removes the
+ * branch from a release bundle, with the 450 KB reference file. An early return keeps the require.
+ */
 export function runDevChecks(): void {
-  if (!__DEV__) return
-  logOpenCVProbe()
-  logModelParity(require('./assets/models/reference-outputs.json'))
+  if (__DEV__) {
+    logOpenCVProbe()
+    logModelParity(require('./assets/models/reference-outputs.json'))
+  }
 }
