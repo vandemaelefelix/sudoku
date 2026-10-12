@@ -1,0 +1,40 @@
+import { act, renderHook } from '@testing-library/react-native'
+import Storage from 'expo-sqlite/kv-store'
+import { UnistylesRuntime } from 'react-native-unistyles'
+import { THEME_PREFERENCE_KEY } from '@/theme/preference'
+import { useThemePreference } from './useThemePreference'
+
+afterEach(async () => {
+  await Storage.setItemAsync(THEME_PREFERENCE_KEY, 'system')
+})
+
+it('starts with system when nothing is saved', () => {
+  const { result } = renderHook(() => useThemePreference())
+  expect(result.current.preference).toBe('system')
+})
+
+it('reads the saved choice', async () => {
+  await Storage.setItemAsync(THEME_PREFERENCE_KEY, 'daylight')
+  const { result } = renderHook(() => useThemePreference())
+  expect(result.current.preference).toBe('daylight')
+})
+
+it('applies the choice at once and saves it', async () => {
+  const setTheme = jest.spyOn(UnistylesRuntime, 'setTheme')
+  const { result } = renderHook(() => useThemePreference())
+  await act(async () => result.current.choose('midnight'))
+  expect(result.current.preference).toBe('midnight')
+  expect(setTheme).toHaveBeenCalledWith('dark')
+  expect(Storage.setItemAsync).toHaveBeenLastCalledWith(THEME_PREFERENCE_KEY, 'midnight')
+  setTheme.mockRestore()
+})
+
+it('keeps the choice for this session when the save fails', async () => {
+  jest.mocked(Storage.setItemAsync).mockRejectedValueOnce(new Error('disk full'))
+  const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+  const { result } = renderHook(() => useThemePreference())
+  await act(async () => result.current.choose('daylight'))
+  expect(result.current.preference).toBe('daylight')
+  expect(log).toHaveBeenCalledWith('[theme] theme not saved: disk full')
+  log.mockRestore()
+})
