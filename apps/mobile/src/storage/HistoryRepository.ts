@@ -1,7 +1,7 @@
 import type { SqlExecutor } from './sql.types'
 import type { GameResult, HistoryEntry, Level, PuzzleSource } from './storage.types'
 
-/** The shortest time played of a won game without hints, per level. A level without such a game is missing. */
+/** The shortest time played of a won generated game without hints, per level (ADR-012). A level without such a game is missing. */
 export type BestTimes = Partial<Record<Level, number>>
 
 /** Finished and lost games (ADR-012). A game reaches the history through PuzzleRepository.save. */
@@ -15,6 +15,7 @@ type HistoryRow = {
   id: string
   level: Level
   source: PuzzleSource
+  seed: number | null
   result: GameResult
   played_ms: number
   mistakes: number
@@ -26,12 +27,13 @@ type HistoryRow = {
 export async function insertHistoryEntry(txn: SqlExecutor, entry: HistoryEntry): Promise<void> {
   await txn.runAsync(
     `INSERT INTO game_history
-      (id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, level, source, seed, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       entry.id,
       entry.level,
       entry.source,
+      entry.seed,
       entry.result,
       entry.playedMs,
       entry.mistakes,
@@ -47,7 +49,7 @@ export function createSqliteHistoryRepository(db: SqlExecutor): HistoryRepositor
   return {
     async list() {
       const rows = await db.getAllAsync<HistoryRow>(
-        `SELECT id, level, source, result, played_ms, mistakes, hints_used, finished_at
+        `SELECT id, level, source, seed, result, played_ms, mistakes, hints_used, finished_at
           FROM game_history WHERE deleted_at IS NULL ORDER BY finished_at DESC, rowid DESC`,
         [],
       )
@@ -55,6 +57,7 @@ export function createSqliteHistoryRepository(db: SqlExecutor): HistoryRepositor
         id: row.id,
         level: row.level,
         source: row.source,
+        seed: row.seed,
         result: row.result,
         playedMs: row.played_ms,
         mistakes: row.mistakes,
@@ -65,7 +68,7 @@ export function createSqliteHistoryRepository(db: SqlExecutor): HistoryRepositor
     async bestTimes() {
       const rows = await db.getAllAsync<{ level: Level; best: number }>(
         `SELECT level, MIN(played_ms) AS best FROM game_history
-          WHERE result = 'won' AND hints_used = 0 AND deleted_at IS NULL GROUP BY level`,
+          WHERE result = 'won' AND hints_used = 0 AND source = 'generated' AND deleted_at IS NULL GROUP BY level`,
         [],
       )
       const best: BestTimes = {}

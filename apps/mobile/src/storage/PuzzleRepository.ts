@@ -7,7 +7,7 @@ import type { GameResult, Level, PuzzleSource, SavedProgress, StorageDeps } from
 /** The game in progress (ADR-012). Screens use this interface, never SQL. */
 export type PuzzleRepository = {
   /** Starts a game in progress and discards the one before it. Throws a RangeError for a won or lost game. */
-  start(input: { level: Level; source: PuzzleSource; game: Game }): Promise<SavedProgress>
+  start(input: { level: Level; source: PuzzleSource; seed?: number | null; game: Game }): Promise<SavedProgress>
   /** The game in progress, or null. A saved game that does not load gives null and stays in storage. */
   current(): Promise<SavedProgress | null>
   /**
@@ -22,7 +22,7 @@ export function resultOf(game: Game): GameResult | null {
   return game.status === 'won' || game.status === 'lost' ? game.status : null
 }
 
-type ProgressRow = { id: string; level: Level; source: PuzzleSource; saved_game: string }
+type ProgressRow = { id: string; level: Level; source: PuzzleSource; seed: number | null; saved_game: string }
 
 /** Runs each task after the one before. Two exclusive transactions on one connection must not overlap. */
 function createQueue() {
@@ -38,7 +38,7 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
   const inOrder = createQueue()
 
   return {
-    start: ({ level, source, game }) =>
+    start: ({ level, source, seed = null, game }) =>
       inOrder(async () => {
         if (resultOf(game) !== null) throw new RangeError(`A ${game.status} game cannot start`)
         const id = deps.newId()
@@ -49,25 +49,25 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
             now,
           ])
           await txn.runAsync(
-            `INSERT INTO game_in_progress (id, level, source, saved_game, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, level, source, JSON.stringify(toSavedGame(game)), now, now],
+            `INSERT INTO game_in_progress (id, level, source, seed, saved_game, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, level, source, seed, JSON.stringify(toSavedGame(game)), now, now],
           )
         })
-        return { id, level, source, game }
+        return { id, level, source, seed, game }
       }),
 
     current: () =>
       inOrder(async () => {
         const row = await db.getFirstAsync<ProgressRow>(
-          `SELECT id, level, source, saved_game FROM game_in_progress
+          `SELECT id, level, source, seed, saved_game FROM game_in_progress
             WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
           [],
         )
         if (row === null) return null
         try {
           const game = fromSavedGame(JSON.parse(row.saved_game))
-          return { id: row.id, level: row.level, source: row.source, game }
+          return { id: row.id, level: row.level, source: row.source, seed: row.seed, game }
         } catch (error) {
           // Keep the row: a later app version can still load it. Only start() discards it.
           devWarn('storage', `The saved game ${row.id} does not load: ${errorMessage(error)}`)
@@ -78,8 +78,8 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
     save: (id, game) =>
       inOrder(() =>
         db.withExclusiveTransactionAsync(async (txn) => {
-          const row = await txn.getFirstAsync<Pick<ProgressRow, 'level' | 'source'>>(
-            'SELECT level, source FROM game_in_progress WHERE id = ? AND deleted_at IS NULL',
+          const row = await txn.getFirstAsync<Pick<ProgressRow, 'level' | 'source' | 'seed'>>(
+            'SELECT level, source, seed FROM game_in_progress WHERE id = ? AND deleted_at IS NULL',
             [id],
           )
           if (row === null) return
@@ -94,6 +94,7 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
               id,
               level: row.level,
               source: row.source,
+              seed: row.seed,
               result,
               playedMs: game.playedMs,
               mistakes: game.mistakes,
