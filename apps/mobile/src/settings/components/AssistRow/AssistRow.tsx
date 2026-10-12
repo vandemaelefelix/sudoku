@@ -20,11 +20,11 @@ type AssistRowProps = {
 export function AssistRow({ label, description, value, divider, onChange }: AssistRowProps) {
   return (
     <View testID={`assist-row-${label}`} style={[styles.row, divider && styles.divider]}>
-      <View style={styles.text}>
+      <View style={styles.text} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.description}>{description}</Text>
       </View>
-      <ThemedSwitch accessibilityLabel={label} value={value} onValueChange={onChange} />
+      <ThemedSwitch accessibilityLabel={label} accessibilityHint={description} value={value} onValueChange={onChange} />
     </View>
   )
 }

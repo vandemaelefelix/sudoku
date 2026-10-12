@@ -5,10 +5,24 @@ import { AssistRow } from './AssistRow'
 
 const props = { label: 'Box', description: 'Shade the 3×3 box of the selected cell.', value: true, divider: false }
 
+// The switch speaks for the row, so VoiceOver skips the visible text.
+const hidden = { includeHiddenElements: true }
+
 it('shows the label and the description', () => {
   render(<AssistRow {...props} onChange={jest.fn()} />)
-  expect(screen.getByText('Box')).toBeTruthy()
-  expect(screen.getByText('Shade the 3×3 box of the selected cell.')).toBeTruthy()
+  expect(screen.getByText('Box', hidden)).toBeTruthy()
+  expect(screen.getByText(props.description, hidden)).toBeTruthy()
+})
+
+it('hides the visible text from VoiceOver', () => {
+  render(<AssistRow {...props} onChange={jest.fn()} />)
+  expect(screen.queryByText('Box')).toBeNull()
+  expect(screen.queryByText(props.description)).toBeNull()
+})
+
+it('gives the switch the description as the hint', () => {
+  render(<AssistRow {...props} onChange={jest.fn()} />)
+  expect(screen.getByLabelText('Box').props.accessibilityHint).toBe(props.description)
 })
 
 it('gives the switch the label and the value, so VoiceOver reads both', () => {

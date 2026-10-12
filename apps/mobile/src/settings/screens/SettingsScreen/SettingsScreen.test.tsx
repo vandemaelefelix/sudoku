@@ -26,7 +26,9 @@ afterEach(async () => {
 
 it('lists the four assists in the canvas order, all on by default', () => {
   render(<SettingsScreen onBack={jest.fn()} />)
-  const labels = screen.getAllByText(/^(Row and column|Box|Selected cell|Same numbers)$/)
+  const labels = screen.getAllByText(/^(Row and column|Box|Selected cell|Same numbers)$/, {
+    includeHiddenElements: true,
+  })
   expect(labels.map((label) => label.props.children)).toEqual(LABELS)
   for (const label of LABELS) expect(screen.getByLabelText(label).props.value).toBe(true)
 })
