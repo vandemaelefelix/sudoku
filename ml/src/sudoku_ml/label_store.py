@@ -34,6 +34,7 @@ from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items
 from sudoku_ml.manifest import (
     base_kinds,
     base_sources,
+    check_image_store,
     pixel_id,
     read_cells_table,
     repair_lines,
@@ -91,9 +92,11 @@ class LabelStore:
         )
 
     def _load(self) -> None:
-        """Raises ValueError when cells.csv does not parse: it holds the finished kinds and
-        sources, so the store refuses to start without it (ADR-018)."""
+        """Raises ValueError when cells.csv does not parse, or when the image store is missing
+        or wrong: cells.csv holds the finished kinds and sources, so the store refuses to start
+        without it (ADR-018)."""
         table = read_cells_table(self.paths.cells_csv)
+        check_image_store(self.paths, table)
         self._base_kinds, self._base_sources = base_kinds(table), base_sources(table)
         listed = {cell[:16]: cell for cell in table}
         self._stem_ids = {**listed, **self._registered}

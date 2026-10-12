@@ -80,9 +80,9 @@ export run:
 install-model run version="1.0.0":
     uv run --directory ml python -m sudoku_ml.install {{run}} ../apps/mobile/assets/models {{version}}
 
-# Rewrite data/cells.csv from the cell folders and the journal
-dataset-manifest:
-    uv run --directory ml python -m sudoku_ml.manifest
+# Rewrite data/cells.csv from the cell folders and the journal. --forget-missing drops the rows of vanished cells
+dataset-manifest *flags:
+    uv run --directory ml python -m sudoku_ml.manifest {{flags}}
 
 # Copy a folder of sudoku photos into the image store and find the grid in each. Options: --source, --licence
 import-photos folder *flags:
