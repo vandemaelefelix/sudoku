@@ -129,3 +129,4 @@ The Settings screen has two groups:
 | --- | --- |
 | SUD-01 | The game and the scanner MUST work fully without a network connection. |
 | SUD-04 | `@sudoku/core` MUST NOT depend on React Native, Expo or any I/O. |
+| Touch target | Every button and key MUST have a touch target of 44 pt or more. The grid cells are the one exception: nine cells share about 358 pt on a 390 pt screen, so each cell is about 38 pt. |

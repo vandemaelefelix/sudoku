@@ -1,4 +1,11 @@
-import { SHARED_MOTION, SHARED_SHAPE, SHARED_SPACE, SHARED_TYPE } from '@/theme/shared.tokens'
+import {
+  SHARED_MOTION,
+  SHARED_OPACITY,
+  SHARED_SHAPE,
+  SHARED_SIZE,
+  SHARED_SPACE,
+  SHARED_TYPE,
+} from '@/theme/shared.tokens'
 import type { Theme } from '@/theme/theme.types'
 import { palette as p } from './palette'
 
@@ -29,6 +36,8 @@ export const daylight: Theme = {
   type: SHARED_TYPE,
   space: SHARED_SPACE,
   shape: SHARED_SHAPE,
+  size: SHARED_SIZE,
+  opacity: SHARED_OPACITY,
   elevation: {
     key: '0 1px 2px rgba(20,24,33,0.10)',
     sheet: '0 24px 60px -20px rgba(0,0,0,0.35)',

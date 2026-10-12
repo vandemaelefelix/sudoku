@@ -53,7 +53,22 @@ export type Theme = {
     radius: { sm: number; md: number; lg: number; xl: number; pill: number }
     /** The grid draws its lines as gaps (ADR-015, point 6). Widths in points. */
     gridLine: { outer: number; box: number; cell: number }
+    /** Border widths in points. */
+    stroke: { thin: number; dot: number; ring: number }
   }
+  /** Fixed sizes in points. touch is the smallest touch target of a button. */
+  size: {
+    touch: number
+    icon: number
+    header: number
+    tool: number
+    key: { width: number; height: number }
+    pill: { height: number; paddingHorizontal: number }
+    dot: { size: number; gap: number }
+    noteInset: number
+  }
+  /** disabled: a control that cannot act now. locked: the controls of a game that ended. */
+  opacity: { disabled: number; locked: number }
   elevation: {
     /** React Native boxShadow strings, or 'none'. */
     key: string
