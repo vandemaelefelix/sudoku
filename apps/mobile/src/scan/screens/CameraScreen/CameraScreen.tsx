@@ -36,18 +36,15 @@ import { styles } from './CameraScreen.styles'
  * The live camera, and from lock-on the capture transition into the correction screen.
  * layout: the correction screen layout that the transition ends on. onDone: called once when the transition ends, with an ok result.
  * onRetake: the parent mounts a new CameraScreen, so the scene, its lock-on latch and the transition start new.
- * armed: false for a CameraScreen after a Retake, so auto lock-on waits for a change of view (scan-pipeline concept).
  */
 export function CameraScreen({
   layout,
   onDone,
   onRetake,
-  armed = true,
 }: {
   layout: CorrectionLayout
   onDone: (result: RecogniseResult) => void
   onRetake: () => void
-  armed?: boolean
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
@@ -123,7 +120,6 @@ export function CameraScreen({
         onLock={startCapture}
         capture={captureFrame}
         beforeFrame={stepClock}
-        armed={armed}
       />
       {capturing != null ? (
         <CorrectionScreen

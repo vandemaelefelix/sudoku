@@ -289,8 +289,36 @@ describe('lock-on', () => {
     expect(onLock).toHaveBeenCalledWith(NORMALISED)
     log.mockRestore()
   })
+})
 
-  it('never calls onLock while the scene is not armed and the grid stays in view', async () => {
+const lockLines = (log: jest.SpyInstance) =>
+  log.mock.calls.map((call) => String(call[0])).filter((line) => line.startsWith('[lock] '))
+
+describe('the lock log', () => {
+  it('logs the lock-on rules four times per second in the live phase', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(null)}
+        onLock={jest.fn()}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    for (let ms = 0; ms < 2000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    await new Promise((resolve) => setImmediate(resolve))
+    const lines = lockLines(log)
+    expect(lines.length).toBeGreaterThanOrEqual(7)
+    expect(lines.length).toBeLessThanOrEqual(9)
+    expect(lines.at(-1)).toMatch(
+      /^\[lock\] grid yes, steady (yes|no) \(motion \d\.\d\d, speed \d+\.\d pt\/s\), drift \d+\.\d pt\/s moving (yes|no)/,
+    )
+    log.mockRestore()
+  })
+
+  it('logs that onLock is not called when the scene locks on without a frame quad', async () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {})
     const onLock = jest.fn()
     render(
@@ -298,15 +326,40 @@ describe('lock-on', () => {
         outline={fresh(grid)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
-        frameQuad={constant<Quad | null>(NORMALISED)}
+        frameQuad={constant<Quad | null>(null)}
         onLock={onLock}
-        armed={false}
       />,
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
-    for (let ms = 0; ms <= 5000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    for (let ms = 0; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
     await new Promise((resolve) => setImmediate(resolve))
     expect(onLock).not.toHaveBeenCalled()
+    expect(lockLines(log)).toContain('[lock] locked, but frameQuad is null: onLock not called')
+    log.mockRestore()
+  })
+
+  it('does not log the lock-on rules in the capture phase', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const value = shared<CaptureFrame | null>(null)
+    render(
+      <EffectCanvas
+        outline={fresh(grid)}
+        view={constant(VIEW)}
+        effect={constant(DEFAULT_INDEX)}
+        frameQuad={constant<Quad | null>(null)}
+        onLock={jest.fn()}
+        capture={value}
+      />,
+    )
+    const callback = frameCallback.mock.calls.at(-1)![0]
+    callback({ timestamp: 0 } as never)
+    Object.assign(value, { value: { quad: grid, grid, channels: transitionAt(0.2, false) } })
+    // The first frame logs in the live phase. The worklets mock delivers it in a microtask, so wait before the clear.
+    await new Promise((resolve) => setImmediate(resolve))
+    log.mockClear()
+    for (let ms = 1000 / 60; ms < 2000; ms += 1000 / 60) callback({ timestamp: ms } as never)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(lockLines(log)).toEqual([])
     log.mockRestore()
   })
 })
