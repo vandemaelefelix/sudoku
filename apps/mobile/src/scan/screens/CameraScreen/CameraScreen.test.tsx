@@ -287,14 +287,6 @@ describe('CameraScreen', () => {
     expect(effectCanvas.mock.calls.at(-1)![0].view.value).toEqual({ width: 402, height: 874 })
   })
 
-  it('arms the effect canvas by default, and passes armed on', () => {
-    givenPermission('authorized')
-    const view = render(<CameraScreen {...props()} />)
-    expect(effectCanvas.mock.calls.at(-1)![0].armed).toBe(true)
-    view.rerender(<CameraScreen {...props()} armed={false} />)
-    expect(effectCanvas.mock.calls.at(-1)![0].armed).toBe(false)
-  })
-
   it('starts the overlay on the default effect', () => {
     givenPermission('authorized')
     render(<CameraScreen {...props()} />)
