@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image
 
 from sudoku_ml.contract import CELL_SIZE
+from sudoku_ml.data_check import link_line
 from sudoku_ml.flatten import (
     GRID_CELLS,
     check_corners,
@@ -36,7 +37,6 @@ from sudoku_ml.photo_import import (
 MIN_CELLS = 10  # fewer usable cells are not worth the labelling time
 DISPLAY_SIZE = 1600
 ORIGIN_FIELDS = ["cell", "photo", "row", "col"]
-LINK_LINE = "linked {linked} of {total} cells; the others come from before the link existed"
 FLAT_CACHE = 16  # flattened grids: the person moves across the cells of several photos
 
 
@@ -81,7 +81,12 @@ class PhotoCheck:
 
     def pending(self) -> list[str]:
         decided = self._decided()
-        return [stem for stem, row in self._rows().items() if row["id"] not in decided]
+        # A missing file would fail the Photos screen. The data check reports it.
+        return [
+            stem
+            for stem, row in self._rows().items()
+            if row["id"] not in decided and (self.paths.photos / row["file"]).exists()
+        ]
 
     def _outline(self, stem: str, photo_id: str) -> dict:
         # The file holds pending photos only. A missing entry is computed again and stored.
@@ -175,7 +180,7 @@ class PhotoCheck:
         """How many of `cells` (full ids) have an origin row. Cheap, for the Progress page."""
         rows = self._origin_rows()
         linked = sum(cell[:16] in rows for cell in cells)
-        return LINK_LINE.format(linked=linked, total=len(cells))
+        return link_line(linked, len(cells))
 
     def _accepted_corners(self, photo_id: str) -> list[list[float]] | None:
         found = None

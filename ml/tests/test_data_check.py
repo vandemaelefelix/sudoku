@@ -37,6 +37,17 @@ def valid_root(tmp_path: Path) -> Path:
     old.mkdir(parents=True)
     Image.new("RGB", (64, 64), (9, 9, 9)).save(old / "tmp.png")
     paths = Paths.under(root)
+    bin_ = photo_paths.cells / "discarded"
+    bin_.mkdir()
+    Image.new("RGB", (64, 64), (7, 7, 7)).save(bin_ / "tmp.png")
+    binned = pixel_id(bin_ / "tmp.png")
+    (bin_ / "tmp.png").rename(bin_ / f"{binned[:16]}.png")
+    # Rows from before the licence columns have only these three.
+    rows = list(csv.DictReader(photo_paths.manifest.open()))
+    with photo_paths.manifest.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["id", "file", "origin"])
+        writer.writeheader()
+        writer.writerows({k: r[k] for k in ("id", "file", "origin")} for r in rows)
     cell_id = pixel_id(old / "tmp.png")
     (old / "tmp.png").rename(old / f"{cell_id[:16]}.png")
     write_cells_manifest(paths.cells, paths.manifest, paths.log)
@@ -52,9 +63,10 @@ def test_a_valid_root_has_no_problems_and_a_report(tmp_path: Path):
     assert report["problems"] == []
     assert report["photos"] == {"accepted": 1, "rejected": 1, "pending": 1}
     assert report["waiting_cells"] > 0 and report["pending_photos"] == 1
-    assert report["linked"] == report["total_cells"] - 1
+    assert report["linked"] == report["total_cells"] - 2
+    assert report["cells"]["discarded"] == 1
     text = format_report(report)
-    assert f"linked {report['linked']} of {report['total_cells']} cells; the others" in text.lower()
+    assert f"Linked {report['linked']} of {report['total_cells']} cells. Cells without" in text
     assert "Waiting:" in text
 
 
@@ -118,6 +130,22 @@ def unknown_folder(root: Path):
     (root / "data" / "cells" / "extra").mkdir()
 
 
+def log_line(cell: str) -> str:
+    fields = ["t", "session", "action", "cell", "field", "old", "new", "screen"]
+    values = ["2026-10-12T09:00:00Z", "s", "s-1", cell, "kind", None, "printed", "groups"]
+    return json.dumps(dict(zip(fields, values, strict=True))) + "\n"
+
+
+def log_with_short_id(root: Path):
+    with Paths.under(root).log.open("a") as handle:
+        handle.write(log_line("a" * 30))
+
+
+def log_with_missing_cell(root: Path):
+    with Paths.under(root).log.open("a") as handle:
+        handle.write(log_line("a" * 64))
+
+
 @pytest.mark.parametrize(
     ("corrupt", "message"),
     [
@@ -130,6 +158,8 @@ def unknown_folder(root: Path):
         (two_origins, "has two origins"),
         (decision_of_unknown_photo, "is not in photos.csv"),
         (unknown_folder, "not a known label folder"),
+        (log_with_short_id, "are not full ids"),
+        (log_with_missing_cell, "match no cell"),
     ],
 )
 def test_one_corrupt_thing_is_one_reported_problem(tmp_path: Path, corrupt, message):
@@ -137,3 +167,5 @@ def test_one_corrupt_thing_is_one_reported_problem(tmp_path: Path, corrupt, mess
     corrupt(root)
     problems = run(root)["problems"]
     assert any(message in p for p in problems), problems
+    if corrupt is duplicate_cell:
+        assert any("rows of cells.csv with another folder" in p for p in problems), problems

@@ -7,12 +7,20 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from sudoku_ml.dataset import FULL_ID
+from sudoku_ml.kind_log import read_log
 from sudoku_ml.label_store import Paths
 from sudoku_ml.manifest import LABELS, pixel_id
 from sudoku_ml.photo_import import PhotoPaths, read_photos
 
 MAX_PROBLEMS = 20
-LINK_NOTE = "the others come from before the link existed"
+_LINK_NOTE = (
+    "Cells without a link come from before links existed, or from a cut that stopped part-way."
+)
+
+
+def link_line(linked: int, total: int) -> str:
+    return f"Linked {linked} of {total} cells. {_LINK_NOTE}"
 
 
 def _rows(path: Path) -> list[dict[str, str]]:
@@ -113,6 +121,21 @@ def _origins(
     return linked & set(cells)
 
 
+def _kind_log(paths: Paths, cells: dict[str, str], problems: list[str]) -> None:
+    """Every cell id in the log is a full id of a cell that exists in some folder."""
+    try:
+        lines = read_log(paths.log)
+    except (ValueError, KeyError, TypeError) as error:
+        problems.append(f"{paths.log.name} cannot be read: {error}")
+        return
+    bad = sorted({x.cell for x in lines if not FULL_ID.fullmatch(x.cell)})
+    gone = sorted({x.cell for x in lines if FULL_ID.fullmatch(x.cell) and x.cell not in cells})
+    if bad:
+        problems.append(f"{len(bad)} ids in {paths.log.name} are not full ids, e.g. {bad[0]}")
+    if gone:
+        problems.append(f"{len(gone)} ids in {paths.log.name} match no cell, e.g. {gone[0][:16]}")
+
+
 def check_data(paths: Paths, photo_paths: PhotoPaths) -> dict:
     """Returns `problems` (empty when the data is sound) and the counts of the report."""
     problems: list[str] = []
@@ -120,6 +143,7 @@ def check_data(paths: Paths, photo_paths: PhotoPaths) -> dict:
     photos = _photos(photo_paths, problems)
     _manifest(paths, cells, problems)
     linked = _origins(photo_paths, cells, photos, problems)
+    _kind_log(paths, cells, problems)
     try:
         decisions = _decisions(photo_paths.checks)
     except ValueError as error:
@@ -137,7 +161,7 @@ def check_data(paths: Paths, photo_paths: PhotoPaths) -> dict:
         "photos": {**per_decision, "pending": pending},
         "linked": len(linked),
         "total_cells": len(cells),
-        "link_line": f"linked {len(linked)} of {len(cells)} cells; {LINK_NOTE}",
+        "link_line": link_line(len(linked), len(cells)),
         "waiting_cells": per_folder["unlabeled"],
         "pending_photos": pending,
     }
@@ -154,7 +178,7 @@ def format_report(report: dict) -> str:
         lines.append("No problems.")
     lines.append("Cells: " + ", ".join(f"{k} {v}" for k, v in report["cells"].items()))
     lines.append("Photos: " + ", ".join(f"{k} {v}" for k, v in report["photos"].items()))
-    lines.append(report["link_line"][0].upper() + report["link_line"][1:] + ".")
+    lines.append(report["link_line"])
     lines.append(
         f"Waiting: {report['waiting_cells']} cells in unlabeled/, "
         f"{report['pending_photos']} photos pending."
