@@ -38,6 +38,11 @@ DIGIT_KINDS = ("handwritten", "all")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
 DIGIT_FOLDERS = tuple(str(d) for d in range(1, 10))
 _LABELLED = ("printed", "handwritten")
+PREDICTED = ("printed", "handwritten", "other")
+
+
+def _predicted(kind: str) -> str:
+    return kind if kind in _LABELLED else "other"
 
 
 @dataclass(frozen=True)
@@ -81,6 +86,7 @@ class LabelStore:
             json.loads(paths.groups.read_text())["folders"] if paths.groups.exists() else {}
         )
         self._dups: tuple[list[tuple[str, str]], set[str]] | None = None
+        self._pre_cache: tuple[tuple[int, int], dict[str, dict]] | None = None
 
     def _log_size(self) -> int:
         return self.paths.log.stat().st_size if self.paths.log.exists() else 0
@@ -136,13 +142,33 @@ class LabelStore:
         return self.paths.cells / self.folder[self._stem_ids[stem]] / f"{stem}.png"
 
     def _groups_of(self, folder: str) -> list[dict]:
-        """The stored groups of the folder, then one group of cells that no stored group holds."""
+        """The stored groups of the folder. Then the cells that no stored group holds: grouped
+        by the model's kind guess (printed, handwritten, other), least sure first. Cells without
+        a guess come last, in one plain group."""
         stored = self.groups.get(folder, [])
         grouped = {c for g in stored for c in g["cells"]}
         extra = sorted(c for c, f in self.folder.items() if f == folder and c not in grouped)
-        if not extra:
-            return stored
-        return [*stored, {"cells": extra, "sureness": [0.0] * len(extra), "ungrouped": True}]
+        pre = self._prelabels()
+        guessed: dict[str, list[tuple[float, str]]] = {name: [] for name in PREDICTED}
+        plain = []
+        for cell in extra:
+            if "kp" in pre.get(cell, {}):
+                guessed[_predicted(pre[cell]["kind"])].append((pre[cell]["kp"], cell))
+            else:
+                plain.append(cell)
+        groups = [
+            {
+                "cells": [c for _, c in ordered],
+                "sureness": [kp for kp, _ in ordered],
+                "ungrouped": True,
+                "predicted": name,
+            }
+            for name in PREDICTED
+            if (ordered := sorted(guessed[name]))
+        ]
+        if plain:
+            groups.append({"cells": plain, "sureness": [0.0] * len(plain), "ungrouped": True})
+        return [*stored, *groups]
 
     def _members(self, folder: str, group: dict) -> list[str]:
         return [c for c in group["cells"] if self.folder.get(c) == folder]
@@ -156,6 +182,10 @@ class LabelStore:
             return None
         return counts[0][0]
 
+    @staticmethod
+    def _guess(entry: dict) -> str | None:
+        return entry["kind"] if entry["kind"] in _LABELLED else None
+
     def folder_progress(self, folder: str) -> dict:
         kinds = self.kinds()
         cells = [c for c, f in self.folder.items() if f == folder]
@@ -168,6 +198,8 @@ class LabelStore:
         members = self._members(folder, chosen)
         sure = dict(zip(chosen["cells"], chosen["sureness"], strict=True))
         kinds = self.kinds()
+        predicted = chosen.get("predicted")
+        pre = self._prelabels() if predicted else {}
         start = self._majority(members, kinds)
         pages = _pages(len(members))
         page = min(page, pages - 1)
@@ -180,13 +212,15 @@ class LabelStore:
             "page": page,
             "pages": pages,
             "ungrouped": bool(chosen.get("ungrouped")),
+            "predicted": predicted,
             "cells": [
                 {
                     "id": c,
                     "stem": c[:16],
                     "kind": kinds.get(c),
-                    "start": kinds.get(c) or start,
+                    "start": kinds.get(c) or (self._guess(pre[c]) if predicted else start),
                     "least_sure": bool(sure[c] <= cutoff),
+                    **({"kp": pre[c]["kp"]} if predicted else {}),
                 }
                 for c in chunk
             ],
@@ -274,9 +308,14 @@ class LabelStore:
             self.folder[cell] = "unlabeled"
 
     def _prelabels(self) -> dict[str, dict]:
+        # The file has one entry per cell. One screen change reads it for nine folders.
         if self.paths.prelabels is None or not self.paths.prelabels.exists():
             return {}
-        return json.loads(self.paths.prelabels.read_text())["cells"]
+        stat = self.paths.prelabels.stat()
+        key = (stat.st_mtime_ns, stat.st_size)
+        if self._pre_cache is None or self._pre_cache[0] != key:
+            self._pre_cache = (key, json.loads(self.paths.prelabels.read_text())["cells"])
+        return self._pre_cache[1]
 
     def digit_screen(self, digit: str, kinds: str = "handwritten") -> dict:
         self._refresh()
@@ -458,6 +497,11 @@ class LabelStore:
         return {
             "digits": sum(c in pre for c in waiting),
             "not_prelabelled": sum(c not in pre for c in waiting),
+            "kind_not_prelabelled": sum(
+                kinds.get(c) is None and "kp" not in pre.get(c, {})
+                for c, f in self.folder.items()
+                if f in DIGIT_FOLDERS
+            ),
             "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
         }
 
