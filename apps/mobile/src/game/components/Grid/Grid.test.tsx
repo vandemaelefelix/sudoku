@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 import { GameProvider } from '@/game/components/GameProvider'
 import { sampleStart } from '@/game/utils/sample.utils'
+import { daylight } from '@/theme/themes/daylight'
 import { Grid } from './Grid'
 
 const renderGrid = () =>
@@ -27,6 +29,8 @@ it('puts each cell in its box, row by row', () => {
 
 it('selects a cell on a tap', () => {
   renderGrid()
+  const selected = { backgroundColor: daylight.components.cell.selected }
+  expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).not.toMatchObject(selected)
   fireEvent.press(screen.getByTestId('cell-40'))
-  expect(screen.getByLabelText('Row 5, column 5, empty')).toBeTruthy()
+  expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).toMatchObject(selected)
 })

@@ -17,6 +17,8 @@ const renderTools = () =>
     </>,
   )
 
+afterEach(() => jest.restoreAllMocks())
+
 it('has Undo, Erase, Notes and Hint, with Undo and Erase disabled at the start', () => {
   renderTools()
   expect(screen.getByLabelText('Undo')).toBeDisabled()
@@ -43,6 +45,8 @@ it('turns notes mode on and off', () => {
   fireEvent.press(screen.getByTestId('cell-2'))
   fireEvent.press(screen.getByLabelText('Note 3'))
   expect(screen.getByLabelText('Row 1, column 3, empty, notes 3')).toBeTruthy()
+  fireEvent.press(screen.getByLabelText('Notes'))
+  expect(screen.getByLabelText('Notes')).not.toBeSelected()
 })
 
 it('reveals a cell with a hint', () => {
@@ -50,7 +54,6 @@ it('reveals a cell with a hint', () => {
   renderTools()
   fireEvent.press(screen.getByLabelText('Hint'))
   expect(screen.getByLabelText('Row 1, column 3, 4')).toBeTruthy()
-  jest.mocked(Math.random).mockRestore()
 })
 
 it('makes every tool a touch target of 52 pt', () => {

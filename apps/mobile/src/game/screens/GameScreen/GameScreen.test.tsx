@@ -43,6 +43,8 @@ it('locks the tools and the keypad when the game is lost', () => {
   expect(screen.getByLabelText('Row 1, column 3, wrong 7')).toBeTruthy()
 })
 
+afterEach(() => jest.useRealTimers())
+
 it('stops the timer when the game is lost', () => {
   jest.useFakeTimers()
   renderScreen()
@@ -51,7 +53,6 @@ it('stops the timer when the game is lost', () => {
   for (const digit of [5, 6, 7]) fireEvent.press(screen.getByLabelText(`Enter ${digit}`))
   act(() => jest.advanceTimersByTime(5000))
   expect(screen.getByText('00:02')).toBeTruthy()
-  jest.useRealTimers()
 })
 
 it('calls onBack from the back button', () => {
