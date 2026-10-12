@@ -87,10 +87,24 @@ describe one photo: `photos.csv` and `photo-checks.jsonl`. Some column names are
 8. `cells.csv` is the base of the kinds and the sources. The tool writes it to a `.part` file,
    then renames it. If `cells.csv` does not parse, the start and Finish refuse to run and say
    "Restore it from git." They do not rebuild it from the folders.
+   - The fold also refuses when the cell folder of the image store is missing, or when a row
+     has no file any more. The tool never deletes a cell file, so a vanished cell means a wrong
+     image store: a worktree without `.env`, a typo in `SUDOKU_IMAGES` or a disk that is not
+     mounted. `just dataset-manifest --forget-missing` drops such rows on purpose. The page and
+     Finish never do.
 9. One module, `data_paths.py`, defines every path. The model runs stay in `ml/artifacts/`.
 10. `just migrate-layout <old_ml_root> [--apply]` converts the old layout. It copies the images
-    with APFS clones and never changes the old files. It does not migrate the kind log. Git keeps
-    its history.
+    with APFS clones and never changes the old files.
+    - It resolves symlinks: it copies their content, and it refuses targets inside the old tree.
+    - A sudoku photo without a decision stays `pending`. Only an explicit `legacy` decision
+      gives `legacy`.
+    - It replays the old kind log and refuses kinds of the old `cells.csv` that differ from it.
+      `--prefer-log` takes the kinds of the log. It does not copy the kind log: git keeps its
+      history.
+    - `--force` refuses to delete a new image store that holds images the old tree lacks.
+    - The migration closes every open Review item, because no journal exists after it. Run
+      `just suspects` to find new ones. Run `just group-cells` again: the groups are not
+      migrated.
 
 ## Consequences
 
