@@ -58,6 +58,13 @@ describe('save and read', () => {
   it('reads system when nothing is saved', () => {
     expect(readThemePreference(createMemorySettings())).toBe('system')
   })
+  it('reads system when the store throws, so the app still starts', () => {
+    const settings = createMemorySettings()
+    settings.getSync = () => {
+      throw new Error('disk')
+    }
+    expect(readThemePreference(settings)).toBe('system')
+  })
   it('reads system when the saved value is broken', () => {
     expect(readThemePreference(createMemorySettings({ [THEME_PREFERENCE_KEY]: 'sepia' }))).toBe('system')
   })

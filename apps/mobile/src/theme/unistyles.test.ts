@@ -28,3 +28,18 @@ it.each([
     expect(configure).toHaveBeenCalledWith({ themes: { light: daylight, dark: midnight }, settings })
   })
 })
+
+it('configures Unistyles to follow the system when the store throws', () => {
+  jest.isolateModules(() => {
+    const configure = jest.spyOn(require('react-native-unistyles').StyleSheet, 'configure')
+    jest.mocked(require('expo-sqlite/kv-store').default.getItemSync).mockImplementationOnce(() => {
+      throw new Error('disk')
+    })
+    // oxlint-disable-next-line import/no-unassigned-import -- the module calls configure as its side effect.
+    require('./unistyles')
+    expect(configure).toHaveBeenCalledWith({
+      themes: { light: daylight, dark: midnight },
+      settings: { adaptiveThemes: true },
+    })
+  })
+})

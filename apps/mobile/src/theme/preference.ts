@@ -1,5 +1,6 @@
 import { UnistylesRuntime } from 'react-native-unistyles'
 import type { SettingsRepository } from '@/settings/SettingsRepository'
+import { devLog, errorMessage } from '@/utils/log.utils'
 
 export type ThemePreference = 'system' | 'daylight' | 'midnight'
 
@@ -30,9 +31,14 @@ export function applyThemePreference(preference: ThemePreference, runtime: Theme
   runtime.setTheme(UNISTYLES_NAME[preference])
 }
 
-/** Synchronous, so the first frame already has the saved theme. */
+/** Synchronous, so the first frame already has the saved theme. A store that throws gives system: the app must still start. */
 export function readThemePreference(settings: SettingsRepository): ThemePreference {
-  return parseThemePreference(settings.getSync(THEME_PREFERENCE_KEY))
+  try {
+    return parseThemePreference(settings.getSync(THEME_PREFERENCE_KEY))
+  } catch (error) {
+    devLog('theme', `saved theme unreadable: ${errorMessage(error)}`)
+    return 'system'
+  }
 }
 
 export async function saveThemePreference(
