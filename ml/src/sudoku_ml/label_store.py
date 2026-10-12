@@ -220,7 +220,7 @@ class LabelStore:
                     "kind": kinds.get(c),
                     "start": kinds.get(c) or (self._guess(pre[c]) if predicted else start),
                     "least_sure": bool(sure[c] <= cutoff),
-                    **({"kp": pre[c]["kp"]} if predicted else {}),
+                    **({"kp": pre[c]["kp"], "model_kind": pre[c]["kind"]} if predicted else {}),
                 }
                 for c in chunk
             ],
