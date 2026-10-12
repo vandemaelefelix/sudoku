@@ -3,7 +3,7 @@
 // oxlint-disable-next-line import/no-unassigned-import -- the import loads the jest.setup.ts mock before expo-router/testing-library.
 import 'react-native-reanimated'
 import { Stack } from 'expo-router'
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library'
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library'
 import { Alert, type AlertButton } from 'react-native'
 import { GIVENS_TARGET, createGame, generate, type Game } from '@sudoku/core'
 import { createMemoryStorage, type GameStorage } from '@/storage'
@@ -56,14 +56,14 @@ async function startGame(storage: GameStorage, name = 'Easy') {
 
 const givensOf = (grid: readonly number[]) => grid.filter((digit) => digit !== 0).length
 
-/** Answers the next Alert with the button of that text. */
+/** Answers each Alert with the button of that text. */
 function answerAlert(text: string) {
   return jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons?: AlertButton[]) => {
     buttons?.find((button) => button.text === text)?.onPress?.()
   })
 }
 
-// A key with all nine of its digit placed is disabled, so the wrong digits come from the keys that still work.
+// A key with all nine of its digits placed is disabled, so the wrong digits come from the keys that still work.
 function loseGame(game: Game) {
   const cell = game.givens.findIndex((digit) => digit === 0)
   const wrong = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -192,9 +192,15 @@ it('keeps the game in progress when the player cancels', async () => {
   const storage = renderApp()
   const first = await startGame(storage)
   fireEvent.press(screen.getByLabelText('Back to home'))
+  // Continue shows after the home focus read, so the level tap asks first.
+  await screen.findByRole('button', { name: 'Continue, Easy' })
+  const start = jest.spyOn(storage.puzzles, 'start')
   const alert = answerAlert('Cancel')
-  fireEvent.press(await screen.findByRole('button', { name: 'Hard' }))
+  fireEvent.press(screen.getByRole('button', { name: 'Hard' }))
   await waitFor(() => expect(alert).toHaveBeenCalled())
+  // An ignored cancel starts the game in a later microtask. This flush lets that start happen before the checks.
+  await act(() => jest.advanceTimersByTimeAsync(0))
+  expect(start).not.toHaveBeenCalled()
   expect(screen).toHavePathname('/')
   expect((await inProgress(storage)).id).toBe(first.id)
 })
@@ -231,14 +237,17 @@ it('opens Settings', async () => {
 
 it('New puzzle starts a new game at the same level, and the lost game is in the history', async () => {
   const storage = renderApp()
-  const lost = await startGame(storage)
+  const lost = await startGame(storage, 'Medium')
   loseGame(lost.game)
   await waitForLostEntry(storage)
   fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
   await waitFor(() => expect(screen.queryByTestId('game-over')).toBeNull())
   const next = await inProgress(storage)
   expect(next.id).not.toBe(lost.id)
-  expect(next.level).toBe('easy')
+  expect(next.level).toBe('medium')
+  expect(await storage.history.list()).toMatchObject([{ id: lost.id, level: 'medium', result: 'lost' }])
+  await layOutBoard()
+  expect(screen.getAllByTestId(/^cell-\d+$/)).toHaveLength(81)
 })
 
 it('Try this puzzle again starts the same puzzle as a new saved game', async () => {
@@ -290,5 +299,6 @@ it('Back to home after a loss shows no Continue', async () => {
   fireEvent.press(within(screen.getByTestId('game-over-sheet')).getByRole('button', { name: 'Back to home' }))
   await waitFor(() => expect(screen).toHavePathname('/'))
   expect(await screen.findByRole('button', { name: 'Easy' })).toBeTruthy()
-  expect(screen.queryByRole('button', { name: /^Continue/ })).toBeNull()
+  expect(await storage.puzzles.current()).toBeNull()
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Continue/ })).toBeNull())
 })
