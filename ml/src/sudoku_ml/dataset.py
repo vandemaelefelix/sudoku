@@ -1,5 +1,6 @@
 """Real cells, near-duplicate groups and a split that keeps each group on one side."""
 
+import csv
 from pathlib import Path
 
 import numpy as np
@@ -14,14 +15,39 @@ _HASH_ROWS = area_weights(64, 8)
 _HASH_COLS = area_weights(64, 9)
 
 
-def load_cells(cells_dir: Path) -> list[Sample]:
-    """The labelled real cells. Never reads `unlabeled/`."""
+def cell_paths(cells_dir: Path) -> list[Path]:
+    """The labelled cell files, in the order load_cells returns them. Never `unlabeled/`."""
+    return [p for label in DIGIT_CLASSES for p in sorted((cells_dir / label).glob("*.png"))]
+
+
+def read_ids(manifest: Path) -> dict[str, str]:
+    """File stem → full cell id, from cells.csv."""
+    with manifest.open(newline="") as handle:
+        return {row["id"][:16]: row["id"] for row in csv.DictReader(handle)}
+
+
+def read_kinds(manifest: Path) -> dict[str, str]:
+    """File stem → the kind column of cells.csv."""
+    with manifest.open(newline="") as handle:
+        return {row["id"][:16]: row.get("kind") or "" for row in csv.DictReader(handle)}
+
+
+_DIGIT_KIND_TARGETS = {k: kind_index(k) for k in ("printed", "handwritten")}
+
+
+def load_cells(cells_dir: Path, manifest: Path | None = None) -> list[Sample]:
+    """The labelled real cells. An empty cell gets `none`. A digit cell gets its kind from the
+    manifest, or UNKNOWN_KIND for `unsure`, blank or no manifest."""
+    kinds = read_kinds(manifest) if manifest is not None and manifest.exists() else {}
     samples = []
-    for label in DIGIT_CLASSES:
-        for path in sorted((cells_dir / label).glob("*.png")):
-            image = to_cell_image(np.asarray(Image.open(path).convert("RGB")))
-            kind = kind_index("none") if label == "empty" else UNKNOWN_KIND
-            samples.append(Sample(image, digit_index(label), kind))
+    for path in cell_paths(cells_dir):
+        label = path.parent.name
+        image = to_cell_image(np.asarray(Image.open(path).convert("RGB")))
+        if label == "empty":
+            kind = kind_index("none")
+        else:
+            kind = _DIGIT_KIND_TARGETS.get(kinds.get(path.stem, ""), UNKNOWN_KIND)
+        samples.append(Sample(image, digit_index(label), kind))
     return samples
 
 

@@ -87,8 +87,9 @@ straight into a dataset.
   row by row. An image keeps its own size in the id: the cells in `ml/data/cells/` are 71 × 71.
 - A training dataset manifest MUST reject any entry with `source: fixture` (SUD-10). Fixtures are
   for evaluation only.
-- `photo` means a cell cut from a sudoku photo in `ml/data/`. Its kind is not labelled yet.
-  Cells in `ml/data/cells/unlabeled/` get a label by hand: `notes`, `empty` or a digit.
+- `photo` means a cell cut from a sudoku photo in `ml/data/`. Its kind comes from the kind log
+  (`ml/datasets/kind-log.jsonl`, ADR-009 amendment), set on the labelling page. Cells in
+  `ml/data/cells/unlabeled/` get a label by hand: `notes`, `empty` or a digit.
 
 ## Manifest
 

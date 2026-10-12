@@ -12,6 +12,7 @@ from sudoku_ml.fixtures import FIXTURE_SEED
 from sudoku_ml.train import (
     expected_calibration_error,
     fit_temperature,
+    label_state_lines,
     load_config,
     loss,
     review_accuracy,
@@ -124,10 +125,10 @@ def test_model_card_has_ece_and_test_size(tmp_path: Path):
     run = train(load_config(ML / "configs" / "smoke.toml"), ML, artifacts_dir=tmp_path)
     card = (run / "model-card.md").read_text()
     assert "ECE:" in card and "Test cells:" in card
-    assert "not reviewed" not in card  # only real-cell runs carry this line
+    assert "Kind labels" not in card  # only real-cell runs carry the label state
 
 
-def test_real_run_model_card_notes_unreviewed_labels(tmp_path: Path):
+def test_real_run_model_card_reports_the_label_state(tmp_path: Path):
     root = tmp_path / "ml"
     root.mkdir()
     (root / "fonts").symlink_to(ML / "fonts")
@@ -139,4 +140,30 @@ def test_real_run_model_card_notes_unreviewed_labels(tmp_path: Path):
             Image.fromarray(pixels).save(root / "data" / "cells" / label / f"{label}{n:02d}.png")
     config = load_config(smoke_config(tmp_path, real_cells=True))
     run = train(config, root, artifacts_dir=tmp_path / "out")
-    assert "Labels: not reviewed by the suspects check" in (run / "model-card.md").read_text()
+    card = (run / "model-card.md").read_text()
+    # The tree has no cells.csv, so the label state cannot be read and the run still finishes.
+    assert "- Kind labels: unknown (" in card
+    assert "- Kind accuracy (real test cells): no labelled test cells" in card
+
+
+def test_label_state_lines_report_labels_review_and_check():
+    state = {
+        "printed": 1160,
+        "handwritten": 375,
+        "unsure": 12,
+        "review_open": 4,
+        "check": {"n": 200, "agreement": 0.975, "confusion": {}, "date": "2026-10-20"},
+    }
+    assert label_state_lines(state, 0.9812, 160) == (
+        "- Kind labels: 1160 printed, 375 handwritten, 12 unsure\n"
+        "- Open Review items: 4\n"
+        "- Last check: 97.5% agreement on 200 cells, 2026-10-20\n"
+        "- Kind accuracy (real test cells): 0.9812 on 160 cells\n"
+    )
+
+
+def test_label_state_lines_when_the_state_is_unknown():
+    assert label_state_lines({"error": "cells.csv is out of date"}, None, 0) == (
+        "- Kind labels: unknown (cells.csv is out of date)\n"
+        "- Kind accuracy (real test cells): no labelled test cells\n"
+    )

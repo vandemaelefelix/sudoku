@@ -13,9 +13,10 @@ import torch
 import torch.nn.functional as F
 
 from sudoku_ml.augment import augment
-from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, UNKNOWN_KIND
+from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, UNKNOWN_KIND, kind_index
 from sudoku_ml.dataset import group_ids, load_cells, split_by_group, stack
 from sudoku_ml.fixtures import FIXTURE_SEED
+from sudoku_ml.label_store import LabelStore, Paths
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.synthetic import font_files, generate
@@ -81,6 +82,38 @@ def review_accuracy(probs, targets, rates=REVIEW_RATES) -> dict[str, float]:
     return result
 
 
+def label_state_lines(state: dict, kind_accuracy_real: float | None, n_kind_test: int) -> str:
+    """The model card lines that say how far the kind labels can be trusted."""
+    if "error" in state:
+        lines = [f"- Kind labels: unknown ({state['error']})"]
+    else:
+        check = state["check"]
+        lines = [
+            f"- Kind labels: {state['printed']} printed, {state['handwritten']} handwritten, "
+            f"{state['unsure']} unsure",
+            f"- Open Review items: {state['review_open']}",
+            f"- Last check: {check['agreement']:.1%} agreement on {check['n']} cells, "
+            f"{check['date']}"
+            if check
+            else "- Last check: none yet",
+        ]
+    if kind_accuracy_real is None:
+        lines.append("- Kind accuracy (real test cells): no labelled test cells")
+    else:
+        lines.append(
+            f"- Kind accuracy (real test cells): {kind_accuracy_real:.4f} on {n_kind_test} cells"
+        )
+    return "".join(line + "\n" for line in lines)
+
+
+def _label_state(ml_root: Path) -> dict:
+    # A stale cells.csv must not stop a run. The card then says the state is unknown.
+    try:
+        return LabelStore(Paths.under(ml_root)).label_state()
+    except (ValueError, OSError) as error:
+        return {"error": str(error)}
+
+
 def expected_calibration_error(probs, targets, bins: int = 15) -> float:
     confidence, prediction = probs.max(1)
     correct = (prediction == targets).float()
@@ -119,7 +152,7 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         missing = [c for c in DIGIT_CLASSES if not (cells_dir / c).is_dir()]
         if missing:
             raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
-        real = load_cells(cells_dir)
+        real = load_cells(cells_dir, ml_root / "datasets" / "cells.csv")
         if not real:
             raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
@@ -176,8 +209,17 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
     val_images, val_digit, _ = stack(eval_sets["val"])
     val_logits, _ = _logits(model, val_images, device)
     temperature = fit_temperature(val_logits, val_digit)
-    test_images, test_digit, _ = stack(eval_sets["test"])
-    test_logits, _ = _logits(model, test_images, device)
+    test_images, test_digit, test_kind = stack(eval_sets["test"])
+    test_logits, test_kind_logits = _logits(model, test_images, device)
+    labelled = (test_kind == kind_index("printed")) | (test_kind == kind_index("handwritten"))
+    n_kind_test = int(labelled.sum())
+    kind_accuracy_real = (
+        round(
+            float((test_kind_logits.argmax(1)[labelled] == test_kind[labelled]).float().mean()), 6
+        )
+        if real and n_kind_test
+        else None
+    )
     test_probs = (test_logits / temperature).softmax(1)
     sv_images, _, sv_kind = stack(synthetic_val)
     _, sv_kind_logits = _logits(model, sv_images, device)
@@ -191,6 +233,9 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         "kind_accuracy_synthetic": round(
             float((sv_kind_logits.argmax(1) == sv_kind).float().mean()), 6
         ),
+        "kind_accuracy_real": kind_accuracy_real,
+        "n_kind_test": n_kind_test,
+        "label_state": _label_state(ml_root) if real else None,
         "n_train": n_train,
         "n_val": len(eval_sets["val"]),
         "n_test": len(eval_sets["test"]),
@@ -206,6 +251,9 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
     manifest_hash = (
         hashlib.sha256(manifest.read_bytes()).hexdigest()[:16] if manifest.exists() else "none"
     )
+    label_lines = (
+        label_state_lines(metrics["label_state"], kind_accuracy_real, n_kind_test) if real else ""
+    )
     (run / "model-card.md").write_text(
         f"# {config.name}\n\n- Contract: {CONTRACT_VERSION}\n- Torch: {torch.__version__}\n"
         f"- Device: {device}\n- Real cells: {'yes, the model stays private' if real else 'no'}\n"
@@ -215,7 +263,7 @@ def train(config: Config, ml_root: Path, artifacts_dir: Path | None = None) -> P
         f"- Temperature: {metrics['temperature']}\n"
         f"- ECE: {metrics['ece']:.4f}\n"
         f"- Test cells: {metrics['n_test']}\n"
-        f"{'- Labels: not reviewed by the suspects check' + chr(10) if real else ''}"
+        f"{label_lines}"
         f"- Kind accuracy (synthetic cells only): {metrics['kind_accuracy_synthetic']:.4f}\n"
     )
     return run

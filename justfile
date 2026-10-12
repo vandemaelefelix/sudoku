@@ -86,6 +86,20 @@ relabel file="data/review/relabels.csv":
     uv run --directory ml python -m sudoku_ml.relabel data/cells {{file}}
     just dataset-manifest
 
-# List the 150 most likely wrong labels in ml/data/review/ (contact sheets + relabels.csv)
+# Rank the likely wrong digit and kind labels into ml/data/review/suspects.csv, for the Review screen
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
+
+# Group the cells of each digit folder for the labelling page. The run path is relative to ml/
+group-cells run="":
+    uv run --directory ml python -m sudoku_ml.grouping {{run}}
+
+# Open the labelling page on 127.0.0.1. The manifest is rewritten before the start and at Ctrl-C
+label-cells:
+    just dataset-manifest
+    uv run --directory ml python -m sudoku_ml.label_server
+
+# Reverse every change of one labelling session
+label-rollback session:
+    uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
+    just dataset-manifest

@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cell labels</title>
+<style>
+  :root { --printed: #2f6fd6; --handwritten: #d6452f; --unsure: #7a7a7a; --none: #cfcfcf; }
+  body { font: 14px system-ui, sans-serif; margin: 0; display: grid;
+         grid-template-columns: 1fr 320px; grid-template-rows: auto auto 1fr auto; height: 100vh; }
+  header { grid-column: 1 / 3; display: flex; gap: 16px; align-items: center;
+           padding: 8px 16px; border-bottom: 1px solid #ddd; }
+  nav button { margin-right: 4px; }
+  nav button.on { font-weight: bold; }
+  #folders { grid-column: 1; padding: 8px 16px 0; }
+  #folders button.on { font-weight: bold; }
+  #message { grid-column: 1; padding: 8px 16px 0; color: #b00020; min-height: 1.2em; }
+  #title { font-weight: bold; }
+  main { grid-column: 1; overflow: auto; padding: 16px; }
+  aside { grid-column: 2; grid-row: 2 / 5; border-left: 1px solid #ddd; padding: 0 16px 16px;
+          overflow: auto; line-height: 1.4; }
+  aside h3 { margin: 16px 0 4px; font-size: 14px; }
+  aside ol { padding-left: 20px; margin: 4px 0; }
+  aside li { margin-bottom: 4px; }
+  aside dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 4px 0; }
+  aside dt { font-weight: bold; }
+  aside dd { margin: 0; }
+  aside img.big { width: 256px; height: 256px; background: #eee; }
+  aside img.small { width: 64px; height: 64px; margin: 2px; }
+  footer { grid-column: 1; padding: 8px 16px; border-top: 1px solid #ddd; display: flex;
+           gap: 8px; flex-wrap: wrap; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, 100px); gap: 6px; }
+  .cell { position: relative; width: 96px; height: 96px; border: 2px solid var(--none); cursor: pointer; }
+  .cell:hover { box-shadow: 0 0 0 3px #f2b705; }
+  .cell img { width: 96px; height: 96px; display: block; }
+  .cell.least { outline: 3px solid #111; outline-offset: 1px; }
+  .cell .tag { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; color: #fff;
+               font-weight: bold; background: var(--none); }
+  .cell .reason { position: absolute; left: 2px; top: 2px; padding: 0 2px; font-size: 11px;
+                  background: rgba(255, 255, 255, 0.85); }
+  .printed { border-color: var(--printed); } .printed .tag { background: var(--printed); }
+  .handwritten { border-color: var(--handwritten); } .handwritten .tag { background: var(--handwritten); }
+  .unsure { border-color: var(--unsure); } .unsure .tag { background: var(--unsure); }
+  .swatch { display: inline-block; padding: 0 4px; color: #fff; font-weight: bold; }
+  table { border-collapse: collapse; }
+  th, td { padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right; }
+  td.groups { text-align: left; }
+</style>
+</head>
+<body>
+<header>
+  <nav>
+    <button data-mode="groups">Groups</button>
+    <button data-mode="review">Review</button>
+    <button data-mode="check">Check</button>
+    <button data-mode="progress">Progress</button>
+  </nav>
+  <span id="title"></span>
+</header>
+<div id="folders"></div>
+<div id="message" role="status"></div>
+<main><div id="grid"></div><div id="table"></div></main>
+<aside>
+  <div id="help"></div>
+  <h3>Pointed-at cell</h3>
+  <img class="big" id="preview" alt="">
+  <p id="detail">Point at a cell to see it large.</p>
+  <div id="related"></div>
+</aside>
+<footer id="actions"></footer>
+<script>
+const LETTER = { printed: "P", handwritten: "H", unsure: "?" };
+const LEGEND = `
+  <h3>The kinds</h3>
+  <dl>
+    <dt><span class="swatch" style="background: var(--printed)">P</span> printed</dt><dd>Made by a printer or a screen.</dd>
+    <dt><span class="swatch" style="background: var(--handwritten)">H</span> handwritten</dt><dd>Written by a person with a pen or a pencil.</dd>
+    <dt><span class="swatch" style="background: var(--unsure)">?</span> unsure</dt><dd>You cannot decide. Training ignores it.</dd>
+    <dt><span class="swatch" style="background: var(--none)">·</span> no kind</dt><dd>Not labelled yet.</dd>
+  </dl>
+  <p>Judge by look only. A typed digit from an app screenshot is printed.</p>`;
+const HELP = {
+  groups: `
+    <h3>What to do</h3>
+    <ol>
+      <li>Look at all cells on the screen. They look alike.</li>
+      <li>Press <b>P</b> if most are printed. Press <b>H</b> if most are handwritten.</li>
+      <li>Click each cell of the other kind. A click switches between P and H.</li>
+      <li>Cannot decide? ⌥-click the cell. It gets <b>?</b>.</li>
+      <li>Wrong digit, or no digit? Point at the cell and press the right digit. <b>0</b> means empty.</li>
+      <li>Press <b>Enter</b> to save. The next group opens.</li>
+    </ol>
+    <p>Cells with a <b>thick black border</b> are the most likely to be the other kind. Check them first.</p>
+    <p>A mistake? Press <b>Z</b> to undo the last save or move.</p>
+    ${LEGEND}`,
+  review: `
+    <h3>What to do</h3>
+    <ol>
+      <li>Each cell is here because a check doubts its label. The note on the cell names the check.</li>
+      <li>Point at a cell. The panel below explains the doubt.</li>
+      <li>Kind wrong? Click to switch it. ⌥-click for unsure.</li>
+      <li>Digit wrong? Point at the cell and press the right digit. <b>0</b> means empty.</li>
+      <li>Press <b>Enter</b>. It saves your changes and confirms every other cell on the screen.</li>
+    </ol>
+    <h3>The checks</h3>
+    <dl>
+      <dt>near-duplicate</dt><dd>Almost the same image has the other kind.</dd>
+      <dt>kind-model</dt><dd>The model is sure the kind is the other one.</dd>
+      <dt>digit-model</dt><dd>The model is sure the digit is another one.</dd>
+      <dt>check</dt><dd>Your blind check answer differs from the label.</dd>
+    </dl>
+    <p>Run <code>just suspects</code> in the terminal after a labelling pass. It fills this screen with the model checks.</p>
+    ${LEGEND}`,
+  check: `
+    <h3>What to do</h3>
+    <ol>
+      <li>This is a blind test of your own labels. The page hides them on purpose.</li>
+      <li>Label each cell again, as on the Groups screen: <b>P</b>, <b>H</b>, click, ⌥-click.</li>
+      <li>Press <b>Enter</b> for each screen.</li>
+      <li>At the end, the page shows how often you agree with your first labels.</li>
+    </ol>
+    <p>Each disagreement goes to the Review screen. Your answers never change a label.</p>
+    ${LEGEND}`,
+  progress: `
+    <h3>What to do</h3>
+    <ol>
+      <li>Label every group on the Groups screen.</li>
+      <li>Stop the server with Ctrl-C. Run <code>just suspects</code> in the terminal.</li>
+      <li>Start the server again. Work through the Review screen.</li>
+      <li>After 7 days or more, run the Check screen.</li>
+    </ol>
+    <p>"No kind" counts the cells you still have to label. Click a group number to open it. The number in brackets is the cells without a kind in that group.</p>`,
+};
+const PAGE = 50;
+let mode = "groups";
+let screen = null;
+let local = {};
+let hovered = null;
+let checkPage = 0;
+let busy = false;
+
+const $ = (id) => document.getElementById(id);
+const say = (text) => { $("message").textContent = text || ""; };
+
+async function api(path, body) {
+  const options = body === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  };
+  const response = await fetch(path, options);
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.error || response.statusText);
+  return value;
+}
+
+function cellsOnScreen() {
+  if (!screen) return [];
+  if (mode === "groups") return screen.cells;
+  if (mode === "review") return screen.items;
+  if (mode === "check") return screen.cells.slice(checkPage * PAGE, (checkPage + 1) * PAGE);
+  return [];
+}
+
+function reasonText(cell) {
+  return `in ${cell.folder}/ · ${[...new Set(cell.reasons.map((r) => r.reason))].join(", ")}`;
+}
+
+function detailText(cell) {
+  if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
+  const twins = nearDuplicates(cell);
+  const near = twins.length ? [`Its near-duplicates (below) have the other kind.`] : [];
+  return `This cell is in folder ${cell.folder}/. ` + near.concat(cell.reasons.filter((r) => r.reason !== "near-duplicate").map((r) => {
+    if (r.reason === "check") return `Your check answer: ${r.answer}. The label: ${r.label}.`;
+    return `The model says ${r.predicted} (${Math.round(r.p_predicted * 100)} %). The label: ${r.label}.`;
+  })).join(" ");
+}
+
+function nearDuplicates(cell) {
+  if (mode !== "review") return [];
+  const ids = cell.reasons.filter((r) => r.reason === "near-duplicate").flatMap((r) => r.group);
+  return [...new Set(ids)].filter((id) => id !== cell.id);
+}
+
+function showDetail(cell) {
+  hovered = cell;
+  $("preview").src = `/cell/${cell.stem}.png`;
+  $("detail").textContent = detailText(cell);
+  $("related").innerHTML = nearDuplicates(cell)
+    .map((id) => `<img class="small" alt="" src="/cell/${id.slice(0, 16)}.png">`).join("");
+}
+
+function title() {
+  let text = "";
+  if (mode === "groups") {
+    text = !screen ? "Every grouped cell has a kind." :
+      `Digit ${screen.folder} · ${screen.ungrouped ? "cells added after grouping" : `group ${screen.group + 1} of ${screen.groups}`}` +
+      `${screen.pages > 1 ? ` · screen ${screen.page + 1} of ${screen.pages}` : ""}` +
+      ` · folder ${screen.folder}/: ${screen.progress.labelled} of ${screen.progress.cells} labelled`;
+  } else if (mode === "review") {
+    text = !screen ? "" : screen.open ? `${screen.open} cells to review` : "Nothing to review.";
+  } else if (mode === "check") {
+    text = screen ? `Check · screen ${checkPage + 1} of ${Math.ceil(screen.cells.length / PAGE)}` : "";
+  } else {
+    text = "Progress";
+  }
+  $("title").textContent = text;
+}
+
+function renderFolders() {
+  const show = mode === "groups";
+  $("folders").innerHTML = !show ? "" : "Jump to folder: " + [1, 2, 3, 4, 5, 6, 7, 8, 9].map((f) =>
+    `<button data-folder="${f}" class="${screen && screen.folder === String(f) ? "on" : ""}">${f}</button>`).join(" ");
+  for (const b of $("folders").querySelectorAll("button")) {
+    b.onclick = () => open("groups", { folder: b.dataset.folder, group: 0 });
+  }
+}
+
+const ACTIONS = {
+  groups: [["P · all printed", () => setAll("printed")], ["H · all handwritten", () => setAll("handwritten")],
+           ["Enter · save", () => save()], ["S · skip", () => skip()], ["Z · undo", () => undo()]],
+  review: [["Enter · confirm this screen", () => save()], ["Z · undo", () => undo()]],
+  check: [["P · all printed", () => setAll("printed")], ["H · all handwritten", () => setAll("handwritten")],
+          ["Enter · save", () => save()]],
+  progress: [],
+};
+
+function renderActions() {
+  const footer = $("actions");
+  footer.innerHTML = "";
+  for (const [label, action] of ACTIONS[mode]) {
+    const button = document.createElement("button");
+    button.textContent = label;
+    button.onclick = () => run(action);
+    footer.append(button);
+  }
+}
+
+function render() {
+  for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === mode);
+  $("help").innerHTML = HELP[mode];
+  renderFolders();
+  renderActions();
+  $("table").innerHTML = "";
+  const grid = $("grid");
+  grid.innerHTML = "";
+  for (const cell of cellsOnScreen()) {
+    const kind = local[cell.id];
+    const div = document.createElement("div");
+    div.className = `cell ${kind || ""} ${cell.least_sure ? "least" : ""}`;
+    div.innerHTML = `<img src="/cell/${cell.stem}.png" alt=""><span class="tag">${LETTER[kind] || "·"}</span>`;
+    if (mode === "review") {
+      const reason = document.createElement("span");
+      reason.className = "reason";
+      reason.textContent = reasonText(cell);
+      div.append(reason);
+    }
+    div.onclick = (event) => {
+      if (cell.folder === "empty") return say("An empty cell has no kind. Press a digit if it shows one.");
+      local[cell.id] = event.altKey ? "unsure" : (local[cell.id] === "printed" ? "handwritten" : "printed");
+      render();
+    };
+    div.onmouseenter = () => showDetail(cell);
+    div.onmouseleave = () => { hovered = null; };
+    grid.append(div);
+  }
+  title();
+}
+
+function setScreen(value) {
+  screen = value;
+  local = {};
+  hovered = null;
+  if (mode === "groups" && screen) for (const c of screen.cells) local[c.id] = c.start;
+  if (mode === "review" && screen) for (const c of screen.items) local[c.id] = c.kind;
+  render();
+  if (mode === "groups" && !screen) {
+    say("Done with the groups. Next: stop the server, run just suspects, then open Review.");
+  } else if (mode === "groups" && screen.cells.every((c) => !c.start)) {
+    say("Press P or H to start this screen.");
+  } else if (mode === "groups") {
+    say("The cells start with the kind most cells in this group have. Fix the exceptions, then press Enter.");
+  } else if (mode === "review" && screen && !screen.open) {
+    say("Run just suspects in the terminal after a labelling pass. Then open Review again.");
+  }
+}
+
+async function loadGroups(after) {
+  const query = after ? `?folder=${after.folder}&group=${after.group}&page=${after.page}` : "";
+  setScreen(await api(`/api/next${query}`));
+}
+
+async function reload() {
+  if (mode === "groups" && screen) {
+    setScreen(await api(`/api/screen?folder=${screen.folder}&group=${screen.group}&page=${screen.page}`));
+  } else if (mode === "groups") {
+    await loadGroups();
+  } else if (mode === "review") {
+    setScreen(await api("/api/review"));
+  }
+}
+
+function setAll(kind) {
+  for (const c of cellsOnScreen()) if (c.folder !== "empty") local[c.id] = kind;
+  render();
+  say("Now click the cells of the other kind, then press Enter.");
+}
+
+async function move(cell, digit) {
+  await api("/api/move", { id: cell.id, digit, screen: mode === "review" ? "review" : "groups" });
+  const unsaved = local;
+  await reload();
+  for (const id in unsaved) if (id in local) local[id] = unsaved[id];
+  render();
+  say(`Moved to ${digit === "empty" ? "empty" : `folder ${digit}`}. Press Z to undo.`);
+}
+
+async function skip() {
+  if (mode === "groups" && screen) {
+    await loadGroups(screen);
+    say("Skipped. The skipped screen comes back after all others.");
+  }
+}
+
+async function undo() {
+  const result = await api("/api/undo", {});
+  await reload();
+  say(result.result ? `Undone: ${result.result} changes.` : "Nothing to undo in this session.");
+}
+
+async function save() {
+  const cells = cellsOnScreen();
+  if (mode === "groups" && screen) {
+    const missing = cells.filter((c) => !local[c.id]).length;
+    if (missing) return say(`${missing} cells have no kind yet (·). Press P or H, or click them.`);
+    const result = await api("/api/save", { screen: "groups", cells: cells.map((c) => ({ id: c.id, kind: local[c.id] })) });
+    const before = `Saved: ${result.result} changes.`;
+    await loadGroups(screen);
+    say(`${before} ${$("message").textContent}`);
+  } else if (mode === "review" && screen) {
+    const kindCells = cells.filter((c) => c.folder !== "empty" &&
+      (c.field === "kind" || (local[c.id] && local[c.id] !== c.kind)));
+    const result = await api("/api/save", {
+      screen: "review",
+      cells: kindCells.map((c) => ({ id: c.id, kind: local[c.id] })),
+      confirm_digits: cells.filter((c) => c.field === "digit").map((c) => c.id),
+    });
+    setScreen(await api("/api/review"));
+    say(`Confirmed: ${result.result} labels.`);
+  } else if (mode === "check" && screen) {
+    const missing = cells.filter((c) => !local[c.id]).length;
+    if (missing) return say(`${missing} cells have no answer yet (·).`);
+    const result = (await api("/api/check", { answers: cells.map((c) => ({ id: c.id, answer: local[c.id] })) })).result;
+    checkPage += 1;
+    local = {};
+    if (checkPage * PAGE < screen.cells.length) { render(); return say("Saved. Label the next screen."); }
+    screen = null;
+    render();
+    $("title").textContent = `Check done: ${(result.agreement * 100).toFixed(1)} % agreement on ${result.n} cells.`;
+    say("The disagreements are now on the Review screen.");
+    renderConfusion(result.confusion);
+  }
+}
+
+function renderConfusion(confusion) {
+  const answers = ["printed", "handwritten", "unsure"];
+  const rows = Object.entries(confusion).map(([label, row]) =>
+    `<tr><th>${label}</th>${answers.map((a) => `<td>${row[a] || 0}</td>`).join("")}</tr>`);
+  $("table").innerHTML = `<table><tr><th>Label \\ answer</th>${answers.map((a) => `<th>${a}</th>`).join("")}</tr>${rows.join("")}</table>`;
+}
+
+function renderProgress(value) {
+  const check = value.check
+    ? `${(value.check.agreement * 100).toFixed(1)} % on ${value.check.n} cells (${value.check.date})`
+    : "none yet";
+  $("title").textContent = `Progress · ${value.review_open} cells to review · last check: ${check}`;
+  const rows = Object.entries(value.folders).map(([folder, f]) =>
+    `<tr><th>${folder}/</th><td>${f.cells}</td><td>${f.printed}</td><td>${f.handwritten}</td>` +
+    `<td>${f.unsure}</td><td>${f.without}</td><td>${f.moved_out}</td><td class="groups">` +
+    f.groups.map((g) => `<a href="#" data-folder="${folder}" data-group="${g.group}">${g.group + 1}` +
+      `${g.without ? ` (${g.without})` : ""}</a>`).join(" · ") + "</td></tr>");
+  $("table").innerHTML = "<table><tr><th>Folder</th><th>Cells</th><th>Printed</th><th>Handwritten</th>" +
+    "<th>Unsure</th><th>No kind</th><th>Moved out</th><th>Groups (cells without a kind)</th></tr>" +
+    rows.join("") + "</table>";
+  for (const a of $("table").querySelectorAll("a")) {
+    a.onclick = (event) => {
+      event.preventDefault();
+      open("groups", { folder: a.dataset.folder, group: Number(a.dataset.group) });
+    };
+  }
+}
+
+async function run(action) {
+  // A held or double Enter would otherwise send the same screen twice.
+  if (busy) return;
+  busy = true;
+  try {
+    await action();
+  } catch (error) {
+    say(error.message);
+  } finally {
+    busy = false;
+  }
+}
+
+async function open(next, target) {
+  if (busy) return;
+  mode = next;
+  screen = null;
+  local = {};
+  hovered = null;
+  say("");
+  await run(async () => {
+    if (mode === "groups" && target) {
+      setScreen(await api(`/api/screen?folder=${target.folder}&group=${target.group}&page=0`));
+    } else if (mode === "groups") {
+      await loadGroups();
+    } else if (mode === "review" || mode === "check") {
+      render();
+      say("Loading. The first time takes about half a minute: the server reads every cell to find near-duplicates.");
+      if (mode === "review") {
+        setScreen(await api("/api/review"));
+        if (screen.open) say("");
+      } else {
+        const value = await api("/api/check");
+        if (value.error) { render(); return say(value.error); }
+        checkPage = 0;
+        setScreen(value);
+        say("");
+      }
+    } else {
+      render();
+      renderProgress(await api("/api/progress"));
+    }
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.metaKey || event.ctrlKey || event.target.tagName === "BUTTON" && event.key === "Enter") return;
+  const key = event.key.toLowerCase();
+  if ((key === "p" || key === "h") && (mode === "groups" || mode === "check")) {
+    setAll(key === "p" ? "printed" : "handwritten");
+  } else if (/^[0-9]$/.test(key) && (mode === "groups" || mode === "review")) {
+    if (!hovered) return say("Point at a cell first, then press the digit.");
+    run(() => move(hovered, key === "0" ? "empty" : key));
+  } else if (key === "enter") {
+    run(save);
+  } else if (key === "s" && mode === "groups") {
+    run(skip);
+  } else if (key === "z" && (mode === "groups" || mode === "review")) {
+    run(undo);
+  }
+});
+
+for (const b of document.querySelectorAll("nav button")) b.onclick = () => open(b.dataset.mode);
+open("groups");
+</script>
+</body>
+</html>
