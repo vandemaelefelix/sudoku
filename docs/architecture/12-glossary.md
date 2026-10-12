@@ -23,14 +23,14 @@ status: DRAFT
 | Temperature | A number that divides the digit logits before the softmax. Fitted on the validation set so that the confidence matches the accuracy |
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
 | Op table | `tflite_2_17_ops.json`: the highest version of each TFLite operator that the 2.17 runtime supports. Export checks the model against it (ADR-005) |
-| Contact sheet | An image of 50 numbered cells with their label and predicted label. A person uses it to check labels (`just suspects`) |
+| Contact sheet | An image of numbered cells with their labels. Replaced by the Review screen of the labelling page |
 | Technique solver | The solver in `@sudoku/core` that solves like a person. It grades difficulty and gives hints (ADR-011) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
 | Intersection | One of the 10 × 10 points where grid lines cross. Found on capture, used for per-cell flattening |
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
-| Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes` |
+| Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes`. The kind says how the mark was made: `printed` by a printer or a screen, `handwritten` by a person (ADR-009, amendment) |
 | Lock-on | The moment the grid corners have been steady long enough, and the scan captures |
 | Armed (lock-on) | A scene that may lock on automatically. The first scene is armed. A scene after a Retake arms only after the grid is gone for 0.5 s after the warm-up, or jumps to another place. The shutter does not need it. See the scan-pipeline concept |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
@@ -67,6 +67,12 @@ status: DRAFT
 | Domain utils file | `<domain>.utils.ts`: the plain functions and types of one domain, such as tracking or transition. No React, no UI. See `apps/mobile/AGENTS.md` |
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
+| Kind log | `ml/datasets/kind-log.jsonl`: one line per label change, append-only. The source of truth for the kind of a real cell (ADR-009, amendment) |
+| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Groups, Review, Check and Progress |
+| Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
+| Check agreement | The share of blind check answers that match the label in the kind log. It estimates the label quality |
+| Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
+| Unsure | The kind label for a cell that the developer cannot decide. Training ignores it |
 | Theme | One typed object with every token the app needs. Daylight and Midnight ship first (ADR-015) |
 | Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |
 | Semantic token | A token named by its meaning, such as `colors.text` or `type.given`. Most components read these (ADR-015) |

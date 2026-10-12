@@ -4,7 +4,16 @@ import numpy as np
 from PIL import Image
 
 from sudoku_ml.contract import UNKNOWN_KIND, kind_index
-from sudoku_ml.dataset import dhash, group_ids, load_cells, split_by_group, stack
+from sudoku_ml.dataset import (
+    cell_paths,
+    dhash,
+    group_ids,
+    load_cells,
+    read_ids,
+    read_kinds,
+    split_by_group,
+    stack,
+)
 from sudoku_ml.synthetic import Sample
 
 
@@ -72,3 +81,35 @@ def test_stack_shapes():
     images, digit, kind = stack([Sample(np.zeros((64, 64, 3), np.uint8), 5, 1)] * 3)
     assert tuple(images.shape) == (3, 64, 64, 3)
     assert digit.tolist() == [5, 5, 5] and kind.tolist() == [1, 1, 1]
+
+
+def write_manifest(path: Path, rows: list[tuple[str, str, str]]) -> None:
+    path.write_text("id,label,kind\n" + "".join(f"{i},{lab},{k}\n" for i, lab, k in rows))
+
+
+def test_kinds_come_from_the_manifest(tmp_path: Path):
+    cells = cell_tree(tmp_path)
+    three, seven = f"{10:016x}" + "0" * 48, f"{30:016x}" + "0" * 48
+    manifest = tmp_path / "cells.csv"
+    write_manifest(manifest, [(three, "3", "handwritten"), (seven, "7", "unsure")])
+    kinds = {s.digit: s.kind for s in load_cells(cells, manifest)}
+    assert kinds == {0: kind_index("none"), 3: kind_index("handwritten"), 7: UNKNOWN_KIND}
+
+
+def test_a_digit_cell_missing_from_the_manifest_has_no_kind(tmp_path: Path):
+    cells = cell_tree(tmp_path)
+    manifest = tmp_path / "cells.csv"
+    write_manifest(manifest, [])
+    assert {s.digit: s.kind for s in load_cells(cells, manifest)}[3] == UNKNOWN_KIND
+
+
+def test_ids_and_kinds_are_keyed_by_the_file_stem(tmp_path: Path):
+    manifest = tmp_path / "cells.csv"
+    write_manifest(manifest, [("ab" * 32, "3", "printed")])
+    assert read_ids(manifest) == {"ab" * 8: "ab" * 32}
+    assert read_kinds(manifest) == {"ab" * 8: "printed"}
+
+
+def test_cell_paths_follow_the_load_order(tmp_path: Path):
+    cells = cell_tree(tmp_path)
+    assert [p.parent.name for p in cell_paths(cells)] == ["empty", "3", "7"]

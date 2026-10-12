@@ -36,6 +36,22 @@ exactly which images trained it.
 4. `fixtures/scans` is the exception: small, precious, and needed by app tests. It is committed.
 5. **DVC is the planned next step**, when the data needs a second machine or a backup (R-04).
 
+## Amendment: kind labels in an append-only log (2026-10-11)
+
+- The kind of a real cell lives in `ml/datasets/kind-log.jsonl`, in git. Each line is one change:
+  time, session, action, cell id, field, old value, new value and screen. Lines are never
+  deleted. An undo or a rollback appends lines that reverse earlier lines.
+- `cells.csv` gets a `kind` column: `printed`, `handwritten`, `unsure`, `none` or blank.
+  `just dataset-manifest` computes it from the folders and the log. The folders stay the source
+  of truth for the digit.
+- The kind means how the mark was made: `printed` by a printer or a screen, `handwritten` by a
+  person with a pen or a pencil. A typed player entry in an app screenshot is therefore
+  `printed`.
+- The blind check answers live in `ml/datasets/kind-check.jsonl`, in git. They never change a
+  label.
+- The log holds ids and words only, never an image (SUD-08).
+- Design: [kind labelling design](../../superpowers/specs/2026-10-11-kind-labelling-design.md).
+
 ## Consequences
 
 - Until DVC, a lost laptop means rebuilding the real data from backups. `ml/data/` must have
