@@ -96,3 +96,10 @@ def test_a_cell_moved_to_empty_with_a_cleared_kind_is_accepted(tmp_path: Path):
     log_kind(log, empty, None)
     write_cells_manifest(cells, manifest, log)
     assert rows(manifest)[0]["kind"] == "none"
+
+
+def test_a_discarded_cell_is_listed_without_a_kind(tmp_path: Path):
+    cells, manifest = tmp_path / "cells", tmp_path / "cells.csv"
+    cell_id = add_cell(cells, "discarded", 40)
+    write_cells_manifest(cells, manifest)
+    assert rows(manifest) == [{"id": cell_id, "label": "discarded", "kind": ""}]
