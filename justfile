@@ -99,9 +99,14 @@ suspects:
 group-cells run="":
     uv run --directory ml python -m sudoku_ml.grouping {{run}}
 
+# Pre-label the cells in ml/data/cells/unlabeled/ for the Digits screen. The run path is relative to ml/
+prelabel-cells run="":
+    uv run --directory ml python -m sudoku_ml.prelabel {{run}}
+
 # Open the labelling page on 127.0.0.1. The manifest is rewritten before the start and at Ctrl-C
 label-cells:
     just dataset-manifest
+    just prelabel-cells
     uv run --directory ml python -m sudoku_ml.label_server
 
 # Reverse every change of one labelling session
