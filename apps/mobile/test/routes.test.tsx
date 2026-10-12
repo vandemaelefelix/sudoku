@@ -272,6 +272,24 @@ it('a double tap on Settings opens one Settings screen', async () => {
   await waitFor(() => expect(screen).toHavePathname('/'))
 })
 
+it('New puzzle after a scanned game saves a generated game', async () => {
+  const storage = createMemoryStorage()
+  const { givens, solution } = generate('easy', 11)
+  await storage.puzzles.start({ level: 'easy', source: 'scanned', game: createGame({ givens, solution }) })
+  renderApp(storage)
+  fireEvent.press(await screen.findByRole('button', { name: 'Continue, Easy' }))
+  await waitFor(() => expect(screen).toHavePathname('/game'))
+  await layOutBoard()
+  const lost = await inProgress(storage)
+  loseGame(lost.game)
+  await waitForLostEntry(storage)
+  fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
+  await waitFor(() => expect(screen.queryByTestId('game-over')).toBeNull())
+  const next = await inProgress(storage)
+  expect(next.id).not.toBe(lost.id)
+  expect(next.source).toBe('generated')
+})
+
 it('New puzzle starts a new game at the same level, and the lost game is in the history', async () => {
   const storage = renderApp()
   const lost = await startGame(storage, 'Medium')
