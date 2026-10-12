@@ -53,7 +53,7 @@ should not force a storage rewrite.
 
 The first repositories make these points of the decision concrete:
 
-1. **Snapshots, not moves.** A save writes the whole game as its saved game (JSON) in one row. Undo steps are part of the saved game.
+1. **Snapshots, not moves.** A save writes the whole game as its saved game (JSON) in one row. Undo steps are part of the saved game. A saved game that does not load stays in the table: `current()` gives no game, and only the start of a new game soft-deletes it. A new saved game version needs a migration that converts `saved_game`.
 2. **One game in progress.** Starting a game soft-deletes the game in progress before it.
 3. **Finish in one transaction.** The last save of a won or lost game soft-deletes the game in progress and writes its history entry in the same transaction. The history entry takes the id of the game.
 4. **Numbered migrations.** The migrations are an ordered list in `apps/mobile/src/storage/migrations.ts`. `PRAGMA user_version` holds the last one that ran. An app refuses a database that is newer than itself.

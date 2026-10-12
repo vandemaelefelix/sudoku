@@ -8,7 +8,7 @@ import type { GameResult, Level, PuzzleSource, SavedProgress, StorageDeps } from
 export type PuzzleRepository = {
   /** Starts a game in progress and discards the one before it. Throws a RangeError for a won or lost game. */
   start(input: { level: Level; source: PuzzleSource; game: Game }): Promise<SavedProgress>
-  /** The game in progress, or null. A saved game that no longer loads is discarded and gives null. */
+  /** The game in progress, or null. A saved game that does not load gives null and stays in storage. */
   current(): Promise<SavedProgress | null>
   /**
    * Saves the game after a move. A won or lost game moves to the history in the same transaction.
@@ -69,13 +69,8 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
           const game = fromSavedGame(JSON.parse(row.saved_game))
           return { id: row.id, level: row.level, source: row.source, game }
         } catch (error) {
+          // Keep the row: a later app version can still load it. Only start() discards it.
           devWarn('storage', `The saved game ${row.id} does not load: ${errorMessage(error)}`)
-          const now = deps.now()
-          await db.runAsync('UPDATE game_in_progress SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-            now,
-            now,
-            row.id,
-          ])
           return null
         }
       }),

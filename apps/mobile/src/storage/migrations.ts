@@ -6,6 +6,7 @@ const SOURCES = "('generated', 'scanned')"
 /**
  * Migration N is the SQL at index N - 1. PRAGMA user_version holds the last migration that ran (ADR-012).
  * Append a new migration. Never change one that shipped.
+ * A new SAVED_GAME_VERSION needs a migration that converts `saved_game`, or the game in progress does not load.
  */
 export const MIGRATIONS: readonly string[] = [
   `CREATE TABLE game_in_progress (

@@ -42,7 +42,7 @@ describe('createSqliteStorage', () => {
     }
   })
 
-  it('a damaged saved game is discarded, not thrown', async () => {
+  it('keeps a saved game that does not load, and gives null', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
     const { db, storage } = await openStorage()
     const { id } = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
@@ -50,13 +50,18 @@ describe('createSqliteStorage', () => {
 
     await expect(storage.puzzles.current()).resolves.toBeNull()
     await expect(storage.puzzles.current()).resolves.toBeNull()
-    const row = await db.getFirstAsync<{ deleted_at: string | null }>(
-      'SELECT deleted_at FROM game_in_progress WHERE id = ?',
-      [id],
-    )
-    expect(row?.deleted_at).toEqual(expect.any(String))
+    const deletedAt = async () =>
+      (
+        await db.getFirstAsync<{ deleted_at: string | null }>('SELECT deleted_at FROM game_in_progress WHERE id = ?', [
+          id,
+        ])
+      )?.deleted_at
+    expect(await deletedAt()).toBeNull()
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
+
+    await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+    expect(await deletedAt()).toEqual(expect.any(String))
   })
 
   it('soft-deletes a finished game and keeps its timestamps (ADR-012)', async () => {
