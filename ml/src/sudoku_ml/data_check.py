@@ -20,6 +20,7 @@ from sudoku_ml.photo_import import (
     LICENCES,
     PHOTO_FIELDS,
     PHOTO_STATUSES,
+    PHOTO_SUFFIXES,
     SOURCES,
     parse_corners,
 )
@@ -40,7 +41,7 @@ def _table(path: Path, fields: list[str], problems: list[str]) -> list[dict[str,
         return []
     try:
         with path.open(newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
+            reader = csv.DictReader(handle, strict=True)
             if reader.fieldnames != fields:
                 problems.append(f"{path.name}: the header is not {','.join(fields)}")
                 return []
@@ -93,7 +94,8 @@ def _photo_row(row: dict[str, str], problems: list[str]) -> None:
 def _photos(paths: DataPaths, problems: list[str]) -> dict[str, str]:
     """Photo id → status. Checks each row and that each file exists and has its id."""
     statuses: dict[str, str] = {}
-    for row in _table(paths.photos_csv, PHOTO_FIELDS, problems):
+    rows = _table(paths.photos_csv, PHOTO_FIELDS, problems)
+    for row in rows:
         photo_id = row["photo_id"]
         if not FULL_ID.fullmatch(photo_id):
             problems.append(f"{photo_id!r} in sudoku-photos.csv is not a photo id")
@@ -116,6 +118,13 @@ def _photos(paths: DataPaths, problems: list[str]) -> dict[str, str]:
             problems.append(
                 f"sudoku photo file {path} has the id {actual[:16]}, not {photo_id[:16]}"
             )
+    listed = {row["file"] for row in rows}
+    extra = sorted(
+        p.name
+        for p in (paths.photos.glob("*") if paths.photos.is_dir() else [])
+        if p.suffix.lower() in PHOTO_SUFFIXES and p.name not in listed
+    )
+    _report_ids(problems, "sudoku photo files that sudoku-photos.csv does not list", extra)
     return statuses
 
 

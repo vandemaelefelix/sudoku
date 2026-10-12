@@ -118,7 +118,7 @@ def test_a_photo_list_in_the_old_format_is_refused(tmp_path: Path):
     paths = paths_in(tmp_path)
     paths.root.mkdir(parents=True)
     paths.photos_csv.write_text("id,file,origin\nbbb,bbb.jpg,phone\n")
-    with pytest.raises(ValueError, match="header"):
+    with pytest.raises(ValueError, match="header.*Restore it from git."):
         read_photos(paths.photos_csv)
 
 
@@ -160,3 +160,12 @@ def test_a_heic_photo_is_imported(tmp_path: Path):
 def test_the_cli_refuses_an_unknown_source(tmp_path: Path):
     with pytest.raises(SystemExit):
         main([str(tmp_path), "--source", "reddit", "--licence", "none"], paths_in(tmp_path))
+
+
+def test_a_photo_list_with_a_csv_error_is_refused(tmp_path: Path):
+    paths = paths_in(tmp_path)
+    paths.root.mkdir(parents=True)
+    header = "photo_id,file,source,licence,attribution,status,corners\n"
+    paths.photos_csv.write_text(header + 'a,"b\n')
+    with pytest.raises(ValueError, match="Restore it from git."):
+        read_photos(paths.photos_csv)
