@@ -25,7 +25,10 @@
   #folders { grid-column: 1; padding: 8px 16px 0; }
   #folders button.on { font-weight: bold; }
   #message { grid-column: 1; padding: 8px 16px 0; color: #b00020; min-height: 1.2em; }
-  #title { font-weight: bold; }
+  #banner { grid-column: 1; padding: 10px 16px; background: #fff8dc; border-bottom: 1px solid #e8d98a;
+            font-size: 15px; font-weight: bold; display: flex; gap: 12px; align-items: center;
+            flex-wrap: wrap; }
+  #banner:empty { display: none; }
   main { grid-column: 1; overflow: auto; padding: 16px; }
   aside { grid-column: 2; grid-row: 2 / 5; border-left: 1px solid #ddd; padding: 0 16px 16px;
           overflow: auto; line-height: 1.4; }
@@ -79,6 +82,7 @@
   </nav>
   <span id="title"></span>
 </header>
+<div id="banner" role="status"></div>
 <div id="folders"></div>
 <div id="message" role="status"></div>
 <main><div id="photos"></div><div id="grid"></div><div id="table"></div></main>
@@ -186,6 +190,7 @@ let local = {};
 let hovered = null;
 let checkPage = 0;
 let busy = false;
+let checkDone = false;
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
 let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
 let clicks = [];       // corners that the person clicked, in the order TL, TR, BR, BL
@@ -193,6 +198,14 @@ let kinds = "handwritten";
 let digit = "1";
 const PAD = 120;       // the dark border around the photo: room for corners outside it
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "empty"];
+
+const DO = {
+  photos: "Do the red lines follow the grid? Press Enter. If not, click the 4 corners, then press Enter.",
+  groups: "Press P if most cells are printed, or H if most are handwritten. Click the odd ones. Press Enter.",
+  review: "Click each cell with the wrong kind. Then press Enter.",
+  check: "Label each cell again without looking back. Press Enter.",
+  progress: "Label every group. Then run just suspects and open Review.",
+};
 
 const $ = (id) => document.getElementById(id);
 const say = (text) => { $("message").textContent = text || ""; };
@@ -266,6 +279,64 @@ function title() {
     text = "Progress";
   }
   $("title").textContent = text;
+}
+
+const goTo = (label, target) => [label, () => open(target)];
+
+async function prelabel() {
+  say("Pre-labelling. The first run takes a while.");
+  const count = (await api("/api/prelabel", {})).result;
+  await loadDigits();
+  say(`Pre-labelled ${count} new cells.`);
+}
+
+// What to do next on this screen. An empty screen says what comes next, with a button for it.
+function bannerFor() {
+  if (mode === "photos") {
+    return photo ? [DO.photos, []]
+      : ["All photos are checked. Next: Confirm digits.", [goTo("Open Confirm digits", "digits")]];
+  }
+  if (mode === "digits") {
+    if (!screen) return ["", []];
+    const missing = screen.not_prelabelled
+      ? [`${screen.not_prelabelled} new cells have no pre-label.`, [["Pre-label new cells", () => run(prelabel)]]]
+      : null;
+    if (screen.left) {
+      const text = screen.digit === "empty" ? "Click each cell that shows a digit. Then press Enter."
+        : `Click each cell that is not a ${screen.digit}. Then press Enter.`;
+      return missing ? [`${text} ${missing[0]}`, missing[1]] : [text, []];
+    }
+    const next = DIGITS.find((d) => screen.counts[d] > 0);
+    if (next) return [`No cells left for ${screen.digit}. Open digit ${next}.`,
+      [[`Open digit ${next}`, () => run(() => loadDigits(next))]]];
+    return missing || ["All digits are confirmed. Next: Label kind.", [goTo("Open Label kind", "groups")]];
+  }
+  if (mode === "groups") {
+    return screen ? [DO.groups, []]
+      : ["Every cell has a kind. Next: run just suspects, then open Review.", [goTo("Open Review", "review")]];
+  }
+  if (mode === "review") {
+    return screen && !screen.open
+      ? ["Nothing to review. Run just suspects in the terminal, then open Review again.", []]
+      : [DO.review, []];
+  }
+  if (mode === "check") {
+    if (checkDone) return ["The check is done. Next: open Review.", [goTo("Open Review", "review")]];
+    return screen ? [DO.check, []] : ["", []];
+  }
+  return [DO.progress, []];
+}
+
+function renderBanner() {
+  const [text, buttons] = bannerFor();
+  const banner = $("banner");
+  banner.textContent = text;
+  for (const [label, action] of buttons) {
+    const button = document.createElement("button");
+    button.textContent = label;
+    button.onclick = action;
+    banner.append(button);
+  }
 }
 
 function renderFolders() {
@@ -358,7 +429,7 @@ async function renderPhoto() {
   if (!photo) {
     $("photos").innerHTML = "";
     $("title").textContent = "No photo to check.";
-    return say("Import photos with just import-photos <folder>. Or open Digits.");
+    return;
   }
   $("title").textContent = `Photo ${photo.stem} · ${photo.pending} to check · ${photo.reason}`;
   $("photos").innerHTML = `<div class="photo-row">
@@ -432,6 +503,7 @@ async function toggleKinds() {
 function render() {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === mode);
   $("help").innerHTML = HELP[mode];
+  renderBanner();
   renderFolders();
   renderActions();
   $("table").innerHTML = "";
@@ -480,18 +552,10 @@ function setScreen(value) {
   if (mode === "groups" && screen) for (const c of screen.cells) local[c.id] = c.start;
   if (mode === "review" && screen) for (const c of screen.items) local[c.id] = c.kind;
   render();
-  if (mode === "groups" && !screen) {
-    say("Done with the groups. Next: stop the server, run just suspects, then open Review.");
-  } else if (mode === "groups" && screen.cells.every((c) => !c.start)) {
+  if (mode === "groups" && screen && screen.cells.every((c) => !c.start)) {
     say("Press P or H to start this screen.");
   } else if (mode === "groups") {
     say("The cells start with the kind most cells in this group have. Fix the exceptions, then press Enter.");
-  } else if (mode === "review" && screen && !screen.open) {
-    say("Run just suspects in the terminal after a labelling pass. Then open Review again.");
-  }
-  if (mode === "digits" && screen && !screen.left) {
-    const next = DIGITS.find((d) => screen.counts[d] > 0);
-    say(next ? `No cells left for ${screen.digit}. Open digit ${next}.` : "No pre-labelled cells left.");
   }
 }
 
@@ -573,6 +637,7 @@ async function save() {
     local = {};
     if (checkPage * PAGE < screen.cells.length) { render(); return say("Saved. Label the next screen."); }
     screen = null;
+    checkDone = true;
     render();
     $("title").textContent = `Check done: ${(result.agreement * 100).toFixed(1)} % agreement on ${result.n} cells.`;
     say("The disagreements are now on the Review screen.");
@@ -640,6 +705,7 @@ async function run(action) {
 async function open(next, target) {
   if (busy) return;
   mode = next;
+  checkDone = false;
   screen = null;
   local = {};
   hovered = null;
