@@ -347,3 +347,22 @@ def test_the_page_explains_the_photos_and_digits_screens(served):
         "Do the red lines follow the grid?",
     ):
         assert text in page
+
+
+def test_a_cell_of_an_accepted_photo_serves_its_origin(served_photos):
+    port, _, _, stem = served_photos
+    status, data = request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
+    cell = json.loads(data)["result"]["new_cells"][0][:16]
+    status, data = request(port, "GET", f"/api/origin?cell={cell}")
+    assert status == 200 and json.loads(data)["photo"] == stem
+    status, data = request(port, "GET", f"/origin/{cell}.png")
+    assert status == 200 and data[:4] == b"\x89PNG"
+    assert request(port, "GET", f"/origin/{'0' * 16}.png")[0] == 404
+    assert json.loads(request(port, "GET", f"/api/origin?cell={'0' * 16}")[1]) is None
+
+
+def test_the_origin_routes_answer_404_without_a_photo_check(served):
+    port, _, _ = served
+    for path in ("/api/origin?cell=abc", "/origin/abc.png"):
+        status, data = request(port, "GET", path)
+        assert status == 404 and json.loads(data) == {"error": "no photo check"}

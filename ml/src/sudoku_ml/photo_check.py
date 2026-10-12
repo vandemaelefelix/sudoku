@@ -3,6 +3,7 @@ cells of an accepted photo into cells/unlabeled/ (ADR-009, amendment of 2026-10-
 
 import csv
 import io
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,6 +28,7 @@ from sudoku_ml.photo_import import PhotoPaths, read_detections, read_photos
 MIN_CELLS = 10  # fewer usable cells are not worth the labelling time
 DISPLAY_SIZE = 1600
 ORIGIN_FIELDS = ["cell", "photo", "row", "col"]
+FLAT_CACHE = 16  # flattened grids: the person moves across the cells of several photos
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,8 @@ class PhotoCheck:
     def __init__(self, paths: PhotoPaths, session: str, now: Callable[[], datetime]):
         self.paths, self.session, self._now = paths, session, now
         self._upright: tuple[str, np.ndarray] | None = None
+        self._origins: tuple[tuple[int, int], dict[str, tuple[str, int, int]]] | None = None
+        self._flats: OrderedDict[str, np.ndarray] = OrderedDict()
 
     def _rows(self) -> dict[str, dict[str, str]]:
         return {r["id"][:16]: r for r in read_photos(self.paths.manifest)}
@@ -125,6 +129,67 @@ class PhotoCheck:
             flat[:, max(0, at - thick + 1) : at + 1] = (255, 0, 0)
         out = io.BytesIO()
         Image.fromarray(flat.astype(np.uint8)).save(out, "PNG")
+        return out.getvalue()
+
+    def _origin_rows(self) -> dict[str, tuple[str, int, int]]:
+        # Accept appends to the file in the same session, so a new mtime means a reload.
+        if not self.paths.origins.exists():
+            return {}
+        info = self.paths.origins.stat()
+        mtime = (info.st_mtime_ns, info.st_size)
+        if self._origins is None or self._origins[0] != mtime:
+            with self.paths.origins.open(newline="", encoding="utf-8") as handle:
+                rows = {
+                    r["cell"][:16]: (r["photo"], int(r["row"]), int(r["col"]))
+                    for r in csv.DictReader(handle)
+                }
+            self._origins = (mtime, rows)
+        return self._origins[1]
+
+    def _accepted_corners(self, photo_id: str) -> list[list[float]] | None:
+        found = None
+        for d in read_records(self.paths.checks, PhotoDecision):
+            if d.photo == photo_id and d.decision == "accepted":
+                found = d.corners
+        return found
+
+    def origin(self, cell_stem: str) -> dict | None:
+        """The photo, row and column (0-based) that a cell was cut from. None if unknown."""
+        found = self._origin_rows().get(cell_stem)
+        if found is None or self._accepted_corners(found[0]) is None:
+            return None
+        photo_id, row, col = found
+        manifest = next((r for r in self._rows().values() if r["id"] == photo_id), None)
+        if manifest is None:
+            return None
+        return {
+            "photo": photo_id[:16],
+            "row": row,
+            "col": col,
+            "origin": manifest["origin"],
+            "licence": manifest["licence"],
+        }
+
+    def origin_png(self, cell_stem: str) -> bytes | None:
+        """The flattened grid of the cell's photo with the cell outlined. None if unknown."""
+        found = self.origin(cell_stem)
+        if found is None:
+            return None
+        stem = found["photo"]
+        if stem not in self._flats:
+            row = self._rows()[stem]
+            corners = self._accepted_corners(row["id"])
+            image = load_upright(self.paths.photos / row["file"])
+            self._flats[stem] = warp_grid(image, check_corners(corners))
+            while len(self._flats) > FLAT_CACHE:
+                self._flats.popitem(last=False)
+        flat = self._flats[stem].copy()
+        x, y = found["col"] * CELL_SIZE, found["row"] * CELL_SIZE
+        far = (x + CELL_SIZE - 1, y + CELL_SIZE - 1)
+        cv2.rectangle(flat, (x, y), far, (0, 0, 0), 5)
+        cv2.rectangle(flat, (x, y), far, (255, 215, 0), 3)
+        out = io.BytesIO()
+        Image.fromarray(flat).save(out, "PNG")
         return out.getvalue()
 
     def _open(self, stem: str) -> dict[str, str]:

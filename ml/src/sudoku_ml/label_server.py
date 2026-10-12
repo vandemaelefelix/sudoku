@@ -17,6 +17,7 @@ from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import PhotoPaths
 
 PAGE = Path(__file__).with_name("label_page.html")
+PHOTO_ROUTES = ("/api/photos/", "/photo/", "/flat/", "/api/origin", "/origin/")
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 ML_ROOT = Path(__file__).parents[2]
 
@@ -115,8 +116,16 @@ def make_server(
                     self._json(store.progress())
                 elif url.path == "/api/digits":
                     self._json(store.digit_screen(q["digit"], q.get("kinds", "handwritten")))
-                elif url.path.startswith(("/api/photos/", "/photo/", "/flat/")) and check is None:
+                elif check is None and url.path.startswith(PHOTO_ROUTES):
                     self._json({"error": "no photo check"}, 404)
+                elif url.path == "/api/origin":
+                    self._json(check.origin(q["cell"]))
+                elif url.path.startswith("/origin/"):
+                    body = check.origin_png(url.path.removeprefix("/origin/").removesuffix(".png"))
+                    if body is None:
+                        self._json({"error": "no origin"}, 404)
+                        return
+                    self._send(200, body, "image/png")
                 elif url.path == "/api/photos/next":
                     self._json(check.next(q.get("after")))
                 elif url.path == "/api/photos/usable":
