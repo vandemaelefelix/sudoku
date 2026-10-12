@@ -1,8 +1,14 @@
 import { GRID_CELLS } from '../grid'
 import { peersOf } from '../units'
-import { completeDigits, completedBetween, isSolved, NOTHING_COMPLETED } from './completion'
+import {
+  completeDigits,
+  completedBetween,
+  isSolved,
+  NOTHING_COMPLETED,
+  valueAt,
+} from './completion'
 import { MAX_MISTAKES, UNDO_LIMIT } from './constants'
-import type { Digit, Game, MoveResult, UndoStep } from './types'
+import type { Digit, Game, MoveResult, Random, UndoStep } from './types'
 
 /** For an action that completes nothing. With the same game object, the action changed nothing. */
 const noCompletion = (game: Game): MoveResult => ({ game, completed: NOTHING_COMPLETED })
@@ -95,6 +101,35 @@ export function erase(game: Game): MoveResult {
     ...game,
     entries: replaceAt(game.entries, cell, 0),
     notes: replaceAt(game.notes, cell, []),
+    undoSteps: withUndoStep(game),
+  })
+}
+
+/** Undo never changes the mistakes, the hints used, the selected cell or the time. */
+export function undo(game: Game): MoveResult {
+  const step = game.undoSteps.at(-1)
+  if (game.status !== 'playing' || step === undefined) return noCompletion(game)
+  return noCompletion({
+    ...game,
+    entries: step.entries,
+    notes: step.notes,
+    undoSteps: game.undoSteps.slice(0, -1),
+  })
+}
+
+/** Fills one random empty or wrong cell with its correct number. A hint is never a mistake. */
+export function hint(game: Game, random: Random): MoveResult {
+  if (game.status !== 'playing') return noCompletion(game)
+  const open = game.solution.flatMap((digit, cell) => (valueAt(game, cell) === digit ? [] : [cell]))
+  const cell = open[Math.min(open.length - 1, Math.floor(random() * open.length))]
+  if (cell === undefined) return noCompletion(game)
+  // createGame checks that every solution value is 1 to 9.
+  const digit = game.solution[cell] as Digit
+  return settle(game, {
+    ...game,
+    ...withNumber(game, cell, digit),
+    selected: cell,
+    hintsUsed: game.hintsUsed + 1,
     undoSteps: withUndoStep(game),
   })
 }

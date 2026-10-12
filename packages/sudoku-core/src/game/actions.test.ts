@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { erase, place, select, toggleNote } from './actions'
+import { erase, hint, place, select, toggleNote, undo } from './actions'
 import { NOTHING_COMPLETED } from './completion'
+import { UNDO_LIMIT } from './constants'
 import { createGame } from './createGame'
 import { SAMPLE_GIVENS, SAMPLE_SOLUTION, solvedExcept } from './samplePuzzle'
 import type { Digit, Game } from './types'
@@ -144,5 +145,94 @@ describe('a lost game', () => {
     expect(toggleNote(lost, 6).game).toBe(lost)
     expect(erase(lost).game).toBe(lost)
     expect(select(lost, 40)).toBe(lost)
+  })
+})
+
+const first = () => 0
+const last = () => 0.999_999
+
+describe('undo', () => {
+  it('takes back the entry but not the mistake', () => {
+    const game = undo(placed(at(2), 1)).game
+    expect(game.entries[2]).toBe(0)
+    expect(game.mistakes).toBe(1)
+  })
+
+  it('brings back the notes that a placed number removed', () => {
+    const game = undo(placed(noted(at(2), 4, 7), 4)).game
+    expect(game.entries[2]).toBe(0)
+    expect(game.notes[2]).toEqual([4, 7])
+  })
+
+  it('does nothing without a step to undo', () => {
+    const game = at(2)
+    expect(undo(game).game).toBe(game)
+  })
+
+  it('cannot remove an entry the player did not make', () => {
+    const game = at(3, solvedExcept(2))
+    expect(undo(game).game).toBe(game)
+  })
+
+  it('keeps at most UNDO_LIMIT steps', () => {
+    let game = at(2)
+    for (let step = 0; step <= UNDO_LIMIT; step++) game = toggleNote(game, 5).game
+    expect(game.undoSteps).toHaveLength(UNDO_LIMIT)
+  })
+
+  it('takes back a hint entry but keeps the hint count', () => {
+    const game = undo(hint(at(2), first).game).game
+    expect(game.entries[2]).toBe(0)
+    expect(game.hintsUsed).toBe(1)
+  })
+})
+
+describe('hint', () => {
+  const openCells = SAMPLE_GIVENS.flatMap((given, cell) => (given === 0 ? [cell] : []))
+
+  it('fills a random open cell with its correct number and counts one hint', () => {
+    const result = hint(newGame(), first)
+    expect(result.game.entries[2]).toBe(4)
+    expect(result.game.hintsUsed).toBe(1)
+    expect(result.game.selected).toBe(2)
+    expect(result.game.mistakes).toBe(0)
+  })
+
+  it('takes the cell from the random source', () => {
+    const cell = openCells[openCells.length - 1] ?? -1
+    const game = hint(newGame(), last).game
+    expect(game.selected).toBe(cell)
+    expect(game.entries[cell]).toBe(SAMPLE_SOLUTION[cell])
+  })
+
+  it('can pick a wrong cell and correct it, without a mistake', () => {
+    const wrong = placed(at(3, solvedExcept(2, 3)), 4)
+    const game = hint(wrong, last).game
+    expect(game.entries[3]).toBe(6)
+    expect(game.mistakes).toBe(1)
+  })
+
+  it('picks a wrong entry from the start', () => {
+    const entries = solvedExcept()
+    entries[3] = 1
+    const game = hint(newGame(entries), first).game
+    expect(game.entries[3]).toBe(6)
+    expect(game.mistakes).toBe(0)
+  })
+
+  it('removes the number from the notes of its peers', () => {
+    const game = hint(noted(at(3), 4), first).game
+    expect(game.notes[3]).toEqual([])
+  })
+
+  it('reports what it completed and wins the game on the last cell', () => {
+    const result = hint(newGame(solvedExcept(2)), first)
+    expect(result.completed.grid).toBe(true)
+    expect(result.game.status).toBe('won')
+  })
+
+  it('does nothing when the game is won', () => {
+    const won = newGame(solvedExcept())
+    expect(hint(won, first).game).toBe(won)
   })
 })
