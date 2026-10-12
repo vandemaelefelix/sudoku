@@ -211,7 +211,7 @@ const DO = {
   photos: "Do the red lines follow the grid? Press Enter. If not, click the 4 corners, then press Enter.",
   guessPrinted: "The model thinks these cells are printed. Click each cell that is not. Then press Enter.",
   guessHandwritten: "The model thinks these cells are handwritten. Click each cell that is not. Then press Enter.",
-  guessOther: "The model is not sure about these cells. Press P or H, click the odd ones, then press Enter.",
+  guessOther: "The model sees no printed or handwritten digit in these cells. Press P or H, click the odd ones, then press Enter.",
   groups: "Press P if most cells are printed, or H if most are handwritten. Click the odd ones. Press Enter.",
   review: "Click each cell with the wrong kind. Then press Enter.",
   check: "Label each cell again without looking back. Press Enter.",
@@ -246,8 +246,8 @@ function reasonText(cell) {
 
 function detailText(cell) {
   if (mode === "groups" && cell.kp !== undefined) {
-    return cell.start ? `The model reads ${cell.start} (${Math.round(cell.kp * 100)} %).`
-      : `The model is not sure (${Math.round(cell.kp * 100)} %).`;
+    const mine = cell.kind && cell.kind !== cell.model_kind ? ` Your label: ${cell.kind}.` : "";
+    return `The model reads ${cell.model_kind} (${Math.round(cell.kp * 100)} %).${mine}`;
   }
   if (mode === "digits") return `The model reads ${screen.digit} (${Math.round(cell.p * 100)} %).`;
   if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
@@ -298,7 +298,7 @@ function title() {
   let text = "";
   if (mode === "groups") {
     text = !screen ? "Every grouped cell has a kind." :
-      `Digit ${screen.folder} · ${screen.predicted ? `model guess: ${screen.predicted}` : screen.ungrouped ? "cells added after grouping" : `group ${screen.group + 1} of ${screen.groups}`}` +
+      `Digit ${screen.folder} · ${screen.predicted ? `model guess: ${screen.predicted === "other" ? "none or notes" : screen.predicted}` : screen.ungrouped ? "cells added after grouping" : `group ${screen.group + 1} of ${screen.groups}`}` +
       `${screen.pages > 1 ? ` · screen ${screen.page + 1} of ${screen.pages}` : ""}` +
       ` · folder ${screen.folder}/: ${screen.progress.labelled} of ${screen.progress.cells} labelled`;
   } else if (mode === "review") {

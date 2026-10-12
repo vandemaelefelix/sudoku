@@ -105,9 +105,9 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "An empty cell has no kind.",
         "The model thinks these cells are printed. Click each cell that is not. Then press Enter.",
         "The model thinks these cells are handwritten.",
-        "The model is not sure about these cells. Press P or H, click the odd ones, then",
-        "model guess: ${screen.predicted}",
-        "The model reads ${cell.start} (",
+        "The model sees no printed or handwritten digit in these cells. Press P or H, click",
+        "none or notes",
+        "The model reads ${cell.model_kind} (",
         "no model guess yet.",
     ):
         assert text in page

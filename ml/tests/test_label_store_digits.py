@@ -171,3 +171,14 @@ def test_the_digit_screen_and_status_ignore_pre_labels_of_digit_folder_cells(tmp
     assert status["kind_not_prelabelled"] == 1 and status["kind"] == 5
     store.save([{"id": c[4], "kind": "printed"}], "groups")
     assert store.status()["kind_not_prelabelled"] == 0
+
+
+def test_a_guessed_cell_keeps_the_model_kind_apart_from_the_logged_kind(tmp_path: Path):
+    store, c, _ = with_kind_guesses(tmp_path, GUESSES)
+    store.save([{"id": c[2], "kind": "handwritten"}], "groups")
+    printed = store.screen("4", 0, 0)["cells"]
+    assert [(x["model_kind"], x["start"]) for x in printed] == [
+        ("printed", "handwritten"),
+        ("printed", "printed"),
+    ]
+    assert store.screen("4", 2, 0)["cells"][0]["model_kind"] == "notes"
