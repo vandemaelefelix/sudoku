@@ -79,6 +79,22 @@ module.exports = {
       to: { path: '^apps/mobile/src/theme/themes/[^/]+/palette\\.ts$' },
     },
     {
+      name: 'a-theme-does-not-import-another-theme',
+      comment:
+        'Each theme is one folder with its own tokens (ADR-015, point 11). Shared values live in src/theme/shared.tokens.ts.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/theme/themes/([^/]+)/' },
+      to: { path: '^apps/mobile/src/theme/themes/', pathNot: '^apps/mobile/src/theme/themes/$1/' },
+    },
+    {
+      name: 'styles-read-the-theme-argument',
+      comment:
+        'A styles file reads the theme through StyleSheet.create(theme => ...). An imported theme object does not change on a theme switch (ADR-015).',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
+      to: { path: '^apps/mobile/src/theme/themes/' },
+    },
+    {
       name: 'components-and-hooks-do-not-import-screens',
       comment: 'A screen composes components and hooks, not the other way round.',
       severity: 'error',
