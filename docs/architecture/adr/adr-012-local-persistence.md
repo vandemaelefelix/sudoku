@@ -48,3 +48,17 @@ should not force a storage rewrite.
 ## Reassessment Triggers
 
 - The backend's sync design needs something the row conventions do not support.
+
+## Amendment 2026-10-12: the first tables
+
+The first repositories make these points of the decision concrete:
+
+1. **Snapshots, not moves.** A save writes the whole game as its saved game (JSON) in one row. Undo steps are part of the saved game.
+2. **One game in progress.** Starting a game soft-deletes the game in progress before it.
+3. **Finish in one transaction.** The last save of a won or lost game soft-deletes the game in progress and writes its history entry in the same transaction. The history entry takes the id of the game.
+4. **Numbered migrations.** The migrations are an ordered list in `apps/mobile/src/storage/migrations.ts`. `PRAGMA user_version` holds the last one that ran. An app refuses a database that is newer than itself.
+5. **Saves run in order.** A save waits for the save before it, so the last move always wins.
+6. **Jest runs the real SQL.** The repositories use a small SQL interface. In Jest it runs on the SQLite that Node has built in, so the tests check the SQL, the migrations and the transactions. The in-memory fake passes the same contract tests.
+7. **Best time without hints.** The best time of a level counts only won games with zero hints.
+
+The time played is saved with each move. Time after the last move and before the app is killed is lost.
