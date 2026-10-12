@@ -55,6 +55,7 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | --- | --- | --- | --- | --- | --- |
 | ADR-003 | All inference on the device. | Systemic | 2026-10-09 | Felix | [ADR-003](adr/adr-003-on-device-inference.md) |
 | ADR-004 | Two stages: 4 corners live, per-cell flatten from 100 intersections on capture. | Concept | 2026-10-09 | Felix | [ADR-004](adr/adr-004-two-stage-scan-pipeline.md) |
+| ADR-019 | Lock-on needs the same grid in view for LOCK_DWELL and no clear move (drift over 0.3 s), not a still phone. Supersedes the lock-on condition of ADR-004. A Retake starts a fresh scan. | Concept | 2026-10-12 | Felix | [ADR-019](adr/adr-019-lock-on-tracked-grid.md) |
 | ADR-005 | PyTorch on MPS, exported to TFLite with litert-torch, float32 weights only. **Pending the walking skeleton (M0).** | Cross-concept | 2026-10-09 | Felix | [ADR-005](adr/adr-005-pytorch-to-tflite.md) |
 | ADR-006 | One cell classifier, two heads: digit and kind (printed, handwritten, notes). A global-average-pooling CNN of about 73k parameters. | Concept | 2026-10-09 | Felix | [ADR-006](adr/adr-006-two-head-cell-classifier.md) |
 | ADR-007 | Gated promote step, scored on the app's own cell images per fixture, with a floor, a tolerance and a holdout split. Until M3, `just install-model` copies a run without the gate. A model trained on unpublishable data stays out of git. | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
