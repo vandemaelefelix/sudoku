@@ -22,7 +22,7 @@ The screen has four parts, from top to bottom:
 
 | Part | Contents |
 | --- | --- |
-| Header | A back button to the home screen. The timer, which is also the pause button. Three dots that show the mistakes, filled one per mistake |
+| Header | A back button to the home screen. The timer, which is also the pause button. Three dots. One dot fills for each mistake |
 | Grid | 81 cells in nine boxes. A **given** is locked and drawn with `type.given`. An **entry** uses `type.entry`. **Notes** show as a 3 × 3 set of small digits with `type.note`. A wrong entry has the conflict colour |
 | Tools | Undo, Erase, Notes and Hint. Undo and Erase are disabled when they cannot act. Notes is a toggle: in **notes mode** a number key toggles a note |
 | Keypad | One key for each number 1 to 9. The key of a **complete number** is disabled and faded |
@@ -60,7 +60,7 @@ stateDiagram-v2
 | --- | --- |
 | Playing | The grid, the tools and the keypad. The timer counts |
 | Paused | The grid hides every digit and note. A "Paused, tap to resume" layer covers it. The tools and the keypad are faded and do not act. The timer stops |
-| Game over | The **game over sheet** rises from the bottom over a light scrim. It says "Out of mistakes" and how many cells were right, at what time. Its buttons: Try this puzzle again, New puzzle, Back to home |
+| Game over | The **game over sheet** rises from the bottom over a light scrim. It says "Out of mistakes". It shows how many cells were right and the time played. Its buttons: Try this puzzle again, New puzzle, Back to home |
 | Solving | A short pause for the solve **pulse**. The controls do not act |
 | Finished | The **finish card** over a scrim, with New puzzle and Back to home below it |
 

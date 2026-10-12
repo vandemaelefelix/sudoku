@@ -93,7 +93,7 @@ status: DRAFT
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
 | Level | The difficulty of a puzzle: Easy, Medium, Hard or Expert. In v1 the number of givens sets it. Grading by technique comes later (ADR-011) |
-| Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
+| Game status | The state of a game: playing, paused, solving, game over or finished. Only a playing game accepts moves, and only a playing game counts time |
 | Undo step | The entries and notes before one move. Undo restores the last undo step. It does not restore the mistake count |
 | Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
 | Theme preference | The player's choice in Settings: System, Daylight or Midnight. System follows the light or dark setting of the iPhone |

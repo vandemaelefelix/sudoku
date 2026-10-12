@@ -123,7 +123,7 @@ Work is tracked in GitHub issues. Use the `gh` CLI.
    `type: epic`. Each issue of the epic is a GitHub sub-issue, with "blocked by" links for its
    order.
 5. A pull request for the docs of an epic says `Part of #<epic>`. Only the last sub-issue
-   closes an epic.
+   closes an epic. Its pull request body says `Closes #<epic>`.
 6. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
 7. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
 8. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.
