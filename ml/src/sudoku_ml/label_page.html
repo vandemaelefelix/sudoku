@@ -9,8 +9,19 @@
          grid-template-columns: 1fr 320px; grid-template-rows: auto auto 1fr auto; height: 100vh; }
   header { grid-column: 1 / 3; display: flex; gap: 16px; align-items: center;
            padding: 8px 16px; border-bottom: 1px solid #ddd; }
-  nav button { margin-right: 4px; }
-  nav button.on { font-weight: bold; }
+  nav { display: flex; gap: 6px; align-items: stretch; }
+  nav button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+               padding: 4px 10px; text-align: left; cursor: pointer; }
+  nav button small { color: #777; font-size: 11px; }
+  nav button .label { display: flex; gap: 6px; align-items: baseline; }
+  nav button.on { border-color: #111; }
+  nav button.on .label { font-weight: bold; }
+  nav .badge { min-width: 1.4em; padding: 0 5px; border-radius: 9px; background: #eee;
+               color: #333; font-size: 11px; text-align: center; }
+  nav .badge.done { background: #dff3e3; color: #1d7a34; }
+  nav .divider { width: 1px; background: #ddd; margin: 0 6px; }
+  nav .tools { align-self: center; color: #777; font-size: 11px; text-transform: uppercase; }
+  nav .tool { opacity: 0.85; }
   #folders { grid-column: 1; padding: 8px 16px 0; }
   #folders button.on { font-weight: bold; }
   #message { grid-column: 1; padding: 8px 16px 0; color: #b00020; min-height: 1.2em; }
@@ -57,12 +68,14 @@
 <body>
 <header>
   <nav>
-    <button data-mode="photos">Photos</button>
-    <button data-mode="digits">Digits</button>
-    <button data-mode="groups">Groups</button>
-    <button data-mode="review">Review</button>
-    <button data-mode="check">Check</button>
-    <button data-mode="progress">Progress</button>
+    <button data-mode="photos"><span class="label">1 Check photos <span class="badge" data-count="photos"></span></span><small>Is the grid outline right?</small></button>
+    <button data-mode="digits"><span class="label">2 Confirm digits <span class="badge" data-count="digits"></span></span><small>Does each cell show this digit?</small></button>
+    <button data-mode="groups"><span class="label">3 Label kind <span class="badge" data-count="kind"></span></span><small>Printed or handwritten?</small></button>
+    <span class="divider"></span>
+    <span class="tools">Tools</span>
+    <button class="tool" data-mode="review"><span class="label">Review</span><small>Fix doubtful labels</small></button>
+    <button class="tool" data-mode="check"><span class="label">Check</span><small>Test your own labels</small></button>
+    <button class="tool" data-mode="progress"><span class="label">Progress</span><small>Overview</small></button>
   </nav>
   <span id="title"></span>
 </header>
@@ -595,6 +608,21 @@ function renderProgress(value) {
   }
 }
 
+async function refreshStatus() {
+  try {
+    const value = await api("/api/status");
+    const counts = { photos: value.photos, digits: value.digits, kind: value.kind };
+    for (const badge of document.querySelectorAll("[data-count]")) {
+      const n = counts[badge.dataset.count];
+      const left = badge.dataset.count === "digits" ? n + value.not_prelabelled : n;
+      badge.textContent = left === 0 ? "✓" : n;
+      badge.classList.toggle("done", left === 0);
+    }
+  } catch (error) {
+    // The counts are a convenience. A failed refresh must not hide the real message.
+  }
+}
+
 async function run(action) {
   // A held or double Enter would otherwise send the same screen twice.
   if (busy) return;
@@ -605,6 +633,7 @@ async function run(action) {
     say(error.message);
   } finally {
     busy = false;
+    refreshStatus();
   }
 }
 
