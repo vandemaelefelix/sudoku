@@ -1044,7 +1044,7 @@ function renderProgress(value) {
   notes.className = "notes";
   notes.innerHTML = "";
   const lines = [`Review: ${value.review_open} cells to look at.`, checkLine(value.check)];
-  if (value.link_line) lines.push(value.link_line[0].toUpperCase() + value.link_line.slice(1) + ".");
+  if (value.link_line) lines.push(value.link_line);
   for (const text of lines) {
     const line = document.createElement("div");
     line.textContent = text;
@@ -1082,7 +1082,7 @@ function finishPanel(result) {
   return showState("done", "Finished. Nothing is lost if you stop now.", [], [
     `Cells: ${counts(report.cells)}.`,
     `Photos: ${counts(report.photos)}.`,
-    `${link[0].toUpperCase()}${link.slice(1)}.`,
+    link,
     `Still waiting: ${result.still_waiting.cells} cells, ${result.still_waiting.photos} photos.`,
     `Removed: ${removed}.`,
     FINISH_NEXT,
@@ -1195,7 +1195,20 @@ document.addEventListener("keydown", (event) => {
 });
 
 for (const b of document.querySelectorAll("nav button[data-mode]")) b.onclick = () => open(b.dataset.mode);
-$("finish").onclick = () => open("finish");
+// The Groups and Review screens start with marks. Only a change from the start is unsaved.
+function hasUnsavedMarks() {
+  const cells = screen ? cellsOnScreen() : [];
+  if (mode === "groups") return cells.some((c) => (local[c.id] ?? null) !== (c.start ?? null));
+  if (mode === "review") return cells.some((c) => (local[c.id] ?? null) !== (c.kind ?? null));
+  return Object.keys(local).length > 0;
+}
+
+$("finish").onclick = () => {
+  // open() clears the marks that are not saved.
+  const unsaved = "You have marks that are not saved. Finish now and lose them?";
+  if (hasUnsavedMarks() && !confirm(unsaved)) return;
+  open("finish");
+};
 open("groups");
 </script>
 </body>
