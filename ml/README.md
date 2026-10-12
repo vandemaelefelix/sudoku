@@ -57,8 +57,8 @@ ml/datasets/
 - The kind of a cell comes from `kind-log.jsonl` (ADR-009, amendment). `printed` means made by
   a printer or a screen. `handwritten` means written by a person. Undecidable cells are `unsure`.
 
-The dataset holds 16,277 cells and 253 photos. 71 cells have no label yet: 67 hold notes or other
-marks, and 4 need a check by hand.
+The files `photos.csv` and `cells.csv` list every photo and every cell. Count their rows to get
+the size of the dataset.
 
 ## Import photos and label their digits
 
