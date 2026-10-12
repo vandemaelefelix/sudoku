@@ -47,6 +47,7 @@ it('shows a board that cannot be tapped and that VoiceOver skips', () => {
   const hidden = { includeHiddenElements: true }
   expect(screen.getAllByTestId(/^cell-\d+$/, hidden)).toHaveLength(81)
   expect(screen.queryAllByRole('button', hidden)).toHaveLength(0)
+  expect(screen.queryAllByTestId(/^cell-\d+-wave$/, hidden)).toHaveLength(0)
   expect(screen.getByTestId('grid', hidden).props.accessibilityElementsHidden).toBe(true)
 })
 
@@ -58,4 +59,5 @@ it('keeps the game grid open to VoiceOver by default', () => {
   )
   expect(screen.getByTestId('grid').props.accessibilityElementsHidden).toBe(false)
   expect(screen.getAllByRole('button')).toHaveLength(81)
+  expect(screen.getAllByTestId(/^cell-\d+-wave$/)).toHaveLength(81)
 })

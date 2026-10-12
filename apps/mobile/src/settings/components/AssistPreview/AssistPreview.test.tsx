@@ -53,3 +53,8 @@ it('has the 180 pt size of the canvas', () => {
     height: 180,
   })
 })
+
+it('draws no pulse', () => {
+  render(<AssistPreview />)
+  expect(screen.queryAllByTestId(/^cell-\d+-wave$/, hidden)).toHaveLength(0)
+})
