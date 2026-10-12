@@ -62,6 +62,10 @@ describe('generate', () => {
     expect(() => generate('easy', seed)).toThrow(RangeError)
   })
 
+  it.for([0, 0xffffffff])('accepts the seed %i', (seed) => {
+    expect(generate('easy', seed).seed).toBe(seed)
+  })
+
   it('refuses a level it does not know', () => {
     expect(() => generate('nightmare' as Level, 1)).toThrow(RangeError)
   })
