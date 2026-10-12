@@ -46,6 +46,8 @@ A wrong entry keeps its conflict fill, whatever the assists are.
 ```mermaid
 stateDiagram-v2
     [*] --> Playing
+    Playing --> [*]: back
+    Paused --> [*]: back
     Playing --> Paused: timer tapped, or app leaves the foreground
     Paused --> Playing: grid or timer tapped
     Playing --> GameOver: third mistake
@@ -55,6 +57,8 @@ stateDiagram-v2
     GameOver --> [*]: new puzzle or home
     Finished --> [*]: new puzzle or home
 ```
+
+Back returns to the home screen. The game stays saved, so the player can resume it.
 
 | State | What the screen shows |
 | --- | --- |
@@ -105,7 +109,7 @@ The Settings screen has two groups:
 - A placed number removes itself from the notes in its row, column and box.
 - A wrong number counts as a **mistake**. Undo does not remove a mistake. The third mistake
   ends the game.
-- A **hint** fills a random empty or wrong cell with its correct number and counts one hint.
+- A **hint** fills one cell with its correct number and counts one hint. ADR-011 decides which cell.
 - A number is complete only when all nine are placed correctly. Wrong placements do not count.
 - The timer does not count during a pause or after the game ends.
 
@@ -115,7 +119,7 @@ The Settings screen has two groups:
 | --- | --- |
 | Navigation between home, game and settings | An ADR in issue #51 |
 | The motion sensor that tilts the finish card | An ADR in issue #43 |
-| Hints that teach a technique instead of a random cell (ADR-011) | Issue #45, after this epic |
+| Which cell a hint picks. V1 picks a random empty or wrong cell. Hints that teach a technique come later (ADR-011) | Issue #45, after this epic |
 | An option to turn off the entry check | Issue #46, after this epic |
 | VoiceOver labels for each cell and Dynamic Type sizes | Issue #44 |
 

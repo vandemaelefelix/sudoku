@@ -122,8 +122,8 @@ Work is tracked in GitHub issues. Use the `gh` CLI.
 4. An epic groups the issues of one player goal. It uses the `epic.md` template and the label
    `type: epic`. Each issue of the epic is a GitHub sub-issue, with "blocked by" links for its
    order.
-5. A pull request for the docs of an epic says `Part of #<epic>`. Only the last sub-issue
-   closes an epic. Its pull request body says `Closes #<epic>`.
+5. The pull request that meets the last open criterion of an epic says `Closes #<epic>`.
+   Every other pull request of the epic says `Part of #<epic>`.
 6. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
 7. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
 8. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.

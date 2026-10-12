@@ -86,13 +86,13 @@ status: DRAFT
 | Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
 | Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
-| Hint | A move that fills one random empty or wrong cell with its correct number. It counts once. Hints that teach come later (ADR-011) |
+| Hint | A move that fills one cell with its correct number. It counts once. ADR-011 decides which cell the hint picks |
 | Complete number | A number with all nine placed correctly. Its key is disabled. Wrong placements do not count |
 | Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
 | Pulse | The short wave of colour that spreads from a cell when a correct number completes a row, column, box, number or the whole grid. A haptic tap goes with it |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
-| Level | The difficulty of a puzzle: Easy, Medium, Hard or Expert. In v1 the number of givens sets it. Grading by technique comes later (ADR-011) |
+| Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level |
 | Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
 | Undo step | The entries and notes before one move. Undo restores the last undo step. It does not restore the mistake count |
 | Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
