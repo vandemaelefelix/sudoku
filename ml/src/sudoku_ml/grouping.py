@@ -11,6 +11,7 @@ from PIL import Image
 
 from sudoku_ml.dataset import read_ids
 from sudoku_ml.label_store import Paths
+from sudoku_ml.manifest import write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import BT601, preprocess_cell, to_cell_image
 
@@ -118,8 +119,7 @@ def write_groups(ml_root: Path, run: Path, out: Path, k: int = 30, seed: int = 0
         images = np.stack([to_cell_image(np.asarray(Image.open(p).convert("RGB"))) for p in paths])
         x = features(model, images)
         folders[folder] = group_folder([ids[p.stem] for p in paths], x, k, seed)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"run": run.name, "seed": seed, "k": k, "folders": folders}))
+    write_atomic(out, json.dumps({"run": run.name, "seed": seed, "k": k, "folders": folders}))
     return sum(len(g["cells"]) for groups in folders.values() for g in groups)
 
 

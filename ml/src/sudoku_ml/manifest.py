@@ -2,6 +2,8 @@
 
 import csv
 import hashlib
+import io
+import sys
 from pathlib import Path
 
 from PIL import Image
@@ -21,6 +23,18 @@ def pixel_id(path: Path) -> str:
         digest = hashlib.sha256(f"{rgb.width}x{rgb.height}".encode())
         digest.update(rgb.tobytes())
     return digest.hexdigest()
+
+
+def write_atomic(path: Path, text: str) -> None:
+    """Write beside the target, then replace it. A stop never leaves half a file (ADR-009)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(path.name + ".part")
+    part.write_text(text, encoding="utf-8")
+    part.replace(path)
+
+
+def warn_unreadable(path: Path, error: Exception) -> None:
+    print(f"{path.name} cannot be read ({error}). Treated as missing.", file=sys.stderr)
 
 
 def _kind_column(cell_id: str, label: str, logged: str | None) -> str:
@@ -55,10 +69,11 @@ def write_cells_manifest(cells_dir: Path, manifest: Path, log: Path | None = Non
         label = path.parent.name
         rows.append([cell_id, label, _kind_column(cell_id, label, kinds.get(cell_id))])
     rows.sort(key=lambda row: (row[1], row[0]))
-    with manifest.open("w", newline="") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["id", "label", "kind"])
-        writer.writerows(rows)
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "label", "kind"])
+    writer.writerows(rows)
+    write_atomic(manifest, buffer.getvalue())
     return len(rows)
 
 
