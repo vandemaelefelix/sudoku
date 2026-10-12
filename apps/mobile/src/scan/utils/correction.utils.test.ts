@@ -110,14 +110,14 @@ describe('cellLook', () => {
 })
 
 describe('cellsToCheck', () => {
-  it('counts the uncertain cells', () => {
-    const cells = [
+  it('counts the uncertain looks', () => {
+    const looks = [
       cell({}),
       cell({ confidence: 0.2 }),
       cell({ validPair: false }),
       cell({ kind: 'none', digit: 0, confidence: 0.1 }),
-    ]
-    expect(cellsToCheck(cells)).toBe(3)
+    ].map(cellLook)
+    expect(cellsToCheck(looks)).toBe(3)
     expect(cellsToCheck([])).toBe(0)
   })
 })
