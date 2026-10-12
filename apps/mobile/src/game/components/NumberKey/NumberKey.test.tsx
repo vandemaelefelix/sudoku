@@ -4,6 +4,16 @@ import { useReducedMotion } from 'react-native-reanimated'
 import { UnistylesRuntime } from 'react-native-unistyles'
 import { NumberKey } from './NumberKey'
 
+// The Unistyles mock never switches its theme, so this holder stands in for the animated theme.
+const mockTheme: { current: ReturnType<typeof UnistylesRuntime.getTheme> } = {
+  current: UnistylesRuntime.getTheme(),
+}
+jest.mock('react-native-unistyles/reanimated', () => ({
+  useAnimatedTheme: () => ({
+    get: () => mockTheme.current,
+  }),
+}))
+
 const doneOpacity = () => UnistylesRuntime.getTheme().opacity.disabled
 
 const renderKey = (props: Partial<Parameters<typeof NumberKey>[0]> = {}) => {
@@ -13,6 +23,10 @@ const renderKey = (props: Partial<Parameters<typeof NumberKey>[0]> = {}) => {
 }
 
 const open = () => <NumberKey digit={4} notesMode={false} complete={false} disabled={false} onPress={jest.fn()} />
+
+beforeEach(() => {
+  mockTheme.current = UnistylesRuntime.getTheme()
+})
 
 afterEach(() => jest.mocked(useReducedMotion).mockReturnValue(false))
 
@@ -60,4 +74,11 @@ it('comes back at full opacity when the number opens again', () => {
   screen.rerender(open())
   expect(screen.getByLabelText('Enter 4')).toBeEnabled()
   expect(screen.getByTestId('number-key-4')).toHaveStyle({ opacity: 1, transform: [{ scale: 1 }] })
+})
+
+it('takes the faded opacity from the theme token', () => {
+  const theme = UnistylesRuntime.getTheme()
+  mockTheme.current = { ...theme, opacity: { ...theme.opacity, disabled: 0.6 } }
+  renderKey({ complete: true })
+  expect(screen.getByTestId('number-key-4')).toHaveStyle({ opacity: 0.6 })
 })
