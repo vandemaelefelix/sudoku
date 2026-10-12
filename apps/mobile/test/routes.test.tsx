@@ -131,6 +131,28 @@ it('saves a move, and Continue resumes the move', async () => {
   expect(screen.getByTestId(`cell-${cell}`).props.accessibilityLabel).toMatch(new RegExp(`, ${digit}$`))
 })
 
+it('a double tap on Continue opens one game screen', async () => {
+  const storage = createMemoryStorage()
+  const { givens, solution } = generate('easy', 5)
+  await storage.puzzles.start({ level: 'easy', source: 'generated', game: createGame({ givens, solution }) })
+  renderApp(storage)
+  const resume = await screen.findByRole('button', { name: 'Continue, Easy' })
+  fireEvent.press(resume)
+  fireEvent.press(resume)
+  await waitFor(() => expect(screen).toHavePathname('/game'))
+  await layOutBoard()
+  expect(screen.getAllByTestId('board', { includeHiddenElements: true })).toHaveLength(1)
+  const cell = givens.findIndex((digit) => digit === 0)
+  const digit = solution[cell] ?? 0
+  fireEvent.press(screen.getByTestId(`cell-${cell}`))
+  fireEvent.press(screen.getByLabelText(`Enter ${digit}`))
+  await waitFor(async () => expect((await inProgress(storage)).game.entries[cell]).toBe(digit))
+  fireEvent.press(screen.getByLabelText('Back to home'))
+  await waitFor(() => expect(screen).toHavePathname('/'))
+  await screen.findByRole('button', { name: 'Continue, Easy' })
+  expect((await inProgress(storage)).game.entries[cell]).toBe(digit)
+})
+
 it('Continue resumes the time played', async () => {
   const storage = createMemoryStorage()
   const { givens, solution } = generate('medium', 7)
@@ -238,6 +260,16 @@ it('opens Settings', async () => {
   fireEvent.press(screen.getByRole('button', { name: 'Back' }))
   await waitFor(() => expect(screen).toHavePathname('/'))
   expect(await screen.findByRole('button', { name: 'Easy' })).toBeTruthy()
+})
+
+it('a double tap on Settings opens one Settings screen', async () => {
+  renderApp()
+  const settings = await screen.findByRole('button', { name: 'Settings' })
+  fireEvent.press(settings)
+  fireEvent.press(settings)
+  await waitFor(() => expect(screen).toHavePathname('/settings'))
+  fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+  await waitFor(() => expect(screen).toHavePathname('/'))
 })
 
 it('New puzzle starts a new game at the same level, and the lost game is in the history', async () => {

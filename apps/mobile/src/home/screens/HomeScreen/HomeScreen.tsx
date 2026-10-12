@@ -63,9 +63,11 @@ export function HomeScreen() {
     <HomeMenu
       continueLevel={continueLevel}
       onNewGame={newGame}
-      onContinue={() => router.push('/game')}
-      onScan={() => router.push('/scan')}
-      onSettings={() => router.push('/settings')}
+      // navigate, not push: a second tap finds the open screen on top and pushes no second copy.
+      // Two game screens for one game each save, so the older one can overwrite newer moves.
+      onContinue={() => router.navigate('/game')}
+      onScan={() => router.navigate('/scan')}
+      onSettings={() => router.navigate('/settings')}
     />
   )
 }
