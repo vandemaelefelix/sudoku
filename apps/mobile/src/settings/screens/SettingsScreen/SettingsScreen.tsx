@@ -2,6 +2,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { Icon } from '@/game/components/Icon'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { useAssists } from '@/game/hooks/useAssists'
+import { AssistPreview } from '@/settings/components/AssistPreview'
 import { AssistRow } from '@/settings/components/AssistRow'
 import { ThemePicker } from '@/settings/components/ThemePicker'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
@@ -33,6 +34,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <Text style={styles.hint}>Turn these off for a raw game.</Text>
         </View>
         <View style={styles.card}>
+          <AssistPreview />
           {ASSIST_ROWS.map(({ name, label, description }, index) => (
             <AssistRow
               key={name}

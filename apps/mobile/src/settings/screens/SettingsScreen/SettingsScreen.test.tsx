@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native'
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
 import { THEME_PREFERENCE_KEY } from '@/theme/preference'
+import { daylight } from '@/theme/themes/daylight'
 import { SettingsScreen } from './SettingsScreen'
 
 const LABELS = ['Row and column', 'Box', 'Selected cell', 'Same numbers']
@@ -56,4 +57,12 @@ it('shows the headings and the hint of the canvas', () => {
   expect(screen.getByText('Assists')).toBeTruthy()
   expect(screen.getByText('Turn these off for a raw game.')).toBeTruthy()
   expect(screen.getByText('Theme')).toBeTruthy()
+})
+
+it('shows a switch in the preview at once', async () => {
+  render(<SettingsScreen onBack={jest.fn()} />)
+  await act(async () => fireEvent(screen.getByLabelText('Box'), 'valueChange', false))
+  // Cell 31 is in the box of cell 39, not in its row or column, and holds no 8.
+  const cell31 = screen.getByTestId('cell-31', { includeHiddenElements: true })
+  expect(StyleSheet.flatten(cell31.props.style).backgroundColor).toBe(daylight.components.cell.fill)
 })
