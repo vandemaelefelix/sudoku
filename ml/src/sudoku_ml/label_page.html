@@ -44,11 +44,21 @@
   table { border-collapse: collapse; }
   th, td { padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right; }
   td.groups { text-align: left; }
+  .photo-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .wrap { position: relative; padding: 120px; background: #444; cursor: crosshair; }
+  .wrap img { display: block; max-width: 640px; max-height: 70vh; }
+  .wrap svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+  .flat { width: 400px; height: 400px; background: #eee; }
+  .cell.skip { opacity: 0.35; }
+  .cell.changed .tag { background: #d6452f; }
+  .cell.discarded .tag { background: #111; }
 </style>
 </head>
 <body>
 <header>
   <nav>
+    <button data-mode="photos">Photos</button>
+    <button data-mode="digits">Digits</button>
     <button data-mode="groups">Groups</button>
     <button data-mode="review">Review</button>
     <button data-mode="check">Check</button>
@@ -58,7 +68,7 @@
 </header>
 <div id="folders"></div>
 <div id="message" role="status"></div>
-<main><div id="grid"></div><div id="table"></div></main>
+<main><div id="photos"></div><div id="grid"></div><div id="table"></div></main>
 <aside>
   <div id="help"></div>
   <h3>Pointed-at cell</h3>
@@ -79,6 +89,32 @@ const LEGEND = `
   </dl>
   <p>Judge by look only. A typed digit from an app screenshot is printed.</p>`;
 const HELP = {
+  photos: `
+    <h3>What to do</h3>
+    <ol>
+      <li>The left image is the photo. The green outline is the grid that the import found.</li>
+      <li>The right image is the grid after the flatten, with the cell lines in red. Grey cells are outside the photo and are not cut.</li>
+      <li>Do the red lines lie on the grid lines? Press <b>Enter</b>. The page cuts the cells and opens the next photo.</li>
+      <li>Wrong outline? Click the 4 corners: top left, top right, bottom right, bottom left. A corner can be in the dark border outside the photo.</li>
+      <li>Press <b>C</b> to go back to the found outline.</li>
+      <li>Curled page, blurry digits or no sudoku? Press <b>R</b> to reject the photo.</li>
+      <li>Press <b>S</b> to skip. The photo comes back after the others.</li>
+    </ol>
+    <p>You cannot undo a photo. Check the right image before you press Enter.</p>
+    <p>After the last photo: Stop the server with Ctrl-C and run <code>just label-cells</code> again. The model then pre-labels the new cells for the Digits screen.</p>`,
+  digits: `
+    <h3>What to do</h3>
+    <ol>
+      <li>All cells on the screen are cells that the model reads as the same digit. The title names it.</li>
+      <li>Click each cell that is not this digit. It fades and stays unlabelled.</li>
+      <li>Know the right digit? Point at the cell and press it. <b>0</b> means empty.</li>
+      <li>Press <b>X</b> to discard the pointed-at cell: a bad cut, half a digit, or an unreadable mark.</li>
+      <li>Press <b>Enter</b>. Every cell that is not faded gets the digit of its tag.</li>
+    </ol>
+    <p>The least sure cells come first. Check them with care.</p>
+    <p>Small pencil notes: click them. They stay unlabelled.</p>
+    <p>Press <b>K</b> to show all kinds, not only handwritten cells. Press <b>Z</b> to undo the last Enter.</p>
+    <p>The kind comes later, on the Groups screen.</p>`,
   groups: `
     <h3>What to do</h3>
     <ol>
@@ -137,6 +173,13 @@ let local = {};
 let hovered = null;
 let checkPage = 0;
 let busy = false;
+let photo = null;      // the photo on the Photos screen, from /api/photos/next
+let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
+let clicks = [];       // corners that the person clicked, in the order TL, TR, BR, BL
+let kinds = "handwritten";
+let digit = "1";
+const PAD = 120;       // the dark border around the photo: room for corners outside it
+const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "empty"];
 
 const $ = (id) => document.getElementById(id);
 const say = (text) => { $("message").textContent = text || ""; };
@@ -156,6 +199,7 @@ function cellsOnScreen() {
   if (mode === "groups") return screen.cells;
   if (mode === "review") return screen.items;
   if (mode === "check") return screen.cells.slice(checkPage * PAGE, (checkPage + 1) * PAGE);
+  if (mode === "digits") return screen.cells;
   return [];
 }
 
@@ -164,6 +208,7 @@ function reasonText(cell) {
 }
 
 function detailText(cell) {
+  if (mode === "digits") return `The model reads ${screen.digit} (${Math.round(cell.p * 100)} %).`;
   if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
   const twins = nearDuplicates(cell);
   const near = twins.length ? [`Its near-duplicates (below) have the other kind.`] : [];
@@ -198,6 +243,12 @@ function title() {
     text = !screen ? "" : screen.open ? `${screen.open} cells to review` : "Nothing to review.";
   } else if (mode === "check") {
     text = screen ? `Check · screen ${checkPage + 1} of ${Math.ceil(screen.cells.length / PAGE)}` : "";
+  } else if (mode === "digits") {
+    text = !screen ? "" : `Digit ${screen.digit} · ${screen.left} cells left · ` +
+      `${screen.kinds === "all" ? "all kinds" : "handwritten only"}` +
+      `${screen.not_prelabelled ? ` · ${screen.not_prelabelled} cells without a pre-label` : ""}`;
+  } else if (mode === "photos") {
+    return;
   } else {
     text = "Progress";
   }
@@ -205,11 +256,20 @@ function title() {
 }
 
 function renderFolders() {
-  const show = mode === "groups";
-  $("folders").innerHTML = !show ? "" : "Jump to folder: " + [1, 2, 3, 4, 5, 6, 7, 8, 9].map((f) =>
-    `<button data-folder="${f}" class="${screen && screen.folder === String(f) ? "on" : ""}">${f}</button>`).join(" ");
-  for (const b of $("folders").querySelectorAll("button")) {
-    b.onclick = () => open("groups", { folder: b.dataset.folder, group: 0 });
+  if (mode === "groups") {
+    $("folders").innerHTML = "Jump to folder: " + [1, 2, 3, 4, 5, 6, 7, 8, 9].map((f) =>
+      `<button data-folder="${f}" class="${screen && screen.folder === String(f) ? "on" : ""}">${f}</button>`).join(" ");
+    for (const b of $("folders").querySelectorAll("button")) {
+      b.onclick = () => open("groups", { folder: b.dataset.folder, group: 0 });
+    }
+  } else if (mode === "digits" && screen) {
+    $("folders").innerHTML = "Digit: " + DIGITS.map((d) =>
+      `<button data-digit="${d}" class="${screen.digit === d ? "on" : ""}">${d} (${screen.counts[d]})</button>`).join(" ");
+    for (const b of $("folders").querySelectorAll("button")) {
+      b.onclick = () => run(() => loadDigits(b.dataset.digit));
+    }
+  } else {
+    $("folders").innerHTML = "";
   }
 }
 
@@ -219,6 +279,10 @@ const ACTIONS = {
   review: [["Enter · confirm this screen", () => save()], ["Z · undo", () => undo()]],
   check: [["P · all printed", () => setAll("printed")], ["H · all handwritten", () => setAll("handwritten")],
           ["Enter · save", () => save()]],
+  photos: [["Enter · accept", () => acceptPhoto()], ["R · reject", () => rejectPhoto()],
+           ["S · skip", () => skipPhoto()], ["C · clear corners", () => clearCorners()]],
+  digits: [["Enter · confirm screen", () => save()], ["K · handwritten or all kinds", () => toggleKinds()],
+           ["Z · undo", () => undo()]],
   progress: [],
 };
 
@@ -233,19 +297,133 @@ function renderActions() {
   }
 }
 
+function cornerQuery() {
+  return corners.flat().map((v) => v.toFixed(1)).join(",");
+}
+
+function drawQuad() {
+  const img = $("photo");
+  if (!img || !photo) return;
+  const scale = img.clientWidth / photo.width;
+  const points = clicks.length ? clicks : corners || [];
+  const xy = points.map(([x, y]) => [x * scale + PAD, y * scale + PAD]);
+  const colour = clicks.length ? "#f2b705" : "#3ad65a";
+  const polygon = xy.length === 4
+    ? `<polygon points="${xy.map((p) => p.join(",")).join(" ")}" fill="none" stroke="${colour}" stroke-width="2"/>` : "";
+  $("quad").innerHTML = polygon + xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="${colour}"/>`).join("");
+}
+
+async function refreshPreview() {
+  $("flat").src = `/flat/${photo.stem}.png?c=${cornerQuery()}`;
+  const value = await api(`/api/photos/usable?photo=${photo.stem}&c=${cornerQuery()}`);
+  $("usable").textContent = `${value.usable} of 81 cells are inside the photo.`;
+  drawQuad();
+}
+
+function clickCorner(event) {
+  const rect = $("photo").getBoundingClientRect();
+  const scale = rect.width / photo.width;
+  clicks.push([(event.clientX - rect.left) / scale, (event.clientY - rect.top) / scale]);
+  if (clicks.length === 4) {
+    corners = clicks;
+    clicks = [];
+    run(refreshPreview);
+  }
+  drawQuad();
+}
+
+function renderPhoto() {
+  $("grid").innerHTML = "";
+  if (!photo) {
+    $("photos").innerHTML = "";
+    $("title").textContent = "No photo to check.";
+    return say("Import photos with just import-photos <folder>. Or open Digits.");
+  }
+  $("title").textContent = `Photo ${photo.stem} · ${photo.pending} to check · ${photo.reason}`;
+  $("photos").innerHTML = `<div class="photo-row">
+    <div class="wrap" id="wrap"><img id="photo" alt="" src="/photo/${photo.stem}.jpg"><svg id="quad"></svg></div>
+    <div><img class="flat" id="flat" alt=""><p id="usable"></p></div></div>`;
+  $("photo").onload = drawQuad;
+  $("wrap").onclick = clickCorner;
+  if (corners) {
+    run(refreshPreview);
+  } else {
+    $("usable").textContent = "No grid found. Click the 4 corners: top left, top right, bottom right, bottom left.";
+  }
+}
+
+async function loadPhoto(after) {
+  photo = await api(`/api/photos/next${after ? `?after=${after}` : ""}`);
+  corners = photo && photo.corners;
+  clicks = [];
+  render();  // the nav, the help and the buttons of the Photos screen
+  renderPhoto();
+}
+
+async function acceptPhoto() {
+  if (!photo) return;
+  if (!corners) return say("Click the 4 corners first.");
+  const result = (await api("/api/photos/accept", { photo: photo.stem, corners })).result;
+  const text = result.decision === "accepted"
+    ? `Saved ${result.cells} cells. ${result.duplicates} were already known.`
+    : "Too few cells are inside the photo. The photo is skipped for good.";
+  await loadPhoto(photo.stem);
+  say(text);
+}
+
+async function rejectPhoto() {
+  if (!photo) return;
+  await api("/api/photos/reject", { photo: photo.stem, reason: "rejected" });
+  await loadPhoto(photo.stem);
+  say("Rejected.");
+}
+
+async function skipPhoto() {
+  if (!photo) return;
+  await loadPhoto(photo.stem);
+  say("Skipped. The photo comes back after the others.");
+}
+
+function clearCorners() {
+  if (!photo) return;
+  clicks = [];
+  corners = photo.corners;
+  renderPhoto();
+}
+
+async function loadDigits(next) {
+  if (next) digit = next;
+  setScreen(await api(`/api/digits?digit=${digit}&kinds=${kinds}`));
+}
+
+async function toggleKinds() {
+  kinds = kinds === "handwritten" ? "all" : "handwritten";
+  await loadDigits();
+  say(kinds === "all" ? "All kinds are shown." : "Only handwritten cells are shown.");
+}
+
 function render() {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === mode);
   $("help").innerHTML = HELP[mode];
   renderFolders();
   renderActions();
   $("table").innerHTML = "";
+  if (mode !== "photos") $("photos").innerHTML = "";
   const grid = $("grid");
   grid.innerHTML = "";
   for (const cell of cellsOnScreen()) {
     const kind = local[cell.id];
     const div = document.createElement("div");
-    div.className = `cell ${kind || ""} ${cell.least_sure ? "least" : ""}`;
-    div.innerHTML = `<img src="/cell/${cell.stem}.png" alt=""><span class="tag">${LETTER[kind] || "·"}</span>`;
+    let tagText = LETTER[kind] || "·";
+    let classes = `cell ${kind || ""} ${cell.least_sure ? "least" : ""}`;
+    if (mode === "digits") {
+      const mark = local[cell.id];
+      tagText = mark === "skip" ? "–" : mark === "discarded" ? "✕" : (mark || screen.digit);
+      classes = `cell ${mark === "skip" ? "skip" : ""} ${mark === "discarded" ? "discarded" : ""} ` +
+        `${mark && mark !== "skip" && mark !== "discarded" ? "changed" : ""}`;
+    }
+    div.className = classes;
+    div.innerHTML = `<img src="/cell/${cell.stem}.png" alt=""><span class="tag">${tagText}</span>`;
     if (mode === "review") {
       const reason = document.createElement("span");
       reason.className = "reason";
@@ -253,6 +431,10 @@ function render() {
       div.append(reason);
     }
     div.onclick = (event) => {
+      if (mode === "digits") {
+        local[cell.id] = local[cell.id] === "skip" ? undefined : "skip";
+        return render();
+      }
       if (cell.folder === "empty") return say("An empty cell has no kind. Press a digit if it shows one.");
       local[cell.id] = event.altKey ? "unsure" : (local[cell.id] === "printed" ? "handwritten" : "printed");
       render();
@@ -280,6 +462,10 @@ function setScreen(value) {
   } else if (mode === "review" && screen && !screen.open) {
     say("Run just suspects in the terminal after a labelling pass. Then open Review again.");
   }
+  if (mode === "digits" && screen && !screen.left) {
+    const next = DIGITS.find((d) => screen.counts[d] > 0);
+    say(next ? `No cells left for ${screen.digit}. Open digit ${next}.` : "No pre-labelled cells left.");
+  }
 }
 
 async function loadGroups(after) {
@@ -292,6 +478,8 @@ async function reload() {
     setScreen(await api(`/api/screen?folder=${screen.folder}&group=${screen.group}&page=${screen.page}`));
   } else if (mode === "groups") {
     await loadGroups();
+  } else if (mode === "digits") {
+    await loadDigits();
   } else if (mode === "review") {
     setScreen(await api("/api/review"));
   }
@@ -334,6 +522,12 @@ async function save() {
     const before = `Saved: ${result.result} changes.`;
     await loadGroups(screen);
     say(`${before} ${$("message").textContent}`);
+  } else if (mode === "digits" && screen) {
+    const entries = cells.filter((c) => local[c.id] !== "skip")
+      .map((c) => ({ id: c.id, digit: local[c.id] || screen.digit }));
+    const result = await api("/api/assign", { screen: "digits", cells: entries });
+    await loadDigits();
+    say(`Saved: ${result.result} cells. ${$("message").textContent}`);
   } else if (mode === "review" && screen) {
     const kindCells = cells.filter((c) => c.folder !== "empty" &&
       (c.field === "kind" || (local[c.id] && local[c.id] !== c.kind)));
@@ -408,7 +602,11 @@ async function open(next, target) {
   hovered = null;
   say("");
   await run(async () => {
-    if (mode === "groups" && target) {
+    if (mode === "photos") {
+      await loadPhoto();
+    } else if (mode === "digits") {
+      await loadDigits();
+    } else if (mode === "groups" && target) {
       setScreen(await api(`/api/screen?folder=${target.folder}&group=${target.group}&page=0`));
     } else if (mode === "groups") {
       await loadGroups();
@@ -435,6 +633,20 @@ async function open(next, target) {
 document.addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.target.tagName === "BUTTON" && event.key === "Enter") return;
   const key = event.key.toLowerCase();
+  if (mode === "photos") {
+    if (key === "enter") run(acceptPhoto);
+    else if (key === "r") run(rejectPhoto);
+    else if (key === "s") run(skipPhoto);
+    else if (key === "c") clearCorners();
+    return;
+  }
+  if (mode === "digits" && (/^[0-9]$/.test(key) || key === "x")) {
+    if (!hovered) return say("Point at a cell first, then press the key.");
+    local[hovered.id] = key === "x" ? "discarded" : key === "0" ? "empty" : key;
+    return render();
+  }
+  if (mode === "digits" && key === "k") return run(toggleKinds);
+  if (key === "z" && mode === "digits") return run(undo);
   if ((key === "p" || key === "h") && (mode === "groups" || mode === "check")) {
     setAll(key === "p" ? "printed" : "handwritten");
   } else if (/^[0-9]$/.test(key) && (mode === "groups" || mode === "review")) {

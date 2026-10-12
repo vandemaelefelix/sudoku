@@ -223,3 +223,17 @@ def test_the_server_starts_without_groups(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], tmp_path) == 0
+
+
+def test_the_page_explains_the_photos_and_digits_screens(served):
+    port, _, _ = served
+    page = request(port, "GET", "/")[1].decode()
+    for text in (
+        'data-mode="photos"',
+        'data-mode="digits"',
+        "Click the 4 corners: top left, top right, bottom right, bottom left.",
+        "Click each cell that is not this digit.",
+        "Press <b>X</b> to discard the pointed-at cell",
+        "Stop the server with Ctrl-C and run <code>just label-cells</code> again.",
+    ):
+        assert text in page
