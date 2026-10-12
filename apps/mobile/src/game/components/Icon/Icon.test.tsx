@@ -17,6 +17,16 @@ it('draws the play icon in the colour on the accent', () => {
   expect(path.props.color).toBe(daylight.colors.onAccent)
 })
 
+it('draws with its own colour when it has one, over the tone', () => {
+  render(<Icon name="pause" tone="text" color={daylight.components.finishCard.entry} />)
+  expect(screen.getByTestId('skia-path').props.color).toBe(daylight.components.finishCard.entry)
+})
+
+it('draws the scan icon', () => {
+  render(<Icon name="scan" tone="text" size={16} />)
+  expect(screen.getByTestId('skia-path').props.path).toContain('M4 8V5')
+})
+
 it('draws the small icons with a thicker line', () => {
   render(<Icon name="pause" tone="text" size={16} />)
   expect(screen.getByTestId('skia-path').props.strokeWidth).toBe(2)

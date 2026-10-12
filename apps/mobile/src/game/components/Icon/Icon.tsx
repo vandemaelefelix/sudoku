@@ -6,10 +6,16 @@ export type IconName = keyof typeof ICON_PATHS
 
 export type IconTone = 'text' | 'accent' | 'onAccent'
 
-type IconProps = { name: IconName; tone: IconTone; size?: 16 | 24 }
+type IconProps = {
+  name: IconName
+  tone: IconTone
+  size?: 16 | 24
+  /** Wins over tone. For a surface with its own component tokens, such as the finish card. */
+  color?: string | undefined
+}
 
 /** A stroke icon. Skia reads the colour as a value, so the icon reads the theme (ADR-015, point 10). */
-export function Icon({ name, tone, size = 24 }: IconProps) {
+export function Icon({ name, tone, size = 24, color }: IconProps) {
   const { theme } = useUnistyles()
   return (
     <Canvas style={{ width: size, height: size }} pointerEvents="none">
@@ -20,7 +26,7 @@ export function Icon({ name, tone, size = 24 }: IconProps) {
           strokeWidth={STROKE_WIDTH[size]}
           strokeCap="round"
           strokeJoin="round"
-          color={theme.colors[tone]}
+          color={color ?? theme.colors[tone]}
         />
       </Group>
     </Canvas>

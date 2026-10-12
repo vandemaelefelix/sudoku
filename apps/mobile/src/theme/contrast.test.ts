@@ -32,6 +32,19 @@ const TEXT_PAIRS: Pair[] = [
   ['text on segmented track', (t) => t.colors.text, (t) => t.components.segmented.track],
   ['muted on segmented track', (t) => t.colors.textMuted, (t) => t.components.segmented.track],
   ['text on segmented selection', (t) => t.colors.text, (t) => t.components.segmented.selected],
+  ['finish card text on its lightest stop', (t) => t.components.finishCard.text, (t) => t.components.finishCard.bottom],
+  [
+    'finish card muted text on its lightest stop',
+    (t) => t.components.finishCard.textMuted,
+    (t) => t.components.finishCard.bottom,
+  ],
+  ['finish card given on its middle stop', (t) => t.components.finishCard.given, (t) => t.components.finishCard.middle],
+  ['finish card entry on its middle stop', (t) => t.components.finishCard.entry, (t) => t.components.finishCard.middle],
+  [
+    'finish card badge text on the badge',
+    (t) => t.components.finishCard.badgeText,
+    (t) => t.components.finishCard.badge,
+  ],
 ]
 
 describe.each([daylight, midnight])('$name', (theme) => {

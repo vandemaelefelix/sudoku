@@ -36,8 +36,28 @@ export const SHARED_SIZE: Theme['size'] = {
   dot: { size: 8, gap: 6 },
   noteInset: 2,
   preview: 180,
+  card: { width: 300, grid: 256 },
 }
 
 export const SHARED_OPACITY: Theme['opacity'] = { disabled: 0.3, locked: 0.35 }
 
 export const SHARED_MOTION: Theme['motion'] = { short: 150, medium: 350, long: 700, pulseStep: 45, pop: 450 }
+
+/** The canvas draws the finish card the same in both themes. Opaque text colours keep the contrast test exact. */
+export const SHARED_FINISH_CARD: Theme['components']['finishCard'] = {
+  top: '#151a29',
+  middle: '#20306a',
+  bottom: '#2a4cbd',
+  text: '#ffffff',
+  textMuted: '#c9d3f0',
+  given: '#ffffff',
+  entry: '#a9c2ff',
+  line: 'rgba(255,255,255,0.18)',
+  boxLine: 'rgba(255,255,255,0.5)',
+  shine: 'rgba(255,255,255,0.34)',
+  shineCool: 'rgba(170,205,255,0.28)',
+  shineWarm: 'rgba(255,190,235,0.2)',
+  shineClear: 'rgba(255,255,255,0)',
+  badge: '#f0c25a',
+  badgeText: '#2a1a00',
+}

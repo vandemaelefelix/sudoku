@@ -1,4 +1,5 @@
 import {
+  SHARED_FINISH_CARD,
   SHARED_MOTION,
   SHARED_OPACITY,
   SHARED_SHAPE,
@@ -41,6 +42,7 @@ export const midnight: Theme = {
   elevation: { key: 'none', sheet: '0 24px 60px -20px rgba(0,0,0,0.6)', panel: '0 -6px 12px rgba(0,0,0,0.4)' },
   motion: SHARED_MOTION,
   components: {
+    finishCard: SHARED_FINISH_CARD,
     grid: { frame: colors.lineStrong, boxLine: colors.lineStrong, cellLine: colors.line },
     cell: {
       fill: colors.surface,
