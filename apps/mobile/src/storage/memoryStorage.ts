@@ -4,7 +4,7 @@ import { resultOf, type PuzzleRepository } from './PuzzleRepository'
 import type { GameStorage } from './gameStorage.types'
 import type { HistoryEntry, Level, PuzzleSource, StorageDeps } from './storage.types'
 
-type Progress = { id: string; level: Level; source: PuzzleSource; saved: SavedGame }
+type Progress = { id: string; level: Level; source: PuzzleSource; seed: number | null; saved: SavedGame }
 
 function countingDeps(): StorageDeps {
   let ids = 0
@@ -22,14 +22,15 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
   const entries: HistoryEntry[] = []
 
   const puzzles: PuzzleRepository = {
-    async start({ level, source, game }) {
+    async start({ level, source, seed = null, game }) {
       if (resultOf(game) !== null) throw new RangeError(`A ${game.status} game cannot start`)
-      progress = { id: deps.newId(), level, source, saved: toSavedGame(game) }
-      return { id: progress.id, level, source, game }
+      progress = { id: deps.newId(), level, source, seed, saved: toSavedGame(game) }
+      return { id: progress.id, level, source, seed, game }
     },
     async current() {
       if (progress === null) return null
-      return { id: progress.id, level: progress.level, source: progress.source, game: fromSavedGame(progress.saved) }
+      const { id, level, source, seed, saved } = progress
+      return { id, level, source, seed, game: fromSavedGame(saved) }
     },
     async save(id, game) {
       if (progress === null || progress.id !== id) return
@@ -42,6 +43,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
         id,
         level: progress.level,
         source: progress.source,
+        seed: progress.seed,
         result,
         playedMs: game.playedMs,
         mistakes: game.mistakes,
@@ -63,7 +65,8 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       const best: BestTimes = {}
       for (const entry of entries) {
         const time = best[entry.level]
-        if (entry.result === 'won' && entry.hintsUsed === 0 && (time === undefined || entry.playedMs < time)) {
+        const counts = entry.result === 'won' && entry.source === 'generated' && entry.hintsUsed === 0
+        if (counts && (time === undefined || entry.playedMs < time)) {
           best[entry.level] = entry.playedMs
         }
       }

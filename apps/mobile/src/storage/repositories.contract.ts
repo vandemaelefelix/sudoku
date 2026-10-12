@@ -61,7 +61,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
     it('returns the game it started', async () => {
       const game = newGame()
       const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game })
-      expect(started).toEqual({ id: 'game-1', level: 'easy', source: 'generated', game })
+      expect(started).toEqual({ id: 'game-1', level: 'easy', source: 'generated', seed: null, game })
       await expect(storage.puzzles.current()).resolves.toEqual(started)
     })
 
@@ -99,6 +99,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
           id,
           level: 'hard',
           source: 'scanned',
+          seed: null,
           result: 'won',
           playedMs: 90_000,
           mistakes: 0,
@@ -162,6 +163,37 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       await finish(wonWithHint(20_000))
       await expect(storage.history.bestTimes()).resolves.toEqual({ easy: 60_000 })
       await expect(storage.history.list()).resolves.toHaveLength(3)
+    })
+
+    it('keeps the seed of a generated game in progress and in the history', async () => {
+      const started = await storage.puzzles.start({
+        level: 'easy',
+        source: 'generated',
+        seed: 412_077,
+        game: nearlyWon(),
+      })
+      expect(started.seed).toBe(412_077)
+      await expect(storage.puzzles.current()).resolves.toMatchObject({ seed: 412_077 })
+      await storage.puzzles.save(started.id, wonGame(40_000))
+      await expect(storage.history.list()).resolves.toMatchObject([{ id: started.id, seed: 412_077 }])
+    })
+
+    it('gives a game without a seed the seed null', async () => {
+      const started = await storage.puzzles.start({ level: 'easy', source: 'scanned', game: newGame() })
+      expect(started.seed).toBeNull()
+      await expect(storage.puzzles.current()).resolves.toMatchObject({ seed: null })
+    })
+
+    it('leaves a scanned game out of the best time', async () => {
+      const finish = async (source: 'generated' | 'scanned', game: Game) => {
+        const { id } = await storage.puzzles.start({ level: 'easy', source, game: newGame() })
+        await storage.puzzles.save(id, game)
+      }
+      await finish('scanned', wonGame(10_000))
+      await expect(storage.history.bestTimes()).resolves.toEqual({})
+      await finish('generated', wonGame(60_000))
+      await finish('scanned', wonGame(20_000))
+      await expect(storage.history.bestTimes()).resolves.toEqual({ easy: 60_000 })
     })
 
     it('runs the next task after a task that failed', async () => {
