@@ -4,21 +4,49 @@ SUD-08)."""
 import json
 import sys
 import webbrowser
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from sudoku_ml.label_store import LabelStore, Paths
 from sudoku_ml.manifest import write_cells_manifest
+from sudoku_ml.photo_check import PhotoCheck
+from sudoku_ml.photo_import import PhotoPaths
 
 PAGE = Path(__file__).with_name("label_page.html")
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 ML_ROOT = Path(__file__).parents[2]
 
 
-def make_server(store: LabelStore, host: str = "127.0.0.1", port: int = 8765) -> HTTPServer:
+def parse_corners(text: str) -> list[list[float]]:
+    """`x,y,x,y,x,y,x,y` → 4 [x, y] pairs. Raises ValueError."""
+    values = [float(v) for v in text.split(",")]
+    if len(values) != 8:
+        raise ValueError("c needs 8 numbers: x,y of the 4 corners")
+    return [values[i : i + 2] for i in range(0, 8, 2)]
+
+
+def make_server(
+    store: LabelStore,
+    check: PhotoCheck | None = None,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+) -> HTTPServer:
     if host not in LOCAL_HOSTS:
         raise ValueError(f"refusing to serve on {host}: the page binds to 127.0.0.1 only")
+
+    def accept(stem: str, corners) -> dict:
+        if check is None:
+            raise ValueError("no photo check")
+        result = check.accept(stem, corners)
+        store.register(result["new_cells"])
+        return result
+
+    def reject(stem: str, reason: str) -> None:
+        if check is None:
+            raise ValueError("no photo check")
+        check.reject(stem, reason)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -74,6 +102,30 @@ def make_server(store: LabelStore, host: str = "127.0.0.1", port: int = 8765) ->
                     self._json(store.check_start())
                 elif url.path == "/api/progress":
                     self._json(store.progress())
+                elif url.path == "/api/digits":
+                    self._json(store.digit_screen(q["digit"], q.get("kinds", "handwritten")))
+                elif url.path.startswith(("/api/photos/", "/photo/", "/flat/")) and check is None:
+                    self._json({"error": "no photo check"}, 404)
+                elif url.path == "/api/photos/next":
+                    self._json(check.next(q.get("after")))
+                elif url.path == "/api/photos/usable":
+                    self._json({"usable": check.usable(q["photo"], parse_corners(q["c"]))})
+                elif url.path.startswith("/photo/"):
+                    stem = url.path.removeprefix("/photo/").removesuffix(".jpg")
+                    try:
+                        body = check.display_jpeg(stem)
+                    except KeyError:
+                        self._json({"error": "no such photo"}, 404)
+                        return
+                    self._send(200, body, "image/jpeg")
+                elif url.path.startswith("/flat/"):
+                    stem = url.path.removeprefix("/flat/").removesuffix(".png")
+                    try:
+                        check.photo(stem)
+                    except KeyError:
+                        self._json({"error": "no such photo"}, 404)
+                        return
+                    self._send(200, check.preview_png(stem, parse_corners(q["c"])), "image/png")
                 else:
                     self._json({"error": "not found"}, 404)
             except (KeyError, ValueError, IndexError) as error:
@@ -93,6 +145,9 @@ def make_server(store: LabelStore, host: str = "127.0.0.1", port: int = 8765) ->
                 "/api/move": lambda b: store.move(b["id"], b["digit"], b["screen"]),
                 "/api/undo": lambda b: store.undo(),
                 "/api/check": lambda b: store.check_answer(b["answers"]),
+                "/api/assign": lambda b: store.assign(b["cells"], b["screen"]),
+                "/api/photos/accept": lambda b: accept(b["photo"], b["corners"]),
+                "/api/photos/reject": lambda b: reject(b["photo"], b["reason"]),
             }
             route = routes.get(urlparse(self.path).path)
             if route is None:
@@ -110,14 +165,12 @@ def make_server(store: LabelStore, host: str = "127.0.0.1", port: int = 8765) ->
 
 def main(argv: list[str], ml_root: Path = ML_ROOT) -> int:
     paths = Paths.under(ml_root)
-    if not paths.groups.exists():
-        print(f"{paths.groups} is missing. Run: just group-cells", file=sys.stderr)
-        return 1
     store = LabelStore(paths)
+    check = PhotoCheck(PhotoPaths.under(ml_root), store.session, lambda: datetime.now(UTC))
     if argv[1:2] == ["rollback"]:
         print(f"Reversed {store.rollback(argv[2])} lines.")
         return 0
-    server = make_server(store)
+    server = make_server(store, check=check)
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Session {store.session}. Open {url}. Stop with Ctrl-C.")
     webbrowser.open(url)

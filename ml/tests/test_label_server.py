@@ -1,14 +1,19 @@
 import http.client
 import json
 import threading
+from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from photos import grid_photo, save_photo
 from test_label_store import Clock, build
 
 from sudoku_ml.kind_log import read_log
 from sudoku_ml.label_server import main, make_server
 from sudoku_ml.label_store import LabelStore
+from sudoku_ml.photo_check import PhotoCheck
+from sudoku_ml.photo_import import PhotoPaths, import_folder
 
 
 @pytest.fixture
@@ -114,7 +119,107 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
         def server_close(self):
             pass
 
-    monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store: Interrupted())
+    monkeypatch.setattr(
+        "sudoku_ml.label_server.make_server", lambda store, check=None: Interrupted()
+    )
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], tmp_path) == 0
     assert paths.manifest.read_text().splitlines()[1].endswith(",handwritten")
+
+
+FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
+
+
+@pytest.fixture
+def served_photos(tmp_path: Path):
+    paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
+    paths = replace(paths, prelabels=tmp_path / "data" / "prelabels.json")
+    u = ids["unlabeled"]
+    prelabels = {
+        u[0]: {"digit": "2", "p": 0.6, "kind": "handwritten"},
+        u[1]: {"digit": "2", "p": 0.9, "kind": "handwritten"},
+    }
+    paths.prelabels.write_text(json.dumps({"run": "test", "cells": prelabels}))
+    save_photo(grid_photo(), tmp_path / "in" / "p.png")
+    photo_paths = PhotoPaths.under(tmp_path)
+    import_folder(tmp_path / "in", photo_paths, origin="phone", licence="own")
+    store = LabelStore(paths, Clock())
+    moment = datetime(2026, 10, 12, tzinfo=UTC)
+    check = PhotoCheck(photo_paths, store.session, lambda: moment)
+    server = make_server(store, check, port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server.server_port, paths, u, check.pending()[0]
+    server.shutdown()
+    server.server_close()
+
+
+def corner_query() -> str:
+    return ",".join(str(v) for point in FULL for v in point)
+
+
+def test_the_digit_screen_and_assign_round_trip(served_photos):
+    port, paths, u, _ = served_photos
+    status, data = request(port, "GET", "/api/digits?digit=2&kinds=handwritten")
+    assert status == 200 and [c["id"] for c in json.loads(data)["cells"]] == [u[0], u[1]]
+    body = {"screen": "digits", "cells": [{"id": u[0], "digit": "2"}]}
+    status, data = request(port, "POST", "/api/assign", body)
+    assert status == 200 and json.loads(data) == {"result": 1}
+    assert (paths.cells / "2" / f"{u[0][:16]}.png").exists()
+
+
+def test_the_photo_routes_serve_the_photo_and_the_preview(served_photos):
+    port, _, _, stem = served_photos
+    status, data = request(port, "GET", "/api/photos/next")
+    assert status == 200 and json.loads(data)["stem"] == stem
+    status, data = request(port, "GET", f"/photo/{stem}.jpg")
+    assert status == 200 and data[:2] == b"\xff\xd8"
+    status, data = request(port, "GET", f"/flat/{stem}.png?c={corner_query()}")
+    assert status == 200 and data[:4] == b"\x89PNG"
+    status, data = request(port, "GET", f"/api/photos/usable?photo={stem}&c={corner_query()}")
+    assert json.loads(data) == {"usable": 81}
+    status, _ = request(port, "GET", "/photo/0000000000000000.jpg")
+    assert status == 404
+    status, _ = request(port, "GET", f"/flat/{stem}.png?c=1,2,3")
+    assert status == 400
+    status, _ = request(port, "GET", f"/api/photos/usable?photo={stem}&c=1,2,3")
+    assert status == 400
+
+
+def test_an_accepted_photo_serves_its_new_cells(served_photos):
+    port, _, _, stem = served_photos
+    status, data = request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
+    result = json.loads(data)["result"]
+    assert status == 200 and result["cells"] > 0
+    new = result["new_cells"][0]
+    status, data = request(port, "GET", f"/cell/{new[:16]}.png")
+    assert status == 200 and data[:4] == b"\x89PNG"
+    status, data = request(port, "GET", "/api/photos/next")
+    assert json.loads(data) is None
+
+
+def test_a_rejected_photo_leaves_the_queue(served_photos):
+    port, _, _, stem = served_photos
+    status, _ = request(port, "POST", "/api/photos/reject", {"photo": stem, "reason": "rejected"})
+    assert status == 200
+    assert json.loads(request(port, "GET", "/api/photos/next")[1]) is None
+
+
+def test_the_server_starts_without_groups(tmp_path, monkeypatch):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths.groups.unlink()
+
+    class Interrupted:
+        server_port = 0
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(
+        "sudoku_ml.label_server.make_server", lambda store, check=None: Interrupted()
+    )
+    monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
+    assert main(["label_server"], tmp_path) == 0
