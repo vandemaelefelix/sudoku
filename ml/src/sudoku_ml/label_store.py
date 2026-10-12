@@ -415,7 +415,12 @@ class LabelStore:
 
     def review_screen(self) -> dict:
         items = self.review_items()
-        return {"items": items[:SCREEN_SIZE], "open": len(items)}
+        # The page tells "never ran just suspects" from "nothing is flagged".
+        return {
+            "items": items[:SCREEN_SIZE],
+            "open": len(items),
+            "suspects": self.paths.suspects.exists(),
+        }
 
     # Check screen
 
@@ -502,6 +507,7 @@ class LabelStore:
                 for c, f in self.folder.items()
                 if f in DIGIT_FOLDERS
             ),
+            "digit_cells": sum(f in DIGIT_FOLDERS for f in self.folder.values()),
             "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
         }
 

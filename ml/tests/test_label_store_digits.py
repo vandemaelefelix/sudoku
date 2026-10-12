@@ -182,3 +182,11 @@ def test_a_guessed_cell_keeps_the_model_kind_apart_from_the_logged_kind(tmp_path
         ("printed", "printed"),
     ]
     assert store.screen("4", 2, 0)["cells"][0]["model_kind"] == "notes"
+
+
+def test_the_review_screen_tells_a_missing_suspects_file_from_nothing_flagged(tmp_path: Path):
+    store, _, _ = with_kind_guesses(tmp_path, GUESSES)
+    assert store.review_screen()["suspects"] is False
+    store.paths.suspects.parent.mkdir(parents=True)
+    store.paths.suspects.write_text("file,field,label,predicted,p_label,p_predicted\n")
+    assert store.review_screen()["suspects"] is True
