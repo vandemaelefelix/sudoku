@@ -1,4 +1,4 @@
-type Random = () => number
+import type { Random } from './game/types'
 
 /**
  * Mulberry32. The same seed gives the same sequence on every device, so a seed names a puzzle.
