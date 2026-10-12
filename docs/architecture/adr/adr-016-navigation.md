@@ -50,8 +50,8 @@ ADR decides the navigation.
    The game screen reads the game in progress from `PuzzleRepository` (ADR-012).
 4. **The stack shows no native header.** Each screen draws its own themed header and
    background (ADR-015). The swipe back stays on.
-5. **The entry is `index.ts`.** It registers the themes first (ADR-015), then runs the
-   development checks, then imports `expo-router/entry` last.
+5. **The entry is `index.ts`.** It registers the themes first (ADR-015). It imports
+   `expo-router/entry` last of the imports. The development checks run after the imports.
 6. **Typed routes are on.** Expo CLI writes the types on `expo start`. The file stays out of
    git.
 
