@@ -1,5 +1,6 @@
 import { isWrong, valueAt, type Game } from '@sudoku/core'
 import type { Assists } from '@/game/constants/assists.constants'
+import { boxOf, columnOf, rowOf } from './grid.utils'
 
 export type CellFill = 'plain' | 'peer' | 'same' | 'conflict' | 'selected'
 
@@ -14,10 +15,6 @@ export type CellView = {
   /** A thin ring marks the selected cell when the selected-cell assist is off. */
   ring: boolean
 }
-
-const rowOf = (cell: number) => Math.floor(cell / 9)
-const columnOf = (cell: number) => cell % 9
-const boxOf = (cell: number) => Math.floor(rowOf(cell) / 3) * 3 + Math.floor(columnOf(cell) / 3)
 
 const HIDDEN: CellView = { digit: 0, digitStyle: 'entry', notes: '', fill: 'plain', ring: false }
 
