@@ -2,6 +2,7 @@ import { Canvas, createPicture, Picture } from '@shopify/react-native-skia'
 import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated'
+import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import { countFrame, EMPTY_WINDOW } from '@/scan/utils/tracking.utils'
 import type { CaptureFrame } from '@/scan/utils/transition.utils'
@@ -45,8 +46,11 @@ export function EffectCanvas({
 }) {
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
+  const { theme } = useUnistyles()
+  const ink = theme.components.grid.boxLine
   // A release build runs only the default effect, so it compiles no other shader (ADR-014).
-  const kit = useMemo(() => makeDrawKit(__DEV__ ? EFFECTS : [DEFAULT_EFFECT]), [])
+  // A new theme makes a new kit, so the frame worklet captures the new ink (ADR-015, point 10).
+  const kit = useMemo(() => makeDrawKit(__DEV__ ? EFFECTS : [DEFAULT_EFFECT], ink), [ink])
   const empty = useMemo(
     () =>
       createPicture(() => {

@@ -17,7 +17,6 @@ import {
 import { scheduleOnRN } from 'react-native-worklets'
 import type { RecogniseResult } from '@/scanner'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { useColors } from '@/theme/colors'
 import { CameraPermission } from '@/scan/components/CameraPermission'
 import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
@@ -60,7 +59,6 @@ export function CameraScreen({
     qualityPrioritization: device?.supportsSpeedQualityPrioritization === true ? 'speed' : 'balanced',
   })
   const { state, capture, sharedImage } = useCapture(photoOutput)
-  const colors = useColors()
   const reduceMotion = useReducedMotion()
   const { frameOutput, detection, outline, frameQuad } = useFrameTracking(viewSize)
   const { startCapture, capturing, crossFade, clock, waiting, resultsAt, captureFrame, stepClock } =
@@ -112,7 +110,6 @@ export function CameraScreen({
           locked={capturing.quad}
           crossFade={crossFade}
           side={layout.grid.width}
-          colors={colors}
         />
       )}
       <EffectCanvas

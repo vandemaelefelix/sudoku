@@ -1,4 +1,5 @@
 import { type SkImage, Skia, TileMode } from '@shopify/react-native-skia'
+import { FIXED_COLORS } from '@/theme/fixed.colors'
 import { SPRITE_SIZE } from './common.constants'
 
 /** A white core with a soft halo that fades out at the image edge, which is 4.5 radii from the centre. */
@@ -13,10 +14,10 @@ export function makeStarSprite(): SkImage {
       { x: half, y: half },
       half,
       [
-        Skia.Color('rgba(255,255,255,1)'),
-        Skia.Color('rgba(255,255,255,1)'),
-        Skia.Color('rgba(255,255,255,0.3)'),
-        Skia.Color('rgba(255,255,255,0)'),
+        Skia.Color(FIXED_COLORS.starCore),
+        Skia.Color(FIXED_COLORS.starCore),
+        Skia.Color(FIXED_COLORS.starHalo),
+        Skia.Color(FIXED_COLORS.starEdge),
       ],
       [0, 0.2, 0.45, 1],
       TileMode.Clamp,

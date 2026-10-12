@@ -6,7 +6,7 @@ export type EffectFamily = 'path' | 'shader' | 'screen' | 'simulation'
 /**
  * Resources that the engine makes once on the JS thread, so draw never makes them per frame.
  * draw sets the colour, alpha and shader of a paint before each use. shaders: the compiled sksl of each effect by id, or null when it did not compile.
- * ink: the ink colour of the correction screen as RGB, each 0..1.
+ * ink: the box-line colour of the correction grid in the current theme, as RGB, each 0..1.
  */
 export type DrawKit = {
   sprite: SkImage

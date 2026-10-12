@@ -4,6 +4,8 @@ import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-nati
 import { transitionAt, type CaptureFrame } from '@/scan/utils/transition.utils'
 import { EffectCanvas } from './EffectCanvas'
 import * as engine from '@/scan/effects/engine'
+import * as drawKit from '@/scan/effects/kit'
+import { daylight } from '@/theme/themes/daylight'
 import { DEFAULT_INDEX, effectIndex } from '@/scan/effects/registry'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 
@@ -129,6 +131,13 @@ describe('EffectCanvas', () => {
     renderCanvas(VIEW)
     expect(screen.getByTestId('skia-canvas').props.pointerEvents).toBe('none')
     expect(screen.getByTestId('skia-picture')).toBeTruthy()
+  })
+
+  it('makes the draw kit with the box-line ink of the theme', () => {
+    const make = jest.spyOn(drawKit, 'makeDrawKit')
+    renderCanvas(VIEW)
+    expect(make).toHaveBeenCalledWith(expect.any(Array), daylight.components.grid.boxLine)
+    make.mockRestore()
   })
 
   it('waits for the view size', () => {

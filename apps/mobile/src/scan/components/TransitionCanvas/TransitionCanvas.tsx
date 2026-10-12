@@ -11,7 +11,8 @@ import {
 import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
-import type { Colors } from '@/theme/colors'
+import { useUnistyles } from 'react-native-unistyles'
+import type { Theme } from '@/theme/theme.types'
 import { drawGridLines } from '@/scan/utils/correction.utils'
 import { type CaptureFrame, insetUnit, photoMatrix } from '@/scan/utils/transition.utils'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
@@ -29,12 +30,12 @@ function addQuad(path: SkPath, quad: Quad): SkPath {
 }
 
 /** Runs on the JS thread. A picture records a copy of a paint at each draw call, so one paint per layer is enough. */
-function makePaints(colors: Colors) {
+function makePaints(theme: Theme) {
   const photo = Skia.Paint()
   const background = Skia.Paint()
-  background.setColor(Skia.Color(colors.background))
+  background.setColor(Skia.Color(theme.colors.background))
   const cells = Skia.Paint()
-  cells.setColor(Skia.Color(colors.surface))
+  cells.setColor(Skia.Color(theme.components.cell.fill))
   const lines = Skia.Paint()
   lines.setAntiAlias(true)
   const layer = Skia.Paint()
@@ -42,7 +43,7 @@ function makePaints(colors: Colors) {
 }
 
 /**
- * The layers under the dots: the photo, the light background and the white cell area with its grid lines.
+ * The layers under the dots: the photo, the background and the cell area with its grid lines, in the colours of the theme.
  * image: the upright photo, or null. The owner sets it to null on the UI thread before it disposes the image. locked: the grid at lock-on, normalised to the upright frame, or null.
  * crossFade: no warp; the photo stays in place under the preview cover mapping and every layer fades (Reduce Motion).
  * side: the side of the grid square of the correction screen, in points.
@@ -54,7 +55,6 @@ export function TransitionCanvas({
   locked,
   crossFade,
   side,
-  colors,
 }: {
   capture: SharedValue<CaptureFrame | null>
   view: SharedValue<ViewSize>
@@ -62,9 +62,11 @@ export function TransitionCanvas({
   locked: Quad | null
   crossFade: boolean
   side: number
-  colors: Colors
 }) {
-  const paints = useMemo(() => makePaints(colors), [colors])
+  const { theme } = useUnistyles()
+  // New paints and line colours on a theme change remake the derived picture (ADR-015, point 10).
+  const paints = useMemo(() => makePaints(theme), [theme])
+  const { boxLine, cellLine } = theme.components.grid
 
   const picture = useDerivedValue(() => {
     const frame = capture.value
@@ -99,7 +101,7 @@ export function TransitionCanvas({
         }
       }
       if (channels.dim > 0) {
-        // The warp keeps a hole for the grid, so only the grid of the photo shows on the light background.
+        // The warp keeps a hole for the grid, so only the grid of the photo shows on the background.
         const path = Skia.Path.Make()
           .moveTo(0, 0)
           .lineTo(size.width, 0)
@@ -120,10 +122,10 @@ export function TransitionCanvas({
       if (crossFade) {
         paints.layer.setAlphaf(channels.lines)
         canvas.saveLayer(paints.layer)
-        drawGridLines(canvas, paints.lines, lines, 1, colors.ink, colors.line)
+        drawGridLines(canvas, paints.lines, lines, 1, boxLine, cellLine)
         canvas.restore()
       } else {
-        drawGridLines(canvas, paints.lines, lines, channels.lines, colors.ink, colors.line)
+        drawGridLines(canvas, paints.lines, lines, channels.lines, boxLine, cellLine)
       }
     })
   })

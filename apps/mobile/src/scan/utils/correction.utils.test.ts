@@ -4,7 +4,10 @@ import type { CellResult } from '@/scanner'
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
 import type { Homography } from '@/utils/homography.utils'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
+import { daylight } from '@/theme/themes/daylight'
 
+const INK = daylight.components.grid.boxLine
+const LINE = daylight.components.grid.cellLine
 const insets = { top: 62, bottom: 34, left: 0, right: 0 }
 const bottom = (r: Rect) => r.y + r.height
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < bottom(b) && b.y < bottom(a)
@@ -143,28 +146,28 @@ function setup() {
 describe('drawGridLines', () => {
   it('draws 20 lines, 8 box lines in ink and 12 cell lines in the line colour', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 1, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 1, INK, LINE)
     expect(lines).toHaveLength(20)
-    expect(lines.filter((l) => l.width === 2 && l.colour === '#111')).toHaveLength(8)
-    expect(lines.filter((l) => l.width === 1 && l.colour === '#ccc')).toHaveLength(12)
+    expect(lines.filter((l) => l.width === 2 && l.colour === INK)).toHaveLength(8)
+    expect(lines.filter((l) => l.width === 1 && l.colour === LINE)).toHaveLength(12)
   })
 
   it('spans the full grid at grow 1', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 1, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 1, INK, LINE)
     expect(lines).toContainEqual(expect.objectContaining({ x0: 0, y0: 30, x1: 90, y1: 30 }))
     expect(lines).toContainEqual(expect.objectContaining({ x0: 30, y0: 0, x1: 30, y1: 90 }))
   })
 
   it('grows each line from its middle', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 0.5, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 0.5, INK, LINE)
     expect(lines).toContainEqual(expect.objectContaining({ x0: 22.5, y0: 30, x1: 67.5, y1: 30 }))
   })
 
   it('draws nothing at grow 0', () => {
     const { canvas, paint, lines } = setup()
-    drawGridLines(canvas, paint, scale90, 0, '#111', '#ccc')
+    drawGridLines(canvas, paint, scale90, 0, INK, LINE)
     expect(lines).toHaveLength(0)
   })
 })

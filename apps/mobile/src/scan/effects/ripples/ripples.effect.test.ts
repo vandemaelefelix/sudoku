@@ -5,6 +5,9 @@ import { ripples } from './ripples.effect'
 import { RIPPLES_SKSL } from './shader'
 import { rippleUniforms } from './uniforms'
 import type { Quad } from '@/utils/geometry.utils'
+import { daylight } from '@/theme/themes/daylight'
+
+const INK = daylight.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 
@@ -30,7 +33,7 @@ type MockShaderEffect = { makeShader: jest.Mock }
 
 /** The uniforms of the one makeShader call of a draw. */
 function drawnUniforms(scene: Scene) {
-  const kit = makeDrawKit([ripples])
+  const kit = makeDrawKit([ripples], INK)
   const canvas = fakeCanvas()
   ripples.draw(canvas as never, ripples.create(scene), scene, kit)
   const effect = kit.shaders.ripples as unknown as MockShaderEffect
@@ -88,7 +91,7 @@ describe('ripples', () => {
 
   it('stops its time under Reduce Motion', () => {
     const scene = found()
-    const kit = makeDrawKit([ripples])
+    const kit = makeDrawKit([ripples], INK)
     ripples.draw(fakeCanvas() as never, ripples.create(scene), { ...scene, t: scene.t + 2, reduceMotion: true }, kit)
     const effect = kit.shaders.ripples as unknown as MockShaderEffect
     expect(effect.makeShader.mock.calls[0][0][10]).toBe(0)
@@ -97,7 +100,7 @@ describe('ripples', () => {
   it('draws nothing when its shader did not compile', () => {
     const scene = found()
     const canvas = fakeCanvas()
-    ripples.draw(canvas as never, ripples.create(scene), scene, makeDrawKit([]))
+    ripples.draw(canvas as never, ripples.create(scene), scene, makeDrawKit([], INK))
     expect(canvas.drawRect).not.toHaveBeenCalled()
   })
 })

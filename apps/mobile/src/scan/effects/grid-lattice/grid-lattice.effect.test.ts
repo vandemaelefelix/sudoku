@@ -5,6 +5,9 @@ import { gridLattice } from './grid-lattice.effect'
 import { LATTICE_SKSL } from './shader'
 import { latticeUniforms } from './uniforms'
 import type { Quad } from '@/utils/geometry.utils'
+import { daylight } from '@/theme/themes/daylight'
+
+const INK = daylight.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 
@@ -71,7 +74,7 @@ describe('gridLattice', () => {
 
   it('fills the view with the lattice shader in one draw call', () => {
     const scene = found()
-    const kit = makeDrawKit([gridLattice])
+    const kit = makeDrawKit([gridLattice], INK)
     const canvas = fakeCanvas()
     gridLattice.draw(canvas as never, gridLattice.create(scene), scene, kit)
     const effect = kit.shaders['grid-lattice'] as unknown as MockShaderEffect
@@ -86,7 +89,7 @@ describe('gridLattice', () => {
   it('stops its time under Reduce Motion', () => {
     const scene = found()
     const clock = gridLattice.create(scene)
-    const kit = makeDrawKit([gridLattice])
+    const kit = makeDrawKit([gridLattice], INK)
     gridLattice.draw(fakeCanvas() as never, clock, { ...scene, t: scene.t + 2, reduceMotion: true }, kit)
     const effect = kit.shaders['grid-lattice'] as unknown as MockShaderEffect
     expect(effect.makeShader.mock.calls[0][0][10]).toBe(0)
@@ -95,14 +98,14 @@ describe('gridLattice', () => {
   it('draws nothing before a grid is found', () => {
     const scene = stepScene(createScene(VIEW), null, 0, false)
     const canvas = fakeCanvas()
-    gridLattice.draw(canvas as never, gridLattice.create(scene), scene, makeDrawKit([gridLattice]))
+    gridLattice.draw(canvas as never, gridLattice.create(scene), scene, makeDrawKit([gridLattice], INK))
     expect(canvas.drawRect).not.toHaveBeenCalled()
   })
 
   it('draws nothing when its shader did not compile', () => {
     const scene = found()
     const canvas = fakeCanvas()
-    gridLattice.draw(canvas as never, gridLattice.create(scene), scene, makeDrawKit([]))
+    gridLattice.draw(canvas as never, gridLattice.create(scene), scene, makeDrawKit([], INK))
     expect(canvas.drawRect).not.toHaveBeenCalled()
   })
 })
