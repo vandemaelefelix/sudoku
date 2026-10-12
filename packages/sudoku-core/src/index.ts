@@ -10,3 +10,5 @@ export { completeDigits, DIGITS, isSolved, isWrong, NOTHING_COMPLETED, valueAt }
 export { erase, hint, pause, place, resume, select, tick, toggleNote, undo } from './game/actions'
 export { fromSavedGame, SAVED_GAME_VERSION, toSavedGame } from './game/savedGame'
 export type { SavedGame } from './game/savedGame'
+export { generate, GIVENS_TARGET, LEVELS } from './generator'
+export type { Level, Puzzle } from './generator'

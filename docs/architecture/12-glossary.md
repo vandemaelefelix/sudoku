@@ -24,7 +24,7 @@ status: DRAFT
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
 | Op table | `tflite_2_17_ops.json`: the highest version of each TFLite operator that the 2.17 runtime supports. Export checks the model against it (ADR-005) |
 | Contact sheet | An image of numbered cells with their labels. Replaced by the Review screen of the labelling page |
-| Technique solver | The solver in `@sudoku/core` that solves like a person. It grades difficulty and gives hints (ADR-011) |
+| Technique solver | The solver in `@sudoku/core` that will solve like a person. It will grade difficulty and give hints (ADR-011). v1 does not have it |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
@@ -101,5 +101,9 @@ status: DRAFT
 | Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
 | Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
 | Solution | The full grid that the givens allow. A playable puzzle has exactly one |
+| Seed | An integer that names one generated puzzle. The same seed and level give the same puzzle on every device (ADR-011) |
 | Time played | The time a game counted while its status was playing. The app tells the core how much time passed. The core never reads a clock |
 | Saved game | A game as a plain object with a version number, so the app can store it and load it again (ADR-012) |
+| Game in progress | The one game that the app saves after every move, so the player can resume it. Starting a new game discards it (ADR-012) |
+| History | The list of won and lost games: level, source, result, time played, mistakes, hints and date (ADR-012) |
+| Best time | The shortest time played of a won game at one level |
