@@ -28,8 +28,12 @@ export type Move = {
   mistake: boolean
 }
 
-/** A game and the screen state around it. Notes mode belongs to the screen, not to the rules. */
-export type Session = { game: Game; notesMode: boolean; move: Move | null }
+/**
+ * A game and the screen state around it. Notes mode belongs to the screen, not to the rules.
+ * board is the game at its last change other than time. A clock tick keeps the same board object,
+ * so the grid does not render again each second. Its playedMs is stale: read game.playedMs for the time.
+ */
+export type Session = { game: Game; board: Game; notesMode: boolean; move: Move | null }
 
 export type SessionAction =
   | { type: 'select'; cell: number }
@@ -43,7 +47,8 @@ export type SessionAction =
   | { type: 'tick'; elapsedMs: number }
 
 export function startSession(start: NewGame): Session {
-  return { game: createGame(start), notesMode: false, move: null }
+  const game = createGame(start)
+  return { game, board: game, notesMode: false, move: null }
 }
 
 function withGame(session: Session, game: Game): Session {
@@ -74,7 +79,7 @@ function placeDigit(session: Session, digit: Digit): Session {
   return moved(session, cleared ? 'clear' : 'number', result)
 }
 
-export function reduceSession(session: Session, action: SessionAction): Session {
+function step(session: Session, action: SessionAction): Session {
   switch (action.type) {
     case 'select':
       return withGame(session, select(session.game, action.cell))
@@ -95,6 +100,12 @@ export function reduceSession(session: Session, action: SessionAction): Session 
     case 'tick':
       return withGame(session, tick(session.game, action.elapsedMs))
   }
+}
+
+export function reduceSession(session: Session, action: SessionAction): Session {
+  const next = step(session, action)
+  if (action.type === 'tick' || next.board === next.game) return next
+  return { ...next, board: next.game }
 }
 
 export function canUndo(game: Game): boolean {

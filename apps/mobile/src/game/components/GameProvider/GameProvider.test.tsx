@@ -1,25 +1,37 @@
 import { render, screen } from '@testing-library/react-native'
 import { Text } from 'react-native'
-import { useGame } from '@/game/hooks/useGame'
+import { useGameActions } from '@/game/hooks/useGameActions'
+import { useGameState } from '@/game/hooks/useGameState'
+import { useGameTime } from '@/game/hooks/useGameTime'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { GameProvider } from './GameProvider'
 
 function Probe() {
-  const { game } = useGame()
-  return <Text>{game.status}</Text>
+  const { board } = useGameState()
+  const playedMs = useGameTime()
+  const actions = useGameActions()
+  return <Text>{`${board.status} ${playedMs} ${typeof actions.select}`}</Text>
 }
 
-it('shares one game session with the parts of the screen', () => {
+it('shares the state, the time and the actions with the parts of the screen', () => {
   render(
     <GameProvider start={sampleStart()}>
       <Probe />
     </GameProvider>,
   )
-  expect(screen.getByText('playing')).toBeTruthy()
+  expect(screen.getByText('playing 0 function')).toBeTruthy()
 })
 
-it('refuses a part of the screen outside the provider', () => {
+it.each([
+  ['useGameState', () => useGameState()],
+  ['useGameTime', () => useGameTime()],
+  ['useGameActions', () => useGameActions()],
+])('refuses %s outside the provider', (name, read) => {
+  function Outside() {
+    read()
+    return null
+  }
   const error = jest.spyOn(console, 'error').mockImplementation(() => undefined)
-  expect(() => render(<Probe />)).toThrow('useGame needs a GameProvider')
+  expect(() => render(<Outside />)).toThrow(`${name} needs a GameProvider`)
   error.mockRestore()
 })

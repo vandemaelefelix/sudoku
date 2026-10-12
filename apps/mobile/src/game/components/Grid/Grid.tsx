@@ -1,7 +1,8 @@
 import { View } from 'react-native'
 import { BOXES } from '@sudoku/core'
 import { Cell } from '@/game/components/Cell'
-import { useGame } from '@/game/hooks/useGame'
+import { useCellViews } from '@/game/hooks/useCellViews'
+import { useGameActions } from '@/game/hooks/useGameActions'
 import { cellLabel } from '@/game/utils/cellLabel.utils'
 import { styles } from './Grid.styles'
 
@@ -9,11 +10,12 @@ const THREE = [0, 1, 2] as const
 
 /** 81 cells in nine boxes. BOXES lists the cells of each box row by row. */
 export function Grid() {
-  const { views, actions } = useGame()
+  const views = useCellViews()
+  const { select } = useGameActions()
   const drawCell = (cell: number) => {
     const view = views[cell]
     if (!view) return null
-    return <Cell key={cell} cell={cell} {...view} label={cellLabel(cell, view)} onSelect={actions.select} />
+    return <Cell key={cell} cell={cell} {...view} label={cellLabel(cell, view)} onSelect={select} />
   }
   return (
     <View testID="grid" style={styles.frame}>

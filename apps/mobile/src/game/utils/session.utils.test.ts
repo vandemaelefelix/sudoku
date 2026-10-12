@@ -76,3 +76,13 @@ it('knows when undo and erase can act', () => {
   // Cell 0 holds the given 5.
   expect(canErase(run(placed, { type: 'select', cell: 0 }).game)).toBe(false)
 })
+
+it('keeps the same board when only the time changes', () => {
+  const placed = run(start(), { type: 'select', cell: OPEN }, { type: 'digit', digit: 4 })
+  expect(placed.board).toBe(placed.game)
+  const ticked = run(placed, { type: 'tick', elapsedMs: 1000 })
+  expect(ticked.game.playedMs).toBe(1000)
+  expect(ticked.board).toBe(placed.board)
+  const paused = run(ticked, { type: 'pause' })
+  expect(paused.board).toBe(paused.game)
+})
