@@ -142,3 +142,23 @@ def test_finish_deletes_a_detections_file_with_no_pending_photo(tmp_path: Path):
     paths.detections.write_text("{}")
     result = finish(LabelStore(paths, Clock()))
     assert "detections.json" in result["removed"] and not paths.detections.exists()
+
+
+def test_finish_closes_the_review_items_with_older_evidence(tmp_path: Path):
+    paths = with_derived(tmp_path)
+    clock = Clock()
+    store = LabelStore(paths, clock)
+    cell = next(iter(store.sources()))
+    store.assign([{"id": cell, "digit": "4"}], "digits")
+    store.save([{"id": cell, "kind": "printed"}], "groups")
+    line = {"session": "c", "cell": cell, "label": "printed", "answer": "handwritten"}
+    with paths.kind_checks.open("a") as handle:
+        handle.write(json.dumps({"t": "2026-10-12T08:00:00Z", **line}) + "\n")
+    paths.suspects.unlink()
+    store = LabelStore(paths, clock)
+    assert [i["id"] for i in store.review_items()] == [cell]
+    finish(store)
+    assert LabelStore(paths, clock).review_items() == []
+    with paths.kind_checks.open("a") as handle:
+        handle.write(json.dumps({"t": "2026-10-12T10:00:00Z", **line}) + "\n")
+    assert [i["id"] for i in LabelStore(paths, clock).review_items()] == [cell]
