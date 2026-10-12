@@ -8,9 +8,8 @@ export const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.shape.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.components.key.fill,
-    boxShadow: theme.elevation.key,
   },
+  raised: { backgroundColor: theme.components.key.fill, boxShadow: theme.elevation.key },
   digit: { ...roleFont(theme.type.key), fontSize: theme.type.key.scale, color: theme.components.key.digit },
   noteDigit: {
     ...roleFont(theme.type.keyNote),
