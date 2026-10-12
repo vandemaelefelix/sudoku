@@ -12,7 +12,13 @@ import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { CorrectionCell } from '@/scan/components/CorrectionCell'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
-import { cellLook, cellsToCheck, drawGridLines, type CorrectionLayout } from '@/scan/utils/correction.utils'
+import {
+  cellLook,
+  cellsToCheck,
+  drawGridLines,
+  gridLineStyle,
+  type CorrectionLayout,
+} from '@/scan/utils/correction.utils'
 import { FAILURE_SLIDE_MS, PANEL_HIDDEN } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
@@ -47,16 +53,20 @@ export function CorrectionScreen({
   const looks = useMemo(() => (result?.ok ? result.cells.map(cellLook) : []), [result])
   const toCheck = result?.ok ? cellsToCheck(result.cells) : 0
 
-  // The inset keeps the 2 pt outer box line inside the canvas. The picture is made again when the theme changes (ADR-015, point 10).
+  // The picture is made again when the theme changes (ADR-015, point 10).
   const board = useMemo(() => {
     const side = grid.width
-    const { boxLine, cellLine } = theme.components.grid
+    const lines = gridLineStyle(theme)
+    // Half the frame width inside each edge, so the canvas does not clip the frame.
+    const inset = lines.frameWidth / 2
+    // The transition canvas fills the cells with the same token, so nothing jumps at the handoff.
+    const cellFill = theme.components.cell.fill
     return createPicture(
       (canvas) => {
         const fill = Skia.Paint()
-        fill.setColor(Skia.Color(theme.colors.surface))
+        fill.setColor(Skia.Color(cellFill))
         canvas.drawRect(Skia.XYWHRect(0, 0, side, side), fill)
-        drawGridLines(canvas, Skia.Paint(), [side - 2, 0, 1, 0, side - 2, 1, 0, 0], 1, boxLine, cellLine)
+        drawGridLines(canvas, Skia.Paint(), [side - 2 * inset, 0, inset, 0, side - 2 * inset, inset, 0, 0], 1, lines)
       },
       { x: 0, y: 0, width: side, height: side },
     )

@@ -13,11 +13,10 @@ import { StyleSheet } from 'react-native'
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
 import type { Theme } from '@/theme/theme.types'
-import { drawGridLines } from '@/scan/utils/correction.utils'
+import { drawGridLines, gridLineStyle } from '@/scan/utils/correction.utils'
 import { type CaptureFrame, insetUnit, photoMatrix } from '@/scan/utils/transition.utils'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { unitToQuad } from '@/utils/homography.utils'
-import { LINE_INSET } from './TransitionCanvas.constants'
 
 function addQuad(path: SkPath, quad: Quad): SkPath {
   'worklet'
@@ -66,7 +65,9 @@ export function TransitionCanvas({
   const { theme } = useUnistyles()
   // New paints and line colours on a theme change remake the derived picture (ADR-015, point 10).
   const paints = useMemo(() => makePaints(theme), [theme])
-  const { boxLine, cellLine } = theme.components.grid
+  const gridLines = gridLineStyle(theme)
+  // The correction board draws its lines this far inside the grid square, so the last frame matches it.
+  const lineInset = gridLines.frameWidth / 2
 
   const picture = useDerivedValue(() => {
     const frame = capture.value
@@ -118,14 +119,14 @@ export function TransitionCanvas({
       }
       const m = unitToQuad(grid)
       if (m == null || channels.lines <= 0) return
-      const lines = insetUnit(m, LINE_INSET, side)
+      const lines = insetUnit(m, lineInset, side)
       if (crossFade) {
         paints.layer.setAlphaf(channels.lines)
         canvas.saveLayer(paints.layer)
-        drawGridLines(canvas, paints.lines, lines, 1, boxLine, cellLine)
+        drawGridLines(canvas, paints.lines, lines, 1, gridLines)
         canvas.restore()
       } else {
-        drawGridLines(canvas, paints.lines, lines, channels.lines, boxLine, cellLine)
+        drawGridLines(canvas, paints.lines, lines, channels.lines, gridLines)
       }
     })
   })
