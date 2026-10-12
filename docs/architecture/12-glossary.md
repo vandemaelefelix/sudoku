@@ -26,6 +26,9 @@ status: DRAFT
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
 | Op table | `tflite_2_17_ops.json`: the highest version of each TFLite operator that the 2.17 runtime supports. Export checks the model against it (ADR-005) |
 | Contact sheet | An image of numbered cells with their labels. Replaced by the Review screen of the labelling page |
+| Work folder | `data/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
+| Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
+| Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
 | Technique solver | The solver in `@sudoku/core` that will solve like a person. It will grade difficulty and give hints (ADR-011). v1 does not have it |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
@@ -35,7 +38,7 @@ status: DRAFT
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes`. The kind says how the mark was made: `printed` by a printer or a screen, `handwritten` by a person (ADR-009, amendment) |
 | Lock-on | The moment the same grid has been in view long enough without a clear move, and the scan captures |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
-| Manifest (dataset) | A file in git listing every image of a dataset version with hash and label |
+| Manifest (dataset) | A file in git listing every image of a dataset version with hash and label. For the real cells: `data/cells.csv` (ADR-018) |
 | Notes | Small pencil marks in a cell. In a scan: a kind, loaded as an empty cell. In the game: the candidate numbers that the player sets in notes mode |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
 | Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007). Until M3, Install is the one exception (ADR-007). |
@@ -70,10 +73,10 @@ status: DRAFT
 | Domain utils file | `<domain>.utils.ts`: the plain functions and types of one domain, such as tracking or transition. No React, no UI. See `apps/mobile/AGENTS.md` |
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
-| Kind log | `ml/datasets/kind-log.jsonl`: one line per label change, append-only. The source of truth for the kind of a real cell (ADR-009, amendment) |
+| Journal | `data/work/journal.jsonl`: one line per change of the unfinished work, append-only: kinds, digits and the sources of cut cells. Undo and rollback work on it. Finish folds it into `cells.csv` and deletes it (ADR-018). It replaces the kind log of ADR-009 |
 | Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Groups, Review, Check and Progress |
 | Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
-| Check agreement | The share of blind check answers that match the label in the kind log. It estimates the label quality |
+| Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
 | Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
 | Unsure | The kind label for a cell that the developer cannot decide. Training ignores it |
 | Theme | One typed object with every token the app needs. Daylight and Midnight ship first (ADR-015) |
@@ -122,3 +125,13 @@ status: DRAFT
 | Given conflict | Two givens with the same digit in one row, column or box. The correction screen marks both |
 | Assist preview | The small live grid on the settings screen. It shows the assists that are on |
 | Display grid | The real game grid in read-only mode: no taps, no haptics, no pulse. The settings preview uses it, and later the finish card |
+| Sudoku photo | A photo of a whole sudoku. A row of `data/sudoku-photos.csv` lists it. The labelling tool cuts cells from it (ADR-018) |
+| Cell | One square of a sudoku grid, cut from a sudoku photo or from a scan. A real cell is a row of `data/cells.csv` and an image in `cells/<digit>/` (ADR-018) |
+| Status (sudoku photo) | The decision on a sudoku photo: `pending`, `accepted`, `rejected`, `too-few-cells` or `legacy`. A `legacy` sudoku photo was cut before photo checks existed (ADR-018) |
+| Image store | The folder with `cells/` and `sudoku-photos/`: `data/images/`, or the folder that `SUDOKU_IMAGES` names. Outside git (ADR-018) |
+| Photo check | The Photos screen of the labelling page: a person accepts, corrects or rejects the grid outline of an imported sudoku photo. See ADR-018 |
+| Usable cell | A cell whose 4 corners lie inside the sudoku photo after the flatten. Only usable cells are cut |
+| Pre-label | The model's proposed digit and kind for an unlabelled cell, with how sure it is of each. A proposal, not a label |
+| Digit pass | The Digits screen: a person confirms a screen of pre-labelled cells per digit and corrects the exceptions |
+| Discarded cell | A cell that a person rejected in the digit pass. It stays in `cells/discarded/`. Training ignores it |
+| Cell source | The sudoku photo, row and column (0-8) that a cut cell comes from: the columns `photo_id`, `row` and `col` of `cells.csv` (ADR-018) |

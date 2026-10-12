@@ -8,7 +8,9 @@ dependencies = [
     "ai-edge-litert==2.2.0",
     "litert-torch==0.9.4",
     "numpy>=2.2",
+    "opencv-python-headless==5.0.0.93",
     "pillow==12.3.0",
+    "pillow-heif==1.8.0",
     "torch==2.13.0",
 ]
 
@@ -28,7 +30,6 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "opencv-python-headless==5.0.0.93",
     "flatbuffers",
     "pytest>=8.4",
     "ruff>=0.12",

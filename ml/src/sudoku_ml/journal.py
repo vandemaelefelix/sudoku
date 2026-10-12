@@ -1,4 +1,7 @@
-"""The kind log: one JSON line per label change, append-only (ADR-009, amendment)."""
+"""The session journal `data/work/journal.jsonl`: one JSON line per change of the unfinished
+work, append-only (ADR-018). The labels at runtime are the kinds and sources of cells.csv with
+the journal lines applied on top, in order. Finish folds the journal into cells.csv and deletes
+it."""
 
 import json
 import os
@@ -16,10 +19,14 @@ class Line:
     session: str
     action: str  # the lines of one save or one move share it. An undo line: "undo:<action>"
     cell: str  # full SHA-256 cell id
-    field: str  # "kind" or "digit"
+    field: str  # "kind", "digit" or "source"
     old: str | None
-    new: str | None
-    screen: str  # "groups", "review" or "undo"
+    new: str | None  # a source: "<photo_id> <row> <col>", row and col 0-8
+    screen: str  # "groups", "review", "digits", "undo", "repair" or "photos"
+
+
+Source = tuple[str, int, int]  # full photo id, row, col (0-8)
+FINISHED = "This session is finished. Use git to go back."
 
 
 def read_records[T](path: Path, cls: type[T]) -> list[T]:
@@ -46,8 +53,18 @@ def append_records(path: Path, records: list) -> None:
         os.fsync(handle.fileno())
 
 
-def read_log(path: Path) -> list[Line]:
+def read_journal(path: Path) -> list[Line]:
     return read_records(path, Line)
+
+
+def format_source(source: Source) -> str:
+    photo_id, row, col = source
+    return f"{photo_id} {row} {col}"
+
+
+def parse_source(text: str) -> Source:
+    photo_id, row, col = text.split(" ")
+    return photo_id, int(row), int(col)
 
 
 def format_time(moment: datetime) -> str:
@@ -58,16 +75,36 @@ def parse_time(text: str) -> datetime:
     return datetime.strptime(text, TIME_FORMAT).replace(tzinfo=UTC)
 
 
-def current_kinds(lines: list[Line]) -> dict[str, str | None]:
-    kinds: dict[str, str | None] = {}
+def current_kinds(
+    lines: list[Line], base: dict[str, str | None] | None = None
+) -> dict[str, str | None]:
+    """`base` (the kinds of cells.csv) with the kind lines applied on top."""
+    kinds: dict[str, str | None] = dict(base or {})
     for line in lines:
         if line.field == "kind":
             kinds[line.cell] = line.new
     return kinds
 
 
+def current_sources(lines: list[Line], base: dict[str, Source] | None = None) -> dict[str, Source]:
+    """`base` (the sources of cells.csv) with the source lines applied on top."""
+    sources = dict(base or {})
+    for line in lines:
+        if line.field == "source":
+            if line.new is None:
+                sources.pop(line.cell, None)
+            else:
+                sources[line.cell] = parse_source(line.new)
+    return sources
+
+
 def last_kind_times(lines: list[Line]) -> dict[str, str]:
     return {line.cell: line.t for line in lines if line.field == "kind"}
+
+
+def _label(line: Line) -> bool:
+    # A source line records a cut. It is a fact, not a label: undo and rollback skip it.
+    return line.field != "source" and line.screen != "undo"
 
 
 def undone_actions(lines: list[Line]) -> set[str]:
@@ -93,29 +130,31 @@ def undo_lines(lines: list[Line], t: str, session: str) -> list[Line]:
     """Lines that reverse the newest live action of `session`. Empty when there is none."""
     undone = undone_actions(lines)
     for line in reversed(lines):
-        if line.session == session and line.screen != "undo" and line.action not in undone:
-            return _reverse([x for x in lines if x.action == line.action], t, session)
+        if line.session == session and _label(line) and line.action not in undone:
+            return _reverse([x for x in lines if x.action == line.action and _label(x)], t, session)
     return []
 
 
 def rollback_lines(lines: list[Line], target: str, t: str, session: str) -> list[Line]:
     """Lines that reverse every live action of `target`, newest first.
 
-    Raises ValueError when a later session changed a cell of `target`: reversing would
-    overwrite that later work.
+    Raises ValueError when the journal has no line of `target` (Finish deleted it), or when a
+    later session changed a cell of `target`: reversing would overwrite that later work.
     """
+    if not any(x.session == target for x in lines):
+        raise ValueError(FINISHED)
     undone = undone_actions(lines)
     target_actions = {x.action for x in lines if x.session == target}
-    live = [
-        x for x in lines if x.session == target and x.screen != "undo" and x.action not in undone
-    ]
+    live = [x for x in lines if x.session == target and _label(x) and x.action not in undone]
     cells = {x.cell for x in live}
     last = max((i for i, x in enumerate(lines) if x.session == target), default=-1)
     later = sorted(
         {
             x.cell[:16]
             for x in lines[last + 1 :]
-            if x.cell in cells and x.action.removeprefix("undo:") not in target_actions
+            if x.cell in cells
+            and x.field != "source"
+            and x.action.removeprefix("undo:") not in target_actions
         }
     )
     if later:
