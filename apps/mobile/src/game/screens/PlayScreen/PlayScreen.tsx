@@ -4,11 +4,14 @@ import { createGame, toSavedGame, type Game } from '@sudoku/core'
 import { SLOW_SAVE_MS } from '@/game/constants/save.constants'
 import { GameSaveContext } from '@/game/hooks/useGameSaver'
 import { GameScreen } from '@/game/screens/GameScreen'
+import type { FinishInfo } from '@/game/utils/finish.utils'
 import { createSaveQueue } from '@/game/utils/save.utils'
 import { newGeneratedGame } from '@/game/utils/start.utils'
-import type { PuzzleSource, SavedProgress } from '@/storage'
+import type { BestTimes, PuzzleSource, SavedProgress } from '@/storage'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
+
+type Loaded = { progress: SavedProgress; best: BestTimes }
 
 function logSave(game: Game, ms: number) {
   if (!__DEV__) return
@@ -21,22 +24,22 @@ function logSave(game: Game, ms: number) {
 /**
  * The game in progress from PuzzleRepository. A route param holds no game (ADR-016), and Continue must read
  * the last save of the screen before. PuzzleRepository.save also moves a won or lost game to the history (ADR-012).
+ * The best times load with the game, so the finish card compares against the best time before this game.
  */
 export function PlayScreen() {
   const router = useRouter()
-  const { puzzles } = useGameStorage()
-  const [progress, setProgress] = useState<SavedProgress | null>(null)
+  const { puzzles, history } = useGameStorage()
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
 
   const home = useCallback(() => router.dismissTo('/'), [router])
 
   useEffect(() => {
     let live = true
-    puzzles
-      .current()
-      .then((current) => {
+    Promise.all([puzzles.current(), history.bestTimes()])
+      .then(([current, best]) => {
         if (!live) return
         if (current === null) home()
-        else setProgress(current)
+        else setLoaded({ progress: current, best })
       })
       .catch((error: unknown) => {
         devWarn('storage', `The game in progress does not load: ${errorMessage(error)}`)
@@ -45,8 +48,9 @@ export function PlayScreen() {
     return () => {
       live = false
     }
-  }, [puzzles, home])
+  }, [puzzles, history, home])
 
+  const progress = loaded?.progress ?? null
   const id = progress?.id
   const save = useMemo(
     () =>
@@ -61,17 +65,19 @@ export function PlayScreen() {
 
   // Each restart is a new game in progress with a new id: save() moved a lost game to the history,
   // so the store ignores later saves under the old id. A failed start keeps the old screen.
+  // The best times are read after the start: start() runs after that save, so they include the finished game.
   const restartWith = useCallback(
-    async (source: PuzzleSource, makeGame: (current: SavedProgress) => Game) => {
+    async (source: PuzzleSource, make: (current: SavedProgress) => { game: Game; seed: number | null }) => {
       if (progress === null) return
       try {
-        const game = makeGame(progress)
-        setProgress(await puzzles.start({ level: progress.level, source, game }))
+        const { game, seed } = make(progress)
+        const started = await puzzles.start({ level: progress.level, source, seed, game })
+        setLoaded({ progress: started, best: await history.bestTimes() })
       } catch (error) {
         devWarn('storage', `The game does not start: ${errorMessage(error)}`)
       }
     },
-    [puzzles, progress],
+    [puzzles, history, progress],
   )
 
   const newPuzzle = useCallback(() => {
@@ -80,16 +86,37 @@ export function PlayScreen() {
 
   const retry = useCallback(() => {
     if (progress === null) return
-    void restartWith(progress.source, ({ game }) =>
-      createGame({ givens: game.givens, solution: game.solution, entries: game.startEntries }),
-    )
+    void restartWith(progress.source, ({ game, seed }) => ({
+      game: createGame({ givens: game.givens, solution: game.solution, entries: game.startEntries }),
+      seed,
+    }))
   }, [restartWith, progress])
 
-  if (progress === null || save === null) return null
+  const finish = useMemo<FinishInfo | null>(
+    () =>
+      loaded === null
+        ? null
+        : {
+            level: loaded.progress.level,
+            source: loaded.progress.source,
+            seed: loaded.progress.seed,
+            bestBeforeMs: loaded.best[loaded.progress.level] ?? null,
+          },
+    [loaded],
+  )
+
+  if (progress === null || save === null || finish === null) return null
   return (
     <GameSaveContext value={save}>
       {/* A new id mounts a new game screen. A Game in start resumes as it was saved (startSession). */}
-      <GameScreen key={progress.id} start={progress.game} onBack={home} onNewPuzzle={newPuzzle} onRetry={retry} />
+      <GameScreen
+        key={progress.id}
+        start={progress.game}
+        finish={finish}
+        onBack={home}
+        onNewPuzzle={newPuzzle}
+        onRetry={retry}
+      />
     </GameSaveContext>
   )
 }

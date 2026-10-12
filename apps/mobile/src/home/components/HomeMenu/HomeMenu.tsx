@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
 import { LEVELS, type Level } from '@sudoku/core'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
-import { LEVEL_NAMES } from './HomeMenu.constants'
+import { LEVEL_NAMES } from '@/constants/level.constants'
 import { styles } from './HomeMenu.styles'
 
 type HomeMenuProps = {

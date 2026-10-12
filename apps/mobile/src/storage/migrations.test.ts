@@ -177,3 +177,32 @@ describe('migration 2', () => {
     expect(row?.saved_game).toBe(text)
   })
 })
+
+describe('migration 3', () => {
+  const at = '2026-01-01T00:00:00.000Z'
+
+  it('gives a game saved before the seed column the seed null', async () => {
+    await migrate(db, MIGRATIONS.slice(0, 2))
+    await db.runAsync(
+      `INSERT INTO game_in_progress (id, level, source, saved_game, created_at, updated_at)
+        VALUES ('old', 'easy', 'generated', ?, ?, ?)`,
+      [JSON.stringify(toSavedGame(newGame())), at, at],
+    )
+    await migrate(db)
+    await expect(createSqliteStorage(db, testDeps()).puzzles.current()).resolves.toMatchObject({
+      id: 'old',
+      seed: null,
+    })
+  })
+
+  it('refuses a negative seed', async () => {
+    await migrate(db)
+    await expect(
+      db.runAsync(
+        `INSERT INTO game_in_progress (id, level, source, seed, saved_game, created_at, updated_at)
+          VALUES ('bad', 'easy', 'generated', -1, '{}', ?, ?)`,
+        [at, at],
+      ),
+    ).rejects.toThrow('CHECK constraint failed')
+  })
+})

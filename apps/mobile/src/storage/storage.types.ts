@@ -8,6 +8,8 @@ export type SavedProgress = {
   readonly id: string
   readonly level: Level
   readonly source: PuzzleSource
+  /** The seed of a generated puzzle (ADR-011). Null for a scanned puzzle and for a game saved before migration 3. */
+  readonly seed: number | null
   readonly game: Game
 }
 
@@ -16,6 +18,8 @@ export type HistoryEntry = {
   readonly id: string
   readonly level: Level
   readonly source: PuzzleSource
+  /** The seed of a generated puzzle (ADR-011). Null for a scanned puzzle and for a game saved before migration 3. */
+  readonly seed: number | null
   readonly result: GameResult
   readonly playedMs: number
   readonly mistakes: number
