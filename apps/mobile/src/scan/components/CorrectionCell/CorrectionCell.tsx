@@ -17,7 +17,7 @@ type CorrectionCellProps = SweepTiming & {
   selected?: boolean
   conflict?: boolean
   /** Without it, the cell is not pressable: the transition shows the cells before the player can edit them. */
-  onSelect?: (cell: number) => void
+  onSelect?: ((cell: number) => void) | undefined
 }
 
 /** One cell of the correction screen, with a ring when it is uncertain. n: the cell index, row-major. */

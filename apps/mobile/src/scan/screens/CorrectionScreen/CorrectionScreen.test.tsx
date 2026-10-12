@@ -81,7 +81,7 @@ describe('CorrectionScreen in review', () => {
   it('shows the title and a disabled Play button', () => {
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByText('Check the scan')).toBeTruthy()
-    expect(screen.getByText('Tap a digit to fix it')).toBeTruthy()
+    expect(screen.getByText('Tap a cell to fix it')).toBeTruthy()
     expect(screen.getByTestId('play').props.accessibilityState).toMatchObject({ disabled: true })
     expect(style('play').opacity).toBe(0.5)
   })
@@ -302,5 +302,121 @@ describe('CorrectionScreen with late results', () => {
     expect(style('correction-cell-0').opacity).toBe(1)
     expect(style('correction-ring-0').opacity).toBe(1)
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
+  })
+})
+
+const press = (testID: string) => fireEvent.press(screen.getByTestId(testID))
+const ui = (result: RecogniseResult) => <CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} />
+
+describe('CorrectionScreen edits', () => {
+  it('selects a cell on tap and shows the pad in place of Play and Retake', () => {
+    render(ui(okResult({ 0: given })))
+    expect(screen.queryByTestId('correction-pad')).toBeNull()
+    press('correction-press-0')
+    expect(screen.getByTestId('correction-pad')).toBeTruthy()
+    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.selected })
+    expect(screen.queryByTestId('play')).toBeNull()
+    expect(screen.queryByTestId('retake')).toBeNull()
+  })
+
+  it('sets a digit, and Done brings back Play and Retake', () => {
+    render(ui(okResult()))
+    press('correction-press-2')
+    press('correction-key-4')
+    expect(screen.getByTestId('correction-cell-2')).toHaveTextContent('4')
+    expect(style('correction-cell-2')).toMatchObject({ color: daylight.components.cell.given })
+    press('correction-done')
+    expect(screen.queryByTestId('correction-pad')).toBeNull()
+    expect(screen.queryByTestId('correction-fill-2')).toBeNull()
+    expect(screen.getByTestId('play')).toBeTruthy()
+    expect(screen.getByTestId('retake')).toBeTruthy()
+  })
+
+  it('closes the pad with a second tap on the selected cell', () => {
+    render(ui(okResult()))
+    press('correction-press-2')
+    press('correction-press-2')
+    expect(screen.queryByTestId('correction-pad')).toBeNull()
+  })
+
+  it('clears a cell', () => {
+    render(ui(okResult({ 0: given })))
+    press('correction-press-0')
+    press('correction-clear')
+    expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('')
+  })
+
+  it('switches a given to an entry, and the style follows at once', () => {
+    render(ui(okResult({ 0: given })))
+    press('correction-press-0')
+    press('correction-kind-entry')
+    expect(style('correction-cell-0')).toMatchObject({
+      color: daylight.components.cell.entry,
+      fontWeight: daylight.type.entry.weight,
+    })
+    press('correction-kind-given')
+    expect(style('correction-cell-0')).toMatchObject({
+      color: daylight.components.cell.given,
+      fontWeight: daylight.type.given.weight,
+    })
+  })
+
+  it('removes the ring of a changed cell, and the count follows', () => {
+    render(ui(okResult({ 0: { ...given, confidence: 0.5 }, 1: { confidence: 0.1 } })))
+    expect(screen.getByText('● 2 cells to check')).toBeTruthy()
+    press('correction-press-0')
+    press('correction-key-5')
+    expect(screen.queryByTestId('correction-ring-0')).toBeNull()
+    press('correction-done')
+    expect(screen.getByText('● 1 cell to check')).toBeTruthy()
+  })
+
+  it('marks two givens with the same digit, and the mark goes when one becomes an entry', () => {
+    render(ui(okResult({ 0: given, 8: given })))
+    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
+    expect(style('correction-fill-8')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
+    expect(screen.getByText('● 2 givens in conflict')).toBeTruthy()
+    press('correction-press-8')
+    press('correction-kind-entry')
+    press('correction-done')
+    expect(screen.queryByTestId('correction-fill-0')).toBeNull()
+    expect(screen.queryByTestId('correction-fill-8')).toBeNull()
+    expect(screen.queryByText(/in conflict/)).toBeNull()
+  })
+
+  it('makes a new conflict visible at once', () => {
+    render(ui(okResult({ 0: given })))
+    press('correction-press-1')
+    press('correction-key-5')
+    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
+    expect(style('correction-fill-1')).toMatchObject({ backgroundColor: daylight.components.cell.selected })
+  })
+
+  it('does not say that all cells look sure while givens are in conflict', () => {
+    render(ui(okResult({ 0: given, 8: given })))
+    expect(screen.queryByText('All cells look sure')).toBeNull()
+  })
+
+  it('keeps the cells inert during the transition', () => {
+    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    expect(screen.getByTestId('correction-press-0').props.accessibilityState).toMatchObject({ disabled: true })
+    press('correction-press-0')
+    expect(screen.queryByTestId('correction-pad')).toBeNull()
+  })
+
+  it('labels each cell for VoiceOver', () => {
+    render(ui(okResult({ 0: given, 1: entry })))
+    expect(screen.getByLabelText('Row 1, column 1, given 5')).toBeTruthy()
+    expect(screen.getByLabelText('Row 1, column 2, entry 7')).toBeTruthy()
+  })
+
+  it('does not change the result it got', () => {
+    const result = okResult({ 0: given })
+    const before = JSON.parse(JSON.stringify(result))
+    render(ui(result))
+    press('correction-press-0')
+    press('correction-kind-entry')
+    press('correction-key-2')
+    expect(result).toEqual(before)
   })
 })
