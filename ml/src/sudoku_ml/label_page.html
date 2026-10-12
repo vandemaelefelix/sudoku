@@ -305,7 +305,8 @@ function bannerFor() {
       return [corners ? `${DO.photos} You cannot undo a photo.`
         : "No grid found. Click the 4 corners, then press Enter.", []];
     }
-    if (lastStatus && lastStatus.photos_total === 0) {
+    if (!lastStatus) return ["", []];
+    if (lastStatus.photos_total === 0) {
       return ["No photos yet. Run just import-photos <folder>.", []];
     }
     return ["All photos are checked. Next: Confirm digits.", [goTo("Open Confirm digits", "digits")]];
@@ -327,7 +328,8 @@ function bannerFor() {
       return join(`No cells left for ${screen.digit}. Open digit ${next}.`,
         [[`Open digit ${next}`, () => run(() => loadDigits(next))]]);
     }
-    if (lastStatus && lastStatus.digits > shown) return join("Press K to show all kinds.", []);
+    if (!lastStatus) return ["", []];
+    if (lastStatus.digits > shown) return join("Press K to show all kinds.", []);
     if (n) return [missing[0].join(" "), missing[1]];
     return ["All digits are confirmed. Next: Label kind.", [goTo("Open Label kind", "groups")]];
   }
@@ -440,6 +442,7 @@ function clickCorner(event) {
   if (clicks.length === 4) {
     corners = clicks;
     clicks = [];
+    renderBanner();
     refreshPreview().catch((error) => say(error.message));
   }
   drawQuad();
@@ -507,6 +510,7 @@ function clearCorners() {
   clicks = [];
   corners = photo.corners;
   previewQuery = null;
+  renderBanner();
   renderPhoto().catch((error) => say(error.message));
 }
 

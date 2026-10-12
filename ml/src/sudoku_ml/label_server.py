@@ -2,6 +2,7 @@
 SUD-08)."""
 
 import json
+import pickle
 import sys
 import webbrowser
 from collections.abc import Callable
@@ -190,7 +191,7 @@ def prelabel_new_cells(ml_root: Path) -> int:
         raise ValueError(NO_MODEL)
     try:
         return write_prelabels(ml_root / "data" / "cells", run, ml_root / "data" / "prelabels.json")
-    except (OSError, RuntimeError, KeyError) as error:
+    except (OSError, RuntimeError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise ValueError(f"The pre-label failed: {error}") from error
 
 

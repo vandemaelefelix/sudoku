@@ -10,7 +10,7 @@ from photos import grid_photo, save_photo
 from test_label_store import Clock, build
 
 from sudoku_ml.kind_log import read_log
-from sudoku_ml.label_server import main, make_server
+from sudoku_ml.label_server import main, make_server, prelabel_new_cells
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import PhotoPaths, import_folder
@@ -290,6 +290,25 @@ def test_a_missing_model_gets_a_400_with_the_message(tmp_path: Path):
     try:
         status, data = request(server.server_port, "POST", "/api/prelabel", {})
         assert status == 400 and json.loads(data)["error"] == NO_MODEL
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
+    root = tmp_path / "ml"
+    build(root, {"unlabeled": 1}, {})
+    manifest = tmp_path / "apps" / "mobile" / "assets" / "models" / "manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({"run": "r1"}))
+    run = root / "artifacts" / "r1"
+    run.mkdir(parents=True)
+    (run / "model.pt").write_bytes(b"not a model")
+    (run / "metrics.json").write_text(json.dumps({"temperature": 1.0}))
+    server = serve_with(tmp_path / "other", lambda: prelabel_new_cells(root))
+    try:
+        status, data = request(server.server_port, "POST", "/api/prelabel", {})
+        assert status == 400 and json.loads(data)["error"].startswith("The pre-label failed")
     finally:
         server.shutdown()
         server.server_close()
