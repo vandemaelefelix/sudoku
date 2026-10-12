@@ -374,3 +374,18 @@ def test_the_origin_routes_answer_404_without_a_photo_check(served):
     for path in ("/api/origin?cell=abc", "/origin/abc.png"):
         status, data = request(port, "GET", path)
         assert status == 404 and json.loads(data) == {"error": "no photo check"}
+
+
+def test_an_unexpected_error_gets_a_500_with_a_message_and_the_server_keeps_serving(tmp_path: Path):
+    def crash() -> int:
+        raise RuntimeError("boom")
+
+    server = serve_with(tmp_path, crash)
+    try:
+        port = server.server_port
+        status, data = request(port, "POST", "/api/prelabel", {})
+        assert status == 500 and json.loads(data)["error"] == "The server failed: boom"
+        assert request(port, "GET", "/api/status")[0] == 200
+    finally:
+        server.shutdown()
+        server.server_close()

@@ -4,6 +4,7 @@ SUD-08)."""
 import json
 import pickle
 import sys
+import traceback
 import webbrowser
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -63,6 +64,11 @@ def make_server(
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+
+        def _failed(self, error: Exception) -> None:
+            # Without this the connection drops and the page shows only "Failed to fetch".
+            traceback.print_exc(file=sys.stderr)
+            self._json({"error": f"The server failed: {error}"}, 500)
 
         def _json(self, value, status: int = 200) -> None:
             self._send(status, json.dumps(value).encode(), "application/json")
@@ -150,6 +156,8 @@ def make_server(
                     self._json({"error": "not found"}, 404)
             except (KeyError, ValueError, IndexError) as error:
                 self._json({"error": str(error)}, 400)
+            except Exception as error:
+                self._failed(error)
 
         def do_POST(self):
             if not self._local():
@@ -183,6 +191,8 @@ def make_server(
                 self._json({"result": route(body)})
             except (KeyError, ValueError, IndexError, TypeError) as error:
                 self._json({"error": str(error)}, 400)
+            except Exception as error:
+                self._failed(error)
 
     return HTTPServer((host, port), Handler)
 
