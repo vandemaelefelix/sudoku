@@ -10,9 +10,9 @@
          height: 100vh; }
   body.mode-photos, body.mode-progress { grid-template-columns: 1fr; }
   body.mode-photos aside, body.mode-progress aside { display: none; }
-  header { grid-row: 1; grid-column: 1 / -1; display: flex; gap: 16px; align-items: center;
+  header { grid-row: 1; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
            padding: 8px 16px; border-bottom: 1px solid #ddd; }
-  nav { display: flex; gap: 6px; align-items: stretch; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
   nav button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
                padding: 4px 10px; text-align: left; cursor: pointer; }
   nav button small { color: #777; font-size: 11px; }
@@ -123,7 +123,7 @@ const HELP = {
       <li>Press <b>S</b> to skip. The photo comes back after the others.</li>
     </ol>
     <p>You cannot undo a photo. Check the right image before you press Enter.</p>
-    <p>After the last photo: Stop the server with Ctrl-C and run <code>just label-cells</code> again. The model then pre-labels the new cells for the Digits screen.</p>`,
+    <p>After the last photo: open Confirm digits. Press <b>Pre-label new cells</b>. The model then pre-labels the new cells.</p>`,
   digits: `
     <h3>What to do</h3>
     <ol>
@@ -136,7 +136,7 @@ const HELP = {
     <p>The least sure cells come first. Check them with care.</p>
     <p>Small pencil notes: click them. They stay unlabelled.</p>
     <p>Press <b>K</b> to show all kinds, not only handwritten cells. Press <b>Z</b> to undo the last Enter.</p>
-    <p>The kind comes later, on the Groups screen.</p>`,
+    <p>The kind comes later, on the Label kind screen.</p>`,
   groups: `
     <h3>What to do</h3>
     <ol>
@@ -172,7 +172,7 @@ const HELP = {
     <h3>What to do</h3>
     <ol>
       <li>This is a blind test of your own labels. The page hides them on purpose.</li>
-      <li>Label each cell again, as on the Groups screen: <b>P</b>, <b>H</b>, click, ⌥-click.</li>
+      <li>Label each cell again, as on the Label kind screen: <b>P</b>, <b>H</b>, click, ⌥-click.</li>
       <li>Press <b>Enter</b> for each screen.</li>
       <li>At the end, the page shows how often you agree with your first labels.</li>
     </ol>
@@ -181,7 +181,7 @@ const HELP = {
   progress: `
     <h3>What to do</h3>
     <ol>
-      <li>Label every group on the Groups screen.</li>
+      <li>Label every group on the Label kind screen.</li>
       <li>Stop the server with Ctrl-C. Run <code>just suspects</code> in the terminal.</li>
       <li>Start the server again. Work through the Review screen.</li>
       <li>After 7 days or more, run the Check screen.</li>
@@ -196,6 +196,7 @@ let hovered = null;
 let checkPage = 0;
 let busy = false;
 let checkDone = false;
+let lastStatus = null;  // the last /api/status, for the banner
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
 let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
 let clicks = [];       // corners that the person clicked, in the order TL, TR, BR, BL
@@ -209,7 +210,7 @@ const DO = {
   groups: "Press P if most cells are printed, or H if most are handwritten. Click the odd ones. Press Enter.",
   review: "Click each cell with the wrong kind. Then press Enter.",
   check: "Label each cell again without looking back. Press Enter.",
-  progress: "Label every group. Then run just suspects and open Review.",
+  progress: "Label every group. Stop the server with Ctrl-C. Run just suspects. Start the server again. Then open Review.",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -295,35 +296,47 @@ async function prelabel() {
   say(`Pre-labelled ${count} new cells.`);
 }
 
+const STOP_SUSPECTS = "Stop the server with Ctrl-C. Run just suspects. Start the server again. Then open Review.";
+
 // What to do next on this screen. An empty screen says what comes next, with a button for it.
 function bannerFor() {
   if (mode === "photos") {
-    return photo ? [DO.photos, []]
-      : ["All photos are checked. Next: Confirm digits.", [goTo("Open Confirm digits", "digits")]];
+    if (photo) {
+      return [corners ? `${DO.photos} You cannot undo a photo.`
+        : "No grid found. Click the 4 corners, then press Enter.", []];
+    }
+    if (lastStatus && lastStatus.photos_total === 0) {
+      return ["No photos yet. Run just import-photos <folder>.", []];
+    }
+    return ["All photos are checked. Next: Confirm digits.", [goTo("Open Confirm digits", "digits")]];
   }
   if (mode === "digits") {
     if (!screen) return ["", []];
-    const missing = screen.not_prelabelled
-      ? [`${screen.not_prelabelled} new cells have no pre-label.`, [["Pre-label new cells", () => run(prelabel)]]]
-      : null;
+    const n = screen.not_prelabelled;
+    const missing = n ? [[`${n} new ${n === 1 ? "cell has" : "cells have"} no pre-label.`],
+      [["Pre-label new cells", () => run(prelabel)]]] : [[], []];
+    const join = (text, buttons) => [[text, ...missing[0]].join(" "), [...buttons, ...missing[1]]];
+    const shown = DIGITS.reduce((sum, d) => sum + screen.counts[d], 0);
     if (screen.left) {
       const text = screen.digit === "empty" ? "Click each cell that shows a digit. Then press Enter."
-        : `Click each cell that is not a ${screen.digit}. Then press Enter.`;
-      return missing ? [`${text} ${missing[0]}`, missing[1]] : [text, []];
+        : `Click each cell that is not ${screen.digit === "8" ? "an" : "a"} ${screen.digit}. Then press Enter.`;
+      return join(text, []);
     }
     const next = DIGITS.find((d) => screen.counts[d] > 0);
-    if (next) return [`No cells left for ${screen.digit}. Open digit ${next}.`,
-      [[`Open digit ${next}`, () => run(() => loadDigits(next))]]];
-    return missing || ["All digits are confirmed. Next: Label kind.", [goTo("Open Label kind", "groups")]];
+    if (next) {
+      return join(`No cells left for ${screen.digit}. Open digit ${next}.`,
+        [[`Open digit ${next}`, () => run(() => loadDigits(next))]]);
+    }
+    if (lastStatus && lastStatus.digits > shown) return join("Press K to show all kinds.", []);
+    if (n) return [missing[0].join(" "), missing[1]];
+    return ["All digits are confirmed. Next: Label kind.", [goTo("Open Label kind", "groups")]];
   }
   if (mode === "groups") {
     return screen ? [DO.groups, []]
-      : ["Every cell has a kind. Next: run just suspects, then open Review.", [goTo("Open Review", "review")]];
+      : [`Every cell has a kind. ${STOP_SUSPECTS}`, [goTo("Open Review", "review")]];
   }
   if (mode === "review") {
-    return screen && !screen.open
-      ? ["Nothing to review. Run just suspects in the terminal, then open Review again.", []]
-      : [DO.review, []];
+    return screen && !screen.open ? [`Nothing to review. ${STOP_SUSPECTS}`, []] : [DO.review, []];
   }
   if (mode === "check") {
     if (checkDone) return ["The check is done. Next: open Review.", [goTo("Open Review", "review")]];
@@ -685,13 +698,16 @@ function renderProgress(value) {
 async function refreshStatus() {
   try {
     const value = await api("/api/status");
-    const counts = { photos: value.photos, digits: value.digits, kind: value.kind };
+    lastStatus = value;
+    const counts = {
+      photos: value.photos, digits: value.digits + value.not_prelabelled, kind: value.kind,
+    };
     for (const badge of document.querySelectorAll("[data-count]")) {
       const n = counts[badge.dataset.count];
-      const left = badge.dataset.count === "digits" ? n + value.not_prelabelled : n;
-      badge.textContent = left === 0 ? "✓" : n;
-      badge.classList.toggle("done", left === 0);
+      badge.textContent = n === 0 ? "✓" : n;
+      badge.classList.toggle("done", n === 0);
     }
+    renderBanner();
   } catch (error) {
     // The counts are a convenience. A failed refresh must not hide the real message.
   }

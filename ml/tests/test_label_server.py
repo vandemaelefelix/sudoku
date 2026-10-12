@@ -14,6 +14,7 @@ from sudoku_ml.label_server import main, make_server
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import PhotoPaths, import_folder
+from sudoku_ml.prelabel import NO_MODEL
 
 
 @pytest.fixture
@@ -229,9 +230,27 @@ def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
     port, _, u, _ = served_photos
     status, data = request(port, "GET", "/api/status")
     assert status == 200
-    assert json.loads(data) == {"photos": 1, "digits": 2, "not_prelabelled": 0, "kind": 1}
+    assert json.loads(data) == {
+        "photos": 1,
+        "photos_total": 1,
+        "digits": 2,
+        "not_prelabelled": 0,
+        "kind": 1,
+    }
     request(port, "POST", "/api/photos/reject", {"photo": served_photos[3], "reason": "rejected"})
     assert json.loads(request(port, "GET", "/api/status")[1])["photos"] == 0
+
+
+def test_the_status_counts_cells_without_a_pre_label_apart(tmp_path: Path):
+    paths, _ = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
+    server = make_server(LabelStore(paths, Clock()), port=0)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        data = json.loads(request(server.server_port, "GET", "/api/status")[1])
+        assert data["digits"] == 0 and data["not_prelabelled"] == 2
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_the_status_without_a_photo_check_counts_zero_photos(served):
@@ -263,6 +282,19 @@ def test_prelabel_without_a_function_answers_404(served):
     assert status == 404 and json.loads(data) == {"error": "no prelabel"}
 
 
+def test_a_missing_model_gets_a_400_with_the_message(tmp_path: Path):
+    def refuse() -> int:
+        raise ValueError(NO_MODEL)
+
+    server = serve_with(tmp_path, refuse)
+    try:
+        status, data = request(server.server_port, "POST", "/api/prelabel", {})
+        assert status == 400 and json.loads(data)["error"] == NO_MODEL
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_a_prelabel_error_gets_a_400_with_the_reason(tmp_path: Path):
     def refuse() -> int:
         raise ValueError("No model run found")
@@ -285,6 +317,9 @@ def test_the_page_explains_the_photos_and_digits_screens(served):
         "Click the 4 corners: top left, top right, bottom right, bottom left.",
         "Click each cell that is not this digit.",
         "Press <b>X</b> to discard the pointed-at cell",
-        "Stop the server with Ctrl-C and run <code>just label-cells</code> again.",
+        "Press <b>Pre-label new cells</b>",
+        "Stop the server with Ctrl-C.",
+        "1 Check photos",
+        "Do the red lines follow the grid?",
     ):
         assert text in page
