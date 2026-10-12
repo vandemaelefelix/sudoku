@@ -16,6 +16,9 @@ const placed = (game: Game, digit: Digit): Game => place(game, digit).game
 const noted = (game: Game, ...digits: Digit[]): Game =>
   digits.reduce((current, digit) => toggleNote(current, digit).game, game)
 
+const first = () => 0
+const last = () => 0.999_999
+
 describe('select', () => {
   it('selects a cell and clears the selection', () => {
     const game = at(40)
@@ -145,11 +148,41 @@ describe('a lost game', () => {
     expect(toggleNote(lost, 6).game).toBe(lost)
     expect(erase(lost).game).toBe(lost)
     expect(select(lost, 40)).toBe(lost)
+    expect(undo(lost).game).toBe(lost)
+    expect(hint(lost, first).game).toBe(lost)
+    expect(pause(lost)).toBe(lost)
   })
 })
 
-const first = () => 0
-const last = () => 0.999_999
+describe('more rules of place and erase', () => {
+  it('counts a second mistake for a wrong number on top of another entry', () => {
+    const game = placed(placed(at(2), 1), 2)
+    expect(game.entries[2]).toBe(2)
+    expect(game.mistakes).toBe(2)
+  })
+
+  it('empties the notes of the cell that gets a number', () => {
+    expect(placed(noted(at(2), 1, 9), 4).notes[2]).toEqual([])
+  })
+
+  it('reports nothing when the same number clears the cell', () => {
+    expect(place(placed(at(2), 1), 1).completed).toEqual(NOTHING_COMPLETED)
+  })
+
+  it('erases a correct entry of a number with all nine placed', () => {
+    expect(erase(at(3, solvedExcept(2))).game.entries[3]).toBe(0)
+  })
+
+  it('leaves the input game unchanged', () => {
+    const game = noted(at(2), 4)
+    const copy = structuredClone(game)
+    place(game, 4)
+    erase(game)
+    toggleNote(game, 5)
+    hint(game, first)
+    expect(game).toEqual(copy)
+  })
+})
 
 describe('undo', () => {
   it('takes back the entry but not the mistake', () => {
@@ -234,6 +267,10 @@ describe('hint', () => {
   it('does nothing when the game is won', () => {
     const won = newGame(solvedExcept())
     expect(hint(won, first).game).toBe(won)
+  })
+
+  it('takes the first open cell when the random source is below 0', () => {
+    expect(hint(newGame(), () => -0.5).game.selected).toBe(2)
   })
 })
 

@@ -55,6 +55,37 @@ describe('saved game', () => {
     expect(() => fromSavedGame({ ...saved, selected: 81 })).toThrow(RangeError)
   })
 
+  it('refuses notes on a cell with a given or an entry', () => {
+    const onGiven = toSavedGame(gameInProgress())
+    onGiven.notes[0] = [5]
+    expect(() => fromSavedGame(onGiven)).toThrow(RangeError)
+    const onEntry = toSavedGame(gameInProgress())
+    onEntry.notes[3] = [5]
+    expect(() => fromSavedGame(onEntry)).toThrow(RangeError)
+    const inStep = toSavedGame(gameInProgress())
+    const step = inStep.undoSteps[0]
+    if (step) step.notes[0] = [5]
+    expect(() => fromSavedGame(inStep)).toThrow(RangeError)
+  })
+
+  it('refuses a status that does not fit the mistakes or the grid', () => {
+    const saved = toSavedGame(gameInProgress())
+    expect(() => fromSavedGame({ ...saved, mistakes: 3 })).toThrow(RangeError)
+    expect(() => fromSavedGame({ ...saved, status: 'lost' })).toThrow(RangeError)
+    expect(() => fromSavedGame({ ...saved, status: 'won' })).toThrow(RangeError)
+    const solved = toSavedGame(
+      createGame({ givens: SAMPLE_GIVENS, solution: SAMPLE_SOLUTION, entries: solvedExcept() }),
+    )
+    expect(() => fromSavedGame({ ...solved, status: 'playing' })).toThrow(RangeError)
+  })
+
+  it('copies the notes, so a later change of the saved object does not reach the game', () => {
+    const saved = toSavedGame(gameInProgress())
+    const game = fromSavedGame(saved)
+    saved.notes[40]?.push(9)
+    expect(game.notes[40]).toEqual([8])
+  })
+
   it('refuses a damaged undo step', () => {
     const saved = toSavedGame(gameInProgress())
     saved.undoSteps[0] = { entries: [1], notes: [] }

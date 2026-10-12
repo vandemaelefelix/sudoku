@@ -61,18 +61,41 @@ export function fromSavedGame(value: unknown): Game {
       solution: board.solution,
       entries: numbers(step.entries, `undo step ${index} entries`),
     }).entries
-    return { entries, notes: notes(step.notes, `undo step ${index} notes`) }
+    const name = `undo step ${index} notes`
+    return { entries, notes: notesOnOpenCells(board.givens, entries, notes(step.notes, name), name) }
   })
+  const mistakes = integer(saved.mistakes, 'mistakes', 0, MAX_MISTAKES)
+  const savedStatus = status(saved.status)
+  if ((savedStatus === 'lost') !== (mistakes === MAX_MISTAKES)) {
+    throw new RangeError(`The status ${savedStatus} does not fit ${mistakes} mistakes`)
+  }
+  if ((savedStatus === 'won') !== (board.status === 'won')) {
+    throw new RangeError(`The status ${savedStatus} does not fit the grid`)
+  }
   return {
     ...board,
-    notes: notes(saved.notes, 'notes'),
+    notes: notesOnOpenCells(board.givens, board.entries, notes(saved.notes, 'notes'), 'notes'),
     selected: saved.selected === null ? null : integer(saved.selected, 'selected', 0, GRID_CELLS - 1),
-    mistakes: integer(saved.mistakes, 'mistakes', 0, MAX_MISTAKES),
+    mistakes,
     hintsUsed: integer(saved.hintsUsed, 'hintsUsed', 0, Number.MAX_SAFE_INTEGER),
     playedMs: duration(saved.playedMs),
-    status: status(saved.status),
+    status: savedStatus,
     undoSteps,
   }
+}
+
+/** A cell with a given or an entry has no notes: no action can clear them there. */
+function notesOnOpenCells(
+  givens: readonly number[],
+  entries: readonly number[],
+  cellNotes: Digit[][],
+  name: string,
+): Digit[][] {
+  const cell = cellNotes.findIndex(
+    (digits, index) => digits.length > 0 && ((givens[index] ?? 0) !== 0 || (entries[index] ?? 0) !== 0),
+  )
+  if (cell !== -1) throw new RangeError(`The ${name} hold notes on the filled cell ${cell}`)
+  return cellNotes
 }
 
 function record(value: unknown, name: string): Record<string, unknown> {
@@ -126,6 +149,6 @@ function notes(value: unknown, name: string): Digit[][] {
         Number.isInteger(digit) && digit >= 1 && digit <= 9 && (index === 0 || digit > (digits[index - 1] ?? 0)),
     )
     if (!sorted) throw new RangeError(`The ${name} hold notes that are not sorted digits`)
-    return digits as Digit[]
+    return [...digits] as Digit[]
   })
 }

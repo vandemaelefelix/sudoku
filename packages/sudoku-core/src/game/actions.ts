@@ -115,7 +115,7 @@ export function undo(game: Game): MoveResult {
 export function hint(game: Game, random: Random): MoveResult {
   if (game.status !== 'playing') return noCompletion(game)
   const open = game.solution.flatMap((digit, cell) => (valueAt(game, cell) === digit ? [] : [cell]))
-  const cell = open[Math.min(open.length - 1, Math.floor(random() * open.length))]
+  const cell = open[Math.min(open.length - 1, Math.max(0, Math.floor(random() * open.length)))]
   if (cell === undefined) return noCompletion(game)
   // createGame checks that every solution value is 1 to 9.
   const digit = game.solution[cell] as Digit
