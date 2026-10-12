@@ -44,6 +44,7 @@
   aside dt { font-weight: bold; }
   aside dd { margin: 0; }
   aside img.big { width: 256px; height: 256px; background: #eee; }
+  #origin img { width: 100%; max-width: 320px; background: #eee; }
   aside img.small { width: 64px; height: 64px; margin: 2px; }
   footer { grid-column: 1; grid-row: 6; padding: 8px 16px; border-top: 1px solid #ddd; display: flex;
            gap: 8px; flex-wrap: wrap; }
@@ -95,6 +96,7 @@
   <details><summary>Help</summary><div id="help"></div></details>
   <h3>Pointed-at cell</h3>
   <img class="big" id="preview" alt="">
+  <div id="origin" hidden><img id="origin-img" alt=""><p id="origin-text"></p></div>
   <p id="detail">Point at a cell to see it large.</p>
   <div id="related"></div>
 </aside>
@@ -256,8 +258,29 @@ function nearDuplicates(cell) {
   return [...new Set(ids)].filter((id) => id !== cell.id);
 }
 
+let originTimer = null;
+
+// The debounce keeps a fast mouse from flooding the server. Not wrapped in run: hover runs outside it.
+function showOrigin(cell) {
+  clearTimeout(originTimer);
+  $("origin").hidden = true;
+  originTimer = setTimeout(async () => {
+    try {
+      const found = await api(`/api/origin?cell=${cell.stem}`);
+      if (hovered !== cell || !found) return;
+      $("origin-img").src = `/origin/${cell.stem}.png`;
+      $("origin-text").textContent = `From photo ${found.photo}, row ${found.row + 1}, ` +
+        `column ${found.col + 1} (${found.origin}, ${found.licence}).`;
+      $("origin").hidden = false;
+    } catch (error) {
+      $("origin").hidden = true;
+    }
+  }, 80);
+}
+
 function showDetail(cell) {
   hovered = cell;
+  showOrigin(cell);
   $("preview").src = `/cell/${cell.stem}.png`;
   $("detail").textContent = detailText(cell);
   $("related").innerHTML = nearDuplicates(cell)

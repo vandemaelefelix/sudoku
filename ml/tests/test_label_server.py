@@ -341,6 +341,7 @@ def test_the_page_explains_the_photos_and_digits_screens(served):
         "1 Check photos",
         "T · Turn grid 90°",
         "Digits sideways? Press T.",
+        "From photo ${found.photo}, row ${found.row + 1}, ",
         "Press T after the 4 corners to turn the grid.",
         "Click the 4 corners first. Then press T to turn the grid.",
         "Finish the 4 corners first. Then press T.",
