@@ -5,16 +5,14 @@ export const styles = StyleSheet.create((theme) => ({
   grid: {
     width: theme.size.card.grid,
     height: theme.size.card.grid,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     borderWidth: 1.5,
     borderColor: theme.components.finishCard.boxLine,
     borderRadius: theme.shape.radius.sm,
     overflow: 'hidden',
   },
+  row: { flex: 1, flexDirection: 'row' },
   cell: {
-    width: `${100 / 9}%`,
-    height: `${100 / 9}%`,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRightWidth: 1,

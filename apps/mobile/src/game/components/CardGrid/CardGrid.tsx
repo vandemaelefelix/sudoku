@@ -3,7 +3,10 @@ import { Text, View } from 'react-native'
 import { GRID_CELLS, valueAt, type Game } from '@sudoku/core'
 import { styles } from './CardGrid.styles'
 
-const CELLS = Array.from({ length: GRID_CELLS }, (_, cell) => cell)
+const SIDE = Math.sqrt(GRID_CELLS)
+const ROWS = Array.from({ length: SIDE }, (_row, row) =>
+  Array.from({ length: SIDE }, (_column, column) => row * SIDE + column),
+)
 
 function edgeStyles(cell: number) {
   const column = cell % 9
@@ -25,11 +28,15 @@ export const CardGrid = memo(function CardGrid({ board }: { board: Game }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {CELLS.map((cell) => (
-        <View key={cell} style={[styles.cell, ...edgeStyles(cell)]}>
-          <Text testID={`card-cell-${cell}`} style={board.givens[cell] === 0 ? styles.entry : styles.given}>
-            {valueAt(board, cell)}
-          </Text>
+      {ROWS.map((cells, row) => (
+        <View key={cells[0]} testID={`card-row-${row}`} style={styles.row}>
+          {cells.map((cell) => (
+            <View key={cell} style={[styles.cell, ...edgeStyles(cell)]}>
+              <Text testID={`card-cell-${cell}`} style={board.givens[cell] === 0 ? styles.entry : styles.given}>
+                {valueAt(board, cell)}
+              </Text>
+            </View>
+          ))}
         </View>
       ))}
     </View>

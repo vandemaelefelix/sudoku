@@ -12,6 +12,15 @@ it('draws all 81 cells with the given or the entry of each cell', () => {
   expect(cells.map((cell) => cell.props.children)).toEqual(solution)
 })
 
+// Nine cells of 11.11 % width wrapped after eight on an iPhone, so the grid is nine rows of nine cells.
+it('lays the cells out as nine rows of nine', () => {
+  const { givens, solution } = sampleStart()
+  render(<CardGrid board={createGame({ givens, solution })} />)
+  const rows = screen.getAllByTestId(/^card-row-\d$/, { includeHiddenElements: true })
+  expect(rows).toHaveLength(9)
+  for (const row of rows) expect(row.children).toHaveLength(9)
+})
+
 it('hides the grid from VoiceOver: the card label says the result', () => {
   const { givens, solution } = sampleStart()
   render(<CardGrid board={createGame({ givens, solution })} />)
