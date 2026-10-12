@@ -7,6 +7,8 @@ export type TypeRole = {
   family: string
   weight: NonNullable<TextStyle['fontWeight']>
   scale: number
+  /** Letter spacing in em. 0 for none. The caller multiplies it by scale. */
+  tracking: number
   textShadow: { color: string; offset: { width: number; height: number }; radius: number } | null
 }
 
@@ -39,6 +41,8 @@ export type Theme = {
     title: TypeRole
     body: TypeRole
     label: TypeRole
+    /** The uppercase heading of a settings section. */
+    section: TypeRole
     caption: TypeRole
     button: TypeRole
     timer: TypeRole
@@ -66,6 +70,8 @@ export type Theme = {
     pill: { height: number; paddingHorizontal: number }
     dot: { size: number; gap: number }
     noteInset: number
+    /** The side of the assist preview grid. Cells of about 20 pt. */
+    preview: number
   }
   /** disabled: a control that cannot act now. locked: the controls of a game that ended. */
   opacity: { disabled: number; locked: number }

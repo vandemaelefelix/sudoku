@@ -1,4 +1,4 @@
-import { SHARED_OPACITY, SHARED_SIZE } from './shared.tokens'
+import { SHARED_OPACITY, SHARED_SIZE, SHARED_TYPE } from './shared.tokens'
 
 it('keeps every button and key at 44 pt or more', () => {
   expect(SHARED_SIZE.touch).toBe(44)
@@ -16,4 +16,10 @@ it('keeps the opacities between 0 and 1', () => {
     expect(opacity).toBeGreaterThan(0)
     expect(opacity).toBeLessThan(1)
   }
+})
+
+it('gives the section role a letter spacing and every other role none', () => {
+  const { section, ...others } = SHARED_TYPE
+  expect(section.tracking).toBeGreaterThan(0)
+  for (const role of Object.values(others)) expect(role.tracking).toBe(0)
 })
