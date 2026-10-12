@@ -104,7 +104,7 @@
     <button class="tool" data-mode="check"><span class="label">Check</span><small>Test your own labels</small></button>
     <button class="tool" data-mode="progress"><span class="label">Progress</span><small>Overview</small></button>
     <span class="divider"></span>
-    <button class="tool" id="finish" title="Save cells.csv and tidy up. Your unlabelled cells and pending sudoku photos stay. After Finish, Z can no longer undo these changes."><span class="label">Finish</span><small>Save and tidy up</small></button>
+    <button class="tool" id="finish" title="Save cells.csv and tidy up. Your unlabelled cells and pending sudoku photos stay. Finish also closes the open Review items. After Finish, Z can no longer undo these changes."><span class="label">Finish</span><small>Save and tidy up</small></button>
   </nav>
   <span id="title"></span>
 </header>
@@ -1074,7 +1074,7 @@ async function refreshStatus() {
 }
 
 const FINISH_NEXT = "Commit the tables: git add data, then commit. Git never adds the images or data/work/.";
-const FINISH_UNDO = "Z can no longer undo these changes. Git keeps the old lists.";
+const FINISH_UNDO = "Z can no longer undo these changes. Git keeps the old tables.";
 
 function finishPanel(result) {
   const report = result.report;
@@ -1088,6 +1088,8 @@ function finishPanel(result) {
     link,
     `Still waiting: ${result.still_waiting.cells} cells, ${result.still_waiting.photos} sudoku photos.`,
     `Removed: ${removed}.`,
+    result.review_closed == null ? "Finish closed the open Review items."
+      : `Finish closed ${result.review_closed} open Review items.`,
     FINISH_UNDO,
     FINISH_NEXT,
   ].join("\n"));

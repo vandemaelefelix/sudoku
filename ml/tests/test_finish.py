@@ -54,6 +54,7 @@ def test_finish_removes_the_journal_and_derived_files_and_keeps_the_pending_data
     assert result["report"]["linked"] == result["report"]["total_cells"] - 2
     assert result["still_waiting"] == {"cells": result["report"]["waiting_cells"], "photos": 1}
     assert "No problems." in result["text"]
+    assert result["review_closed"] is None
 
 
 def test_finish_writes_the_status_file(tmp_path: Path):
@@ -157,7 +158,7 @@ def test_finish_closes_the_review_items_with_older_evidence(tmp_path: Path):
     paths.suspects.unlink()
     store = LabelStore(paths, clock)
     assert [i["id"] for i in store.review_items()] == [cell]
-    finish(store)
+    assert finish(store)["review_closed"] == 1
     assert LabelStore(paths, clock).review_items() == []
     with paths.kind_checks.open("a") as handle:
         handle.write(json.dumps({"t": "2026-10-12T10:00:00Z", **line}) + "\n")

@@ -454,6 +454,13 @@ class LabelStore:
             entry["reasons"].append({"reason": item.reason, **item.evidence})
         return list(merged.values())
 
+    def open_review_count(self) -> int | None:
+        """The number of open Review items, or None when the near-duplicates are not cached yet:
+        they read every cell, and Finish must stay quick."""
+        if self._dups is None:
+            return None
+        return len(self.review_items())
+
     def review_screen(self) -> dict:
         items = self.review_items()
         # The page tells "never ran just suspects" from "nothing is flagged".

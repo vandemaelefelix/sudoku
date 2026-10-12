@@ -25,9 +25,12 @@ def finish(store: LabelStore) -> dict:
 
     cells.csv is rewritten before the check: the check compares it with the folders. The call
     may append `repair` lines to the journal through `store.repair()`. After a Finish, Undo
-    cannot reverse the finished changes: git keeps the old tables."""
+    cannot reverse the finished changes: git keeps the old tables. Finish closes every open
+    Review item: the new `Last finish:` line is newer than their evidence. `review_closed` is
+    their number, or None when the Review screen did not run in this session."""
     paths = store.paths
     try:
+        closed = store.open_review_count()
         store.repair()
         write_cells_manifest(paths)
     except ValueError as error:
@@ -64,6 +67,7 @@ def finish(store: LabelStore) -> dict:
         "report": report,
         "text": format_report(report),
         "removed": removed,
+        "review_closed": closed,
         "still_waiting": {
             "cells": report["waiting_cells"],
             "photos": report["pending_photos"],
