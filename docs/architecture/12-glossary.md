@@ -98,3 +98,9 @@ status: DRAFT
 | Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
 | Theme preference | The player's choice in Settings: System, Daylight or Midnight. System follows the light or dark setting of the iPhone |
 | Adaptive theme | The theme that follows the iPhone setting: Daylight in light mode, Midnight in dark mode |
+
+| Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
+| Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
+| Solution | The full grid that the givens allow. A playable puzzle has exactly one |
+| Time played | The time a game counted while its status was playing. The app tells the core how much time passed. The core never reads a clock |
+| Saved game | A game as a plain object with a version number, so the app can store it and load it again (ADR-012) |
