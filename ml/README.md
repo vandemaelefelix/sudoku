@@ -12,7 +12,7 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just train [config]`: train the two-head classifier. A run writes to `ml/artifacts/`.
 - `just export <run>`: export a run to TFLite. The run path is relative to `ml/`, for example `just export artifacts/<run>`.
 - `just preprocess-fixtures`: regenerate the synthetic reference pairs in `fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
-- `just dataset-manifest`: rewrite `data/cells.csv` from the cell folders and the journal.
+- `just dataset-manifest [--forget-missing]`: rewrite `data/cells.csv` from the cell folders and the journal. It refuses a missing or wrong image store. `--forget-missing` drops the rows of cells whose file is gone.
 - `just suspects`: rank the cells whose digit or kind label the model doubts most. The Review screen shows them.
 - `just group-cells [run]`: group similar cells per digit folder for the labelling page.
 - `just import-photos <folder> [--source S] [--licence L]`: copy new sudoku photos into the image store and find the grid in each.
@@ -21,7 +21,7 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just label-rollback <session>`: reverse every change of one unfinished labelling session. A finished session needs git.
 - `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
 - `just check-data`: check that the images and the tables agree. Exit code 1 on a problem.
-- `just migrate-layout <old_ml_root> [--apply] [--force]`: copy the old `ml/datasets/` and `ml/data/` layout into `data/` (ADR-018). A dry run without `--apply`.
+- `just migrate-layout <old_ml_root> [--apply] [--force] [--prefer-log]`: copy the old `ml/datasets/` and `ml/data/` layout into `data/` (ADR-018). A dry run without `--apply`.
 
 Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
 stays private (ADR-013).

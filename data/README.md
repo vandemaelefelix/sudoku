@@ -42,7 +42,8 @@ SUDOKU_IMAGES=/path/to/the/image/store
 
 The folder holds `cells/` and `sudoku-photos/`. A relative path starts at the repository root.
 `just` reads `.env`, so every data command uses that store. Without it, the store is
-`data/images/`.
+`data/images/`. If the store is missing or a listed cell has no file, the tool refuses and
+changes no table.
 
 ## Commands
 

@@ -35,7 +35,7 @@ where you stopped.
 - Undo and rollback work only on the journal: the changes since the last Finish.
 - **Finish folds the journal** into `data/cells.csv`, runs the data check, writes
   `data/STATUS.md`, and deletes the journal and the derived files.
-- After Finish, Z can no longer undo these changes. Git keeps the old lists. A rollback of a
+- After Finish, Z can no longer undo these changes. Git keeps the old tables. A rollback of a
   finished session says: "This session is finished. Use git to go back."
 - Finish closes every open Review item. Only new evidence opens one again.
 - "Digit corrected" on the Progress page counts the unfinished work only. Finish sets it to 0.
@@ -52,6 +52,20 @@ where you stopped.
 | `data/work/` | No | The journal (your unfinished work) and disposable files. Finish removes them. |
 
 See [data/README.md](../data/README.md) for the details.
+
+## Safety
+
+- Do not run `just import-photos` while the page is open. Both write `sudoku-photos.csv`.
+- If the image store is missing or wrong, the tool refuses to start and changes no table. Check
+  `SUDOKU_IMAGES` in `.env`. Only `just dataset-manifest --forget-missing` drops the rows of
+  cells whose file is gone.
+- A stop in the middle of a cut can leave some new cells without a link to their sudoku photo.
+  The data check counts the cells without a link.
+
+## After the migration to data/
+
+- `just migrate-layout` closes every open Review item. Run `just suspects` to find new ones.
+- The groups are not migrated. Run `just group-cells` again.
 
 ## Git
 
