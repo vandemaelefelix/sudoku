@@ -53,7 +53,9 @@ jest.mock('react-native-fast-tflite', () => ({
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => undefined),
-  ImpactFeedbackStyle: { Light: 'light' },
+  notificationAsync: jest.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy', Soft: 'soft', Rigid: 'rigid' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }))
 
 // The library ships its own mock: a provider with zero insets and a 320 × 640 frame.
