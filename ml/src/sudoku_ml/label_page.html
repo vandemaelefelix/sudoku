@@ -104,7 +104,7 @@
     <button class="tool" data-mode="check"><span class="label">Check</span><small>Test your own labels</small></button>
     <button class="tool" data-mode="progress"><span class="label">Progress</span><small>Overview</small></button>
     <span class="divider"></span>
-    <button class="tool" id="finish" title="Save and tidy up. Your unlabelled cells and pending photos stay."><span class="label">Finish</span><small>Save and tidy up</small></button>
+    <button class="tool" id="finish" title="Save cells.csv and tidy up. Your unlabelled cells and pending sudoku photos stay. After Finish, Z can no longer undo these changes."><span class="label">Finish</span><small>Save and tidy up</small></button>
   </nav>
   <span id="title"></span>
 </header>
@@ -136,16 +136,17 @@ const HELP = {
   photos: `
     <h3>What to do</h3>
     <ol>
-      <li>The left image is the photo. The green outline is the grid that the import found.</li>
-      <li>The right image is the grid after the flatten, with the cell lines in red. Grey cells are outside the photo and are not cut.</li>
-      <li>Do the red lines lie on the grid lines? Press <b>Enter</b>. The page cuts the cells and opens the next photo.</li>
+      <li>The left image is the sudoku photo: a photo of a whole sudoku. The green outline is the grid that the import found.</li>
+      <li>The right image is the grid after the flatten, with the cell lines in red. Grey cells are outside the sudoku photo and are not cut.</li>
+      <li>Do the red lines lie on the grid lines? Press <b>Enter</b>. The page cuts the cells and opens the next sudoku photo.</li>
       <li>Wrong outline? Click the 4 corners: top left, top right, bottom right, bottom left. A corner can be in the dark border outside the photo.</li>
       <li>Press <b>C</b> to go back to the found outline.</li>
-      <li>Curled page, blurry digits or no sudoku? Press <b>R</b> to reject the photo.</li>
-      <li>Press <b>S</b> to skip. The photo comes back after the others.</li>
+      <li>Curled page, blurry digits or no sudoku? Press <b>R</b> to reject the sudoku photo.</li>
+      <li>Press <b>S</b> to skip. The sudoku photo comes back after the others.</li>
     </ol>
-    <p>You cannot undo a photo. Check the right image before you press Enter.</p>
-    <p>After the last photo: open Confirm digits. Press <b>Pre-label new cells</b>. The model then pre-labels the new cells.</p>`,
+    <p>You cannot undo a sudoku photo. Check the right image before you press Enter.</p>
+    <p>Each cut cell keeps a link to its sudoku photo, row and column. Point at a cell on the other screens to see it.</p>
+    <p>After the last sudoku photo: open Confirm digits. Press <b>Pre-label new cells</b>. The model then pre-labels the new cells.</p>`,
   digits: `
     <h3>What to do</h3>
     <ol>
@@ -371,9 +372,9 @@ function deriveView() {
   const st = lastStatus;
   if (mode === "photos" && !photo && st) {
     if (st.photos_total === 0) {
-      return showState("empty", "No photos yet. Run just import-photos <folder>, then restart the server.");
+      return showState("empty", "No sudoku photos yet. Run just import-photos <folder>, then restart the server.");
     }
-    return showState("done", "All photos are checked. ✓ Next: Confirm digits.", [OPEN_DIGITS]);
+    return showState("done", "All sudoku photos are checked. ✓ Next: Confirm digits.", [OPEN_DIGITS]);
   }
   if (mode === "groups" && !screen && st) {
     if (st.digit_cells === 0) {
@@ -528,14 +529,14 @@ function bannerFor() {
   if (view.kind === "loading" || view.kind === "error") return ["", []];
   if (mode === "photos") {
     if (photo) {
-      return [corners ? `${DO.photos} Digits sideways? Press T. You cannot undo a photo.`
+      return [corners ? `${DO.photos} Digits sideways? Press T. You cannot undo a sudoku photo.`
         : "No grid found. Click the 4 corners, then press Enter. Press T after the 4 corners to turn the grid.", []];
     }
     if (!lastStatus) return ["", []];
     if (lastStatus.photos_total === 0) {
-      return ["No photos yet. Run just import-photos <folder>.", []];
+      return ["No sudoku photos yet. Run just import-photos <folder>.", []];
     }
-    return ["All photos are checked. Next: Confirm digits.", [goTo("Open Confirm digits", "digits")]];
+    return ["All sudoku photos are checked. Next: Confirm digits.", [goTo("Open Confirm digits", "digits")]];
   }
   if (mode === "digits") {
     if (!screen) return ["", []];
@@ -696,10 +697,10 @@ async function renderPhoto() {
   $("grid").innerHTML = "";
   if (!photo) {
     $("photos").innerHTML = "";
-    $("title").textContent = "No photo to check.";
+    $("title").textContent = "No sudoku photo to check.";
     return;
   }
-  $("title").textContent = `Photo ${photo.stem} · ${photo.pending} to check · ${photo.reason}`;
+  $("title").textContent = `Sudoku photo ${photo.stem} · ${photo.pending} to check · ${photo.reason}`;
   $("photos").innerHTML = `<div class="photo-row">
     <div class="wrap" id="wrap"><img id="photo" alt="" src="/photo/${photo.stem}.jpg"><svg id="quad"></svg></div>
     <div><img class="flat" id="flat" alt=""><p id="usable"></p></div></div>`;
@@ -735,7 +736,7 @@ async function acceptPhoto() {
   const result = (await api("/api/photos/accept", { photo: photo.stem, corners })).result;
   const text = result.decision === "accepted"
     ? `Saved ${result.cells} cells. ${result.duplicates} were already known.`
-    : "Too few cells are inside the photo. The photo is skipped for good.";
+    : "Too few cells are inside the sudoku photo. It is skipped for good.";
   await loadPhoto(photo.stem);
   say(text);
 }
@@ -750,7 +751,7 @@ async function rejectPhoto() {
 async function skipPhoto() {
   if (!photo) return;
   await loadPhoto(photo.stem);
-  say("Skipped. The photo comes back after the others.");
+  say("Skipped. The sudoku photo comes back after the others.");
 }
 
 // A cyclic shift keeps the quad convex. The cells turn 90° clockwise. Four turns return to the start.
@@ -980,7 +981,7 @@ const PROGRESS_COLUMNS = [
   ["Handwritten", "Cells that you labelled handwritten."],
   ["Unsure", "You could not decide. Training ignores these cells."],
   ["Without a kind", "Cells that still need a printed or handwritten label."],
-  ["Digit corrected", "Cells that you moved to another digit after the first pass."],
+  ["Digit corrected", "Cells that you moved out of this digit since the last Finish. Finish sets it back to 0."],
   ["To do", "What to do next in this folder."],
 ];
 
@@ -1072,19 +1073,22 @@ async function refreshStatus() {
   }
 }
 
-const FINISH_NEXT = "Commit the lists: git add ml/datasets and commit.";
+const FINISH_NEXT = "Commit the tables: git add data, then commit. Git never adds the images or data/work/.";
+const FINISH_UNDO = "Z can no longer undo these changes. Git keeps the old lists.";
 
 function finishPanel(result) {
   const report = result.report;
-  const counts = (items) => Object.entries(items).map(([name, n]) => `${name} ${n}`).join(", ");
+  const counts = (items) => Object.entries(items).map(([name, n]) => `${name} ${n}`).join(", ") || "none";
   const removed = result.removed.length ? result.removed.join(", ") : "nothing";
   const link = report.link_line;
   return showState("done", "Finished. Nothing is lost if you stop now.", [], [
     `Cells: ${counts(report.cells)}.`,
-    `Photos: ${counts(report.photos)}.`,
+    `Kinds: ${counts(report.kinds)}.`,
+    `Sudoku photos: ${counts(report.photos)}.`,
     link,
-    `Still waiting: ${result.still_waiting.cells} cells, ${result.still_waiting.photos} photos.`,
+    `Still waiting: ${result.still_waiting.cells} cells, ${result.still_waiting.photos} sudoku photos.`,
     `Removed: ${removed}.`,
+    FINISH_UNDO,
     FINISH_NEXT,
   ].join("\n"));
 }
