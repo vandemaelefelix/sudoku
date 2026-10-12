@@ -11,6 +11,9 @@ status: DRAFT
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
+Superseded in part by [ADR-018](adr-018-one-data-folder-two-tables.md): the data layout, the
+tracked kind log and the photo list.
+
 ## Context
 
 The real cells alone are 16k images and 167 MB. Synthetic data, EMNIST and app exports will
@@ -62,6 +65,8 @@ exactly which images trained it.
   command line. A photo without both is skipped.
 - A person checks each imported photo on the Photos screen of the labelling page: accept, fix the
   4 corners, or reject. `ml/datasets/photo-checks.jsonl` (in git) holds one line per decision.
+- A photo that was cut before photo checks existed has the decision `legacy`. It has no corners.
+  The Photos screen does not offer it again.
 - An accepted photo is cut with the flatten of the app's scanner: 576 × 576, then 64 × 64 cells
   ([scan pipeline](../00-concepts/scan-pipeline.md)). Only cells fully inside the photo are cut.
   A photo with fewer than 10 such cells gets no cells.
