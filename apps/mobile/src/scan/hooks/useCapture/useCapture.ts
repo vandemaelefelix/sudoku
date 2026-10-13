@@ -6,6 +6,7 @@ import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
 import { createScanner, type RecogniseResult, type Scanner } from '@/scanner'
 import { sameAspect, uprightAspect } from '@/scan/utils/preview.utils'
+import { saveUprightPhoto } from '@/scan/utils/photoFile'
 import { photoToSkImage } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
@@ -129,10 +130,20 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
         devWarn('scan', 'the photo and the frame differ in aspect, so the locked quad does not fit the photo')
         if (current()) update({ quad: null })
       }
+      // Development builds only: the correction screen shows this photo and can save it with the corrections.
+      const saved = __DEV__
+        ? saveUprightPhoto(photo).catch((error) => {
+            devWarn('scan', `the photo is not saved: ${errorMessage(error)}`)
+            return null
+          })
+        : Promise.resolve(null)
       try {
         await Promise.all([
           scanner.recognise(photo, locked).then(
-            (result) => settle(photoMs, result),
+            async (result) => {
+              const photoPath = await saved
+              settle(photoMs, result.ok && photoPath != null ? { ...result, photoPath } : result)
+            },
             (error) => settle(photoMs, { ok: false, reason: errorMessage(error) }),
           ),
           convert(photo),

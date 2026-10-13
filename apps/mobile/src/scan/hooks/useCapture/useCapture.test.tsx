@@ -7,6 +7,7 @@ import { photoToSkImage } from '@/scan/utils/transition.utils'
 import { formatScanLog, useCapture } from './useCapture'
 import type { Quad } from '@/utils/geometry.utils'
 
+jest.mock('@/scan/utils/photoFile', () => ({ saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg') }))
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), createScanner: jest.fn() }))
 jest.mock('@/scan/utils/transition.utils', () => ({ photoToSkImage: jest.fn() }))
 
@@ -29,9 +30,16 @@ const OK: RecogniseResult = {
   cornerOffset: 0.012,
   timings: { imageMs: 80, detectMs: 15, flattenMs: 20, classifyMs: 60 },
 }
+// useCapture adds the temporary photo file of the capture to an ok result.
+const WITH_PHOTO = { ...OK, photoPath: '/tmp/photo.jpg' } as RecogniseResult
 
 function setup(result: RecogniseResult = OK) {
-  const photo = { width: 4224, height: 2376, orientation: 'right', dispose: jest.fn() } as unknown as Photo
+  const photo = {
+    width: 4224,
+    height: 2376,
+    orientation: 'right',
+    dispose: jest.fn(),
+  } as unknown as Photo
   const output = { capturePhoto: jest.fn(async () => photo) }
   const recognise = jest.fn(async () => result)
   jest.mocked(createScanner).mockResolvedValue({ recognise })
@@ -60,7 +68,7 @@ it('plays the haptic, takes a photo and recognises it with the quad', async () =
     quad: QUAD,
     image: IMAGE,
     imageFailed: false,
-    result: OK,
+    result: WITH_PHOTO,
   })
 })
 
@@ -74,7 +82,7 @@ it('drops the quad when the frame aspect does not fit the photo', async () => {
     quad: null,
     image: IMAGE,
     imageFailed: false,
-    result: OK,
+    result: WITH_PHOTO,
   })
 })
 
@@ -107,7 +115,7 @@ it('goes from capturing to the image to the result, and disposes the photo once,
     quad: QUAD,
     image: IMAGE,
     imageFailed: false,
-    result: OK,
+    result: WITH_PHOTO,
   })
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
@@ -122,7 +130,7 @@ it('keeps the image null and still gives the result when the conversion fails', 
     quad: QUAD,
     image: null,
     imageFailed: true,
-    result: OK,
+    result: WITH_PHOTO,
   })
   expect(photo.dispose).toHaveBeenCalledTimes(1)
 })
@@ -177,7 +185,7 @@ it('ignores a capture that comes in a later tick while the scan runs', async () 
   await act(async () => pending.finish?.(OK))
   expect(output.capturePhoto).toHaveBeenCalledTimes(1)
   expect(recognise).toHaveBeenCalledTimes(1)
-  expect(hook.result.current.state).toMatchObject({ phase: 'capturing', result: OK })
+  expect(hook.result.current.state).toMatchObject({ phase: 'capturing', result: WITH_PHOTO })
 })
 
 it('gives a failure with the reason when the photo fails', async () => {

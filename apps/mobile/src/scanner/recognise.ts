@@ -36,6 +36,10 @@ export type RecogniseResult =
       corners: CornerSource
       cornerOffset: number | null
       timings: RecogniseTimings
+      /** The 576 × 576 flattened grid the cells were cut from, RGB. The correction screen shows and saves it in development builds. */
+      flat?: Uint8Array
+      /** A temporary file with the upright capture photo. useCapture sets it in development builds. */
+      photoPath?: string
     }
   | { ok: false; reason: string }
 
@@ -107,6 +111,7 @@ export function recognise(
       quad: located.quad,
       corners: located.corners,
       cornerOffset: located.cornerOffset,
+      flat,
       timings: { imageMs, detectMs, flattenMs, classifyMs },
     }
   } catch (error) {

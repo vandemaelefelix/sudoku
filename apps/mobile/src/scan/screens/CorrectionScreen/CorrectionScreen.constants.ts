@@ -12,3 +12,11 @@ export const PLAY_BLOCK_TEXT: Readonly<Record<PlayBlock, string | null>> = {
   several: 'A given is missing or wrong.',
   solved: 'This puzzle is already solved.',
 }
+
+/** The label of the Save button, by state. */
+export const SAVE_TEXT = {
+  idle: 'Save corrections',
+  saving: 'Saving…',
+  saved: 'Saved ✓',
+  failed: 'Not saved. Try again',
+} as const
