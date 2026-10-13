@@ -85,7 +85,7 @@ def test_smoke_run_writes_artifacts(tmp_path: Path):
         "device",
     } <= metrics.keys()
     assert metrics["eval_set"] == "synthetic"
-    assert "Contract: 1.0" in (run / "model-card.md").read_text()
+    assert "Contract: 2.0" in (run / "model-card.md").read_text()
 
 
 def test_unknown_config_key_is_rejected(tmp_path: Path):

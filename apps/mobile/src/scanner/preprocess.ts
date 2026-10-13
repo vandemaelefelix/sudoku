@@ -5,8 +5,8 @@ export const CELL_SIZE = 64
 export const INPUT_SIZE = 32
 export const CELLS = 81
 export const INPUT_LENGTH = CELLS * INPUT_SIZE * INPUT_SIZE
-const CROP_START = 6
-const CROP_SIZE = 52
+const CROP_START = 0
+const CROP_SIZE = 64
 const CELL_BYTES = CELL_SIZE * CELL_SIZE * 3
 
 /** W[i * src + j]: the share of output pixel i that source pixel j covers. A dst × src matrix, rows sum to 1. */

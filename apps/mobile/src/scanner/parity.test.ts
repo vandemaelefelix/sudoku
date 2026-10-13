@@ -71,7 +71,7 @@ describe('measureParity', () => {
       manifest: {
         model: 'm',
         version: '1.0.0',
-        contract: '1.0',
+        contract: '2.0',
         file: 'f',
         outputs: { digit: 0, kind: 1 },
         run: 'test-run',
@@ -97,7 +97,7 @@ describe('measureParity', () => {
       manifest: {
         model: 'm',
         version: '1.0.0',
-        contract: '1.0',
+        contract: '2.0',
         file: 'f',
         outputs: { digit: 0, kind: 1 },
         run: 'other-run',

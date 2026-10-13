@@ -3,7 +3,7 @@ import { CELLS, INPUT_LENGTH, INPUT_SIZE } from './preprocess'
 // docs/architecture/00-concepts/model-contract.md: outputs, classes, valid pairs and versioning.
 
 /** SUD-09: the contract major versions this scanner implements. */
-export const SUPPORTED_CONTRACTS: readonly number[] = [1]
+export const SUPPORTED_CONTRACTS: readonly number[] = [2]
 export const DIGIT_CLASSES = 10
 export const KIND_CLASSES = ['none', 'printed', 'handwritten', 'notes'] as const
 export type Kind = (typeof KIND_CLASSES)[number]
