@@ -88,6 +88,11 @@ dataset-manifest *flags:
 import-photos folder *flags:
     folder="$(realpath "{{folder}}")" && uv run --directory ml python -m sudoku_ml.photo_import "$folder" {{flags}}
 
+# Copy the scans that the player corrected on the phone to a folder on the Mac (#77). Find the device with: xcrun devicectl list devices
+pull-scans device destination="$HOME/scan-corrections":
+    mkdir -p "{{destination}}"
+    xcrun devicectl device copy from --device "{{device}}" --domain-type appDataContainer --domain-identifier com.vandemaelefelix.sudoku --source Documents/scan-corrections --destination "{{destination}}"
+
 # Move cells to the digits in a relabel CSV (header file,new_label), then rewrite data/cells.csv
 relabel file:
     file="$(realpath "{{file}}")" && uv run --directory ml python -m sudoku_ml.relabel "$file"

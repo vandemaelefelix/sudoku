@@ -6,12 +6,15 @@ import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { ScanFlow } from './ScanFlow'
 import { useCapture } from '@/scan/hooks/useCapture'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
+import type { CellLook } from '@/scan/utils/correction.utils'
 
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), useGridDetector: jest.fn(() => undefined) }))
 jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
 jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: () => null }))
 jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: () => null }))
 jest.mock('@/scan/hooks/useScannedStart', () => ({ useScannedStart: jest.fn() }))
+const mockSave = jest.fn()
+jest.mock('@/scan/utils/correctionStore', () => ({ saveScanCorrection: (...args: unknown[]) => mockSave(...args) }))
 
 const mockMounts: number[] = []
 jest.mock('@/scan/effects/components/EffectCanvas', () => ({
@@ -114,8 +117,13 @@ it('mounts a new camera screen and a new effect canvas on Retake from the transi
   expect(lastCanvas().capture!.value).toBeNull()
 })
 
-it('hands Play of the review to the scanned start', () => {
+it('hands Save of the review to the correction store and no Play in a development build', () => {
   render(<ScanFlow />)
   act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
-  expect(jest.mocked(CorrectionScreen).mock.calls.at(-1)![0].onPlay).toBe(mockPlay)
+  const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
+  expect(props.onPlay).toBeUndefined()
+  const looks = [] as CellLook[]
+  props.onSave!(looks)
+  expect(mockSave).toHaveBeenCalledWith(OK, looks)
+  expect(mockPlay).not.toHaveBeenCalled()
 })
