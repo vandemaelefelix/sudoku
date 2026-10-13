@@ -51,3 +51,15 @@ changes no table.
 - `just label-cells`: open the labelling page. See [LABELLING.md](../ml/LABELLING.md).
 - `just migrate-layout <old_ml_root> [--apply]`: copy the old `ml/datasets/` and `ml/data/`
   layout into this folder.
+
+## Corrected scans from the phone
+
+When the player corrects a scan and plays it, the app saves the scan on the phone. A scan without a
+correction is not saved. Each scan is a folder `Documents/scan-corrections/<time>/` with `photo.jpg` and
+`scan.json`. `scan.json` has the 4 corners and, for each cell, the model answer and the final answer.
+
+1. Connect and unlock the phone. If `xcode-select -p` points to the command line tools, set `DEVELOPER_DIR` to the Xcode app.
+2. Run `just pull-scans <device>`. The device is a name or UDID from `xcrun devicectl list devices`.
+3. The folders land in `~/scan-corrections/`. Do not commit them (SUD-08).
+
+Nothing leaves the phone without this step (SUD-02). Importing the scans into the dataset is a separate task.

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import { generate } from '@sudoku/core'
@@ -13,6 +13,15 @@ import { CorrectionScreen } from './CorrectionScreen'
 import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
+
+jest.mock('@/scan/components/ScanInspector', () => {
+  const { View } = jest.requireActual('react-native')
+  const { createElement } = jest.requireActual('react')
+  return {
+    ...jest.requireActual('@/scan/components/ScanInspector/ScanTabs'),
+    ScanInspector: ({ view }: { view: string }) => createElement(View, { testID: `inspector-${view}` }),
+  }
+})
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
 const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true })
@@ -559,5 +568,45 @@ describe('CorrectionScreen play gate', () => {
     expect(checkSpy).toHaveBeenCalledTimes(1)
     press('correction-done')
     expect(checkSpy).toHaveBeenCalledTimes(2)
+  })
+})
+
+const withPhoto = (): RecogniseResult =>
+  ({ ...(okResult({ 0: given }) as object), photoPath: '/tmp/photo.jpg' }) as RecogniseResult
+
+describe('CorrectionScreen development tools', () => {
+  it('shows Save and no Play when it can save, and saves the final looks', async () => {
+    const onSave = jest.fn(async (_looks: readonly unknown[]) => true)
+    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} onSave={onSave} />)
+    expect(screen.queryByTestId('play')).toBeNull()
+    expect(screen.getByTestId('save')).toHaveTextContent('Save corrections')
+    fireEvent.press(screen.getByTestId('save'))
+    await waitFor(() => expect(screen.getByTestId('save')).toHaveTextContent('Saved ✓'))
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0]![0]).toHaveLength(81)
+  })
+
+  it('says when the save failed, and lets the player try again', async () => {
+    const onSave = jest.fn(async () => false)
+    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} onSave={onSave} />)
+    fireEvent.press(screen.getByTestId('save'))
+    await waitFor(() => expect(screen.getByTestId('save')).toHaveTextContent('Not saved. Try again'))
+    expect(screen.getByTestId('save').props.accessibilityState.disabled).toBe(false)
+  })
+
+  it('shows the four tabs, and swaps the correction grid for the inspector on a tab', () => {
+    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} onSave={jest.fn()} />)
+    expect(screen.getAllByRole('tab')).toHaveLength(4)
+    expect(screen.getByTestId('correction-cell-0')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('tab-cutout'))
+    expect(screen.getByTestId('inspector-cutout')).toBeTruthy()
+    expect(screen.queryByTestId('correction-cell-0')).toBeNull()
+    fireEvent.press(screen.getByTestId('tab-correct'))
+    expect(screen.getByTestId('correction-cell-0')).toBeTruthy()
+  })
+
+  it('has no tabs without the photo file', () => {
+    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} onSave={jest.fn()} />)
+    expect(screen.queryByTestId('scan-tabs')).toBeNull()
   })
 })
