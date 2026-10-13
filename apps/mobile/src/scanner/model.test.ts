@@ -10,6 +10,6 @@ describe('loadClassifier', () => {
     } as never)
     const classifier = await loadClassifier()
     expect(loadTensorflowModel).toHaveBeenCalledWith(1, [])
-    expect(classifier.manifest.contract.startsWith('1.')).toBe(true)
+    expect(classifier.manifest.contract.startsWith('2.')).toBe(true)
   })
 })

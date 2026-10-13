@@ -27,15 +27,15 @@ The scanner's per-cell flatten ([scan-pipeline](scan-pipeline.md)) produces one 
 | Step | Exact rule |
 | --- | --- |
 | 1. Grayscale | Convert the 8-bit values to float32, then `gray = 0.299 R + 0.587 G + 0.114 B` (ITU-R BT.601) in float32. No rounding |
-| 2. Crop | Rows and columns `[6, 58)` of the 64 × 64 image, giving 52 × 52. This drops the grid lines |
+| 2. Crop | None: the model reads the whole 64 × 64 image, rows and columns `[0, 64)`. The grid lines stay in the input (ADR-020). Contract 1 cropped `[6, 58)` |
 | 3. Resize | To 32 × 32 with an exact area average, defined below |
 | 4. Polarity and range | `x = 1 − gray / 255`, as `float32`. Ink is near `1.0`, paper near `0.0`. Absolute, never normalised per cell |
 | 5. Shape | `[81, 32, 32, 1]`. The batch is static: always the 81 cells of one grid |
 
-**Exact area average.** The resize from 52 × 52 to 32 × 32 is a weighted average. Output pixel `i`
-covers the source interval `[i × 1.625, (i + 1) × 1.625)`. Weight `W[i][j]` is the overlap of
-source pixel `j` (the interval `[j, j + 1)`) with that interval, divided by 1.625. The resized
-image is `W · crop · Wᵀ`, with `W` a 32 × 52 matrix. This definition is the normative one. OpenCV's
+**Exact area average.** The resize from 64 × 64 to 32 × 32 is a weighted average. Output pixel `i`
+covers the source interval `[i × 2, (i + 1) × 2)`. Weight `W[i][j]` is the overlap of
+source pixel `j` (the interval `[j, j + 1)`) with that interval, divided by 2. The resized
+image is `W · crop · Wᵀ`, with `W` a 32 × 64 matrix. Each output pixel is the mean of a 2 × 2 block. This definition is the normative one. OpenCV's
 `INTER_AREA` on float32 computes the same thing within 4 × 10⁻⁵ gray levels (about 1.5 × 10⁻⁷
 after step 4), so it serves as a check. Neither side needs OpenCV for this step.
 
@@ -104,8 +104,8 @@ needs a static `require()`. The version lives in the manifest only. `metro.confi
 ```json
 {
   "model": "cell-classifier",
-  "version": "1.0.0",
-  "contract": "1.0",
+  "version": "2.0.0",
+  "contract": "2.0",
   "file": "cell-classifier.tflite",
   "outputs": { "digit": 0, "kind": 1 },
   "trainedOn": "dataset manifest hash",
@@ -120,8 +120,12 @@ needs a static `require()`. The version lives in the manifest only. `metro.confi
 | Change | Contract | Model version |
 | --- | --- | --- |
 | Retrained, same inputs and outputs | unchanged | minor |
-| New input size, preprocessing step, polarity or class list | major | major |
+| New input size, crop, preprocessing step, polarity or class list | major | major |
+
 | New optional output the app may ignore | minor | minor |
+
+Contract 2.0 changes the crop (ADR-020). The scanner implements major version 2 only, because a model that
+was trained on cropped cells reads a full cell wrongly.
 
 The scanner declares the contract major versions it implements. Promote and a unit test refuse a
 model outside that set (SUD-09). At runtime the scanner checks once more as a guard. On a

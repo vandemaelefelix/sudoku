@@ -14,7 +14,7 @@ from sudoku_ml.contract import (
 
 
 def test_contract_version():
-    assert CONTRACT_VERSION == "1.0"
+    assert CONTRACT_VERSION == "2.0"
 
 
 def test_digit_classes_in_contract_order():
@@ -45,7 +45,7 @@ def test_unknown_class_is_invalid():
 
 
 def test_sizes_follow_the_contract():
-    assert (CELL_SIZE, INPUT_SIZE, CROP, BATCH) == (64, 32, (6, 58), 81)
+    assert (CELL_SIZE, INPUT_SIZE, CROP, BATCH) == (64, 32, (0, 64), 81)
 
 
 def test_digit_index_follows_class_order():
