@@ -174,10 +174,8 @@ def test_a_guessed_cell_keeps_the_model_kind_apart_from_the_logged_kind(tmp_path
     store, c, _ = with_kind_guesses(tmp_path, GUESSES)
     store.save([{"id": c[2], "kind": "handwritten"}], "groups")
     printed = store.screen("4", 0, 0)["cells"]
-    assert [(x["model_kind"], x["start"]) for x in printed] == [
-        ("printed", "handwritten"),
-        ("printed", "printed"),
-    ]
+    assert [(x["model_kind"], x["start"]) for x in printed] == [("printed", "printed")]
+    assert store.kinds()[c[2]] == "handwritten"
     assert store.screen("4", 2, 0)["cells"][0]["model_kind"] == "notes"
 
 

@@ -200,6 +200,11 @@ class LabelStore:
     def _members(self, folder: str, group: dict) -> list[str]:
         return [c for c in group["cells"] if self.folder.get(c) == folder]
 
+    @staticmethod
+    def _open(members: list[str], kinds: dict[str, str | None]) -> list[str]:
+        """The cells without a kind. All the cells when every one has a kind (Look again)."""
+        return [c for c in members if kinds.get(c) is None] or members
+
     # Groups screen
 
     @staticmethod
@@ -228,6 +233,7 @@ class LabelStore:
         predicted = chosen.get("predicted")
         pre = self._prelabels() if predicted else {}
         start = self._majority(members, kinds)
+        members = self._open(members, kinds)
         pages = _pages(len(members))
         page = min(page, pages - 1)
         cutoff = np.quantile([sure[c] for c in members], 0.1) if members else 0.0
@@ -255,9 +261,10 @@ class LabelStore:
         }
 
     def _screens(self):
+        kinds = self.kinds()
         for folder in DIGIT_FOLDERS:
             for g, group in enumerate(self._groups_of(folder)):
-                members = self._members(folder, group)
+                members = self._open(self._members(folder, group), kinds)
                 for page in range(_pages(len(members))):
                     yield folder, g, page, members[page * SCREEN_SIZE : (page + 1) * SCREEN_SIZE]
 

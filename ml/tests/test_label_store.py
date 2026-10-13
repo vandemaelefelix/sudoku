@@ -78,8 +78,18 @@ def test_unlabelled_cells_start_with_the_group_majority(tmp_path: Path):
     store = LabelStore(paths, Clock())
     store.save(kinds_of(ids["7"][:2], "handwritten") + kinds_of(ids["7"][2:3], "printed"), "groups")
     cells = store.screen("7", 0, 0)["cells"]
-    assert cells[3]["start"] == "handwritten" and cells[3]["kind"] is None
-    assert cells[2]["start"] == "printed"
+    assert [c["id"] for c in cells] == ids["7"][3:]
+    assert cells[0]["start"] == "handwritten" and cells[0]["kind"] is None
+
+
+def test_a_screen_shows_only_cells_without_a_kind_until_every_cell_has_one(tmp_path: Path):
+    paths, ids = build(tmp_path, {"7": 3}, {"7": [[0, 1, 2]]})
+    store = LabelStore(paths, Clock())
+    store.save(kinds_of(ids["7"][:2], "printed"), "groups")
+    assert [c["id"] for c in store.screen("7", 0, 0)["cells"]] == ids["7"][2:]
+    store.save(kinds_of(ids["7"][2:], "printed"), "groups")
+    assert [c["id"] for c in store.screen("7", 0, 0)["cells"]] == ids["7"]
+    assert store.next_screen() is None
 
 
 def test_a_save_logs_only_changed_or_new_cells(tmp_path: Path):
@@ -126,7 +136,7 @@ def test_a_move_to_empty_clears_the_kind_and_undo_restores_it(tmp_path: Path):
     assert [c["id"] for c in store.screen("7", 0, 0)["cells"]] == [ids["7"][1]]
     assert store.undo() == 2
     assert (paths.cells / "7" / f"{cell[:16]}.png").exists()
-    assert store.screen("7", 0, 0)["cells"][0]["kind"] == "printed"
+    assert store.kinds()[cell] == "printed"
 
 
 def test_a_cell_moved_into_a_folder_shows_up_as_ungrouped(tmp_path: Path):
