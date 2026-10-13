@@ -1,5 +1,5 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import Animated, {
   useAnimatedReaction,
@@ -12,11 +12,13 @@ import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { CorrectionCell } from '@/scan/components/CorrectionCell'
 import { CorrectionPad } from '@/scan/components/CorrectionPad'
+import { ScanInspector, ScanTabs } from '@/scan/components/ScanInspector'
+import type { InspectorView } from '@/scan/utils/inspector.utils'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
-import { drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
+import { drawGridLines, gridLineStyle, type CellLook, type CorrectionLayout } from '@/scan/utils/correction.utils'
 import { checkPlay, type ScannedStart } from '@/scan/utils/play.utils'
-import { FAILURE_SLIDE_MS, PANEL_HIDDEN, PLAY_BLOCK_TEXT } from './CorrectionScreen.constants'
+import { FAILURE_SLIDE_MS, PANEL_HIDDEN, PLAY_BLOCK_TEXT, SAVE_TEXT } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { PANEL_PADDING } from '@/scan/constants/correction.constants'
@@ -24,9 +26,11 @@ import { PANEL_PADDING } from '@/scan/constants/correction.constants'
 export type CorrectionProps = {
   result: RecogniseResult | null
   layout: CorrectionLayout
-  onRetake: () => void
+  onRetake: (looks: readonly CellLook[]) => void
   /** Play this puzzle. Without it, the button stays off: the transition shows the panel but cannot start a game. */
-  onPlay?: (start: ScannedStart) => void
+  onPlay?: (start: ScannedStart, looks: readonly CellLook[]) => void
+  /** Save the scan with the corrections (development builds). With it, the screen shows Save and not Play, and the tabs of the inspector. */
+  onSave?: (looks: readonly CellLook[]) => Promise<boolean>
   /** The transition clock. Without it, everything shows (the review phase). */
   clock?: SharedValue<number>
   reduceMotion?: boolean
@@ -41,6 +45,7 @@ export function CorrectionScreen({
   layout,
   onRetake,
   onPlay,
+  onSave,
   clock,
   reduceMotion = false,
   waiting,
@@ -64,6 +69,21 @@ export function CorrectionScreen({
   const start = check?.ok ? check.start : null
   const blockText = check !== null && !check.ok ? PLAY_BLOCK_TEXT[check.block] : null
   const canPlay = start !== null && onPlay !== undefined
+
+  // The development tools need the photo file, which only a development build saves.
+  const devTools = __DEV__ && clock == null && result?.ok === true && result.photoPath != null
+  const [view, setView] = useState<InspectorView>('correct')
+  const inspectView = devTools && view !== 'correct' ? view : null
+  const [saving, setSaving] = useState<{ looks: readonly CellLook[]; status: 'saving' | 'saved' | 'failed' } | null>(
+    null,
+  )
+  // A new edit makes the saved copy old, so Save works again: the status counts only for the looks that it was made for.
+  const saveState = saving !== null && saving.looks === looks ? saving.status : 'idle'
+  const save = async () => {
+    if (!onSave || saveState === 'saving') return
+    setSaving({ looks, status: 'saving' })
+    setSaving({ looks, status: (await onSave(looks)) ? 'saved' : 'failed' })
+  }
 
   // The picture is made again when the theme changes (ADR-015, point 10).
   const board = useMemo(() => {
@@ -107,7 +127,7 @@ export function CorrectionScreen({
 
   return (
     <View testID="correction-screen" style={[styles.screen, !clock && styles.screenFilled]}>
-      {!clock && (
+      {!clock && inspectView === null && (
         <Canvas style={{ position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height }}>
           <Picture picture={board} />
         </Canvas>
@@ -119,23 +139,31 @@ export function CorrectionScreen({
         <Text style={styles.titleText}>Check the scan</Text>
         <Text style={styles.subtitle}>Tap a cell to fix it</Text>
       </Animated.View>
-      {looks.map((look, n) => (
-        <CorrectionCell
-          // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
-          key={n}
-          n={n}
-          look={look}
-          size={cellSize}
-          left={grid.x + (n % 9) * cellSize}
-          top={grid.y + Math.floor(n / 9) * cellSize}
-          selected={editable && selected === n}
-          conflict={editable && (conflicts[n] ?? false)}
-          onSelect={editable ? actions.select : undefined}
-          clock={clock}
-          resultsAt={resultsAt}
-          reduceMotion={reduceMotion}
+      {inspectView !== null && result?.ok === true && (
+        <ScanInspector
+          view={inspectView}
+          result={result}
+          region={{ x: grid.x, y: grid.y, width: grid.width, height: panel.y - grid.y - 8 }}
         />
-      ))}
+      )}
+      {inspectView === null &&
+        looks.map((look, n) => (
+          <CorrectionCell
+            // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
+            key={n}
+            n={n}
+            look={look}
+            size={cellSize}
+            left={grid.x + (n % 9) * cellSize}
+            top={grid.y + Math.floor(n / 9) * cellSize}
+            selected={editable && selected === n}
+            conflict={editable && (conflicts[n] ?? false)}
+            onSelect={editable ? actions.select : undefined}
+            clock={clock}
+            resultsAt={resultsAt}
+            reduceMotion={reduceMotion}
+          />
+        ))}
       {result == null && waiting && (
         <Animated.View
           testID="correction-waiting"
@@ -160,6 +188,7 @@ export function CorrectionScreen({
             panelStyle,
           ]}
         >
+          {devTools && !failed && !selectedLook && <ScanTabs view={view} onChange={setView} />}
           {failed ? (
             <View testID="correction-failure" style={styles.failure}>
               <Text style={styles.failureTitle}>The scan failed</Text>
@@ -192,26 +221,41 @@ export function CorrectionScreen({
                   conflictCount === 0 && <Text style={styles.sure}>All cells look sure</Text>
                 )}
               </View>
-              {blockText !== null && (
-                <Text testID="play-blocked" style={styles.blocked}>
-                  {blockText}
-                </Text>
+              {onSave ? (
+                <Pressable
+                  testID="save"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: saveState === 'saving' || saveState === 'saved' }}
+                  disabled={saveState === 'saving' || saveState === 'saved'}
+                  onPress={() => void save()}
+                  style={[styles.play, (saveState === 'saving' || saveState === 'saved') && styles.playDisabled]}
+                >
+                  <Text style={styles.playText}>{SAVE_TEXT[saveState]}</Text>
+                </Pressable>
+              ) : (
+                <>
+                  {blockText !== null && (
+                    <Text testID="play-blocked" style={styles.blocked}>
+                      {blockText}
+                    </Text>
+                  )}
+                  <Pressable
+                    testID="play"
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: !canPlay }}
+                    accessibilityHint={blockText ?? undefined}
+                    disabled={!canPlay}
+                    onPress={start !== null && onPlay ? () => onPlay(start, looks) : undefined}
+                    style={[styles.play, !canPlay && styles.playDisabled]}
+                  >
+                    <Text style={styles.playText}>Play this puzzle</Text>
+                  </Pressable>
+                </>
               )}
-              <Pressable
-                testID="play"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !canPlay }}
-                accessibilityHint={blockText ?? undefined}
-                disabled={!canPlay}
-                onPress={start !== null && onPlay ? () => onPlay(start) : undefined}
-                style={[styles.play, !canPlay && styles.playDisabled]}
-              >
-                <Text style={styles.playText}>Play this puzzle</Text>
-              </Pressable>
             </>
           )}
           {!selectedLook && (
-            <Pressable testID="retake" accessibilityRole="button" onPress={onRetake} hitSlop={8}>
+            <Pressable testID="retake" accessibilityRole="button" onPress={() => onRetake(looks)} hitSlop={8}>
               <Text style={styles.retake}>Retake</Text>
             </Pressable>
           )}
