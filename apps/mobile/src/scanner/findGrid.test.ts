@@ -1,5 +1,5 @@
 import { Mat } from 'react-native-fast-opencv'
-import { findGrid } from './findGrid'
+import { findGrid, findGrids } from './findGrid'
 
 type Pt = { x: number; y: number }
 
@@ -188,5 +188,17 @@ describe('findGrid', () => {
     expect(() => findGrid(pixels, width, height)).toThrow(`${name} failed`)
     expect(mockCreated.length).toBeGreaterThan(0)
     expect(mockCreated.every((object) => object.released)).toBe(true)
+  })
+})
+
+describe('findGrids', () => {
+  it('returns every plausible grid, the largest first', () => {
+    mockContours = [rect(100, 200, 260, 400), rect(100, 200, 200, 300), rect(40, 100, 320, 540)]
+    const detections = findGrids(pixels, width, height)
+    expect(detections.map((detection) => detection.quad[0].x)).toEqual([40.5 / width, 100.5 / width])
+  })
+
+  it('returns an empty list when the frame has no grid', () => {
+    expect(findGrids(pixels, width, height)).toEqual([])
   })
 })

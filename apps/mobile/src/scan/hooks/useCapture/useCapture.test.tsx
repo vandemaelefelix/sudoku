@@ -3,6 +3,7 @@ import { impactAsync } from 'expo-haptics'
 import type { SkImage } from '@shopify/react-native-skia'
 import type { Photo } from 'react-native-vision-camera'
 import { createScanner, type RecogniseResult } from '@/scanner'
+import { saveFlatPng } from '@/scan/utils/flatImage.utils'
 import { photoToSkImage } from '@/scan/utils/transition.utils'
 import { formatScanLog, useCapture } from './useCapture'
 import type { Quad } from '@/utils/geometry.utils'
@@ -10,6 +11,7 @@ import type { Quad } from '@/utils/geometry.utils'
 jest.mock('@/scan/utils/photoFile', () => ({ saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg') }))
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), createScanner: jest.fn() }))
 jest.mock('@/scan/utils/transition.utils', () => ({ photoToSkImage: jest.fn() }))
+jest.mock('@/scan/utils/flatImage.utils', () => ({ saveFlatPng: jest.fn(() => 'file:///tmp/flat.png') }))
 
 // A new image per test: the automatic unmount after a test disposes the image of that test a little later.
 let IMAGE = { dispose: jest.fn() } as unknown as SkImage
@@ -52,6 +54,17 @@ beforeEach(() => {
   jest.clearAllMocks()
   IMAGE = { dispose: jest.fn() } as unknown as SkImage
   jest.spyOn(console, 'log').mockImplementation(() => undefined)
+})
+
+it('keeps the flattened grid in a file, not in the result', async () => {
+  const { hook } = setup({ ...OK, flat: new Uint8Array(3) } as RecogniseResult)
+  await act(async () => hook.result.current.capture(QUAD, FRAME_ASPECT))
+  await waitFor(() => expect(hook.result.current.state).toMatchObject({ result: { ok: true } }))
+  const state = hook.result.current.state
+  if (state.phase !== 'capturing' || state.result?.ok !== true) throw new Error('no ok result')
+  expect(state.result.flat).toBeUndefined()
+  expect(state.result.flatPath).toBe('file:///tmp/flat.png')
+  expect(saveFlatPng).toHaveBeenCalledWith(new Uint8Array(3))
 })
 
 it('plays the haptic, takes a photo and recognises it with the quad', async () => {

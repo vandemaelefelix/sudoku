@@ -4,7 +4,6 @@ import type { Quad } from '@/utils/geometry.utils'
 import { cellLook } from './correction.utils'
 import { saveScanCorrection } from './correctionStore'
 
-jest.mock('./flatImage.utils', () => ({ flatToPng: jest.fn(() => new Uint8Array([1, 2, 3])) }))
 jest.mock('expo-file-system', () => ({
   Paths: { document: 'file:///documents/' },
   Directory: jest.fn(() => ({ create: jest.fn() })),
@@ -29,11 +28,11 @@ const result: Ok = {
   ok: true,
   cells,
   quad,
-  corners: 'locked',
+  corners: 'redetected',
   cornerOffset: null,
   timings: { imageMs: 0, detectMs: 0, flattenMs: 0, classifyMs: 0 },
   photoPath: '/tmp/photo.jpg',
-  flat: new Uint8Array(3),
+  flatPath: '/tmp/flat.png',
 }
 const looks = cells.map(cellLook)
 const { photoPath: _photoPath, ...withoutPhoto } = result
@@ -51,15 +50,16 @@ describe('saveScanCorrection', () => {
     expect(Directory).toHaveBeenCalledTimes(1)
     const files = jest.mocked(File).mock.results.map((r) => r.value)
     expect(jest.mocked(File).mock.calls[0]![0]).toBe('file:///tmp/photo.jpg')
-    expect(files[2].write).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]))
-    const record = JSON.parse(files[3].write.mock.calls[0][0])
+    expect(jest.mocked(File).mock.calls[2]![0]).toBe('file:///tmp/flat.png')
+    expect(files[2].copy).toHaveBeenCalledWith(files[3])
+    const record = JSON.parse(files[4].write.mock.calls[0][0])
     expect(record.cells).toHaveLength(81)
     expect(record.cells.some((cell: { digitCorrected: boolean }) => cell.digitCorrected)).toBe(false)
   })
 
   it('records a correction', async () => {
     await saveScanCorrection(result, [{ ...looks[0]!, style: 'entry' as const }, ...looks.slice(1)])
-    const json = jest.mocked(File).mock.results[3]!.value.write as jest.Mock
+    const json = jest.mocked(File).mock.results[4]!.value.write as jest.Mock
     expect(JSON.parse(json.mock.calls[0]![0]).cells[0]).toMatchObject({
       kindCorrected: true,
       final: { kind: 'handwritten' },

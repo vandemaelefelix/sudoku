@@ -1,4 +1,5 @@
 import type { Point, Quad, Rect } from '@/utils/geometry.utils'
+import type { CornerSource } from '@/scanner'
 import { project, unitToQuad } from '@/utils/homography.utils'
 
 /** correct: the correction grid. photo: the capture with the detected corners. cutout: the flattened grid with the cell cuts. overlay: the capture with the 9 × 9 grid and the digits the model read. */
@@ -40,3 +41,10 @@ export function projectGrid(quad: Quad): { lines: Segment[]; centres: Point[] } 
 
 /** The inner square of a cell that the model reads, in cell units of the 64 px cell: 6 px off each side (model contract). */
 export const MODEL_CROP = { start: 6, size: 52, cell: 64 }
+
+/** cornerOffset: a share of the grid side, or null. */
+export function cornerLabel(corners: CornerSource, cornerOffset: number | null): string {
+  return cornerOffset == null
+    ? `Corners: ${corners}`
+    : `Corners: ${corners}, ${(cornerOffset * 100).toFixed(1)} % from lock-on`
+}
