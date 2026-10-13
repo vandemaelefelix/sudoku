@@ -66,7 +66,7 @@ def test_a_save_round_trips(served):
     assert status == 200 and json.loads(data) == {"result": 1}
     assert [x.new for x in read_journal(paths.journal)] == ["printed"]
     status, data = request(port, "GET", "/api/screen?folder=7&group=0&page=0")
-    assert json.loads(data)["cells"][0]["kind"] == "printed"
+    assert ids["7"][0] not in [c["id"] for c in json.loads(data)["cells"]]
 
 
 def test_cell_images_are_served_and_unknown_cells_are_not(served):
