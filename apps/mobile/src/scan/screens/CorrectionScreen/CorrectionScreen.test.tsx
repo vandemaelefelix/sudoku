@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
-import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
+import { type SharedValue, useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import { generate } from '@sudoku/core'
 import type { CellResult, RecogniseResult } from '@/scanner'
 import * as playUtils from '@/scan/utils/play.utils'
@@ -9,6 +9,8 @@ import { createPicture, Skia } from '@shopify/react-native-skia'
 import type { Theme } from '@/theme/theme.types'
 import { daylight } from '@/theme/themes/daylight'
 import { midnight } from '@/theme/themes/midnight'
+import { opart } from '@/theme/themes/opart'
+import { progressive } from '@/theme/themes/progressive'
 import { CorrectionScreen } from './CorrectionScreen'
 import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
@@ -19,12 +21,13 @@ jest.mock('@/scan/components/ScanInspector', () => {
   const { createElement } = jest.requireActual('react')
   return {
     ...jest.requireActual('@/scan/components/ScanInspector/ScanTabs'),
-    ScanInspector: ({ view }: { view: string }) => createElement(View, { testID: `inspector-${view}` }),
+    ScanInspector: ({ view, threshold }: { view: string; threshold: number }) =>
+      createElement(View, { testID: `inspector-${view}`, threshold }),
   }
 })
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
-const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true })
+const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
 
 function okResult(over: { [n: number]: Partial<CellResult> } = {}): RecogniseResult {
   const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
@@ -35,6 +38,11 @@ const given = { digit: 5, kind: 'printed', confidence: 1 } as const
 const entry = { digit: 7, kind: 'handwritten', confidence: 1 } as const
 const style = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style)
 const clock = (value: number) => ({ value }) as SharedValue<number>
+/** The entering animation of the nearest element, the node itself or above it, that takes one. */
+const entering = (node: ReturnType<typeof screen.getByTestId> | null): unknown => {
+  for (let at = node; at; at = at.parent) if ('entering' in at.props) return at.props.entering
+  return undefined
+}
 
 describe('CorrectionScreen in review', () => {
   it('styles the digits as given, entry and empty from the tokens', () => {
@@ -71,6 +79,7 @@ describe('CorrectionScreen in review', () => {
       borderColor: daylight.colors.warning,
       borderRadius: 6,
     })
+    expect(daylight.components.checkRing.color).toBe(daylight.colors.warning)
   })
 
   it('shows the count of cells to check', () => {
@@ -81,21 +90,15 @@ describe('CorrectionScreen in review', () => {
         onRetake={jest.fn()}
       />,
     )
-    expect(screen.getByText('● 2 cells to check')).toBeTruthy()
+    expect(screen.getByText('2 cells to check')).toBeTruthy()
   })
 
-  it('says all cells look sure when none needs a check', () => {
-    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} />)
-    expect(screen.getByText('All cells look sure')).toBeTruthy()
-    expect(screen.queryByText(/to check/)).toBeNull()
-  })
-
-  it('shows the title and a disabled Play button', () => {
+  it('shows the title, the level and a disabled Play button', () => {
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByText('Check the scan')).toBeTruthy()
-    expect(screen.getByText('Tap a cell to fix it')).toBeTruthy()
+    expect(screen.getByTestId('correction-level')).toHaveTextContent('Expert')
     expect(screen.getByTestId('play').props.accessibilityState).toMatchObject({ disabled: true })
-    expect(style('play').opacity).toBe(0.5)
+    expect(style('play').opacity).toBe(daylight.opacity.disabled)
   })
 
   it('calls onRetake', () => {
@@ -110,9 +113,9 @@ describe('CorrectionScreen in review', () => {
     const own = screen.getByTestId('correction-panel').props.style.flat(Infinity)
     expect(own).toContainEqual(
       expect.objectContaining({
-        backgroundColor: daylight.colors.surface,
-        shadowColor: daylight.colors.shadow,
-        borderRadius: 24,
+        backgroundColor: daylight.components.panel.fill,
+        borderTopLeftRadius: daylight.components.panel.radius,
+        boxShadow: daylight.elevation.panel,
       }),
     )
   })
@@ -129,8 +132,9 @@ describe('CorrectionScreen in review', () => {
       .mockReturnValue({ theme, rt: unistyles.UnistylesRuntime } as never)
     const paint = jest.spyOn(Skia, 'Paint')
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
-    const record = jest.mocked(createPicture).mock.lastCall?.[0]
-    record?.({ drawRect: jest.fn(), drawLine: jest.fn() } as never)
+    for (const [record] of jest.mocked(createPicture).mock.calls.slice(-2)) {
+      record({ drawRect: jest.fn(), drawLine: jest.fn() } as never)
+    }
     const colours = paint.mock.results.flatMap((r) =>
       jest.mocked(r.value.setColor).mock.calls.map((c: unknown[]) => c[0]),
     )
@@ -140,10 +144,25 @@ describe('CorrectionScreen in review', () => {
     theming.mockRestore()
   })
 
+  it('draws the grid lines over the cells, so the fill of an open cell never covers a line', () => {
+    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} />)
+    const order = screen
+      .getByTestId('correction-screen')
+      .props.children.flat(Infinity)
+      .filter(Boolean)
+      .map(
+        (child: { props?: { testID?: string; n?: number } }) =>
+          child.props?.testID ?? (child.props?.n === 0 ? 'cell-0' : null),
+      )
+    expect(order.indexOf('correction-board')).toBeLessThan(order.indexOf('cell-0'))
+    expect(order.indexOf('cell-0')).toBeLessThan(order.indexOf('correction-lines'))
+    expect(screen.getByTestId('correction-lines').props.pointerEvents).toBe('none')
+  })
+
   it('draws the background and the board', () => {
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
     expect(style('correction-screen').backgroundColor).toBe(daylight.colors.background)
-    expect(screen.getByTestId('skia-canvas')).toBeTruthy()
+    expect(screen.getByTestId('correction-board')).toBeTruthy()
   })
 
   it('shows the failure and Retake, without digits', () => {
@@ -153,7 +172,8 @@ describe('CorrectionScreen in review', () => {
     expect(screen.getByText('no grid')).toBeTruthy()
     expect(screen.queryByTestId('correction-cell-0')).toBeNull()
     fireEvent.press(screen.getByTestId('retake'))
-    expect(onRetake).toHaveBeenCalledTimes(1)
+    fireEvent.press(screen.getByTestId('retake-failure'))
+    expect(onRetake).toHaveBeenCalledTimes(2)
   })
 
   it('shows a spinner while it waits for the result', () => {
@@ -206,7 +226,7 @@ describe('CorrectionScreen with a clock', () => {
   it('draws no background and no board', () => {
     render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
     expect(style('correction-screen').backgroundColor).toBeUndefined()
-    expect(screen.queryByTestId('skia-canvas')).toBeNull()
+    expect(screen.queryByTestId('correction-board')).toBeNull()
   })
 
   it('shows everything at the end of the transition', () => {
@@ -319,101 +339,142 @@ describe('CorrectionScreen with late results', () => {
 
 const press = (testID: string) => fireEvent.press(screen.getByTestId(testID))
 const ui = (result: RecogniseResult) => <CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} />
+const shaky = (digit: number, confidence: number, second = 1) =>
+  ({ digit, kind: 'printed', confidence, second }) as const
 
-describe('CorrectionScreen edits', () => {
-  it('selects a cell on tap and shows the pad in place of Play and Retake', () => {
-    render(ui(okResult({ 0: given })))
-    expect(screen.queryByTestId('correction-pad')).toBeNull()
-    press('correction-press-0')
-    expect(screen.getByTestId('correction-pad')).toBeTruthy()
-    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.selected })
-    expect(screen.queryByTestId('play')).toBeNull()
-    expect(screen.queryByTestId('retake')).toBeNull()
+// Three cells to check, in reading order: 3, 40 and 70.
+const flowScan = () => okResult({ 0: given, 3: shaky(4, 0.5, 9), 40: shaky(2, 0.6), 70: { confidence: 0.4 } })
+
+describe('CorrectionScreen check flow', () => {
+  it('opens the first cell to check from the summary, with the progress and the question', () => {
+    render(ui(flowScan()))
+    expect(screen.getByText('3 cells to check')).toBeTruthy()
+    press('start-check')
+    expect(screen.getByTestId('correction-question')).toHaveTextContent('Is this a 4?')
+    expect(screen.getByText('Row 1, column 4')).toBeTruthy()
+    expect(screen.getByLabelText('0 of 3 cells checked')).toBeTruthy()
+    expect(screen.getByTestId('correction-yes')).toHaveTextContent('Yes, 4')
+    expect(screen.getByTestId('cell-crop')).toBeTruthy()
+    expect(style('correction-fill-3')).toMatchObject({ backgroundColor: daylight.colors.warningSurface })
   })
 
-  it('sets a digit, and Done brings back Play and Retake', () => {
+  it('moves to the next cell after Yes and removes the ring', () => {
+    render(ui(flowScan()))
+    press('start-check')
+    press('correction-yes')
+    expect(screen.queryByTestId('correction-ring-3')).toBeNull()
+    expect(screen.getByTestId('correction-question')).toHaveTextContent('Is this a 2?')
+    expect(screen.getByLabelText('1 of 3 cells checked')).toBeTruthy()
+  })
+
+  it('shows the keypad after No, with the second guess ringed, and a digit fixes the cell and moves on', () => {
+    render(ui(flowScan()))
+    press('start-check')
+    press('correction-no')
+    expect(screen.getByTestId('correction-question')).toHaveTextContent('What is it?')
+    expect(screen.getByTestId('correction-key-9')).toContainElement(screen.getByTestId('correction-hint'))
+    press('correction-key-9')
+    expect(screen.getByTestId('correction-cell-3')).toHaveTextContent('9')
+    expect(screen.getByTestId('correction-question')).toHaveTextContent('Is this a 2?')
+  })
+
+  it('goes back to the summary after the last cell, ready to check the givens', () => {
+    render(ui(flowScan()))
+    press('start-check')
+    press('correction-yes')
+    press('correction-yes')
+    expect(screen.getByTestId('correction-question')).toHaveTextContent('Is this empty?')
+    press('correction-yes')
+    expect(screen.queryByTestId('correction-check')).toBeNull()
+    expect(screen.getByTestId('correction-summary')).toBeTruthy()
+    expect(screen.queryByText(/to check/)).toBeNull()
+  })
+
+  it('closes the check at any time, and the count follows the answers', () => {
+    render(ui(flowScan()))
+    press('start-check')
+    press('correction-yes')
+    press('correction-close')
+    expect(screen.getByTestId('correction-summary')).toBeTruthy()
+    expect(screen.getByText('2 cells to check')).toBeTruthy()
+  })
+
+  it('opens a sure cell on the keypad, and an edit goes back to the summary', () => {
+    render(ui(flowScan()))
+    press('correction-press-0')
+    expect(screen.getByTestId('correction-question')).toHaveTextContent('Change this 5')
+    expect(screen.queryByTestId('correction-progress')).toBeNull()
+    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.selected })
+    press('correction-key-6')
+    expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('6')
+    expect(screen.getByTestId('correction-summary')).toBeTruthy()
+  })
+
+  it('plays the swap when the panel changes state, and grows the panel to the keypad', () => {
+    render(ui(flowScan()))
+    expect(entering(screen.getByTestId('correction-summary'))).toBeDefined()
+    expect(screen.getByTestId('correction-panel').props.layout).toBeDefined()
+    press('start-check')
+    expect(entering(screen.getByTestId('correction-check'))).toBeDefined()
+  })
+
+  it('keeps the panel content for the next cell, and fades in only the new text', () => {
+    render(ui(flowScan()))
+    press('start-check')
+    const check = screen.getByTestId('correction-check')
+    press('correction-yes')
+    expect(screen.getByTestId('correction-check')).toBe(check)
+    expect(entering(screen.getByTestId('correction-question'))).toBeDefined()
+    expect(entering(screen.getByText('Yes, 2'))).toBeDefined()
+  })
+
+  it('plays no swap and no resize with Reduce Motion', () => {
+    jest.mocked(useReducedMotion).mockReturnValue(true)
+    render(ui(flowScan()))
+    press('start-check')
+    expect(entering(screen.getByTestId('correction-check'))).toBeUndefined()
+    expect(screen.getByTestId('correction-panel').props.layout).toBeUndefined()
+    expect(entering(screen.getByTestId('correction-question'))).toBeUndefined()
+    jest.mocked(useReducedMotion).mockReturnValue(false)
+  })
+
+  it('makes a digit typed into an empty cell a given', () => {
     render(ui(okResult()))
     press('correction-press-2')
     press('correction-key-4')
-    expect(screen.getByTestId('correction-cell-2')).toHaveTextContent('4')
     expect(style('correction-cell-2')).toMatchObject({ color: daylight.components.cell.given })
-    press('correction-done')
-    expect(screen.queryByTestId('correction-pad')).toBeNull()
-    expect(screen.queryByTestId('correction-fill-2')).toBeNull()
-    expect(screen.getByTestId('play')).toBeTruthy()
-    expect(screen.getByTestId('retake')).toBeTruthy()
   })
 
-  it('closes the pad with a second tap on the selected cell', () => {
+  it('closes the open cell with a second tap on it', () => {
     render(ui(okResult()))
     press('correction-press-2')
     press('correction-press-2')
-    expect(screen.queryByTestId('correction-pad')).toBeNull()
+    expect(screen.queryByTestId('correction-check')).toBeNull()
   })
 
-  it('clears a cell', () => {
+  it('empties a cell with Empty', () => {
     render(ui(okResult({ 0: given })))
     press('correction-press-0')
     press('correction-clear')
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('')
   })
 
-  it('switches a given to an entry, and the style follows at once', () => {
-    render(ui(okResult({ 0: given })))
-    press('correction-press-0')
-    press('correction-kind-entry')
-    expect(style('correction-cell-0')).toMatchObject({
-      color: daylight.components.cell.entry,
-      fontWeight: daylight.type.entry.weight,
-    })
-    press('correction-kind-given')
-    expect(style('correction-cell-0')).toMatchObject({
-      color: daylight.components.cell.given,
-      fontWeight: daylight.type.given.weight,
-    })
-  })
-
-  it('removes the ring of a changed cell, and the count follows', () => {
-    render(ui(okResult({ 0: { ...given, confidence: 0.5 }, 1: { confidence: 0.1 } })))
-    expect(screen.getByText('● 2 cells to check')).toBeTruthy()
-    press('correction-press-0')
-    press('correction-key-5')
-    expect(screen.queryByTestId('correction-ring-0')).toBeNull()
-    press('correction-done')
-    expect(screen.getByText('● 1 cell to check')).toBeTruthy()
-  })
-
-  it('marks two givens with the same digit, and the mark goes when one becomes an entry', () => {
+  it('marks two givens with the same digit, and the mark goes when one is fixed', () => {
     render(ui(okResult({ 0: given, 8: given })))
     expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
     expect(style('correction-fill-8')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
-    expect(screen.getByText('● 2 givens in conflict')).toBeTruthy()
+    expect(screen.getByText('2 givens clash')).toBeTruthy()
     press('correction-press-8')
-    press('correction-kind-entry')
-    press('correction-done')
+    press('correction-key-4')
     expect(screen.queryByTestId('correction-fill-0')).toBeNull()
-    expect(screen.queryByTestId('correction-fill-8')).toBeNull()
-    expect(screen.queryByText(/in conflict/)).toBeNull()
-  })
-
-  it('makes a new conflict visible at once', () => {
-    render(ui(okResult({ 0: given })))
-    press('correction-press-1')
-    press('correction-key-5')
-    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
-    expect(style('correction-fill-1')).toMatchObject({ backgroundColor: daylight.components.cell.selected })
-  })
-
-  it('does not say that all cells look sure while givens are in conflict', () => {
-    render(ui(okResult({ 0: given, 8: given })))
-    expect(screen.queryByText('All cells look sure')).toBeNull()
+    expect(screen.queryByText(/clash/)).toBeNull()
   })
 
   it('keeps the cells inert during the transition', () => {
     render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
     expect(screen.getByTestId('correction-press-0').props.accessibilityState).toMatchObject({ disabled: true })
     press('correction-press-0')
-    expect(screen.queryByTestId('correction-pad')).toBeNull()
+    expect(screen.queryByTestId('correction-check')).toBeNull()
   })
 
   it('shows no conflict mark during the transition', () => {
@@ -436,11 +497,11 @@ describe('CorrectionScreen edits', () => {
   })
 
   it('does not change the result it got', () => {
-    const result = okResult({ 0: given })
+    const result = flowScan()
     const before = JSON.parse(JSON.stringify(result))
     render(ui(result))
-    press('correction-press-0')
-    press('correction-kind-entry')
+    press('start-check')
+    press('correction-no')
     press('correction-key-2')
     expect(result).toEqual(before)
   })
@@ -487,16 +548,16 @@ describe('CorrectionScreen play gate', () => {
   })
 
   it('keeps Play on with uncertain cells', () => {
-    const shaky = puzzle.givens.findIndex((digit) => digit !== 0)
-    playUi(scanOf(puzzle.givens, { [shaky]: { digit: puzzle.givens[shaky] ?? 0, kind: 'printed', confidence: 0.2 } }))
-    expect(screen.getByText('● 1 cell to check')).toBeTruthy()
+    const unsure = puzzle.givens.findIndex((digit) => digit !== 0)
+    playUi(scanOf(puzzle.givens, { [unsure]: { digit: puzzle.givens[unsure] ?? 0, kind: 'printed', confidence: 0.2 } }))
+    expect(screen.getByText('1 cell to check')).toBeTruthy()
     expect(playOn()).toBe(true)
   })
 
-  it('blocks two givens in conflict, and the chip says why', () => {
+  it('blocks two givens in conflict, and the status line says why', () => {
     playUi(okResult({ 0: given, 8: given }))
     expect(playOn()).toBe(false)
-    expect(screen.getByText('● 2 givens in conflict')).toBeTruthy()
+    expect(screen.getByText('2 givens clash')).toBeTruthy()
     expect(screen.queryByTestId('play-blocked')).toBeNull()
   })
 
@@ -535,7 +596,6 @@ describe('CorrectionScreen play gate', () => {
     expect(playOn()).toBe(false)
     press(`correction-press-${second}`)
     press(`correction-key-${puzzle.givens[second]}`)
-    press('correction-done')
     expect(playOn()).toBe(true)
   })
 
@@ -559,54 +619,168 @@ describe('CorrectionScreen play gate', () => {
     expect(checkSpy).not.toHaveBeenCalled()
   })
 
-  it('checks the givens once when the pad closes, not per key', () => {
+  it('checks the givens when the summary shows, not while a cell is open', () => {
     playUi(scanOf(puzzle.givens))
     expect(checkSpy).toHaveBeenCalledTimes(1)
     press(`correction-press-${firstOpen}`)
-    press(`correction-key-${wrongDigit}`)
-    press(`correction-key-${puzzle.solution[firstOpen] ?? 1}`)
     expect(checkSpy).toHaveBeenCalledTimes(1)
-    press('correction-done')
+    press(`correction-key-${wrongDigit}`)
     expect(checkSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the solution in muted digits with Solve, and hides it with a second tap', () => {
+    playUi(scanOf(puzzle.givens))
+    expect(screen.queryByTestId(`correction-solution-${firstOpen}`)).toBeNull()
+    press('solve')
+    expect(screen.getByTestId(`correction-solution-${firstOpen}`)).toHaveTextContent(String(puzzle.solution[firstOpen]))
+    expect(screen.getByTestId('solve')).toHaveTextContent('Hide')
+    press('solve')
+    expect(screen.queryByTestId(`correction-solution-${firstOpen}`)).toBeNull()
+  })
+
+  it('keeps Solve off while the play gate blocks', () => {
+    playUi(okResult({ 0: given, 8: given }))
+    expect(screen.getByTestId('solve').props.accessibilityState).toMatchObject({ disabled: true })
   })
 })
 
 const withPhoto = (): RecogniseResult =>
-  ({ ...(okResult({ 0: given }) as object), photoPath: '/tmp/photo.jpg' }) as RecogniseResult
+  ({ ...(okResult({ 0: given, 1: shaky(3, 0.85) }) as object), photoPath: '/tmp/photo.jpg' }) as RecogniseResult
 
-describe('CorrectionScreen development tools', () => {
-  it('shows Save and no Play when it can save, and saves the final looks', async () => {
+const devUi = (onSave?: (looks: readonly unknown[]) => Promise<boolean>, result = withPhoto()) => {
+  const onPlay = jest.fn()
+  render(
+    <CorrectionScreen
+      result={result}
+      layout={layout}
+      onRetake={jest.fn()}
+      onPlay={onPlay}
+      {...(onSave ? { onSave } : {})}
+    />,
+  )
+  press('dev-open')
+  return onPlay
+}
+
+describe('CorrectionScreen dev menu', () => {
+  it('opens from the wrench and closes again', () => {
+    devUi()
+    expect(screen.getByTestId('dev-menu')).toBeTruthy()
+    press('dev-close')
+    expect(screen.queryByTestId('dev-menu')).toBeNull()
+  })
+
+  it('has no wrench during the transition', () => {
+    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    expect(screen.queryByTestId('dev-open')).toBeNull()
+  })
+
+  it('shows the four tabs and swaps the inspector view', () => {
+    devUi()
+    expect(screen.getAllByRole('tab')).toHaveLength(4)
+    expect(screen.getByTestId('inspector-photo')).toBeTruthy()
+    press('tab-cells')
+    expect(screen.getByTestId('inspector-cells')).toBeTruthy()
+    expect(screen.getByTestId('correction-cell-0')).toBeTruthy()
+  })
+
+  it('saves the final looks, while Play still works', async () => {
     const onSave = jest.fn(async (_looks: readonly unknown[]) => true)
-    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} onSave={onSave} />)
-    expect(screen.queryByTestId('play')).toBeNull()
+    devUi(onSave)
+    expect(screen.getByTestId('play')).toBeTruthy()
     expect(screen.getByTestId('save')).toHaveTextContent('Save corrections')
-    fireEvent.press(screen.getByTestId('save'))
+    press('save')
     await waitFor(() => expect(screen.getByTestId('save')).toHaveTextContent('Saved ✓'))
     expect(onSave).toHaveBeenCalledTimes(1)
     expect(onSave.mock.calls[0]![0]).toHaveLength(81)
   })
 
-  it('says when the save failed, and lets the player try again', async () => {
-    const onSave = jest.fn(async () => false)
-    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} onSave={onSave} />)
-    fireEvent.press(screen.getByTestId('save'))
+  it('says when the save failed, and lets the developer try again', async () => {
+    devUi(jest.fn(async () => false))
+    press('save')
     await waitFor(() => expect(screen.getByTestId('save')).toHaveTextContent('Not saved. Try again'))
     expect(screen.getByTestId('save').props.accessibilityState.disabled).toBe(false)
   })
 
-  it('shows the four tabs, and swaps the correction grid for the inspector on a tab', () => {
-    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} onSave={jest.fn()} />)
-    expect(screen.getAllByRole('tab')).toHaveLength(4)
-    expect(screen.getByTestId('correction-cell-0')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('tab-cutout'))
-    expect(screen.getByTestId('inspector-cutout')).toBeTruthy()
-    expect(screen.queryByTestId('correction-cell-0')).toBeNull()
-    fireEvent.press(screen.getByTestId('tab-correct'))
-    expect(screen.getByTestId('correction-cell-0')).toBeTruthy()
+  it('has no Save without the photo file', () => {
+    devUi(jest.fn(), okResult())
+    expect(screen.queryByTestId('save')).toBeNull()
   })
 
-  it('has no tabs without the photo file', () => {
-    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} onSave={jest.fn()} />)
-    expect(screen.queryByTestId('scan-tabs')).toBeNull()
+  it('moves the rings at once with the threshold slider', () => {
+    devUi()
+    expect(screen.queryByTestId('correction-ring-1')).toBeNull()
+    fireEvent(screen.getByTestId('threshold-slider'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    })
+    expect(screen.queryByTestId('correction-ring-1')).toBeNull()
+    for (let step = 0; step < 9; step++) {
+      fireEvent(screen.getByTestId('threshold-slider'), 'accessibilityAction', {
+        nativeEvent: { actionName: 'increment' },
+      })
+    }
+    expect(screen.getByTestId('correction-ring-1')).toBeTruthy()
+    expect(screen.getByTestId('inspector-photo').props.threshold).toBeCloseTo(0.9, 6)
+  })
+
+  it('shows the kind and the confidence in each cell', () => {
+    devUi()
+    fireEvent(screen.getByTestId('switch-Show confidence'), 'valueChange', true)
+    expect(screen.getByTestId('correction-confidence-1')).toHaveTextContent('85')
+    expect(screen.getByTestId('correction-confidence-0')).toHaveTextContent('100')
+  })
+
+  it('labels the kind of an open cell when Label kinds is on', () => {
+    devUi()
+    fireEvent(screen.getByTestId('switch-Label kinds'), 'valueChange', true)
+    press('dev-close')
+    press('correction-press-0')
+    press('correction-kind-entry')
+    expect(style('correction-cell-0')).toMatchObject({ color: daylight.components.cell.entry })
+    press('correction-kind-notes')
+    expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('')
+    expect(screen.getByTestId('correction-check')).toBeTruthy()
+  })
+
+  it('shows no kind labels without the switch', () => {
+    devUi()
+    press('dev-close')
+    press('correction-press-0')
+    expect(screen.queryByTestId('correction-kinds')).toBeNull()
+  })
+})
+
+function inTheme(theme: Theme) {
+  const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
+  return jest.spyOn(unistyles, 'useUnistyles').mockReturnValue({ theme, rt: unistyles.UnistylesRuntime } as never)
+}
+
+describe('CorrectionScreen in the new themes', () => {
+  afterEach(() => jest.restoreAllMocks())
+
+  it('shows the large title and the panel edge of Op-art', () => {
+    inTheme(opart)
+    const big = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 34)
+    render(<CorrectionScreen result={okResult()} layout={big} onRetake={jest.fn()} />)
+    expect(screen.getByTestId('decoration-opart-waves')).toBeTruthy()
+    expect(screen.getAllByText('Check the scan')).toHaveLength(1)
+  })
+
+  it('sizes the digits from the type scale of the theme: the serif given larger than the sans entry', () => {
+    inTheme(opart)
+    render(<CorrectionScreen result={okResult({ 0: given, 1: entry })} layout={layout} onRetake={jest.fn()} />)
+    const givenSize = style('correction-cell-0').fontSize
+    const entrySize = style('correction-cell-1').fontSize
+    expect(givenSize / entrySize).toBeCloseTo(opart.type.given.scale / opart.type.entry.scale, 6)
+  })
+
+  it('shows the stripes and the disc of Progressive, and hides the panel edge with the keypad', () => {
+    inTheme(progressive)
+    const big = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 30)
+    render(<CorrectionScreen result={okResult()} layout={big} onRetake={jest.fn()} />)
+    expect(screen.getByTestId('decoration-progressive-stripes')).toBeTruthy()
+    expect(screen.getByTestId('decoration-progressive-disc')).toBeTruthy()
+    press('correction-press-0')
+    expect(screen.queryByTestId('decoration-progressive-stripes')).toBeNull()
   })
 })

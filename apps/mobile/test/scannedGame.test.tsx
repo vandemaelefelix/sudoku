@@ -23,10 +23,11 @@ const givenCell = givens.findIndex((digit) => digit !== 0)
 
 function scanResult(): RecogniseResult {
   const cells: CellResult[] = givens.map((digit, cell) => {
-    if (digit !== 0) return { digit, kind: 'printed', confidence: 1, validPair: true }
-    if (cell === wrongCell) return { digit: wrongDigit, kind: 'handwritten', confidence: 1, validPair: true }
-    if (cell === rightCell) return { digit: solution[cell] ?? 0, kind: 'handwritten', confidence: 1, validPair: true }
-    return { digit: 0, kind: 'none', confidence: 1, validPair: true }
+    if (digit !== 0) return { digit, kind: 'printed', confidence: 1, validPair: true, second: 1 }
+    if (cell === wrongCell) return { digit: wrongDigit, kind: 'handwritten', confidence: 1, validPair: true, second: 1 }
+    if (cell === rightCell)
+      return { digit: solution[cell] ?? 0, kind: 'handwritten', confidence: 1, validPair: true, second: 1 }
+    return { digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 }
   })
   return {
     ok: true,

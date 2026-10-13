@@ -3,7 +3,7 @@ import { TABS } from './ScanInspector.constants'
 import { styles } from './ScanInspector.styles'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 
-/** The tabs of the development view. Correct is the normal correction grid. */
+/** The tabs of the dev menu. */
 export function ScanTabs({ view, onChange }: { view: InspectorView; onChange: (view: InspectorView) => void }) {
   return (
     <View testID="scan-tabs" style={styles.tabs}>

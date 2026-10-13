@@ -32,6 +32,7 @@ const colors: Theme['colors'] = {
 
 export const daylight: Theme = {
   name: 'daylight',
+  label: 'Daylight',
   statusBar: 'dark',
   colors,
   type: SHARED_TYPE,
@@ -64,6 +65,23 @@ export const daylight: Theme = {
     key: { fill: p.white, digit: colors.text, noteDigit: colors.accent },
     switch: { on: colors.accent, off: p.slate300, knob: p.white },
     segmented: { track: p.slate150, selected: colors.surface },
+    button: {
+      primary: colors.text,
+      onPrimary: p.white,
+      second: colors.background,
+      outline: colors.background,
+      outlineWidth: 0,
+      radius: 16,
+    },
+    panel: {
+      fill: colors.surface,
+      radius: SHARED_SHAPE.radius.xl,
+      border: colors.surface,
+      borderWidth: 0,
+      key: colors.background,
+      keyRadius: 14,
+    },
+    checkRing: { color: colors.warning, round: false },
     pulse: { waveOpacity: 0.3, popScale: 1.3 },
   },
 }

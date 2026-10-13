@@ -1,6 +1,11 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { roleFont } from '@/theme/typography'
 
+const CARD_PADDING = 22
+const FRAME_INSET = 7
+const SPOT_SIDE = 340
+const SPOT_TOP = 90
+
 export const styles = StyleSheet.create((theme, rt) => {
   const card = theme.components.finishCard
   return {
@@ -8,7 +13,7 @@ export const styles = StyleSheet.create((theme, rt) => {
       ...StyleSheet.absoluteFillObject,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: theme.space.lg,
+      gap: theme.space.xxl,
       paddingTop: rt.insets.top,
       paddingBottom: rt.insets.bottom,
       paddingHorizontal: theme.space.lg,
@@ -17,16 +22,27 @@ export const styles = StyleSheet.create((theme, rt) => {
     card: {
       width: theme.size.card.width,
       gap: 14,
-      paddingTop: 22,
-      paddingHorizontal: 22,
+      paddingTop: CARD_PADDING,
+      paddingHorizontal: CARD_PADDING,
       paddingBottom: 16,
-      borderRadius: 24,
+      borderRadius: card.radius,
       borderCurve: 'continuous',
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: card.boxLine,
       overflow: 'hidden',
       experimental_backgroundImage: `linear-gradient(150deg, ${card.top} 0%, ${card.middle} 58%, ${card.bottom} 100%)`,
-      boxShadow: theme.elevation.sheet,
+      // The inset line is the catch light on the top edge: the light comes from above.
+      boxShadow: `${card.shadow ?? theme.elevation.sheet}, inset 0 1px 0 ${card.shine}`,
+    },
+    frame: {
+      position: 'absolute',
+      top: FRAME_INSET,
+      left: FRAME_INSET,
+      right: FRAME_INSET,
+      bottom: FRAME_INSET,
+      borderWidth: 1,
+      borderColor: card.frame ?? card.shineClear,
+      borderRadius: Math.max(0, card.radius - FRAME_INSET),
     },
     shine: {
       position: 'absolute',
@@ -36,6 +52,17 @@ export const styles = StyleSheet.create((theme, rt) => {
       left: '-80%',
       width: '260%',
       experimental_backgroundImage: `linear-gradient(115deg, ${card.shineClear} 38%, ${card.shineCool} 45%, ${card.shine} 50%, ${card.shineWarm} 55%, ${card.shineClear} 62%)`,
+    },
+    // The card edge runs inside the frame, from one frame line to the other, near the top edge of the card.
+    edge: { marginTop: -CARD_PADDING / 2, marginHorizontal: FRAME_INSET - CARD_PADDING, overflow: 'hidden' },
+    // The soft reflection of the light, upper left at rest. It fades out long before its edge.
+    spot: {
+      position: 'absolute',
+      left: -SPOT_SIDE / 2 + theme.size.card.width * 0.3,
+      top: -SPOT_SIDE / 2 + SPOT_TOP,
+      width: SPOT_SIDE,
+      height: SPOT_SIDE,
+      experimental_backgroundImage: `radial-gradient(circle at center, ${card.shine} 0%, ${card.shineClear} 50%)`,
     },
     top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     // The canvas shows the title in capitals. The text stays "Solved · Medium" for VoiceOver and the tests.
@@ -49,7 +76,7 @@ export const styles = StyleSheet.create((theme, rt) => {
     badge: {
       paddingVertical: 3,
       paddingHorizontal: 8,
-      borderRadius: theme.shape.radius.pill,
+      borderRadius: card.badgeRadius,
       backgroundColor: card.badge,
     },
     badgeText: { ...roleFont(theme.type.label), fontSize: 12, fontWeight: '700', color: card.badgeText },
@@ -86,7 +113,7 @@ export const styles = StyleSheet.create((theme, rt) => {
       minHeight: 50,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: theme.shape.radius.pill,
+      borderRadius: card.buttonRadius,
       backgroundColor: theme.colors.accent,
     },
     newPuzzleText: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.onAccent },

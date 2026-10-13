@@ -2,8 +2,11 @@ import type { Point, Quad, Rect } from '@/utils/geometry.utils'
 import type { CornerSource } from '@/scanner'
 import { project, unitToQuad } from '@/utils/homography.utils'
 
-/** correct: the correction grid. photo: the capture with the detected corners. cutout: the flattened grid with the cell cuts. overlay: the capture with the 9 × 9 grid and the digits the model read. */
-export type InspectorView = 'correct' | 'photo' | 'cutout' | 'overlay'
+/**
+ * The tabs of the dev menu. photo: the capture with the detected corners. cutout: the flattened grid with the cell cuts.
+ * overlay: the capture with the 9 × 9 grid and the digits the model read. cells: the flattened grid with a confidence bar per cell.
+ */
+export type InspectorView = 'photo' | 'cutout' | 'overlay' | 'cells'
 
 export type Segment = { from: Point; to: Point }
 

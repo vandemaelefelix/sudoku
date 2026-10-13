@@ -9,8 +9,14 @@ const corners: Quad = [
   { x: 0.9, y: 0.9 },
   { x: 0.1, y: 0.9 },
 ]
-const printed = (digit: number): CellResult => ({ digit, kind: 'printed', confidence: 0.99, validPair: true })
-const empty: CellResult = { digit: 0, kind: 'none', confidence: 0.99, validPair: true }
+const printed = (digit: number): CellResult => ({
+  digit,
+  kind: 'printed',
+  confidence: 0.99,
+  validPair: true,
+  second: 1,
+})
+const empty: CellResult = { digit: 0, kind: 'none', confidence: 0.99, validPair: true, second: 1 }
 const scan = (): CellResult[] => Array.from({ length: 81 }, (_, i) => (i % 2 === 0 ? printed((i % 9) + 1) : empty))
 const unchanged = (cells: CellResult[]): CellLook[] => cells.map(cellLook)
 

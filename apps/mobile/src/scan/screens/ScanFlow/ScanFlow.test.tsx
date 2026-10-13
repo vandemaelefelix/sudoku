@@ -117,11 +117,11 @@ it('mounts a new camera screen and a new effect canvas on Retake from the transi
   expect(lastCanvas().capture!.value).toBeNull()
 })
 
-it('hands Save of the review to the correction store and no Play in a development build', () => {
+it('hands Save of the review to the correction store, and keeps Play, in a development build', () => {
   render(<ScanFlow />)
   act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
   const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
-  expect(props.onPlay).toBeUndefined()
+  expect(props.onPlay).toBeDefined()
   const looks = [] as CellLook[]
   props.onSave!(looks)
   expect(mockSave).toHaveBeenCalledWith(OK, looks)

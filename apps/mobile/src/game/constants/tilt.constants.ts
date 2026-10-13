@@ -11,4 +11,10 @@ export const PERSPECTIVE = 900
 /** The part of the card width that the shine moves at a full tilt. */
 export const SHINE_TRAVEL = 0.45
 
+/** The glare spot moves this many times the shine travel. It is the light itself, so it moves faster than the streak. */
+export const SPOT_PARALLAX = 1.6
+
+/** The glare opacity of a card at rest. A full tilt gives 1. */
+export const GLARE_REST = 0.4
+
 export const NO_TILT = { x: 0, y: 0 } as const

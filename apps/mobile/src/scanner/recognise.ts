@@ -1,3 +1,4 @@
+import type { SkImage } from '@shopify/react-native-skia'
 import { type CellResult, decodeOutputs, type OutputIndex, runModel, type TfliteModel } from './classifier'
 import { findGrid, findGrids } from './findGrid'
 import { cornerOffset, downscaleSize, fromCrop, searchRect, toPhotoPixels } from './photoGeometry'
@@ -36,8 +37,10 @@ export type RecogniseResult =
       corners: CornerSource
       cornerOffset: number | null
       timings: RecogniseTimings
-      /** The 576 × 576 flattened grid the cells were cut from, RGB. useCapture moves it to flatPath and drops it. */
+      /** The 576 × 576 flattened grid the cells were cut from, RGB. useCapture turns it into flatImage and drops it. */
       flat?: Uint8Array
+      /** The flattened grid as an image, for the cell crops of the correction screen. useCapture sets it in every build. */
+      flatImage?: SkImage
       /** A temporary file with the upright capture photo. useCapture sets it in development builds. */
       photoPath?: string
       /** A temporary PNG file with the flattened grid. useCapture sets it in development builds. */

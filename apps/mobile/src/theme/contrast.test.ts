@@ -1,7 +1,6 @@
 import { contrastRatio } from './contrast.utils'
 import type { Theme } from './theme.types'
-import { daylight } from '@/theme/themes/daylight'
-import { midnight } from '@/theme/themes/midnight'
+import { THEMES } from '@/theme/themes/registry'
 
 type Pair = [label: string, foreground: (t: Theme) => string, background: (t: Theme) => string]
 
@@ -27,6 +26,18 @@ const TEXT_PAIRS: Pair[] = [
     (t) => t.components.cell.note,
     (t) => t.components.cell[fill],
   ]),
+  [
+    'primary button text on the primary button',
+    (t) => t.components.button.onPrimary,
+    (t) => t.components.button.primary,
+  ],
+  ['text on the second button', (t) => t.colors.text, (t) => t.components.button.second],
+  ['text on the panel', (t) => t.colors.text, (t) => t.components.panel.fill],
+  ['muted on the panel', (t) => t.colors.textMuted, (t) => t.components.panel.fill],
+  ['warning text on the panel', (t) => t.colors.warningText, (t) => t.components.panel.fill],
+  ['danger on the panel', (t) => t.colors.danger, (t) => t.components.panel.fill],
+  ['text on a pad key', (t) => t.colors.text, (t) => t.components.panel.key],
+  ['muted on a pad key', (t) => t.colors.textMuted, (t) => t.components.panel.key],
   ['key digit on key', (t) => t.components.key.digit, (t) => t.components.key.fill],
   ['key note digit on key', (t) => t.components.key.noteDigit, (t) => t.components.key.fill],
   ['text on segmented track', (t) => t.colors.text, (t) => t.components.segmented.track],
@@ -47,7 +58,7 @@ const TEXT_PAIRS: Pair[] = [
   ],
 ]
 
-describe.each([daylight, midnight])('$name', (theme) => {
+describe.each(Object.values(THEMES))('$name', (theme) => {
   it.each(TEXT_PAIRS)('%s meets WCAG AA (4.5 : 1)', (_label, foreground, background) => {
     expect(contrastRatio(foreground(theme), background(theme))).toBeGreaterThanOrEqual(4.5)
   })

@@ -2,9 +2,13 @@ import { StyleSheet, UnistylesRuntime } from 'react-native-unistyles'
 import { APP_THEMES } from './unistyles'
 import { daylight } from '@/theme/themes/daylight'
 import { midnight } from '@/theme/themes/midnight'
+import { opart } from '@/theme/themes/opart'
+import { progressive } from '@/theme/themes/progressive'
 
-it('registers Daylight as light and Midnight as dark, the names adaptive themes need', () => {
-  expect(APP_THEMES).toEqual({ light: daylight, dark: midnight })
+const REGISTERED = { light: daylight, dark: midnight, opart, progressive }
+
+it('registers Daylight as light and Midnight as dark, the names adaptive themes need, and the others by name', () => {
+  expect(APP_THEMES).toEqual(REGISTERED)
 })
 
 it('gives styles the Daylight theme in Jest, because it is registered first', () => {
@@ -17,6 +21,7 @@ it('gives styles the Daylight theme in Jest, because it is registered first', ()
 it.each([
   [null, { adaptiveThemes: true }],
   ['midnight', { initialTheme: 'dark' }],
+  ['opart', { initialTheme: 'opart' }],
   ['sepia', { adaptiveThemes: true }],
 ])('configures the saved choice %p before the first frame', (saved, settings) => {
   // A fresh module registry runs the configure call again. jest.doMock cannot replace the mock of the setup file.
@@ -25,7 +30,7 @@ it.each([
     jest.mocked(require('expo-sqlite/kv-store').default.getItemSync).mockReturnValueOnce(saved)
     // oxlint-disable-next-line import/no-unassigned-import -- the module calls configure as its side effect.
     require('./unistyles')
-    expect(configure).toHaveBeenCalledWith({ themes: { light: daylight, dark: midnight }, settings })
+    expect(configure).toHaveBeenCalledWith({ themes: REGISTERED, settings })
   })
 })
 
@@ -38,9 +43,6 @@ it('configures Unistyles to follow the system when the store throws', () => {
     })
     // oxlint-disable-next-line import/no-unassigned-import -- the module calls configure as its side effect.
     require('./unistyles')
-    expect(configure).toHaveBeenCalledWith({
-      themes: { light: daylight, dark: midnight },
-      settings: { adaptiveThemes: true },
-    })
+    expect(configure).toHaveBeenCalledWith({ themes: REGISTERED, settings: { adaptiveThemes: true } })
   })
 })

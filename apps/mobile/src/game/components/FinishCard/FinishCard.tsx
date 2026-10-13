@@ -12,12 +12,13 @@ import { scheduleOnRN } from 'react-native-worklets'
 import type { Game } from '@sudoku/core'
 import { CardGrid } from '@/game/components/CardGrid'
 import { Icon } from '@/game/components/Icon'
-import { SHINE_TRAVEL } from '@/game/constants/tilt.constants'
+import { GLARE_REST, SHINE_TRAVEL } from '@/game/constants/tilt.constants'
 import { useCardTilt } from '@/game/hooks/useCardTilt'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGameTime } from '@/game/hooks/useGameTime'
 import { useSolveDelay } from '@/game/hooks/useSolveDelay'
 import { finishView, type FinishInfo, type FinishView } from '@/game/utils/finish.utils'
+import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { RISE_OFFSET } from './FinishCard.constants'
 import { styles } from './FinishCard.styles'
 
@@ -39,6 +40,8 @@ export function FinishCard(props: FinishCardProps) {
 }
 
 const currentDate = () => new Date()
+// A still card shows the glare as at rest.
+const STILL_GLARE = { opacity: GLARE_REST }
 
 function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishCardProps & { board: Game }) {
   const playedMs = useGameTime()
@@ -68,13 +71,19 @@ function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishC
     opacity: 1 - rise.value,
     transform: [{ translateY: rise.value * RISE_OFFSET }],
   }))
-  const face = <Face view={view} board={board} iconColor={theme.components.finishCard.textMuted} />
+  const face = (
+    <>
+      {theme.components.finishCard.frame !== null && <View style={styles.frame} pointerEvents="none" />}
+      <Face view={view} board={board} iconColor={theme.components.finishCard.textMuted} />
+    </>
+  )
   return (
     <View testID="finish" style={styles.scrim} accessibilityViewIsModal>
       <Animated.View style={riseStyle}>
         {reduceMotion ? (
           <View ref={card} testID="finish-card" style={styles.card} accessible accessibilityLabel={view.label}>
-            <View style={styles.shine} pointerEvents="none" />
+            <View style={[styles.shine, STILL_GLARE]} pointerEvents="none" />
+            <View style={[styles.spot, STILL_GLARE]} pointerEvents="none" />
             {face}
           </View>
         ) : (
@@ -106,7 +115,7 @@ type TiltingCardProps = {
 
 /** A separate component: useCardTilt starts the sensor, and with Reduce Motion on the sensor must not start (ADR-017). */
 function TiltingCard({ cardRef, label, shineTravel, children }: TiltingCardProps) {
-  const { cardStyle, shineStyle } = useCardTilt(shineTravel)
+  const { cardStyle, shineStyle, spotStyle } = useCardTilt(shineTravel)
   return (
     <Animated.View
       ref={cardRef}
@@ -116,6 +125,7 @@ function TiltingCard({ cardRef, label, shineTravel, children }: TiltingCardProps
       accessibilityLabel={label}
     >
       <Animated.View style={[styles.shine, shineStyle]} pointerEvents="none" />
+      <Animated.View style={[styles.spot, spotStyle]} pointerEvents="none" />
       {children}
     </Animated.View>
   )
@@ -124,6 +134,7 @@ function TiltingCard({ cardRef, label, shineTravel, children }: TiltingCardProps
 function Face({ view, board, iconColor }: { view: FinishView; board: Game; iconColor: string }) {
   return (
     <>
+      <ThemeDecoration slot="cardEdge" style={styles.edge} />
       <View style={styles.top}>
         <Text style={styles.title}>{view.title}</Text>
         {view.newBest && (

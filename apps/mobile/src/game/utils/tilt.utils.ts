@@ -1,4 +1,4 @@
-import { MAX_ROTATE_X, MAX_ROTATE_Y, TILT_RANGE } from '@/game/constants/tilt.constants'
+import { GLARE_REST, MAX_ROTATE_X, MAX_ROTATE_Y, TILT_RANGE } from '@/game/constants/tilt.constants'
 
 export type Attitude = { pitch: number; roll: number }
 /** Each axis from -1 to 1. */
@@ -24,4 +24,10 @@ export function tiltOf(now: Attitude, rest: Attitude): Tilt {
 export function cardRotation(tilt: Tilt): { rotateX: number; rotateY: number } {
   'worklet'
   return { rotateX: -tilt.y * MAX_ROTATE_X, rotateY: tilt.x * MAX_ROTATE_Y }
+}
+
+/** The glare opacity, from GLARE_REST at rest to 1 at a full tilt in any direction. */
+export function glareStrength(tilt: Tilt): number {
+  'worklet'
+  return GLARE_REST + (1 - GLARE_REST) * Math.min(1, Math.hypot(tilt.x, tilt.y))
 }

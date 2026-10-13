@@ -98,7 +98,15 @@ The theme follows ADR-015. `src/theme/` holds every colour value.
 4. Use a semantic token in most components. Use a component token only in its own component.
 5. Do not import the `palette.ts` file of a theme. Only the folder of that theme reads it. `just lint`
    checks this rule.
-6. To add a theme, add a folder in `src/theme/themes/`. Register the theme in `src/theme/unistyles.ts`.
+6. To add a theme (ADR-021):
+   - Add its name to `ThemeName` in `src/theme/theme.types.ts`.
+   - Add a folder in `src/theme/themes/` with `palette.ts`, `<name>.ts` and `index.ts`.
+   - Add one line to `THEMES` in `src/theme/themes/registry.ts`. The picker, the saved preference,
+     the Unistyles registration and the contrast test read this list.
+   - Add one line to `DECORATIONS` in `src/theme/decorations/registry.ts`. Use `{}` for a theme
+     without decorations.
+   - Put a new font in `assets/fonts/` with its PostScript name as the file name, with its licence.
+     List it in the `expo-font` plugin in `app.json`. A font needs a new development build.
 
 ### Worklets
 

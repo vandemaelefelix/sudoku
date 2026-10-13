@@ -1,13 +1,15 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { readThemePreference, startupSettings } from '@/theme/preference'
-import { daylight } from '@/theme/themes/daylight'
-import { midnight } from '@/theme/themes/midnight'
+import { readThemePreference, startupSettings, unistylesName, type UnistylesName } from '@/theme/preference'
+import type { Theme, ThemeName } from '@/theme/theme.types'
+import { THEME_NAMES, THEMES } from '@/theme/themes/registry'
 
-/** Unistyles follows the system only with themes named light and dark. */
-export const APP_THEMES = { light: daylight, dark: midnight }
+export type AppThemes = { [N in ThemeName as UnistylesName<N>]: Theme }
 
-export type AppThemes = typeof APP_THEMES
+/** Every theme of the registry under its Unistyles name. Unistyles follows the system only with themes named light and dark. */
+export const APP_THEMES = Object.fromEntries(
+  THEME_NAMES.map((name) => [unistylesName(name), THEMES[name]]),
+) as AppThemes
 
 declare module 'react-native-unistyles' {
   export interface UnistylesThemes extends AppThemes {}

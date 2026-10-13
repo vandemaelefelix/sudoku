@@ -1,6 +1,6 @@
 import type { TextStyle } from 'react-native'
 
-export type ThemeName = 'daylight' | 'midnight'
+export type ThemeName = 'daylight' | 'midnight' | 'opart' | 'progressive'
 
 /** A text role. scale: the font size in points at the default Dynamic Type size. */
 export type TypeRole = {
@@ -9,11 +9,15 @@ export type TypeRole = {
   scale: number
   /** Letter spacing in em. 0 for none. The caller multiplies it by scale. */
   tracking: number
+  /** True: the text shows in capitals. */
+  uppercase: boolean
   textShadow: { color: string; offset: { width: number; height: number }; radius: number } | null
 }
 
 export type Theme = {
   name: ThemeName
+  /** The name the player sees in Settings. */
+  label: string
   /** The style of the status bar text over colors.background. */
   statusBar: 'dark' | 'light'
   colors: {
@@ -38,6 +42,8 @@ export type Theme = {
     scrimStrong: string
   }
   type: {
+    /** The large screen title under the top bar. Only a theme with size.titleBlock above 0 shows it. */
+    display: TypeRole
     title: TypeRole
     body: TypeRole
     label: TypeRole
@@ -51,6 +57,12 @@ export type Theme = {
     note: TypeRole
     key: TypeRole
     keyNote: TypeRole
+    /** The question of the check state, for example "Is this a 4?". */
+    question: TypeRole
+    /** The first line of the correction panel, for example "3 cells to check". */
+    status: TypeRole
+    /** Small labels, such as the level and the place of a cell. */
+    eyebrow: TypeRole
   }
   space: { xs: number; sm: number; md: number; lg: number; xl: number; xxl: number }
   shape: {
@@ -74,6 +86,10 @@ export type Theme = {
     preview: number
     /** The finish card width and the side of its grid, in points. */
     card: { width: number; grid: number }
+    /** The height of the title block under the top bar. 0: the title sits in the top bar. */
+    titleBlock: number
+    /** The height of the panel edge decoration. 0 for a theme without one. */
+    panelEdge: number
   }
   /** disabled: a control that cannot act now. locked: the controls of a game that ended. */
   opacity: { disabled: number; locked: number }
@@ -94,7 +110,7 @@ export type Theme = {
     pop: number
   }
   components: {
-    /** The same in both themes, as on the design canvas. The gradient runs top, middle, bottom at 150°. */
+    /** The gradient runs top, middle, bottom at 150°. A flat card gives the three stops one colour. Radii in points. */
     finishCard: {
       top: string
       middle: string
@@ -111,6 +127,14 @@ export type Theme = {
       shineClear: string
       badge: string
       badgeText: string
+      radius: number
+      badgeRadius: number
+      /** The New puzzle button under the card. */
+      buttonRadius: number
+      /** The colour of a thin frame inset from the card edge, as on a playing card. Null for none. */
+      frame: string | null
+      /** A box shadow for the card. Null: the sheet elevation of the theme. */
+      shadow: string | null
     }
     grid: { frame: string; boxLine: string; cellLine: string }
     cell: {
@@ -128,6 +152,19 @@ export type Theme = {
     key: { fill: string; digit: string; noteDigit: string }
     switch: { on: string; off: string; knob: string }
     segmented: { track: string; selected: string }
+    /** The main and the second button. second: the fill of the second button, outline: its border. Both use colors.text. */
+    button: {
+      primary: string
+      onPrimary: string
+      second: string
+      outline: string
+      outlineWidth: number
+      radius: number
+    }
+    /** The bottom panel of the correction screen. key: the fill of a pad key. */
+    panel: { fill: string; radius: number; border: string; borderWidth: number; key: string; keyRadius: number }
+    /** The dashed ring of an uncertain cell. round: a circle, else a rounded square. */
+    checkRing: { color: string; round: boolean }
     /** waveOpacity: the opacity of colors.accent at the peak of the wave. popScale: the digit scale at the peak of the pop. */
     pulse: { waveOpacity: number; popScale: number }
   }

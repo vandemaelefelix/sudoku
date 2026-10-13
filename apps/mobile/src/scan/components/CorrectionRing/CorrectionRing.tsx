@@ -4,7 +4,8 @@ import { ringsAt, shiftOf, type SweepTiming } from '@/scan/utils/transition.util
 import { RING_INSET } from './CorrectionRing.constants'
 import { styles } from './CorrectionRing.styles'
 
-type CorrectionRingProps = SweepTiming & { n: number; size: number; left: number; top: number }
+/** active: the cell is open in the panel, so its ring turns solid. */
+type CorrectionRingProps = SweepTiming & { n: number; size: number; left: number; top: number; active?: boolean }
 
 /** The dashed ring around an uncertain cell. n: the cell index, row-major. */
 export const CorrectionRing = memo(function CorrectionRing({
@@ -12,6 +13,7 @@ export const CorrectionRing = memo(function CorrectionRing({
   size,
   left,
   top,
+  active = false,
   clock,
   resultsAt,
   reduceMotion,
@@ -27,6 +29,7 @@ export const CorrectionRing = memo(function CorrectionRing({
       pointerEvents="none"
       style={[
         styles.ring,
+        active && styles.active,
         {
           left: left + RING_INSET,
           top: top + RING_INSET,

@@ -5,7 +5,7 @@ import type { RecogniseResult } from '@/scanner'
 import { FLAT_SIDE } from '@/scan/utils/flatImage.utils'
 import { cornerLabel, fitRect, MODEL_CROP, projectGrid, quadInRect } from '@/scan/utils/inspector.utils'
 import type { Quad, Rect } from '@/utils/geometry.utils'
-import { DOT_RADIUS, EDGE_WIDTH, LINE_WIDTH } from './ScanInspector.constants'
+import { BAR_HEIGHT, DOT_RADIUS, EDGE_WIDTH, LINE_WIDTH } from './ScanInspector.constants'
 import { styles } from './ScanInspector.styles'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 
@@ -15,16 +15,39 @@ function fileUri(path: string | undefined): string | null {
   return path == null ? null : `file://${path.replace(/^file:\/\//, '')}`
 }
 
-type Props = { view: Exclude<InspectorView, 'correct'>; result: OkResult; region: Rect }
+/** threshold: the ring threshold. A cell below it shows its bar in the warning colour on the Cells tab. */
+type Props = { view: InspectorView; result: OkResult; region: Rect; threshold: number }
 
 /** Development view of a scan: what the detection found, how the grid is cut and what the model read. Draws inside `region`. */
-export function ScanInspector({ view, result, region }: Props) {
+export function ScanInspector({ view, result, region, threshold }: Props) {
   const { theme } = useUnistyles()
   const local: Rect = { x: 0, y: 0, width: region.width, height: region.height }
   const photo = useImage(fileUri(result.photoPath))
-  const flat = useImage(view === 'cutout' ? fileUri(result.flatPath) : null)
+  const flatFile = useImage(result.flatImage == null && view !== 'photo' ? fileUri(result.flatPath) : null)
+  const flat = result.flatImage ?? flatFile
 
   const canvasStyle = [styles.canvas, { left: region.x, top: region.y, width: region.width, height: region.height }]
+
+  if (view === 'cells') {
+    const box = fitRect(FLAT_SIDE, FLAT_SIDE, local)
+    const cell = box.width / 9
+    return (
+      <Canvas testID="inspector-cells" style={canvasStyle}>
+        {flat && <SkiaImage image={flat} x={box.x} y={box.y} width={box.width} height={box.height} fit="fill" />}
+        {result.cells.map((read, n) => (
+          <SkiaRect
+            // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
+            key={n}
+            x={box.x + (n % 9) * cell}
+            y={box.y + (Math.floor(n / 9) + 1) * cell - BAR_HEIGHT}
+            width={cell * read.confidence}
+            height={BAR_HEIGHT}
+            color={read.confidence < threshold ? theme.colors.warning : theme.colors.accent}
+          />
+        ))}
+      </Canvas>
+    )
+  }
 
   if (view === 'cutout') {
     const box = fitRect(FLAT_SIDE, FLAT_SIDE, local)
