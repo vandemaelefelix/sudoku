@@ -111,8 +111,10 @@ out with the preview mapping. The correction screen fades in over 0.3 s once bot
 
 ### The end
 
-At the end the phase becomes `review`. `ScanFlow` shows the static `CorrectionScreen` with the same
-`correctionLayout`. Retake remounts the camera screen. The overlay gets a new scene, so the
+At the end the phase becomes `review`. The `CorrectionScreen` of the transition stays mounted and
+becomes the static screen. The camera and the transition layers unmount. A new Skia canvas is blank
+until a later display frame. The board and the lines therefore mount hidden with the transition, and
+the end only shows them. Retake remounts the camera screen. The overlay gets a new scene, so the
 lock-on latch and the warm-up start new.
 
 The QR-07 budget is 1.5 s from lock-on to a filled screen. The time to the photo gate probably
