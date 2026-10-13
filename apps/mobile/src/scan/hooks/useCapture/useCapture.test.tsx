@@ -1,5 +1,4 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
-import { impactAsync } from 'expo-haptics'
 import type { SkImage } from '@shopify/react-native-skia'
 import type { Photo } from 'react-native-vision-camera'
 import { createScanner, type RecogniseResult } from '@/scanner'
@@ -72,10 +71,9 @@ it('keeps the flattened grid as an image and in a file, not as bytes in the resu
   expect(saveFlatPng).toHaveBeenCalledWith(new Uint8Array(3))
 })
 
-it('plays the haptic, takes a photo and recognises it with the quad', async () => {
+it('takes a photo and recognises it with the quad', async () => {
   const { hook, output, photo, recognise } = setup()
   await act(async () => hook.result.current.capture(QUAD, FRAME_ASPECT))
-  expect(impactAsync).toHaveBeenCalledTimes(1)
   expect(output.capturePhoto).toHaveBeenCalledTimes(1)
   expect(output.capturePhoto).toHaveBeenCalledWith({ enableShutterSound: false }, {})
   expect(recognise).toHaveBeenCalledWith(photo, QUAD)

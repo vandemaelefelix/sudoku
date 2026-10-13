@@ -32,3 +32,18 @@ it('gives each choice a 44 pt touch target', () => {
     expect(StyleSheet.flatten(segment.props.style).minHeight).toBeGreaterThanOrEqual(44)
   }
 })
+
+it('places the indicator on the chosen segment once the segments have a frame', () => {
+  render(<ThemePicker value="midnight" onChange={jest.fn()} />)
+  const frame = { x: 120, y: 4, width: 100, height: 44 }
+  fireEvent(screen.getByRole('button', { name: 'Midnight' }), 'layout', { nativeEvent: { layout: frame } })
+  // The Reanimated mock reads the shared value in render, and the picker sets it in an effect after the layout.
+  screen.rerender(<ThemePicker value="midnight" onChange={jest.fn()} />)
+  const indicator = StyleSheet.flatten(screen.getByTestId('theme-indicator').props.style)
+  expect(indicator).toMatchObject({
+    opacity: 1,
+    width: 100,
+    height: 44,
+    transform: [{ translateX: 120 }, { translateY: 4 }],
+  })
+})

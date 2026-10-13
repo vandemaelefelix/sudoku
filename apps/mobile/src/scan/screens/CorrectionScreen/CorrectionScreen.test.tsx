@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import * as Haptics from 'expo-haptics'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import { generate } from '@sudoku/core'
@@ -98,7 +99,7 @@ describe('CorrectionScreen in review', () => {
     expect(screen.getByText('Check the scan')).toBeTruthy()
     expect(screen.getByTestId('correction-level')).toHaveTextContent('Expert')
     expect(screen.getByTestId('play').props.accessibilityState).toMatchObject({ disabled: true })
-    expect(style('play').opacity).toBe(daylight.opacity.disabled)
+    expect(style('play-fade').opacity).toBe(daylight.opacity.disabled)
   })
 
   it('calls onRetake', () => {
@@ -273,6 +274,15 @@ describe('CorrectionScreen with a clock', () => {
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
   })
 
+  it('plays a warning when the failure panel starts to slide', async () => {
+    jest.mocked(Haptics.notificationAsync).mockClear()
+    render(failureUi(clock(GATE_RESULTS)))
+    slideReaction().react(true, false)
+    await waitFor(() =>
+      expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Warning),
+    )
+  })
+
   it('starts the failure slide with Reduce Motion and the clock held at 0', () => {
     const { rerender } = render(failureUi(clock(0), true))
     const { prepare, react } = slideReaction()
@@ -358,6 +368,14 @@ describe('CorrectionScreen check flow', () => {
     expect(screen.getByTestId('correction-yes')).toHaveTextContent('Yes, 4')
     expect(screen.getByTestId('cell-crop')).toBeTruthy()
     expect(style('correction-fill-3')).toMatchObject({ backgroundColor: daylight.colors.warningSurface })
+  })
+
+  it('ticks for Yes', () => {
+    render(ui(flowScan()))
+    press('start-check')
+    jest.mocked(Haptics.selectionAsync).mockClear()
+    press('correction-yes')
+    expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1)
   })
 
   it('moves to the next cell after Yes and removes the ring', () => {
@@ -540,8 +558,10 @@ describe('CorrectionScreen play gate', () => {
     expect(playOn()).toBe(true)
     expect(style('play').opacity).toBeUndefined()
     expect(screen.queryByTestId('play-blocked')).toBeNull()
+    jest.mocked(Haptics.impactAsync).mockClear()
     press('play')
     expect(onPlay).toHaveBeenCalledTimes(1)
+    expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium)
     const start = onPlay.mock.calls[0]![0]
     expect(start.level).toBe('hard')
     expect(start.puzzle.givens).toEqual(puzzle.givens)

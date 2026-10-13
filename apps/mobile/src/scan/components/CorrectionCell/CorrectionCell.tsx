@@ -1,13 +1,23 @@
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeOut, useAnimatedStyle } from 'react-native-reanimated'
+import Animated, {
+  FadeIn,
+  FadeOut,
+  ReduceMotion,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { CorrectionRing } from '@/scan/components/CorrectionRing'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { correctionCellLabel } from '@/scan/utils/correctionEdit.utils'
+import { easeOut } from '@/utils/motion.utils'
 import { digitAlpha, shiftOf, type SweepTiming } from '@/scan/utils/transition.utils'
 import {
   CONFIDENCE_INSET,
   DIGIT_RISE,
+  PICK_FADE_MS,
   SOLUTION_FADE_MS,
   SOLUTION_HIDE_MS,
   SOLUTION_STAGGER_MS,
@@ -55,13 +65,26 @@ export const CorrectionCell = memo(function CorrectionCell({
 }: CorrectionCellProps) {
   const row = Math.floor(n / 9)
   const col = n % 9
+  // A digit that the player picks fades in and rises like the sweep. The first render and the transition do not play it.
+  const systemReduceMotion = useReducedMotion()
+  const pick = useSharedValue(1)
+  const shownDigit = useRef(look.digit)
+  useEffect(() => {
+    if (look.digit === shownDigit.current) return
+    shownDigit.current = look.digit
+    if (clock) return
+    pick.set(0)
+    pick.set(withTiming(1, { duration: PICK_FADE_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }))
+  }, [look.digit, clock, pick])
   const digitStyle = useAnimatedStyle(() => {
     let alpha = 1
     if (clock) {
       const t = clock.value
       alpha = digitAlpha(t, row, col, reduceMotion, shiftOf(t, resultsAt, reduceMotion))
     }
-    return { opacity: alpha, transform: [{ translateY: (1 - alpha) * DIGIT_RISE }] }
+    const picked = pick.get()
+    const rise = (1 - alpha) * DIGIT_RISE + (systemReduceMotion ? 0 : (1 - picked) * DIGIT_RISE)
+    return { opacity: alpha * picked, transform: [{ translateY: rise }] }
   })
   const disabled = onSelect == null
   const entry = look.style === 'entry'

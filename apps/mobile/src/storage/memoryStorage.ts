@@ -21,6 +21,12 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
   // Newest first.
   const entries: HistoryEntry[] = []
 
+  const load = () => {
+    if (progress === null) return null
+    const { id, level, source, seed, saved } = progress
+    return { id, level, source, seed, game: fromSavedGame(saved) }
+  }
+
   const puzzles: PuzzleRepository = {
     async start({ level, source, seed = null, game }) {
       if (resultOf(game) !== null) throw new RangeError(`A ${game.status} game cannot start`)
@@ -28,9 +34,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       return { id: progress.id, level, source, seed, game }
     },
     async current() {
-      if (progress === null) return null
-      const { id, level, source, seed, saved } = progress
-      return { id, level, source, seed, game: fromSavedGame(saved) }
+      return load()
     },
     async save(id, game) {
       if (progress === null || progress.id !== id) return
@@ -55,6 +59,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
     async discard(id) {
       if (progress?.id === id) progress = null
     },
+    peek: load,
   }
 
   const history: HistoryRepository = {

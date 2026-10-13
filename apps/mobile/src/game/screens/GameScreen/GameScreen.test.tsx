@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import * as Haptics from 'expo-haptics'
+import { LOST_HOLD_MS } from '@/game/components/GameOverSheet/GameOverSheet.constants'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { GameScreen } from './GameScreen'
 
@@ -18,7 +19,17 @@ const renderScreen = ({ onBack = jest.fn(), onNewPuzzle, onRetry }: Callbacks = 
 const loseOnCell2 = () => {
   fireEvent.press(screen.getByTestId('cell-2'))
   for (const digit of [5, 6, 7]) fireEvent.press(screen.getByLabelText(`Enter ${digit}`))
+  act(() => jest.advanceTimersByTime(LOST_HOLD_MS))
 }
+
+// The sheet sinks before it calls back. The end of that animation reaches the JS thread through a microtask.
+const pressOnSheet = (name: string) => {
+  fireEvent.press(screen.getByRole('button', { name }))
+  act(() => jest.runAllTicks())
+}
+
+beforeEach(() => jest.useFakeTimers())
+afterEach(() => jest.useRealTimers())
 
 // The scrim is modal for VoiceOver, so the queries skip the screen under it unless they ask for hidden elements.
 const hidden = { includeHiddenElements: true }
@@ -66,7 +77,6 @@ it('hides the screen under the game over sheet from VoiceOver', () => {
 afterEach(() => jest.useRealTimers())
 
 it('stops the timer when the game is lost', () => {
-  jest.useFakeTimers()
   renderScreen()
   act(() => jest.advanceTimersByTime(2000))
   loseOnCell2()
@@ -87,16 +97,16 @@ it('shows the game over sheet at the third mistake, and not before', () => {
   for (const digit of [5, 6]) fireEvent.press(screen.getByLabelText(`Enter ${digit}`))
   expect(screen.queryByText('Out of mistakes')).toBeNull()
   fireEvent.press(screen.getByLabelText('Enter 7'))
+  act(() => jest.advanceTimersByTime(LOST_HOLD_MS))
   expect(screen.getByText('Out of mistakes')).toBeTruthy()
   expect(screen.getByLabelText('3 of 3 mistakes', hidden)).toBeTruthy()
 })
 
 it('starts the same puzzle again from Try this puzzle again', () => {
-  jest.useFakeTimers()
   renderScreen()
   act(() => jest.advanceTimersByTime(2000))
   loseOnCell2()
-  fireEvent.press(screen.getByRole('button', { name: 'Try this puzzle again' }))
+  pressOnSheet('Try this puzzle again')
   expect(screen.queryByText('Out of mistakes')).toBeNull()
   expect(screen.getByLabelText('0 of 3 mistakes')).toBeTruthy()
   expect(screen.getByText('00:00')).toBeTruthy()
@@ -113,7 +123,7 @@ it('leaves the retry to the caller when it gives onRetry', () => {
   const onRetry = jest.fn()
   renderScreen({ onRetry })
   loseOnCell2()
-  fireEvent.press(screen.getByRole('button', { name: 'Try this puzzle again' }))
+  pressOnSheet('Try this puzzle again')
   expect(onRetry).toHaveBeenCalledTimes(1)
   expect(screen.getByText('Out of mistakes')).toBeTruthy()
 })
@@ -130,6 +140,6 @@ it('asks for a new puzzle from New puzzle on the sheet', () => {
   const onNewPuzzle = jest.fn()
   renderScreen({ onNewPuzzle })
   loseOnCell2()
-  fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
+  pressOnSheet('New puzzle')
   expect(onNewPuzzle).toHaveBeenCalledTimes(1)
 })

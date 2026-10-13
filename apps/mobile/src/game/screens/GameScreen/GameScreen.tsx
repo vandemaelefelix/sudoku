@@ -9,6 +9,7 @@ import { Header } from '@/game/components/Header'
 import { Keypad } from '@/game/components/Keypad'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { Tools } from '@/game/components/Tools'
+import type { LeaveCallback } from '@/game/hooks/useLeave'
 import type { FinishInfo } from '@/game/utils/finish.utils'
 import { styles } from './GameScreen.styles'
 
@@ -17,12 +18,12 @@ type GameScreenProps = {
   /** The header back button and Back to home on the game over sheet. */
   onBack(): void
   /** New puzzle on the game over sheet. Without it, the sheet has no New puzzle button. */
-  onNewPuzzle?: (() => void) | undefined
+  onNewPuzzle?: LeaveCallback | undefined
   /**
    * Try this puzzle again on the game over sheet. Give the screen a new React key in this callback. The retried game is then a new game.
    * Without it, the screen restarts the puzzle itself.
    */
-  onRetry?: (() => void) | undefined
+  onRetry?: LeaveCallback | undefined
   /** The level, source, seed and best time of the game. Without it, the screen shows no finish card. */
   finish?: FinishInfo | undefined
 }

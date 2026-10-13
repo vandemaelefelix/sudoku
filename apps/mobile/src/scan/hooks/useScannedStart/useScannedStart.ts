@@ -20,10 +20,14 @@ export function useScannedStart(): (start: ScannedStart) => Promise<void> {
       busy.current = true
       try {
         // Ask from the stored state at the tap, as the home screen does.
-        if ((await puzzles.current()) !== null && !(await confirmReplace())) return
-        await puzzles.start({ level, source: 'scanned', game: createGame(puzzle) })
+        const known = puzzles.peek()
+        const current = known === undefined ? await puzzles.current() : known
+        if (current !== null && !(await confirmReplace())) return
+        // The game screen opens on peek() while the write runs, as on the home screen.
+        const starting = puzzles.start({ level, source: 'scanned', game: createGame(puzzle) })
         // Replace, not push: Back on the game goes home, and the camera stops with the scan route.
         router.replace('/game')
+        await starting
       } catch (error) {
         devWarn('storage', `The scanned game does not start: ${errorMessage(error)}`)
       } finally {

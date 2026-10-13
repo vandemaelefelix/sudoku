@@ -104,6 +104,10 @@ status: DRAFT
 | Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
 | Puzzle number | The seed of a generated puzzle, shown on the finish card: "Puzzle 412 077". The app draws seeds below 1 000 000 (ADR-011) |
 | Pulse | The short wave of colour that spreads from a cell when a correct number completes a row, column, box, number or the whole grid. A haptic tap goes with it |
+| Haptic | One named vibration of the app: tick, tap, thud, soft, success, warning or error. Each name has one meaning. `src/utils/haptics.utils.ts` lists them |
+| Haptics switch | The Settings switch that turns every haptic of the app on or off. It is on by default |
+| Cell mark | The short effect of the last move on one cell: a shake for a mistake, a glow for a hint and a flash for an undo |
+| Lost hold | The 400 ms between the third mistake and the rise of the game over sheet, so the player sees the shake and the third dot |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
 | Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level |

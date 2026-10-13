@@ -19,12 +19,10 @@ export const styles = StyleSheet.create((theme) => ({
     borderWidth: theme.shape.stroke.dot,
     borderColor: theme.colors.line,
   },
-  dotDone: { backgroundColor: theme.colors.text, borderColor: theme.colors.text },
-  dotNow: {
-    backgroundColor: theme.colors.warning,
-    borderColor: theme.colors.warning,
-    transform: [{ scale: 1.3 }],
-  },
+  // A layer covers the border of the dot too, so a filled dot keeps the size of an open dot.
+  dotLayer: { position: 'absolute', inset: -theme.shape.stroke.dot, borderRadius: DOT / 2 },
+  dotDone: { backgroundColor: theme.colors.text },
+  dotNow: { backgroundColor: theme.colors.warning },
   head: { flexDirection: 'row', alignItems: 'center', gap: theme.space.lg },
   text: { flex: 1, minWidth: 0, gap: theme.space.xs },
   question: { ...roleText(theme.type.question), color: theme.colors.text },

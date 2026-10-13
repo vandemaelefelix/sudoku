@@ -76,8 +76,30 @@ These are screen moments, not core statuses. The core has the game statuses play
 A correct number can complete a row, a column, a box, all nine of a number, or the whole
 grid. Each completion sends a **pulse**: a wave of the accent colour that starts at the cell
 and spreads out, cell by cell. A digit in the wave grows for a moment. A key that becomes
-complete plays a short animation, then fades. A haptic tap goes with each pulse. With Reduce
+complete plays a short animation, then fades. A haptic goes with each pulse. With Reduce
 Motion on, the screen shows no pulse animation.
+
+### Feedback
+
+Each move gives one **haptic** and, for some moves, one **cell mark**. One move never gives
+two haptics, so two taps never blur together.
+
+| Move | Haptic | Cell mark |
+| --- | --- | --- |
+| A correct number | tap | none |
+| A note, a clear, an erase or an undo | tick | a flash on the cell that an undo restored |
+| A hint | soft | a glow on the hinted cell |
+| A wrong number | warning, or error for the third mistake | the digit shakes, and a mistake dot fills |
+| A completed row, column, box or number | thud | the pulse |
+| The solved grid | success | the solve pulse |
+
+- The Notes tool, pause and resume also give a haptic: tick for Notes, soft for pause and resume.
+- The finish card gives a thud when it lands with a "New best" badge.
+- After the third mistake, the **lost hold** keeps the board in view for 400 ms. Then the game over
+  sheet rises.
+- Try this puzzle again and New puzzle let the sheet or the card sink before the new game shows.
+- With Reduce Motion on, the fades stay. The slides, the scales and the shake go.
+- The **haptics switch** in Settings turns every haptic off. Reduce Motion does not stop haptics.
 
 ### Finish card
 
@@ -102,11 +124,12 @@ The card shows after the solve pulse. With Reduce Motion on, it shows at once.
 
 ### Settings
 
-The Settings screen has two groups:
+The Settings screen has three groups:
 
 - **Assists:** a switch for each of the four assists, with a small live preview of the grid.
-- **Theme:** a choice of System, Daylight or Midnight. System follows the setting of the
+- **Theme:** a choice of System or one of the themes. System follows the setting of the
   iPhone (ADR-015).
+- **Feedback:** the haptics switch.
 
 ### Rules that the screen shows, not owns
 

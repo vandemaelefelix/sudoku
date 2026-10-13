@@ -103,6 +103,7 @@ Result, capture (2026-10-11, issue #6):
 - The dot field stayed at 118 to 120 fps (ProMotion) during every `recognise()`.
 - The re-detection found the corners near the locked quad on every scan: offsets of 0.5 to 3.4 % of the grid side (limit 4 %). The photo and the video frames have the same field of view at 16:9. The capture needs no crop mapping.
 - The capture plays a light haptic and no shutter sound (developer, 2026-10-11).
+  Later (issue #89): the automatic lock-on plays a medium haptic and the shutter a light one. The haptics switch in Settings turns both off.
 - Open: memory over many scans (about 33 to 40 MB of pixels per scan). Open: whether the developer feels the haptic and hears no sound.
 - Digit accuracy on real paper depends on the model, not on the capture. It is out of scope for issue #6.
 

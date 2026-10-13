@@ -3,6 +3,7 @@ import type { SharedValue } from 'react-native-reanimated'
 import type { Photo } from 'react-native-vision-camera'
 import type { Quad } from '@/utils/geometry.utils'
 import { type Homography, quadToQuad } from '@/utils/homography.utils'
+import { easeOut } from '@/utils/motion.utils'
 import { TRANSITION_END, REDUCED_END, GATE_PHOTO, GATE_RESULTS } from '@/scan/constants/transition.constants'
 
 // Seconds from lock-on. docs/architecture/00-concepts/scan-pipeline.md describes the stages.
@@ -36,6 +37,12 @@ function ramp(t: number, from: number, to: number): number {
   return x * x * (3 - 2 * x)
 }
 
+/** ramp eases in and out, for a layer that moves on the screen. rampOut eases out, for a layer that enters. */
+function rampOut(t: number, from: number, to: number): number {
+  'worklet'
+  return easeOut(Math.min(1, Math.max(0, (t - from) / (to - from))))
+}
+
 /**
  * Seconds by which the digit sweep, the rings, the panel and the end move later, so that no digit pops in.
  * resultsAt: the clock value when the results gate opened, or below 0 while it is closed; then t stands in for it.
@@ -54,12 +61,12 @@ export function transitionEnd(reduceMotion: boolean, shift = 0): number {
 
 export function ringsAt(t: number, reduceMotion: boolean, shift = 0): number {
   'worklet'
-  return reduceMotion ? ramp(t, 0, REDUCED_END) : ramp(t - shift, 1.2, 1.4)
+  return reduceMotion ? ramp(t, 0, REDUCED_END) : rampOut(t - shift, 1.2, 1.4)
 }
 
 export function panelAt(t: number, reduceMotion: boolean, shift = 0): number {
   'worklet'
-  return reduceMotion ? ramp(t, 0, REDUCED_END) : ramp(t - shift, 1.2, 1.5)
+  return reduceMotion ? ramp(t, 0, REDUCED_END) : rampOut(t - shift, 1.2, 1.5)
 }
 
 export function transitionAt(t: number, reduceMotion: boolean, shift = 0): Channels {

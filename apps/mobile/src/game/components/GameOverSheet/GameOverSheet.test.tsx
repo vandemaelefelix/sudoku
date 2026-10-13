@@ -5,6 +5,7 @@ import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { daylight } from '@/theme/themes/daylight'
+import { LOST_HOLD_MS } from './GameOverSheet.constants'
 import { GameOverSheet } from './GameOverSheet'
 
 const reanimated = jest.requireMock<typeof import('react-native-reanimated')>('react-native-reanimated')
@@ -32,7 +33,10 @@ function renderSheet({ onRetry = jest.fn(), onNewPuzzle, onHome = jest.fn() }: C
   )
 }
 
-const lose = () => fireEvent.press(screen.getByTestId('lose'))
+const lose = () => {
+  fireEvent.press(screen.getByTestId('lose'))
+  act(() => jest.advanceTimersByTime(LOST_HOLD_MS))
+}
 
 beforeEach(() => jest.useFakeTimers())
 
@@ -45,6 +49,62 @@ afterEach(() => {
 it('renders nothing while the game is playing', () => {
   renderSheet()
   expect(screen.queryByTestId('game-over')).toBeNull()
+})
+
+it('holds a moment after the last mistake before the sheet rises', () => {
+  renderSheet()
+  fireEvent.press(screen.getByTestId('lose'))
+  expect(screen.queryByTestId('game-over')).toBeNull()
+  act(() => jest.advanceTimersByTime(LOST_HOLD_MS))
+  expect(screen.getByTestId('game-over')).toBeTruthy()
+})
+
+it('sinks the sheet over the short duration before it calls Retry', () => {
+  const onRetry = jest.fn()
+  renderSheet({ onRetry })
+  lose()
+  const timing = jest.spyOn(reanimated, 'withTiming')
+  fireEvent.press(screen.getByText('Try this puzzle again'))
+  expect(timing).toHaveBeenCalledWith(
+    1,
+    expect.objectContaining({ duration: daylight.motion.short }),
+    expect.any(Function),
+  )
+  act(() => jest.runAllTicks())
+  expect(onRetry).toHaveBeenCalledTimes(1)
+  fireEvent.press(screen.getByText('Try this puzzle again'))
+  act(() => jest.runAllTicks())
+  expect(onRetry).toHaveBeenCalledTimes(1)
+})
+
+it('rises again and takes taps again when a restart fails', async () => {
+  const onRetry = jest.fn(async () => undefined)
+  renderSheet({ onRetry })
+  lose()
+  fireEvent.press(screen.getByText('Try this puzzle again'))
+  // The sink ends through a microtask, and the failed restart settles in a second one.
+  await act(async () => {
+    jest.runAllTicks()
+    await Promise.resolve()
+  })
+  expect(onRetry).toHaveBeenCalledTimes(1)
+  fireEvent.press(screen.getByText('Try this puzzle again'))
+  await act(async () => {
+    jest.runAllTicks()
+    await Promise.resolve()
+  })
+  expect(onRetry).toHaveBeenCalledTimes(2)
+})
+
+it('ignores Back to home while the sheet sinks for a retry', () => {
+  const onRetry = jest.fn()
+  const onHome = jest.fn()
+  jest.spyOn(reanimated, 'withTiming').mockImplementation((toValue) => toValue)
+  renderSheet({ onRetry, onHome })
+  lose()
+  fireEvent.press(screen.getByText('Try this puzzle again'))
+  fireEvent.press(screen.getByText('Back to home'))
+  expect(onHome).not.toHaveBeenCalled()
 })
 
 it('says the game is over, with the right cells and the time played', () => {
@@ -105,18 +165,18 @@ it('moves the VoiceOver focus to the title at once with Reduce Motion', () => {
   expect(focus).toHaveBeenCalledWith(theTitle, 'focus')
 })
 
-it('calls back from each button', () => {
-  const onRetry = jest.fn()
-  const onNewPuzzle = jest.fn()
-  const onHome = jest.fn()
-  renderSheet({ onRetry, onNewPuzzle, onHome })
+it.each([
+  ['Try this puzzle again', 'onRetry'],
+  ['New puzzle', 'onNewPuzzle'],
+  ['Back to home', 'onHome'],
+] as const)('calls back from %s', (name, callback) => {
+  const callbacks = { onRetry: jest.fn(), onNewPuzzle: jest.fn(), onHome: jest.fn() }
+  renderSheet(callbacks)
   lose()
-  fireEvent.press(screen.getByRole('button', { name: 'Try this puzzle again' }))
-  fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
-  fireEvent.press(screen.getByRole('button', { name: 'Back to home' }))
-  expect(onRetry).toHaveBeenCalledTimes(1)
-  expect(onNewPuzzle).toHaveBeenCalledTimes(1)
-  expect(onHome).toHaveBeenCalledTimes(1)
+  fireEvent.press(screen.getByRole('button', { name }))
+  // Retry and New puzzle call back at the end of the sink, which reaches the JS thread through a microtask.
+  act(() => jest.runAllTicks())
+  expect(callbacks[callback]).toHaveBeenCalledTimes(1)
 })
 
 it('gives every button a touch target of 44 pt or more', () => {
@@ -151,8 +211,8 @@ it('shows the sheet at once with Reduce Motion', () => {
   renderSheet()
   lose()
   expect(timing).not.toHaveBeenCalled()
+  expect(StyleSheet.flatten(screen.getByTestId('game-over').props.style)).toMatchObject({ opacity: 1 })
   expect(StyleSheet.flatten(screen.getByTestId('game-over-sheet').props.style)).toMatchObject({
-    opacity: 1,
     transform: [{ translateY: 0 }],
   })
 })

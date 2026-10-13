@@ -11,6 +11,7 @@ export const styles = StyleSheet.create((theme) => ({
   },
   raised: { backgroundColor: theme.components.key.fill, boxShadow: theme.elevation.key },
   digit: { ...roleFont(theme.type.key), fontSize: theme.type.key.scale, color: theme.components.key.digit },
+  noteLayer: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' },
   noteDigit: {
     ...roleFont(theme.type.keyNote),
     fontSize: theme.type.keyNote.scale,

@@ -18,7 +18,7 @@ export function useGameSession(start: NewGame): GameSession {
   const [session, dispatch] = useReducer(reduceSession, start, startSession)
   const onElapsed = useCallback((elapsedMs: number) => dispatch({ type: 'tick', elapsedMs }), [])
   const flushClock = useGameClock(session.game.status === 'playing', onElapsed)
-  useMoveHaptics(session.move)
+  useMoveHaptics(session.move, session.game.status === 'lost')
   // The flush comes first: the core ignores a tick once the game is paused.
   const pause = useCallback(() => {
     flushClock()

@@ -7,7 +7,7 @@ import { AssistPreview } from './AssistPreview'
 
 // VoiceOver skips the preview, so every query must include hidden elements.
 const hidden = { includeHiddenElements: true }
-const styleOf = (cell: number) => StyleSheet.flatten(screen.getByTestId(`cell-${cell}`, hidden).props.style)
+const styleOf = (cell: number) => StyleSheet.flatten(screen.getByTestId(`cell-${cell}-fill`, hidden).props.style)
 const colours = daylight.components.cell
 
 // The store is one module value for the whole test file, so each test turns every assist on again.
@@ -37,7 +37,9 @@ it('follows a switch at once', async () => {
   await act(async () => result.current.setAssist('box', false))
   expect(styleOf(31).backgroundColor).toBe(colours.fill)
   await act(async () => result.current.setAssist('selectedCell', false))
-  expect(styleOf(39)).toMatchObject({ borderColor: colours.ring })
+  expect(StyleSheet.flatten(screen.getByTestId('cell-39', hidden).props.style)).toMatchObject({
+    borderColor: colours.ring,
+  })
 })
 
 it('cannot be tapped and VoiceOver skips it', () => {

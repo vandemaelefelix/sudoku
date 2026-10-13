@@ -16,7 +16,6 @@ export const styles = StyleSheet.create((theme) => ({
     borderWidth: theme.components.button.outlineWidth,
     borderColor: theme.components.button.outline,
   },
-  disabled: { opacity: theme.opacity.disabled },
   primaryText: { ...roleText(theme.type.button), color: theme.components.button.onPrimary },
   secondText: { ...roleText(theme.type.button), color: theme.colors.text },
 }))
