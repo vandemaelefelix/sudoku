@@ -80,20 +80,36 @@ it('starts live on the camera', () => {
   expect(mockMounts).toHaveLength(1)
 })
 
-it('shows the static correction screen after the transition', () => {
+/** Renders the flow at the end of a transition with an ok result, and finishes it. */
+function finishTransition() {
+  givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result: OK })
   render(<ScanFlow />)
+  const transition = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
+  const shown = screen.getByTestId('correction-screen')
+  const effectRenders = jest.mocked(EffectCanvas).mock.calls.length
   act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
-  expect(screen.queryByTestId('camera-screen')).toBeNull()
-  expect(screen.getByTestId('correction-screen')).toBeTruthy()
+  return { transition, shown, effectRenders }
+}
+
+it('keeps the correction screen of the transition as the static screen, so no new canvas mounts', () => {
+  const { transition, shown } = finishTransition()
+  expect(transition.clock).toBeDefined()
+  expect(screen.getByTestId('correction-screen')).toBe(shown)
   const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
   expect(props.result).toBe(OK)
   expect(props.clock).toBeUndefined()
   expect(props.layout).toEqual(jest.mocked(CameraScreen).mock.calls.at(-1)![0].layout)
 })
 
+it('unmounts the camera layers in the review', () => {
+  const { effectRenders } = finishTransition()
+  expect(jest.mocked(EffectCanvas).mock.calls).toHaveLength(effectRenders)
+  expect(screen.queryByTestId('capture-flash')).toBeNull()
+})
+
 it('goes back live with a new scene on Retake from the review', () => {
-  render(<ScanFlow />)
-  act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
+  finishTransition()
+  givenPhase({ phase: 'live' })
   fireEvent.press(screen.getByTestId('retake'))
   expect(screen.getByTestId('camera-screen')).toBeTruthy()
   expect(mockMounts).toHaveLength(2)
@@ -118,8 +134,7 @@ it('mounts a new camera screen and a new effect canvas on Retake from the transi
 })
 
 it('hands Save of the review to the correction store, and keeps Play, in a development build', () => {
-  render(<ScanFlow />)
-  act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
+  finishTransition()
   const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
   expect(props.onPlay).toBeDefined()
   const looks = [] as CellLook[]

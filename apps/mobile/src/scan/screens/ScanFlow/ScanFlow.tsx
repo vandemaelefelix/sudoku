@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -6,7 +5,6 @@ import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
-import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { correctionLayout, type CellLook } from '@/scan/utils/correction.utils'
 import { saveScanCorrection } from '@/scan/utils/correctionStore'
 
@@ -36,19 +34,19 @@ export function ScanFlow() {
   const review = phase.phase === 'review' ? phase.result : null
   const save = useCallback((looks: readonly CellLook[]) => saveScanCorrection(review, looks), [review])
 
-  if (phase.phase === 'review') {
-    return (
-      <>
-        <StatusBar style={theme.statusBar} />
-        <CorrectionScreen
-          result={phase.result}
-          layout={layout}
-          onRetake={retake}
-          onPlay={play}
-          {...(__DEV__ ? { onSave: save } : {})}
-        />
-      </>
-    )
-  }
-  return <CameraScreen key={scene} layout={layout} onDone={done} onRetake={retake} />
+  const reviewProps = useMemo(
+    () => (review === null ? undefined : { onPlay: play, ...(__DEV__ ? { onSave: save } : {}) }),
+    [review, play, save],
+  )
+
+  // The camera screen keeps its correction screen after the transition: the review shows the same screen, not a new one.
+  return (
+    <CameraScreen
+      key={scene}
+      layout={layout}
+      onDone={done}
+      onRetake={retake}
+      {...(reviewProps ? { review: reviewProps } : {})}
+    />
+  )
 }
