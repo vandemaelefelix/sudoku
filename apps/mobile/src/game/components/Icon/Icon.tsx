@@ -4,7 +4,7 @@ import { ICON_PATHS, STROKE_WIDTH, VIEW_BOX } from './Icon.constants'
 
 export type IconName = keyof typeof ICON_PATHS
 
-export type IconTone = 'text' | 'accent' | 'onAccent'
+export type IconTone = 'text' | 'textMuted' | 'accent' | 'onAccent' | 'warningText'
 
 type IconProps = {
   name: IconName

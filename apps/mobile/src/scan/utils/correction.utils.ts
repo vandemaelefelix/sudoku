@@ -6,40 +6,50 @@ import { PANEL_HEIGHT, REVIEW_CONFIDENCE } from '@/scan/constants/correction.con
 import type { Theme } from '@/theme/theme.types'
 
 export type Insets = { top: number; bottom: number; left: number; right: number }
-export type CorrectionLayout = { title: Rect; grid: Rect; panel: Rect }
+/** bar: Retake, the title and the dev menu. title: the large title block under the bar, 0 high in a theme without one. panel: the bottom panel at its smallest, down to the bottom edge. */
+export type CorrectionLayout = { bar: Rect; title: Rect; grid: Rect; panel: Rect }
 
 const MARGIN = 16
-const TITLE_TOP = 8
-const TITLE_HEIGHT = 52
+const BAR_HEIGHT = 48
 const GAP = 12
-const PANEL_SIDE = 10
+const GRID_TOP_GAP = 28
 
-/** Points, not rounded. The transition and the correction screen both read this, so the last frame matches the screen. */
-export function correctionLayout(view: ViewSize, insets: Insets): CorrectionLayout {
+/**
+ * Points, not rounded. The transition and the correction screen both read this, so the last frame matches the screen.
+ * titleBlock: the theme token size.titleBlock. panelEdge: the theme token size.panelEdge, which adds to the panel height.
+ */
+export function correctionLayout(view: ViewSize, insets: Insets, titleBlock = 0, panelEdge = 0): CorrectionLayout {
   'worklet'
   const contentLeft = insets.left + MARGIN
   const contentWidth = view.width - 2 * MARGIN - insets.left - insets.right
-  const title: Rect = { x: contentLeft, y: insets.top + TITLE_TOP, width: contentWidth, height: TITLE_HEIGHT }
-  const panelTop = view.height - insets.bottom - GAP - PANEL_HEIGHT
-  const panel: Rect = {
-    x: PANEL_SIDE + insets.left,
-    y: panelTop,
-    width: view.width - 2 * PANEL_SIDE - insets.left - insets.right,
-    height: PANEL_HEIGHT,
-  }
-  const gridTop = title.y + title.height + GAP
+  const bar: Rect = { x: contentLeft, y: insets.top, width: contentWidth, height: BAR_HEIGHT }
+  const title: Rect = { x: contentLeft, y: bar.y + bar.height, width: contentWidth, height: titleBlock }
+  const panelHeight = PANEL_HEIGHT + panelEdge + insets.bottom
+  const panelTop = view.height - panelHeight
+  const panel: Rect = { x: 0, y: panelTop, width: view.width, height: panelHeight }
+  const gridTop = title.y + title.height + (titleBlock > 0 ? GAP : GRID_TOP_GAP)
   const side = Math.max(0, Math.min(contentWidth, panelTop - GAP - gridTop))
   const grid: Rect = { x: contentLeft + (contentWidth - side) / 2, y: gridTop, width: side, height: side }
-  return { title, grid, panel }
+  return { bar, title, grid, panel }
 }
 
-export type CellLook = { digit: string; style: 'given' | 'entry' | 'empty'; uncertain: boolean }
+/** given and entry hold a digit. notes: the paper cell has pencil marks, the game loads it empty. */
+export type CellStyle = 'given' | 'entry' | 'notes' | 'empty'
 
-export function cellLook(cell: CellResult): CellLook {
+export type CellLook = { digit: string; style: CellStyle; uncertain: boolean }
+
+/** threshold: the ring threshold. A cell below it, or with a digit and a kind that do not fit, gets a ring. */
+export function cellLook(cell: CellResult, threshold: number = REVIEW_CONFIDENCE): CellLook {
   'worklet'
-  const uncertain = cell.confidence < REVIEW_CONFIDENCE || !cell.validPair
+  const uncertain = cell.confidence < threshold || !cell.validPair
+  if (cell.kind === 'notes' && cell.digit === 0) return { digit: '', style: 'notes', uncertain }
   if (cell.digit === 0 || cell.kind === 'none' || cell.kind === 'notes') return { digit: '', style: 'empty', uncertain }
   return { digit: String(cell.digit), style: cell.kind === 'printed' ? 'given' : 'entry', uncertain }
+}
+
+/** True for a look that shows a digit. */
+export function hasDigit(look: CellLook): boolean {
+  return look.style === 'given' || look.style === 'entry'
 }
 
 export function cellsToCheck(looks: readonly CellLook[]): number {

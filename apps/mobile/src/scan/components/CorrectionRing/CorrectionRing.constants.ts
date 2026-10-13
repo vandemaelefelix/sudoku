@@ -1,1 +1,2 @@
-export const RING_INSET = 1.5
+/** Points between the cell edge and its ring. */
+export const RING_INSET = 3

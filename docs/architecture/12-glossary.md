@@ -79,15 +79,22 @@ status: DRAFT
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
 | Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
 | Unsure | The kind label for a cell that the developer cannot decide. Training ignores it |
-| Theme | One typed object with every token the app needs. Daylight and Midnight ship first (ADR-015) |
+| Theme | One typed object with every token the app needs. The app ships four: Daylight, Midnight, Op-art and Progressive (ADR-015, ADR-021) |
 | Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |
 | Semantic token | A token named by its meaning, such as `colors.text` or `type.given`. Most components read these (ADR-015) |
 | Component token | A token that belongs to one component, such as `components.cell.selected` (ADR-015) |
-| Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. None exists in v1 (ADR-015) |
-| Type role | A semantic text style for one kind of digit: `type.given`, `type.entry` or `type.note` (ADR-015) |
+| Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. The slots are `panelEdge`, `titleMark` and `cardEdge` (ADR-015, ADR-021) |
+| Type role | A semantic text style for one kind of text: the digits `type.given`, `type.entry` and `type.note`, and `display`, `question`, `status` and `eyebrow` (ADR-015, ADR-021) |
 | Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
 | Daylight | The light theme (ADR-015) |
 | Midnight | The dark theme (ADR-015) |
+| Op-art | A light theme: a white page, one cobalt colour and wavy parallel lines (ADR-021) |
+| Progressive | A light theme: a beige page, black only, a black disc and vertical stripes (ADR-021) |
+| Theme registry | `src/theme/themes/registry.ts`: the list `THEMES` of every theme with its label. The theme type, the Settings picker, the theme preference, the Unistyles registration and the contrast test read it (ADR-021) |
+| Decoration registry | `src/theme/decorations/registry.ts`: the theme decoration of each theme for each slot, outside the Unistyles theme object (ADR-021) |
+| Panel edge | The `panelEdge` slot: a band on the top edge of the correction panel. Op-art draws 4 wavy cobalt lines. Progressive draws vertical stripes (ADR-021) |
+| Card edge | The `cardEdge` slot: a band across the top of the finish card. Op-art draws 4 wavy white lines (ADR-021) |
+| Title mark | The `titleMark` slot: a mark next to the screen title. Progressive draws a black disc (ADR-021) |
 | Game | One puzzle in progress: the givens, the solution, the entries, the start entries, the notes, the mistakes, the hints used and the time played. `@sudoku/core` holds its rules |
 | Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
@@ -103,7 +110,7 @@ status: DRAFT
 | Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
 | Undo step | The entries and notes before one move. Undo restores the last undo step. It does not restore the mistake count |
 | Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
-| Theme preference | The player's choice in Settings: System, Daylight or Midnight. System follows the light or dark setting of the iPhone |
+| Theme preference | The player's choice in Settings: System, Daylight, Midnight, Op-art or Progressive. System follows the light or dark setting of the iPhone (ADR-021) |
 | Adaptive theme | The theme that follows the iPhone setting: Daylight in light mode, Midnight in dark mode |
 | Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
 | Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
@@ -122,6 +129,12 @@ status: DRAFT
 | Save queue | The queue in front of `PuzzleRepository.save`. One write runs at a time, and only the newest game waits |
 | Pause layer | The layer over the grid while a game is paused. It says "Paused" and "Tap to resume". It hides every digit and note |
 | Correction pad | The edit pad on the correction screen: a Given and Entry switch, the keys 1 to 9 and Clear |
+| Correction panel | The panel below the grid on the correction screen. It has three states: the summary state, the check state and the pick state |
+| Summary state | The correction panel state that shows the count of cells to check, the level, Play this puzzle and Solve |
+| Check state | The correction panel state for one uncertain cell: its crop from the photo and "Is this a N?" with No and Yes |
+| Pick state | The correction panel state with the keypad 1–9 and Empty. It opens after No, or after a tap on a sure cell |
+| Ring threshold | The confidence below which a cell gets a dashed ring on the correction screen: `REVIEW_CONFIDENCE`, 0.8 |
+| Dev menu | The sheet of the correction screen in a development build. It shows the debug views, the kind labels, the ring threshold slider and Save corrections |
 | Given conflict | Two givens with the same digit in one row, column or box. The correction screen marks both |
 | Assist preview | The small live grid on the settings screen. It shows the assists that are on |
 | Display grid | The real game grid in read-only mode: no taps, no haptics, no pulse. The settings preview uses it, and later the finish card |

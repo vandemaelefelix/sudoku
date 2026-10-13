@@ -9,7 +9,8 @@ export const KIND_CLASSES = ['none', 'printed', 'handwritten', 'notes'] as const
 export type Kind = (typeof KIND_CLASSES)[number]
 
 /** digit: 0 means empty. confidence: the lower top probability of the two heads, 0..1. */
-export type CellResult = { digit: number; kind: Kind; confidence: number; validPair: boolean }
+/** second: the digit class with the second highest score, the guess the correction screen marks when the first is wrong. */
+export type CellResult = { digit: number; kind: Kind; confidence: number; validPair: boolean; second: number }
 
 export type OutputIndex = { digit: number; kind: number }
 
@@ -68,6 +69,16 @@ function argmax(values: Float32Array, start: number, width: number): number {
   return best
 }
 
+/** The index of the highest value in the row other than `skip`. */
+function argmaxExcept(values: Float32Array, start: number, width: number, skip: number): number {
+  'worklet'
+  let best = skip === 0 ? 1 : 0
+  for (let c = 0; c < width; c++) {
+    if (c !== skip && (values[start + c] ?? 0) > (values[start + best] ?? 0)) best = c
+  }
+  return best
+}
+
 export function decodeOutputs(raw: RawOutputs): CellResult[] {
   'worklet'
   const width = KIND_CLASSES.length
@@ -79,7 +90,8 @@ export function decodeOutputs(raw: RawOutputs): CellResult[] {
     if (kind === undefined) throw new RangeError(`kind index ${kindIndex} is out of range`)
     const validPair = digit === 0 ? kind === 'none' || kind === 'notes' : kind === 'printed' || kind === 'handwritten'
     const confidence = Math.min(raw.digit[n * DIGIT_CLASSES + digit] ?? 0, raw.kind[n * width + kindIndex] ?? 0)
-    cells.push({ digit, kind, confidence, validPair })
+    const second = argmaxExcept(raw.digit, n * DIGIT_CLASSES, DIGIT_CLASSES, digit)
+    cells.push({ digit, kind, confidence, validPair, second })
   }
   return cells
 }

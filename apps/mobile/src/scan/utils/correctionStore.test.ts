@@ -16,6 +16,7 @@ const cells = Array.from({ length: 81 }, (_, i) => ({
   kind: 'printed' as const,
   confidence: 0.99,
   validPair: true,
+  second: 1,
 }))
 const quad = [
   { x: 0, y: 0 },
@@ -34,7 +35,7 @@ const result: Ok = {
   photoPath: '/tmp/photo.jpg',
   flatPath: '/tmp/flat.png',
 }
-const looks = cells.map(cellLook)
+const looks = cells.map((cell) => cellLook(cell))
 const { photoPath: _photoPath, ...withoutPhoto } = result
 
 beforeEach(() => jest.clearAllMocks())

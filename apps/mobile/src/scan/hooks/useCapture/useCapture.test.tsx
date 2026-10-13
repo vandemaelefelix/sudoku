@@ -11,7 +11,11 @@ import type { Quad } from '@/utils/geometry.utils'
 jest.mock('@/scan/utils/photoFile', () => ({ saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg') }))
 jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), createScanner: jest.fn() }))
 jest.mock('@/scan/utils/transition.utils', () => ({ photoToSkImage: jest.fn() }))
-jest.mock('@/scan/utils/flatImage.utils', () => ({ saveFlatPng: jest.fn(() => 'file:///tmp/flat.png') }))
+const FLAT_IMAGE = { width: () => 576 }
+jest.mock('@/scan/utils/flatImage.utils', () => ({
+  saveFlatPng: jest.fn(() => 'file:///tmp/flat.png'),
+  flatToSkImage: jest.fn(() => FLAT_IMAGE),
+}))
 
 // A new image per test: the automatic unmount after a test disposes the image of that test a little later.
 let IMAGE = { dispose: jest.fn() } as unknown as SkImage
@@ -56,13 +60,14 @@ beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => undefined)
 })
 
-it('keeps the flattened grid in a file, not in the result', async () => {
+it('keeps the flattened grid as an image and in a file, not as bytes in the result', async () => {
   const { hook } = setup({ ...OK, flat: new Uint8Array(3) } as RecogniseResult)
   await act(async () => hook.result.current.capture(QUAD, FRAME_ASPECT))
   await waitFor(() => expect(hook.result.current.state).toMatchObject({ result: { ok: true } }))
   const state = hook.result.current.state
   if (state.phase !== 'capturing' || state.result?.ok !== true) throw new Error('no ok result')
   expect(state.result.flat).toBeUndefined()
+  expect(state.result.flatImage).toBe(FLAT_IMAGE)
   expect(state.result.flatPath).toBe('file:///tmp/flat.png')
   expect(saveFlatPng).toHaveBeenCalledWith(new Uint8Array(3))
 })

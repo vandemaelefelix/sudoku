@@ -1,30 +1,32 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleFont, roleText } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
-  pad: { gap: theme.space.xs },
-  row: { flexDirection: 'row', gap: theme.space.xs, height: theme.size.touch },
-  kinds: {
-    flex: 1,
-    flexDirection: 'row',
-    padding: theme.space.xs,
-    borderRadius: theme.shape.radius.md,
-    backgroundColor: theme.colors.background,
-  },
-  kind: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: theme.shape.radius.sm },
-  kindOn: { backgroundColor: theme.colors.accent },
-  kindText: { ...roleFont(theme.type.label), fontSize: theme.type.label.scale, color: theme.colors.textMuted },
-  kindTextOn: { ...roleFont(theme.type.label), fontSize: theme.type.label.scale, color: theme.colors.onAccent },
-  disabled: { opacity: theme.opacity.disabled },
-  done: { justifyContent: 'center', paddingHorizontal: theme.space.lg },
-  doneText: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.accent },
+  pad: { gap: 8 },
+  row: { flexDirection: 'row', gap: 8 },
   key: {
     flex: 1,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.shape.radius.md,
-    backgroundColor: theme.colors.background,
+    borderRadius: theme.components.panel.keyRadius,
+    backgroundColor: theme.components.panel.key,
   },
-  keyText: { ...roleFont(theme.type.key), fontSize: theme.type.title.scale, color: theme.colors.text },
-  clearText: { ...roleFont(theme.type.label), fontSize: theme.type.label.scale, color: theme.colors.text },
+  keyCurrent: { backgroundColor: theme.components.button.primary },
+  keyText: { ...roleFont(theme.type.key), fontSize: theme.type.key.scale * 0.85, color: theme.colors.text },
+  keyTextCurrent: { color: theme.components.button.onPrimary },
+  emptyText: { ...roleText(theme.type.label), color: theme.colors.textMuted },
+  hint: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderWidth: theme.shape.stroke.dot,
+    borderStyle: 'dashed',
+    borderColor: theme.components.checkRing.color,
+    borderRadius: theme.components.checkRing.round
+      ? theme.shape.radius.pill
+      : Math.max(0, theme.components.panel.keyRadius - 4),
+  },
 }))

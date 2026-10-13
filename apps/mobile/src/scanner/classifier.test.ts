@@ -73,6 +73,17 @@ describe('checkManifest', () => {
 })
 
 describe('decodeOutputs', () => {
+  it('reads the second guess of the digit head', () => {
+    const digit = rows(10, 4, 0.6)
+    digit[9] = 0.3
+    expect(at(decodeOutputs({ digit, kind: rows(4, 1) }), 0).second).toBe(9)
+  })
+
+  it('never gives the top digit as the second guess, also when the top is 0', () => {
+    const cell = at(decodeOutputs({ digit: rows(10, 0), kind: rows(4, 0) }), 0)
+    expect(cell.second).not.toBe(0)
+  })
+
   it('reads the top class and the lower probability as confidence', () => {
     const cell = at(decodeOutputs({ digit: rows(10, 7, 0.9), kind: rows(4, 2, 0.8) }), 0)
     expect(cell.digit).toBe(7)
