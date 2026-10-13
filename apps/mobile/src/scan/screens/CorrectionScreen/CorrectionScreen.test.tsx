@@ -162,7 +162,8 @@ describe('CorrectionScreen in review', () => {
   it('draws the background and the board', () => {
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
     expect(style('correction-screen').backgroundColor).toBe(daylight.colors.background)
-    expect(screen.getByTestId('correction-board')).toBeTruthy()
+    expect(style('correction-board').opacity).toBe(1)
+    expect(style('correction-lines').opacity).toBe(1)
   })
 
   it('shows the failure and Retake, without digits', () => {
@@ -223,10 +224,11 @@ function slideReaction() {
 }
 
 describe('CorrectionScreen with a clock', () => {
-  it('draws no background and no board', () => {
+  it('draws no background, and mounts the board and the lines hidden, so they have drawn when the transition ends', () => {
     render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
     expect(style('correction-screen').backgroundColor).toBeUndefined()
-    expect(screen.queryByTestId('correction-board')).toBeNull()
+    expect(style('correction-board').opacity).toBe(0)
+    expect(style('correction-lines').opacity).toBe(0)
   })
 
   it('shows everything at the end of the transition', () => {

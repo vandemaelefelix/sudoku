@@ -199,6 +199,9 @@ export function CorrectionScreen({
     }
   }, [grid.width, theme])
   const gridBox = { position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height } as const
+  // The board and the lines mount with the transition and stay hidden under it. A new Skia canvas is blank until a later
+  // display frame, so a canvas that mounted at the end of the transition would blink.
+  const boardBox = [gridBox, { opacity: clock ? 0 : 1 }]
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
   // A failure keeps the results gate closed, so the clock never reaches the panel ramp. The failure panel slides in on its own
@@ -224,11 +227,9 @@ export function CorrectionScreen({
 
   return (
     <View testID="correction-screen" style={[styles.screen, !clock && styles.screenFilled]}>
-      {!clock && (
-        <Canvas testID="correction-board" style={gridBox}>
-          <Picture picture={board} />
-        </Canvas>
-      )}
+      <Canvas testID="correction-board" style={boardBox}>
+        <Picture picture={board} />
+      </Canvas>
       <Animated.View
         pointerEvents={result == null ? 'none' : 'box-none'}
         style={[styles.bar, { left: bar.x, top: bar.y, width: bar.width, height: bar.height }, titleStyle]}
@@ -298,11 +299,9 @@ export function CorrectionScreen({
           reduceMotion={reduceMotion}
         />
       ))}
-      {!clock && (
-        <Canvas testID="correction-lines" pointerEvents="none" style={gridBox}>
-          <Picture picture={lines} />
-        </Canvas>
-      )}
+      <Canvas testID="correction-lines" pointerEvents="none" style={boardBox}>
+        <Picture picture={lines} />
+      </Canvas>
       {result == null && waiting && (
         <Animated.View
           testID="correction-waiting"

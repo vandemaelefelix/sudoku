@@ -26,25 +26,29 @@ import { DEFAULT_INDEX } from '@/scan/effects/registry'
 import { useCapture } from '@/scan/hooks/useCapture'
 import { useCaptureTransition } from '@/scan/hooks/useCaptureTransition'
 import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
-import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
+import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import type { ViewSize } from '@/utils/geometry.utils'
 import { DARK_BAR_DIM, FLASH_PEAK } from './CameraScreen.constants'
 import { styles } from './CameraScreen.styles'
 
 /**
- * The live camera, and from lock-on the capture transition into the correction screen.
+ * The live camera, from lock-on the capture transition, and after it the static correction screen.
  * layout: the correction screen layout that the transition ends on. onDone: called once when the transition ends, with an ok result.
  * onRetake: the parent mounts a new CameraScreen, so the scene, its lock-on latch and the transition start new.
+ * review: set by the parent after onDone. The correction screen of the transition stays mounted and becomes the static screen, so
+ * its Skia canvases have drawn before they show. The camera and the transition layers unmount.
  */
 export function CameraScreen({
   layout,
   onDone,
   onRetake,
+  review,
 }: {
   layout: CorrectionLayout
   onDone: (result: RecogniseResult) => void
   onRetake: () => void
+  review?: Pick<CorrectionProps, 'onPlay' | 'onSave'>
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
@@ -93,16 +97,18 @@ export function CameraScreen({
         viewSize.set({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })
       }}
     >
-      <StatusBar style={darkBar ? theme.statusBar : 'light'} />
+      <StatusBar style={darkBar || review ? theme.statusBar : 'light'} />
       {/* When the photo draws, the camera stops. The photo covers the last preview frame. */}
-      <Camera
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive={isActive && capturing?.image == null}
-        outputs={[frameOutput, photoOutput]}
-        orientationSource="interface"
-      />
-      {capturing != null && (
+      {!review && (
+        <Camera
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isActive && capturing?.image == null}
+          outputs={[frameOutput, photoOutput]}
+          orientationSource="interface"
+        />
+      )}
+      {capturing != null && !review && (
         <TransitionCanvas
           capture={captureFrame}
           view={viewSize}
@@ -112,24 +118,23 @@ export function CameraScreen({
           side={layout.grid.width}
         />
       )}
-      <EffectCanvas
-        outline={outline}
-        view={viewSize}
-        effect={effect}
-        frameQuad={frameQuad}
-        onLock={startCapture}
-        capture={captureFrame}
-        beforeFrame={stepClock}
-      />
+      {!review && (
+        <EffectCanvas
+          outline={outline}
+          view={viewSize}
+          effect={effect}
+          frameQuad={frameQuad}
+          onLock={startCapture}
+          capture={captureFrame}
+          beforeFrame={stepClock}
+        />
+      )}
       {capturing != null ? (
         <CorrectionScreen
           result={capturing.result}
           layout={layout}
           onRetake={onRetake}
-          clock={clock}
-          reduceMotion={crossFade}
-          waiting={waiting}
-          resultsAt={resultsAt}
+          {...(review ?? { clock, reduceMotion: crossFade, waiting, resultsAt })}
         />
       ) : (
         <>
@@ -145,7 +150,7 @@ export function CameraScreen({
           {__DEV__ ? <EffectPicker effect={effect} settings={kvSettings} /> : null}
         </>
       )}
-      {capturing != null && (
+      {capturing != null && !review && (
         <Animated.View testID="capture-flash" pointerEvents="none" style={[styles.flash, flashStyle]} />
       )}
     </View>
