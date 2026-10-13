@@ -1,5 +1,5 @@
 import type { Quad } from '@/utils/geometry.utils'
-import { fitRect, projectGrid, quadInRect } from './inspector.utils'
+import { cornerLabel, fitRect, projectGrid, quadInRect } from './inspector.utils'
 
 const unit: Quad = [
   { x: 0, y: 0 },
@@ -45,5 +45,15 @@ describe('projectGrid', () => {
       { x: 3, y: 0 },
     ]
     expect(projectGrid(flat)).toBeNull()
+  })
+})
+
+describe('cornerLabel', () => {
+  it('gives the corner source and the move from lock-on', () => {
+    expect(cornerLabel('redetected', 0.0523)).toBe('Corners: redetected, 5.2 % from lock-on')
+  })
+
+  it('gives only the source when there was no lock-on', () => {
+    expect(cornerLabel('found', null)).toBe('Corners: found')
   })
 })

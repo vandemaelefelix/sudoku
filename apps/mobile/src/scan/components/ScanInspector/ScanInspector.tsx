@@ -1,10 +1,9 @@
 import { Canvas, Circle, Image as SkiaImage, Line, Rect as SkiaRect, useImage, vec } from '@shopify/react-native-skia'
-import { useEffect, useMemo } from 'react'
 import { Text } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
-import { flatToSkImage, FLAT_SIDE } from '@/scan/utils/flatImage.utils'
-import { fitRect, MODEL_CROP, projectGrid, quadInRect } from '@/scan/utils/inspector.utils'
+import { FLAT_SIDE } from '@/scan/utils/flatImage.utils'
+import { cornerLabel, fitRect, MODEL_CROP, projectGrid, quadInRect } from '@/scan/utils/inspector.utils'
 import type { Quad, Rect } from '@/utils/geometry.utils'
 import { DOT_RADIUS, EDGE_WIDTH, LINE_WIDTH } from './ScanInspector.constants'
 import { styles } from './ScanInspector.styles'
@@ -12,18 +11,18 @@ import type { InspectorView } from '@/scan/utils/inspector.utils'
 
 type OkResult = Extract<RecogniseResult, { ok: true }>
 
+function fileUri(path: string | undefined): string | null {
+  return path == null ? null : `file://${path.replace(/^file:\/\//, '')}`
+}
+
 type Props = { view: Exclude<InspectorView, 'correct'>; result: OkResult; region: Rect }
 
 /** Development view of a scan: what the detection found, how the grid is cut and what the model read. Draws inside `region`. */
 export function ScanInspector({ view, result, region }: Props) {
   const { theme } = useUnistyles()
   const local: Rect = { x: 0, y: 0, width: region.width, height: region.height }
-  const photo = useImage(result.photoPath == null ? null : `file://${result.photoPath.replace(/^file:\/\//, '')}`)
-  const flat = useMemo(
-    () => (view === 'cutout' && result.flat ? flatToSkImage(result.flat) : null),
-    [view, result.flat],
-  )
-  useEffect(() => () => flat?.dispose(), [flat])
+  const photo = useImage(fileUri(result.photoPath))
+  const flat = useImage(view === 'cutout' ? fileUri(result.flatPath) : null)
 
   const canvasStyle = [styles.canvas, { left: region.x, top: region.y, width: region.width, height: region.height }]
 
@@ -102,6 +101,9 @@ export function ScanInspector({ view, result, region }: Props) {
           <Circle key={`${point.x},${point.y}`} cx={point.x} cy={point.y} r={DOT_RADIUS} color={theme.colors.danger} />
         ))}
       </Canvas>
+      <Text testID="inspector-corners" style={[styles.badge, { left: region.x + box.x, top: region.y + box.y }]}>
+        {cornerLabel(result.corners, result.cornerOffset)}
+      </Text>
       {grid?.centres.map((centre, n) => {
         const cell = result.cells[n]
         if (cell == null || cell.digit === 0) return null

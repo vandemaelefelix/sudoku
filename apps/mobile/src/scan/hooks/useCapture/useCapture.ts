@@ -6,6 +6,7 @@ import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
 import { createScanner, type RecogniseResult, type Scanner } from '@/scanner'
 import { sameAspect, uprightAspect } from '@/scan/utils/preview.utils'
+import { saveFlatPng } from '@/scan/utils/flatImage.utils'
 import { saveUprightPhoto } from '@/scan/utils/photoFile'
 import { photoToSkImage } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
@@ -35,6 +36,24 @@ export function formatScanLog(photoMs: number, totalMs: number, result: Recognis
     `[scan] photo ${photoMs} ms, image ${t.imageMs} ms, detect ${t.detectMs} ms (${result.corners}${offset}), ` +
     `flatten ${t.flattenMs} ms, classify ${t.classifyMs} ms, total ${totalMs} ms`
   )
+}
+
+type OkResult = Extract<RecogniseResult, { ok: true }>
+
+/**
+ * The flattened grid never enters React state. A development build took 2.6 s to render a result with this 1 MB array on an
+ * iPhone 17 Pro, and the transition waited for it. Development builds keep the grid in a file for the correction screen.
+ */
+function withDevFiles(result: OkResult, photoPath: string | null): OkResult {
+  const { flat, ...rest } = result
+  if (!__DEV__ || photoPath == null) return rest
+  let flatPath: string | undefined
+  try {
+    flatPath = flat == null ? undefined : saveFlatPng(flat)
+  } catch (error) {
+    devWarn('scan', `the flattened grid is not saved: ${errorMessage(error)}`)
+  }
+  return flatPath == null ? { ...rest, photoPath } : { ...rest, photoPath, flatPath }
 }
 
 /**
@@ -142,7 +161,7 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
           scanner.recognise(photo, locked).then(
             async (result) => {
               const photoPath = await saved
-              settle(photoMs, result.ok && photoPath != null ? { ...result, photoPath } : result)
+              settle(photoMs, result.ok ? withDevFiles(result, photoPath) : result)
             },
             (error) => settle(photoMs, { ok: false, reason: errorMessage(error) }),
           ),

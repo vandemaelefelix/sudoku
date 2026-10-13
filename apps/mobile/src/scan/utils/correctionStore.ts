@@ -3,9 +3,12 @@ import type { RecogniseResult } from '@/scanner'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 import type { CellLook } from './correction.utils'
 import { buildScanRecord } from './correctionLog.utils'
-import { flatToPng } from './flatImage.utils'
 
 const FOLDER = 'scan-corrections'
+
+function fileUri(path: string): string {
+  return path.startsWith('file:') ? path : `file://${path}`
+}
 
 /**
  * Saves a scan with the corrections of the player as Documents/scan-corrections/<time>/: photo.jpg (upright), flat.png (the grid the
@@ -19,13 +22,8 @@ export async function saveScanCorrection(result: RecogniseResult | null, looks: 
     const record = buildScanRecord(result.cells, looks, result.quad, savedAt)
     const folder = new Directory(Paths.document, FOLDER, savedAt.replace(/[:.]/g, '-'))
     folder.create({ intermediates: true })
-    const photo = result.photoPath.startsWith('file:') ? result.photoPath : `file://${result.photoPath}`
-    new File(photo).copy(new File(folder, 'photo.jpg'))
-    if (result.flat) {
-      const flat = new File(folder, 'flat.png')
-      flat.create()
-      flat.write(flatToPng(result.flat))
-    }
+    new File(fileUri(result.photoPath)).copy(new File(folder, 'photo.jpg'))
+    if (result.flatPath != null) new File(fileUri(result.flatPath)).copy(new File(folder, 'flat.png'))
     const json = new File(folder, 'scan.json')
     json.create()
     json.write(JSON.stringify(record, null, 2))
