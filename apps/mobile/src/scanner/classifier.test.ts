@@ -11,7 +11,7 @@ import { CELLS, INPUT_LENGTH } from './preprocess'
 const MANIFEST: ModelManifest = {
   model: 'cell-classifier',
   version: '1.0.0',
-  contract: '1.0',
+  contract: '2.0',
   file: 'cell-classifier.tflite',
   outputs: { digit: 0, kind: 1 },
 }
@@ -55,12 +55,13 @@ function fakeModel(digit: Float32Array, kind: Float32Array, order: 'digit-first'
 }
 
 describe('checkManifest', () => {
-  it('accepts contract 1.x', () => {
-    expect(checkManifest({ ...MANIFEST, contract: '1.3' })).toEqual({ ...MANIFEST, contract: '1.3' })
+  it('accepts contract 2.x', () => {
+    expect(checkManifest({ ...MANIFEST, contract: '2.3' })).toEqual({ ...MANIFEST, contract: '2.3' })
   })
 
   it.each([
-    ['another major', { ...MANIFEST, contract: '2.0' }],
+    ['the old major, which crops the cell', { ...MANIFEST, contract: '1.0' }],
+    ['another major', { ...MANIFEST, contract: '3.0' }],
     ['a malformed version', { ...MANIFEST, contract: 'x' }],
     ['a contract that is not a string', { ...MANIFEST, contract: 1 }],
     ['no outputs', { ...MANIFEST, outputs: undefined }],

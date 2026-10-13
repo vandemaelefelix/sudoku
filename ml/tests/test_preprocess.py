@@ -34,10 +34,10 @@ def test_grayscale_uses_bt601_in_float():
     assert preprocess_cell(cell((255, 0, 0)))[0, 0] == pytest.approx(1 - 0.299, abs=1e-6)
 
 
-def test_border_outside_the_crop_is_ignored():
+def test_the_whole_cell_is_read_including_the_border():
     image = cell(255)
-    image[:6], image[58:], image[:, :6], image[:, 58:] = 0, 0, 0, 0
-    assert preprocess_cell(image).max() == pytest.approx(0.0, abs=1e-6)
+    image[:2] = 0
+    assert preprocess_cell(image)[0].min() == pytest.approx(1.0, abs=1e-6)
 
 
 def test_no_per_cell_normalisation():
@@ -47,7 +47,7 @@ def test_no_per_cell_normalisation():
 def test_matches_opencv_inter_area():
     image = random_cell(1)
     gray = image.astype(np.float32) @ np.array([0.299, 0.587, 0.114], np.float32)
-    ref = cv2.resize(np.ascontiguousarray(gray[6:58, 6:58]), (32, 32), interpolation=cv2.INTER_AREA)
+    ref = cv2.resize(np.ascontiguousarray(gray), (32, 32), interpolation=cv2.INTER_AREA)
     assert np.abs(preprocess_cell(image) - (1 - ref / 255)).max() < 1e-5
 
 
