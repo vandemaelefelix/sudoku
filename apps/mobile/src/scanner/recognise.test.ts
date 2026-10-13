@@ -1,15 +1,16 @@
 import type { TfliteModel } from './classifier'
-import { findGrid } from './findGrid'
+import { findGrid, findGrids } from './findGrid'
 import { downscaleSize, searchRect, toPhotoPixels } from './photoGeometry'
 import { FLAT_SIZE } from './pixels'
-import { CORNER_TOLERANCE, type ImageSource, recognise, SEARCH_GROW } from './recognise'
+import { type ImageSource, recognise, SEARCH_GROW } from './recognise'
 import { warpGrid } from './warp'
 import type { Rect, Quad } from '@/utils/geometry.utils'
 
-jest.mock('./findGrid', () => ({ findGrid: jest.fn() }))
+jest.mock('./findGrid', () => ({ findGrid: jest.fn(), findGrids: jest.fn() }))
 jest.mock('./warp', () => ({ warpGrid: jest.fn() }))
 
 const find = jest.mocked(findGrid)
+const findAll = jest.mocked(findGrids)
 const warp = jest.mocked(warpGrid)
 const OUTPUTS = { digit: 0, kind: 1 }
 
@@ -70,12 +71,33 @@ function inCrop(quad: Quad, rect: Rect): Quad {
   return [map(quad[0]), map(quad[1]), map(quad[2]), map(quad[3])]
 }
 
-function shifted(quad: Quad, dx: number): Quad {
-  return [quad[0], quad[1], { x: quad[2].x + dx, y: quad[2].y }, quad[3]]
+function moved(quad: Quad, dx: number, dy: number): Quad {
+  const move = (p: { x: number; y: number }) => ({ x: p.x + dx, y: p.y + dy })
+  return [move(quad[0]), move(quad[1]), move(quad[2]), move(quad[3])]
+}
+
+const BOX = searchRect(LOCKED, SMALL.width, SMALL.height, SEARCH_GROW)
+
+/** inBox: the grids in the search box, normalised to the photo. whole: the grids in the whole photo. */
+function photoHas(inBox: Quad[], whole: Quad[] = inBox) {
+  findAll.mockImplementation((_pixels, width, height) =>
+    (width === SMALL.width && height === SMALL.height ? whole : inBox.map((quad) => inCrop(quad, BOX))).map((quad) => ({
+      quad,
+      score: 0.5,
+    })),
+  )
+}
+
+function expectQuad(actual: Quad, expected: Quad) {
+  actual.forEach((p, i) => {
+    expect(p.x).toBeCloseTo(at(expected, i).x, 6)
+    expect(p.y).toBeCloseTo(at(expected, i).y, 6)
+  })
 }
 
 beforeEach(() => {
   jest.clearAllMocks()
+  photoHas([LOCKED])
   warp.mockImplementation((_raw, _corners, side) => ({
     buffer: new ArrayBuffer(side * side * 4),
     width: side,
@@ -84,49 +106,68 @@ beforeEach(() => {
   }))
 })
 
-it('uses the re-detected corners when they lie near the locked quad', () => {
-  const near = shifted(LOCKED, 0.01)
-  find.mockReturnValue({ quad: inCrop(near, searchRect(LOCKED, SMALL.width, SMALL.height, SEARCH_GROW)), score: 0.5 })
+it('uses the corners from the photo when the grid lies near the locked quad', () => {
+  const near = moved(LOCKED, 0.01, 0)
+  photoHas([near])
   const result = recognise(photo(), LOCKED, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
   expect(result.corners).toBe('redetected')
-  expect(result.quad[2].x).toBeCloseTo(near[2].x, 6)
-  expect(result.cornerOffset).toBeLessThanOrEqual(CORNER_TOLERANCE)
+  expectQuad(result.quad, near)
+  expect(result.cornerOffset).toBeGreaterThan(0)
   expect(result.cells).toHaveLength(81)
   expect(result.cells[0]).toMatchObject({ digit: 3, kind: 'printed' })
 })
 
-it('searches only the grown box around the locked quad', () => {
-  find.mockReturnValue(null)
+it('uses the corners from the photo, not the locked quad, when the phone moved after lock-on', () => {
+  const after = moved(LOCKED, 0.03, 0.02)
+  photoHas([after])
+  const result = recognise(photo(), LOCKED, model(), OUTPUTS)
+  if (!result.ok) throw new Error(result.reason)
+  expectQuad(result.quad, after)
+  expect(at(warp.mock.calls, 0)[1]).toEqual(toPhotoPixels(result.quad, PHOTO.width, PHOTO.height))
+})
+
+it('searches the grown box around the locked quad first', () => {
   recognise(photo(), LOCKED, model(), OUTPUTS)
-  const rect = searchRect(LOCKED, SMALL.width, SMALL.height, SEARCH_GROW)
-  expect(at(find.mock.calls, 0).slice(1)).toEqual([rect.width, rect.height])
-  expect(at(find.mock.calls, 0)[0]).toHaveLength(rect.width * rect.height * 3)
+  expect(findAll).toHaveBeenCalledTimes(1)
+  expect(at(findAll.mock.calls, 0).slice(1)).toEqual([BOX.width, BOX.height])
+  expect(at(findAll.mock.calls, 0)[0]).toHaveLength(BOX.width * BOX.height * 3)
 })
 
-it('keeps the locked quad when the found corners are too far', () => {
-  const far = shifted(LOCKED, 0.1)
-  find.mockReturnValue({ quad: inCrop(far, searchRect(LOCKED, SMALL.width, SMALL.height, SEARCH_GROW)), score: 0.5 })
+it('searches the whole photo when the grid moved out of the box', () => {
+  const after = moved(LOCKED, 0.12, 0.05)
+  photoHas([], [after])
   const result = recognise(photo(), LOCKED, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
-  expect(result.corners).toBe('locked')
-  expect(result.quad).toEqual(LOCKED)
-  expect(result.cornerOffset).toBeGreaterThan(CORNER_TOLERANCE)
+  expect(at(findAll.mock.calls, 1).slice(1)).toEqual([SMALL.width, SMALL.height])
+  expectQuad(result.quad, after)
 })
 
-it('keeps the locked quad when the search finds nothing', () => {
-  find.mockReturnValue(null)
+it('chooses the grid nearest the locked quad when the photo has several', () => {
+  const other = moved(LOCKED, 0, -0.28)
+  const after = moved(LOCKED, 0.12, 0)
+  photoHas([], [other, after])
   const result = recognise(photo(), LOCKED, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
-  expect(result.corners).toBe('locked')
-  expect(result.cornerOffset).toBeNull()
+  expect(result.corners).toBe('redetected')
+  expectQuad(result.quad, after)
 })
 
-it('flattens the photo from the chosen corners in photo pixels', () => {
-  find.mockReturnValue(null)
+it('fails when the only grid in the photo is another grid', () => {
+  photoHas([], [moved(LOCKED, 0, -0.28)])
+  const result = recognise(photo(), LOCKED, model(), OUTPUTS)
+  expect(result).toEqual({ ok: false, reason: 'no grid in the photo' })
+  expect(warp).not.toHaveBeenCalled()
+})
+
+it('fails when the photo has no grid', () => {
+  photoHas([])
+  expect(recognise(photo(), LOCKED, model(), OUTPUTS)).toEqual({ ok: false, reason: 'no grid in the photo' })
+})
+
+it('flattens the full photo to the flat size', () => {
   recognise(photo(), LOCKED, model(), OUTPUTS)
   expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
-  expect(at(warp.mock.calls, 0)[1]).toEqual(toPhotoPixels(LOCKED, PHOTO.width, PHOTO.height))
   expect(at(warp.mock.calls, 0)[2]).toBe(FLAT_SIZE)
 })
 
@@ -144,13 +185,11 @@ it('fails when there is no quad and no grid in the photo', () => {
 })
 
 it('reads the full pixels upright', () => {
-  find.mockReturnValue(null)
   recognise(photo(), LOCKED, model(), OUTPUTS)
   expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
 })
 
 it('fails with the reason when a step throws, and disposes every image', () => {
-  find.mockReturnValue(null)
   warp.mockImplementation(() => {
     throw new Error('warp failed')
   })
@@ -162,7 +201,6 @@ it('fails with the reason when a step throws, and disposes every image', () => {
 })
 
 it('gives the time of each step', () => {
-  find.mockReturnValue(null)
   const result = recognise(photo(), LOCKED, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
   expect(Object.keys(result.timings).toSorted()).toEqual(['classifyMs', 'detectMs', 'flattenMs', 'imageMs'])

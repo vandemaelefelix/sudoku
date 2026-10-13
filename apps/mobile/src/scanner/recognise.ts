@@ -1,5 +1,5 @@
 import { type CellResult, decodeOutputs, type OutputIndex, runModel, type TfliteModel } from './classifier'
-import { findGrid } from './findGrid'
+import { findGrid, findGrids } from './findGrid'
 import { cornerOffset, downscaleSize, fromCrop, searchRect, toPhotoPixels } from './photoGeometry'
 import { cropRgb, FLAT_SIZE, type RawPixels, sliceCells, toRgb } from './pixels'
 import { preprocessCells } from './preprocess'
@@ -21,8 +21,8 @@ export type ImageSource = {
 /** The part of a VisionCamera Photo that recognise uses. toImage applies the EXIF orientation. */
 export type PhotoSource = { toImage(): ImageSource }
 
-/** redetected: found near the locked quad. locked: the locked quad itself. found: a search of the whole photo, after a shutter press without a grid. */
-export type CornerSource = 'redetected' | 'locked' | 'found'
+/** redetected: the grid in the photo nearest the locked quad. found: the largest grid in the photo, after a shutter press without a grid. */
+export type CornerSource = 'redetected' | 'found'
 
 /** Milliseconds. */
 export type RecogniseTimings = { imageMs: number; detectMs: number; flattenMs: number; classifyMs: number }
@@ -36,35 +36,63 @@ export type RecogniseResult =
       corners: CornerSource
       cornerOffset: number | null
       timings: RecogniseTimings
-      /** The 576 × 576 flattened grid the cells were cut from, RGB. The correction screen shows and saves it in development builds. */
+      /** The 576 × 576 flattened grid the cells were cut from, RGB. useCapture moves it to flatPath and drops it. */
       flat?: Uint8Array
       /** A temporary file with the upright capture photo. useCapture sets it in development builds. */
       photoPath?: string
+      /** A temporary PNG file with the flattened grid. useCapture sets it in development builds. */
+      flatPath?: string
     }
   | { ok: false; reason: string }
 
-/** A re-detected corner farther than this share of the grid side from the locked corner belongs to another grid. */
-export const CORNER_TOLERANCE = 0.04
+/**
+ * A grid in the photo farther than this share of the grid side from the locked quad is another grid. The grids on one page lie
+ * about one side apart, and a hand moves the phone much less between lock-on and the photo.
+ */
+export const MATCH_TOLERANCE = 0.5
 /** The search box around the locked quad grows by this share of its size on each side. */
 export const SEARCH_GROW = 0.1
 
 type Located = { quad: Quad; corners: CornerSource; cornerOffset: number | null }
+type Match = { quad: Quad; offset: number }
 
-/** small: the RGB photo, width × height. quad: the locked quad, normalised, or null. Null when there is no quad and no grid. */
+function nearest(candidates: Quad[], quad: Quad, width: number, height: number): Match | null {
+  'worklet'
+  let best: Match | null = null
+  for (const candidate of candidates) {
+    const offset = cornerOffset(candidate, quad, width, height)
+    if (offset <= MATCH_TOLERANCE && (best == null || offset < best.offset)) best = { quad: candidate, offset }
+  }
+  return best
+}
+
+/**
+ * small: the RGB photo, width × height. quad: the locked quad, normalised, or null. The corners always come from the photo: the
+ * locked quad only chooses the grid, because the phone can move between lock-on and the photo. Null when the photo has no grid.
+ */
 export function locateGrid(small: Uint8Array, width: number, height: number, quad: Quad | null): Located | null {
   'worklet'
   if (quad == null) {
     const found = findGrid(small, width, height)
     return found == null ? null : { quad: found.quad, corners: 'found', cornerOffset: null }
   }
+  // The box search is cheaper, so it comes first. The search of the whole photo finds a grid that moved out of the box.
   const rect = searchRect(quad, width, height, SEARCH_GROW)
-  const found = findGrid(cropRgb(small, width, rect), rect.width, rect.height)
-  if (found == null) return { quad, corners: 'locked', cornerOffset: null }
-  const candidate = fromCrop(found.quad, rect, width, height)
-  const offset = cornerOffset(candidate, quad, width, height)
-  return offset <= CORNER_TOLERANCE
-    ? { quad: candidate, corners: 'redetected', cornerOffset: offset }
-    : { quad, corners: 'locked', cornerOffset: offset }
+  const inBox = findGrids(cropRgb(small, width, rect), rect.width, rect.height)
+  const match =
+    nearest(
+      inBox.map((found) => fromCrop(found.quad, rect, width, height)),
+      quad,
+      width,
+      height,
+    ) ??
+    nearest(
+      findGrids(small, width, height).map((found) => found.quad),
+      quad,
+      width,
+      height,
+    )
+  return match == null ? null : { quad: match.quad, corners: 'redetected', cornerOffset: match.offset }
 }
 
 /** quad: the locked quad, normalised to the upright frame, or null for a shutter press without a grid. Never throws. */
