@@ -1,4 +1,5 @@
 import { AlphaType, ColorType, ImageFormat, Skia, type SkImage } from '@shopify/react-native-skia'
+import { File, Paths } from 'expo-file-system'
 
 export const FLAT_SIDE = 576
 
@@ -37,4 +38,12 @@ export function flatToPng(flat: Uint8Array): Uint8Array {
   } finally {
     image.dispose()
   }
+}
+
+/** Saves the flattened grid as a PNG in the cache folder and returns its file URI. */
+export function saveFlatPng(flat: Uint8Array): string {
+  const file = new File(Paths.cache, `flat-${Date.now()}.png`)
+  file.create()
+  file.write(flatToPng(flat))
+  return file.uri
 }

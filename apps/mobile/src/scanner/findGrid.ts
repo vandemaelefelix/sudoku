@@ -23,10 +23,10 @@ const APPROX_EPSILON = 0.02
 type Releasable = { release(): void }
 
 /**
- * pixels: interleaved RGB, uint8, width × height. Returns the normalised quad and the score of the largest plausible 4-corner contour, or null.
- * Releases every OpenCV object before it returns or throws.
+ * pixels: interleaved RGB, uint8, width × height. Returns the normalised quad and the score of every plausible 4-corner contour, the
+ * largest first. Releases every OpenCV object before it returns or throws.
  */
-export function findGrid(pixels: Uint8Array, width: number, height: number): GridDetection | null {
+export function findGrids(pixels: Uint8Array, width: number, height: number): GridDetection[] {
   'worklet'
   // Garbage collection in the worklet runtime can lag, so each object is released here (ADR-002).
   const owned: Releasable[] = []
@@ -61,6 +61,7 @@ export function findGrid(pixels: Uint8Array, width: number, height: number): Gri
     }
     candidates.sort((a, b) => b.area - a.area)
 
+    const detections: GridDetection[] = []
     for (const { contour } of candidates) {
       const corners = own(PointVector.create())
       OpenCV.approxPolyDP(contour, corners, APPROX_EPSILON * OpenCV.arcLength(contour, true).value, true)
@@ -71,10 +72,16 @@ export function findGrid(pixels: Uint8Array, width: number, height: number): Gri
         points.push({ x: corner.x, y: corner.y })
       }
       const detection = toGridDetection(points, width, height)
-      if (detection != null) return detection
+      if (detection != null) detections.push(detection)
     }
-    return null
+    return detections
   } finally {
     for (const object of owned) object.release()
   }
+}
+
+/** The largest grid that findGrids returns, or null. */
+export function findGrid(pixels: Uint8Array, width: number, height: number): GridDetection | null {
+  'worklet'
+  return findGrids(pixels, width, height)[0] ?? null
 }
