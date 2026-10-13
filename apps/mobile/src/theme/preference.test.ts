@@ -11,10 +11,10 @@ import {
 const runtime = () => ({ setAdaptiveThemes: jest.fn(), setTheme: jest.fn() })
 
 describe('parseThemePreference', () => {
-  it.each(['system', 'daylight', 'midnight'] as const)('keeps %s', (value) => {
+  it.each(['system', 'daylight', 'midnight', 'opart', 'progressive'] as const)('keeps %s', (value) => {
     expect(parseThemePreference(value)).toBe(value)
   })
-  it.each([null, '', 'sepia', 'Daylight'])('falls back to system for %p', (value) => {
+  it.each([null, '', 'sepia', 'Daylight', 'toString', 'light'])('falls back to system for %p', (value) => {
     expect(parseThemePreference(value)).toBe('system')
   })
 })
@@ -26,6 +26,7 @@ describe('startupSettings', () => {
   it('starts in the saved theme, without adaptive themes', () => {
     expect(startupSettings('daylight')).toEqual({ initialTheme: 'light' })
     expect(startupSettings('midnight')).toEqual({ initialTheme: 'dark' })
+    expect(startupSettings('progressive')).toEqual({ initialTheme: 'progressive' })
   })
 })
 
@@ -43,6 +44,11 @@ describe('applyThemePreference', () => {
     rt.setTheme.mockImplementation((name: string) => calls.push(`theme:${name}`))
     applyThemePreference('midnight', rt)
     expect(calls).toEqual(['adaptive:false', 'theme:dark'])
+  })
+  it('sets a new theme under its own name', () => {
+    const rt = runtime()
+    applyThemePreference('opart', rt)
+    expect(rt.setTheme).toHaveBeenCalledWith('opart')
   })
 })
 

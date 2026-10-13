@@ -134,6 +134,7 @@ jest.mock('@shopify/react-native-skia', () => {
     Picture: (props: object) => createElement(View, { testID: 'skia-picture', ...props }),
     Group: ({ children }: { children?: unknown }) => children,
     Path: (props: object) => createElement(View, { testID: 'skia-path', ...props }),
+    Image: (props: object) => createElement(View, { testID: 'skia-image', ...props }),
     createPicture: jest.fn(() => ({})),
     FillType: { Winding: 0, EvenOdd: 1 },
     PaintStyle: { Fill: 0, Stroke: 1 },

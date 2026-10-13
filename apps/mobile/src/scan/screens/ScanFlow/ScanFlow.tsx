@@ -18,8 +18,9 @@ export function ScanFlow() {
   const { width, height } = useWindowDimensions()
   const { top, bottom, left, right } = useSafeAreaInsets()
   const layout = useMemo(
-    () => correctionLayout({ width, height }, { top, bottom, left, right }),
-    [width, height, top, bottom, left, right],
+    () =>
+      correctionLayout({ width, height }, { top, bottom, left, right }, theme.size.titleBlock, theme.size.panelEdge),
+    [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge],
   )
   const play = useScannedStart()
   const [phase, setPhase] = useState<Phase>({ phase: 'live' })
@@ -43,7 +44,8 @@ export function ScanFlow() {
           result={phase.result}
           layout={layout}
           onRetake={retake}
-          {...(__DEV__ ? { onSave: save } : { onPlay: play })}
+          onPlay={play}
+          {...(__DEV__ ? { onSave: save } : {})}
         />
       </>
     )

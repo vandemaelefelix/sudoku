@@ -1,11 +1,25 @@
+import type { CellStyle } from '@/scan/utils/correction.utils'
 import type { PlayBlock } from '@/scan/utils/play.utils'
 
+export const TITLE = 'Check the scan'
+
+/** The font size of a digit as a share of the cell side, for a role at the system scale. */
+export const DIGIT_SHARE = 0.6
+
+/** The panel starts this many panel heights below its place, so the transition slides it in from off screen. */
 export const PANEL_HIDDEN = 1.4
+
+/** Milliseconds and points of the panel swap: the new content fades in and rises SWAP_RISE, as on the design canvas. */
+export const SWAP_MS = 180
+export const SWAP_RISE = 6
+
+/** Milliseconds the panel takes to grow or shrink to new content, such as the keypad. */
+export const PANEL_RESIZE_MS = 220
 
 /** Milliseconds a failure panel needs to slide up. */
 export const FAILURE_SLIDE_MS = 300
 
-/** The panel line for each play block. A given conflict has none: its chip and its marks say it. */
+/** The panel line for each play block. A given conflict has none: its status line and its marks say it. */
 export const PLAY_BLOCK_TEXT: Readonly<Record<PlayBlock, string | null>> = {
   conflict: null,
   none: 'This puzzle has no solution. Check the marked cells.',
@@ -13,10 +27,5 @@ export const PLAY_BLOCK_TEXT: Readonly<Record<PlayBlock, string | null>> = {
   solved: 'This puzzle is already solved.',
 }
 
-/** The label of the Save button, by state. */
-export const SAVE_TEXT = {
-  idle: 'Save corrections',
-  saving: 'Saving…',
-  saved: 'Saved ✓',
-  failed: 'Not saved. Try again',
-} as const
+/** The kind tag of the dev confidence overlay: Printed, Handwritten, Notes, or none for an empty cell. */
+export const KIND_TAG: Readonly<Record<CellStyle, string>> = { given: 'P', entry: 'H', notes: 'N', empty: '' }

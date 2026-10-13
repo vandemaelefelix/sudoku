@@ -1,0 +1,21 @@
+/** Progressive primitive tokens. Only this folder reads them (ADR-015, point 3). */
+export const palette = {
+  beige200: '#e9e3d7',
+  beige100: '#f6f2ea',
+  beige150: '#efe9de',
+  sand300: '#e0d7c6',
+  sand350: '#d9cdb6',
+  sand400: '#d2c9b8',
+  sand500: '#b9ae99',
+  ink950: '#111111',
+  stone600: '#5f584d',
+  blue700: '#2a49a8',
+  ochre600: '#c8781a',
+  ochre800: '#7d4a0a',
+  ochre100: '#f1dfc1',
+  red700: '#a8261b',
+  red100: '#efd2cb',
+  black: '#000000',
+  beigeScrim: 'rgba(233,227,215,0.55)',
+  beigeScrimStrong: 'rgba(233,227,215,0.94)',
+} as const

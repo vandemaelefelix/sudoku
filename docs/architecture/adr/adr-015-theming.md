@@ -11,6 +11,9 @@ status: ACCEPTED
 | Date    | 2026-10-12 |
 | Contact | Felix      |
 
+Amended by [ADR-021](adr-021-four-themes.md): point 2 (four themes, not two) and point 9 (the
+first theme decorations).
+
 ## Context
 
 The app styles its components with React Native `StyleSheet`. `src/theme/colors.ts` has a light

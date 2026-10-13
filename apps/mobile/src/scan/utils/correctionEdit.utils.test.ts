@@ -1,16 +1,24 @@
 import { GRID_CELLS } from '@sudoku/core'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import {
+  answerNo,
+  answerYes,
   cellPlace,
   clearCell,
+  closeCell,
   correctedGrid,
   correctionCellLabel,
-  deselect,
+  editedLooks,
   givenConflicts,
+  nextToCheck,
+  NO_EDITS,
+  panelQuestion,
   selectCell,
   setDigit,
   setKind,
-  startEdits,
+  startCheck,
+  yesLabel,
+  type CorrectionEdits,
 } from './correctionEdit.utils'
 
 const EMPTY: CellLook = { digit: '', style: 'empty', uncertain: false }
@@ -21,67 +29,135 @@ function board(cells: { [n: number]: CellLook } = {}): CellLook[] {
   return Array.from({ length: GRID_CELLS }, (_, n) => cells[n] ?? EMPTY)
 }
 
+// Three cells to check (3, 40 and 70) and one sure given (0).
+const BASE = board({ 0: given(5), 3: given(4, true), 40: entry(7, true), 70: { ...EMPTY, uncertain: true } })
+const looksOf = (edits: CorrectionEdits) => editedLooks(BASE, edits)
+
 describe('selectCell', () => {
-  it('selects a cell, and a second tap on it clears the selection', () => {
-    const edits = selectCell(startEdits(board()), 4)
-    expect(edits.selected).toBe(4)
-    expect(selectCell(edits, 4).selected).toBeNull()
-    expect(selectCell(edits, 5).selected).toBe(5)
+  it('opens a cell to check in the check state', () => {
+    expect(selectCell(BASE, NO_EDITS, 3)).toMatchObject({ selected: 3, picking: false })
   })
 
-  it('deselect clears the selection', () => {
-    expect(deselect(selectCell(startEdits(board()), 4)).selected).toBeNull()
+  it('opens a sure cell on the keypad, because it has nothing to confirm', () => {
+    expect(selectCell(BASE, NO_EDITS, 0)).toMatchObject({ selected: 0, picking: true })
+  })
+
+  it('closes the open cell on a second tap', () => {
+    expect(selectCell(BASE, selectCell(BASE, NO_EDITS, 3), 3)).toMatchObject({ selected: null, picking: false })
+  })
+})
+
+describe('the check flow', () => {
+  it('starts at the first cell to check', () => {
+    expect(startCheck(BASE, NO_EDITS)).toMatchObject({ selected: 3, picking: false })
+  })
+
+  it('moves to the next cell after Yes, and removes the ring', () => {
+    const edits = answerYes(BASE, startCheck(BASE, NO_EDITS))
+    expect(edits.selected).toBe(40)
+    expect(looksOf(edits)[3]).toEqual(given(4))
+  })
+
+  it('shows the keypad after No, then a digit fixes the cell and moves on', () => {
+    const no = answerNo(startCheck(BASE, NO_EDITS))
+    expect(no).toMatchObject({ selected: 3, picking: true })
+    const fixed = setDigit(BASE, no, 9)
+    expect(looksOf(fixed)[3]).toEqual(given(9))
+    expect(fixed).toMatchObject({ selected: 40, picking: false })
+  })
+
+  it('goes back to the summary state after the last cell', () => {
+    let edits = startCheck(BASE, NO_EDITS)
+    for (let step = 0; step < 3; step++) edits = answerYes(BASE, edits)
+    expect(edits).toMatchObject({ selected: null, picking: false })
+    expect(looksOf(edits).some((look) => look.uncertain)).toBe(false)
+  })
+
+  it('wraps to an earlier cell that is still open', () => {
+    const at40 = selectCell(BASE, NO_EDITS, 40)
+    const edits = answerYes(BASE, answerYes(BASE, at40))
+    expect(edits.selected).toBe(3)
+  })
+
+  it('closes at any time and keeps the answers', () => {
+    const edits = closeCell(answerYes(BASE, startCheck(BASE, NO_EDITS)))
+    expect(edits).toMatchObject({ selected: null, picking: false })
+    expect(looksOf(edits)[3]?.uncertain).toBe(false)
+    expect(looksOf(edits)[40]?.uncertain).toBe(true)
+  })
+
+  it('returns to the summary after an edit of a sure cell', () => {
+    const edits = setDigit(BASE, selectCell(BASE, NO_EDITS, 0), 6)
+    expect(edits).toMatchObject({ selected: null, picking: false })
+    expect(looksOf(edits)[0]).toEqual(given(6))
+  })
+})
+
+describe('nextToCheck', () => {
+  it('finds the next ring in reading order, and none when no ring is left', () => {
+    expect(nextToCheck(BASE, 3)).toBe(40)
+    expect(nextToCheck(BASE, 70)).toBe(3)
+    expect(nextToCheck(board(), 0)).toBeNull()
   })
 })
 
 describe('setDigit', () => {
-  it('changes nothing without a selected cell', () => {
-    const edits = startEdits(board())
-    expect(setDigit(edits, 5)).toBe(edits)
+  it('changes nothing without an open cell', () => {
+    expect(setDigit(BASE, NO_EDITS, 4)).toBe(NO_EDITS)
   })
 
   it('makes a digit in an empty cell a given', () => {
-    expect(setDigit(selectCell(startEdits(board()), 0), 5).looks[0]).toEqual(given(5))
+    const edits = setDigit(BASE, selectCell(BASE, NO_EDITS, 70), 2)
+    expect(looksOf(edits)[70]).toEqual(given(2))
   })
 
-  it('keeps the kind of a filled cell and removes its ring', () => {
-    const edits = setDigit(selectCell(startEdits(board({ 3: entry(1, true) })), 3), 7)
-    expect(edits.looks[3]).toEqual(entry(7))
-  })
-
-  it('keeps the selection, so the player can correct again', () => {
-    expect(setDigit(selectCell(startEdits(board()), 0), 5).selected).toBe(0)
+  it('keeps the kind of a filled cell', () => {
+    const edits = setDigit(BASE, answerNo(selectCell(BASE, NO_EDITS, 40)), 1)
+    expect(looksOf(edits)[40]).toEqual(entry(1))
   })
 
   it('does not change the looks it got', () => {
-    const looks = board({ 3: entry(1, true) })
-    setDigit(selectCell(startEdits(looks), 3), 7)
-    expect(looks[3]).toEqual(entry(1, true))
+    const before = JSON.parse(JSON.stringify(BASE))
+    setDigit(BASE, selectCell(BASE, NO_EDITS, 3), 2)
+    expect(BASE).toEqual(before)
   })
 })
 
 describe('clearCell', () => {
   it('empties the cell and removes its ring', () => {
-    const edits = clearCell(selectCell(startEdits(board({ 2: given(9, true) })), 2))
-    expect(edits.looks[2]).toEqual(EMPTY)
+    expect(looksOf(clearCell(BASE, selectCell(BASE, NO_EDITS, 3)))[3]).toEqual(EMPTY)
   })
 })
 
 describe('setKind', () => {
-  it('switches a given to an entry and back', () => {
-    const asEntry = setKind(selectCell(startEdits(board({ 0: given(5) })), 0), 'entry')
-    expect(asEntry.looks[0]).toEqual(entry(5))
-    expect(setKind(asEntry, 'given').looks[0]).toEqual(given(5))
+  it('switches a given to an entry and keeps the cell open', () => {
+    const edits = setKind(BASE, selectCell(BASE, NO_EDITS, 3), 'entry')
+    expect(looksOf(edits)[3]).toEqual(entry(4))
+    expect(edits.selected).toBe(3)
   })
 
-  it('removes the ring also when the kind stays, because the player checked the cell', () => {
-    const edits = setKind(selectCell(startEdits(board({ 0: given(5, true) })), 0), 'given')
-    expect(edits.looks[0]).toEqual(given(5))
+  it('marks notes and clears the digit', () => {
+    expect(looksOf(setKind(BASE, selectCell(BASE, NO_EDITS, 3), 'notes'))[3]).toEqual({ ...EMPTY, style: 'notes' })
   })
 
-  it('changes nothing in an empty cell', () => {
-    const edits = selectCell(startEdits(board({ 0: { ...EMPTY, uncertain: true } })), 0)
-    expect(setKind(edits, 'entry').looks[0]).toEqual({ ...EMPTY, uncertain: true })
+  it('gives no digitless cell the kind given', () => {
+    const open = selectCell(BASE, NO_EDITS, 70)
+    expect(setKind(BASE, open, 'given')).toBe(open)
+  })
+})
+
+describe('panel text', () => {
+  it('asks about the read in the check state', () => {
+    expect(panelQuestion(given(4, true), false)).toBe('Is this a 4?')
+    expect(panelQuestion({ ...EMPTY, uncertain: true }, false)).toBe('Is this empty?')
+    expect(yesLabel(given(4))).toBe('Yes, 4')
+    expect(yesLabel(EMPTY)).toBe('Yes, empty')
+  })
+
+  it('asks for the digit in the pick state', () => {
+    expect(panelQuestion(given(4, true), true)).toBe('What is it?')
+    expect(panelQuestion(given(4), true)).toBe('Change this 4')
+    expect(panelQuestion(EMPTY, true)).toBe('Fill this cell')
   })
 })
 
@@ -107,8 +183,9 @@ describe('givenConflicts', () => {
   })
 
   it('removes the mark when the player switches one given to an entry', () => {
-    const edits = setKind(selectCell(startEdits(board({ 0: given(5), 8: given(5) })), 8), 'entry')
-    expect(givenConflicts(edits.looks).some(Boolean)).toBe(false)
+    const base = board({ 0: given(5), 8: given(5) })
+    const edits = setKind(base, selectCell(base, NO_EDITS, 8), 'entry')
+    expect(givenConflicts(editedLooks(base, edits)).some(Boolean)).toBe(false)
   })
 })
 

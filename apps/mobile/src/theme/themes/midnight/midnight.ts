@@ -32,6 +32,7 @@ const colors: Theme['colors'] = {
 
 export const midnight: Theme = {
   name: 'midnight',
+  label: 'Midnight',
   statusBar: 'light',
   colors,
   type: SHARED_TYPE,
@@ -62,6 +63,23 @@ export const midnight: Theme = {
     switch: { on: colors.accent, off: p.night700, knob: p.white },
     segmented: { track: p.night850, selected: colors.surface },
     // A little stronger than Daylight, as in the design canvas: the accent is lighter on the dark fills.
+    button: {
+      primary: colors.text,
+      onPrimary: p.night950,
+      second: p.night850,
+      outline: p.night850,
+      outlineWidth: 0,
+      radius: 16,
+    },
+    panel: {
+      fill: colors.surface,
+      radius: SHARED_SHAPE.radius.xl,
+      border: colors.line,
+      borderWidth: 1,
+      key: p.night850,
+      keyRadius: 14,
+    },
+    checkRing: { color: colors.warning, round: false },
     pulse: { waveOpacity: 0.32, popScale: 1.3 },
   },
 }

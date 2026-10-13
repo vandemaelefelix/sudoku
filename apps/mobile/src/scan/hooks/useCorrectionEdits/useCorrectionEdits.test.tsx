@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react-native'
 import type { CellResult, RecogniseResult } from '@/scanner'
 import { useCorrectionEdits } from './useCorrectionEdits'
 
-const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true })
+const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
 
 function okResult(over: { [n: number]: Partial<CellResult> } = {}): RecogniseResult {
   const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
@@ -22,18 +22,60 @@ it('has no looks without a result or after a failure', () => {
   expect(renderHook(() => useCorrectionEdits({ ok: false, reason: 'x' })).result.current.looks).toEqual([])
 })
 
-it('sets, switches and clears the selected cell', () => {
+it('sets, switches and clears an open cell', () => {
   const scan = okResult()
   const { result } = renderHook(() => useCorrectionEdits(scan))
   act(() => result.current.actions.select(4))
+  expect(result.current.picking).toBe(true)
   act(() => result.current.actions.setDigit(8))
   expect(result.current.looks[4]).toEqual({ digit: '8', style: 'given', uncertain: false })
+  expect(result.current.selected).toBeNull()
+  act(() => result.current.actions.select(4))
   act(() => result.current.actions.setKind('entry'))
   expect(result.current.looks[4]?.style).toBe('entry')
   act(() => result.current.actions.clear())
   expect(result.current.looks[4]?.style).toBe('empty')
-  act(() => result.current.actions.deselect())
+})
+
+it('runs the check flow: Yes, No and a digit, then the summary', () => {
+  const scan = okResult({ 0: printed(5, 0.2), 9: printed(3, 0.3) })
+  const { result } = renderHook(() => useCorrectionEdits(scan))
+  expect(result.current.flow).toEqual([0, 9])
+  act(() => result.current.actions.startCheck())
+  expect(result.current.selected).toBe(0)
+  act(() => result.current.actions.yes())
+  expect(result.current.selected).toBe(9)
+  act(() => result.current.actions.no())
+  expect(result.current.picking).toBe(true)
+  act(() => result.current.actions.setDigit(8))
+  expect(result.current.looks[9]?.digit).toBe('8')
   expect(result.current.selected).toBeNull()
+  expect(result.current.toCheck).toBe(0)
+})
+
+it('moves the rings with the threshold and keeps the edits', () => {
+  const scan = okResult({ 0: printed(5, 0.85), 1: printed(6, 0.85) })
+  const { result, rerender } = renderHook(
+    ({ threshold }: { threshold: number }) => useCorrectionEdits(scan, threshold),
+    {
+      initialProps: { threshold: 0.8 },
+    },
+  )
+  expect(result.current.toCheck).toBe(0)
+  act(() => result.current.actions.select(1))
+  act(() => result.current.actions.setDigit(7))
+  rerender({ threshold: 0.9 })
+  expect(result.current.toCheck).toBe(1)
+  expect(result.current.looks[0]?.uncertain).toBe(true)
+  expect(result.current.looks[1]?.digit).toBe('7')
+})
+
+it('keeps the same looks when a cell opens, so no cell re-renders', () => {
+  const scan = okResult()
+  const { result } = renderHook(() => useCorrectionEdits(scan))
+  const before = result.current.looks
+  act(() => result.current.actions.select(3))
+  expect(result.current.looks).toBe(before)
 })
 
 it('follows the count of cells to check', () => {
