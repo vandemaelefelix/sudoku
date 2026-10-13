@@ -708,7 +708,15 @@ async function renderPhoto() {
   $("wrap").onclick = clickCorner;
   if (corners) {
     // Not wrapped in run: the callers already hold the busy guard, and run would drop the call.
-    await refreshPreview();
+    // The detected corners can be a bow-tie. A thrown error here would block the whole queue.
+    try {
+      await refreshPreview();
+    } catch (error) {
+      corners = null;
+      $("usable").textContent = `The detected corners are not valid (${error.message}). ` +
+        "Click the 4 corners: top left, top right, bottom right, bottom left.";
+      drawQuad();
+    }
   } else {
     $("usable").textContent = "No grid found. Click the 4 corners: top left, top right, bottom right, bottom left.";
   }
