@@ -1,16 +1,16 @@
 {
   "model": "cell-classifier",
-  "version": "1.0.0",
-  "contract": "1.0",
+  "version": "2.0.0",
+  "contract": "2.0",
   "file": "cell-classifier.tflite",
   "outputs": {
     "digit": 0,
     "kind": 1
   },
-  "run": "20261012-000755-cell-classifier",
+  "run": "20261013-140341-cell-classifier",
   "metrics": {
-    "digitAccuracy": 0.991531,
-    "ece": 0.002562
+    "digitAccuracy": 0.994397,
+    "ece": 0.002641
   },
-  "installedAt": "2026-10-12"
+  "installedAt": "2026-10-13"
 }
