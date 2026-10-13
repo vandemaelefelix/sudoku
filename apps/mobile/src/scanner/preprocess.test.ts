@@ -22,10 +22,10 @@ function readCellRgb(file: string): Uint8Array {
   return rgb
 }
 
-// The straightforward dense maths: every output sums over all 52 sources.
+// The straightforward dense maths: every output sums over all 64 sources.
 function denseReference(cells: Uint8Array): Float32Array {
-  const crop = 52
-  const start = 6
+  const crop = 64
+  const start = 0
   const scale = crop / INPUT_SIZE
   const w = new Float64Array(INPUT_SIZE * crop)
   for (let i = 0; i < INPUT_SIZE; i++) {
