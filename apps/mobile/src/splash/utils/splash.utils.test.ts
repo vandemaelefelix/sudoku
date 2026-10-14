@@ -1,39 +1,26 @@
-import { styles as menuStyles } from '@/home/components/HomeMenu/HomeMenu.styles'
-import { daylight } from '@/theme/themes/daylight'
 import {
   EXIT_END_MS,
-  GLIDE_MS,
-  GLIDE_START_MS,
   GLOW_MS,
-  GROUND_FADE_END_MS,
-  GROUND_FADE_START_MS,
-  HANDOFF_AT_MS,
-  HANDOFF_MS,
   HOLD_MS,
   INTRO_END_MS,
   LETTER_RISE_BY,
   LETTER_RISE_MS,
   LETTER_STEP_MS,
+  REVEAL_BAND,
+  REVEAL_LAG_MS,
+  WORD_FADE_MS,
+  WORD_FADE_START_MS,
+  WORD_RISE_BY,
 } from '@/splash/constants/splash.constants'
-import {
-  cellJitter,
-  glide,
-  glow,
-  groundOpacity,
-  letterRise,
-  splashGrid,
-  titleOrigin,
-  wordOpacity,
-} from './splash.utils'
+import { cellJitter, glow, groundEdge, letterRise, splashDigit, splashGrid, wordFade } from './splash.utils'
 
 describe('timing', () => {
   it('ends the intro when the last letter is at rest', () => {
     expect(INTRO_END_MS).toBe(925)
   })
 
-  it('hands off after the glide and ends after the hand-off', () => {
-    expect(GLIDE_START_MS + GLIDE_MS).toBeLessThan(HANDOFF_AT_MS)
-    expect(HANDOFF_AT_MS + HANDOFF_MS).toBeLessThanOrEqual(EXIT_END_MS)
+  it('ends the word fade before the exit ends', () => {
+    expect(WORD_FADE_START_MS + WORD_FADE_MS).toBeLessThanOrEqual(EXIT_END_MS)
   })
 })
 
@@ -86,13 +73,13 @@ describe('splashGrid', () => {
     const bottom = cells.filter((cell) => cell.j === 10).map((cell) => cell.delayMs)
     const top = cells.filter((cell) => cell.j === -10).map((cell) => cell.delayMs)
     expect(Math.max(...bottom)).toBeLessThan(120)
-    expect(Math.min(...top)).toBeGreaterThanOrEqual(600)
-    expect(Math.max(...top)).toBeLessThan(720)
+    expect(Math.min(...top)).toBeGreaterThanOrEqual(420)
+    expect(Math.max(...top)).toBeLessThan(540)
   })
 
   it('gives the centre cell a fixed delay', () => {
     const centre = splashGrid(390, 844).cells.find((cell) => cell.i === 0 && cell.j === 0)
-    expect(centre?.delayMs).toBeCloseTo(30 * 10 + 120 * 0.6472863, 3)
+    expect(centre?.delayMs).toBeCloseTo(21 * 10 + 120 * 0.6472863, 3)
   })
 
   it('ends every cell before the exit ends, on every size', () => {
@@ -103,24 +90,6 @@ describe('splashGrid', () => {
     ] as const) {
       const last = Math.max(...splashGrid(width, height).cells.map((cell) => cell.delayMs))
       expect(last + GLOW_MS).toBeLessThan(EXIT_END_MS)
-    }
-  })
-
-  it('clears every cell under the title before the hand-off, on every size', () => {
-    for (const [width, height, insetTop] of [
-      [375, 667, 20],
-      [390, 844, 59],
-      [430, 932, 59],
-    ] as const) {
-      const { size, cells } = splashGrid(width, height)
-      const titleTop = insetTop + 32
-      const titleBottom = titleTop + 34
-      const under = cells.filter((cell) => {
-        const centre = height / 2 + cell.j * size
-        return centre + size / 2 > titleTop && centre - size / 2 < titleBottom
-      })
-      expect(under.length).toBeGreaterThan(0)
-      expect(Math.max(...under.map((cell) => cell.delayMs + GLOW_MS))).toBeLessThan(HANDOFF_AT_MS)
     }
   })
 })
@@ -164,37 +133,69 @@ describe('letterRise', () => {
   })
 })
 
-describe('glide, groundOpacity and wordOpacity', () => {
-  it('holds the word in the middle until the glide starts and at the title after it ends', () => {
-    expect(glide(0)).toBe(0)
-    expect(glide(GLIDE_START_MS)).toBe(0)
-    expect(glide(GLIDE_START_MS + GLIDE_MS / 2)).toBeCloseTo(0.5, 12)
-    expect(glide(GLIDE_START_MS + GLIDE_MS)).toBe(1)
-    expect(glide(EXIT_END_MS)).toBe(1)
+describe('wordFade', () => {
+  it('holds the word at rest until the fade starts and gone after it ends', () => {
+    expect(wordFade(WORD_FADE_START_MS)).toEqual({ opacity: 1, translateY: -0 })
+    expect(wordFade(WORD_FADE_START_MS + WORD_FADE_MS)).toEqual({ opacity: 0, translateY: -WORD_RISE_BY })
   })
 
-  it('fades the ground from 100 ms to 800 ms', () => {
-    expect(groundOpacity(0)).toBe(1)
-    expect(groundOpacity(GROUND_FADE_START_MS)).toBe(1)
-    expect(groundOpacity((GROUND_FADE_START_MS + GROUND_FADE_END_MS) / 2)).toBeCloseTo(0.5, 12)
-    expect(groundOpacity(GROUND_FADE_END_MS)).toBe(0)
-  })
-
-  it('fades the word out in the 100 ms of the hand-off', () => {
-    expect(wordOpacity(HANDOFF_AT_MS)).toBe(1)
-    expect(wordOpacity(HANDOFF_AT_MS + HANDOFF_MS / 2)).toBeCloseTo(0.5, 12)
-    expect(wordOpacity(HANDOFF_AT_MS + HANDOFF_MS)).toBe(0)
+  it('is half faded and half risen in the middle', () => {
+    const middle = wordFade(WORD_FADE_START_MS + WORD_FADE_MS / 2)
+    expect(middle.opacity).toBeCloseTo(0.5, 12)
+    expect(middle.translateY).toBeCloseTo(-WORD_RISE_BY / 2, 12)
   })
 })
 
-describe('titleOrigin', () => {
-  it('puts the title at the left space and below the top inset', () => {
-    expect(titleOrigin(daylight.space, 59)).toEqual({ x: 16, y: 59 + 32 })
+describe('groundEdge', () => {
+  it('starts under the window and waits for the lag', () => {
+    expect(groundEdge(0, 844, 43.3)).toBeGreaterThan(844)
+    expect(groundEdge(REVEAL_LAG_MS, 844, 43.3)).toBe(groundEdge(0, 844, 43.3))
   })
 
-  it('matches the place of the title in the home menu', () => {
-    // The Unistyles mock reports zero insets.
-    const origin = titleOrigin(daylight.space, 0)
-    expect(menuStyles.screen).toMatchObject({ paddingTop: origin.y, paddingHorizontal: origin.x })
+  it('has cleared the whole window, band included, before the exit ends, on every size', () => {
+    for (const [width, height] of [
+      [375, 667],
+      [390, 844],
+      [430, 932],
+    ] as const) {
+      expect(groundEdge(EXIT_END_MS, height, width / 9) + REVEAL_BAND).toBeLessThanOrEqual(0)
+    }
+  })
+})
+
+describe('splashDigit', () => {
+  it('gives the same digit for the same cell, from 1 to 9 or none', () => {
+    for (let j = -12; j <= 12; j++) {
+      for (let i = -4; i <= 4; i++) {
+        const digit = splashDigit(i, j)
+        expect(digit).toBe(splashDigit(i, j))
+        expect(digit ?? 1).toBeGreaterThanOrEqual(1)
+        expect(digit ?? 9).toBeLessThanOrEqual(9)
+      }
+    }
+  })
+
+  it('shows a digit in about half of the cells, so the grid looks like a puzzle', () => {
+    let shown = 0
+    let total = 0
+    for (let j = -10; j <= 10; j++) {
+      for (let i = -4; i <= 4; i++) {
+        total++
+        if (splashDigit(i, j) != null) shown++
+      }
+    }
+    expect(shown / total).toBeGreaterThan(0.3)
+    expect(shown / total).toBeLessThan(0.6)
+  })
+
+  it('never repeats a digit in a row of 9 cells', () => {
+    for (let j = -10; j <= 10; j++) {
+      const digits: number[] = []
+      for (let i = -4; i <= 4; i++) {
+        const digit = splashDigit(i, j)
+        if (digit != null) digits.push(digit)
+      }
+      expect(new Set(digits).size).toBe(digits.length)
+    }
   })
 })

@@ -1,21 +1,20 @@
 import {
-  GLIDE_MS,
-  GLIDE_START_MS,
+  DIGIT_SHARE,
   GLOW_MS,
   GLOW_PEAK_AT,
   GRID_COLUMNS,
-  GROUND_FADE_END_MS,
-  GROUND_FADE_START_MS,
-  HANDOFF_AT_MS,
-  HANDOFF_MS,
   HOLD_MS,
   JITTER_MS,
   LETTER_RISE_BY,
   LETTER_RISE_MS,
   LETTER_STEP_MS,
+  REVEAL_BAND,
+  REVEAL_LAG_MS,
   ROW_STEP_MS,
+  WORD_FADE_MS,
+  WORD_FADE_START_MS,
+  WORD_RISE_BY,
 } from '@/splash/constants/splash.constants'
-import type { Theme } from '@/theme/theme.types'
 import { easeInOut, easeOut } from '@/utils/motion.utils'
 
 /** 0..1: how far ms is from `from` to `to`. */
@@ -56,6 +55,18 @@ export function splashGrid(width: number, height: number): SplashGrid {
   return { size, cells }
 }
 
+/**
+ * The digit of a cell, 1 to 9, or null for an empty cell. The digits follow a valid sudoku pattern, so no row,
+ * column or box of the grid repeats a digit. About DIGIT_SHARE of the cells show one, like the givens of a puzzle.
+ */
+export function splashDigit(i: number, j: number): number | null {
+  'worklet'
+  if (cellJitter(i + 11, j - 5) >= DIGIT_SHARE) return null
+  const row = ((j % 9) + 9) % 9
+  const col = i + Math.floor(GRID_COLUMNS / 2)
+  return ((col + 3 * (row % 3) + Math.floor(row / 3)) % 9) + 1
+}
+
 /** 0..1: how much a cell glows, sinceMs after its start. It rises to a peak and falls to 0. The shape of the finish pulse. */
 export function glow(sinceMs: number): number {
   'worklet'
@@ -73,25 +84,18 @@ export function letterRise(introMs: number, index: number): { opacity: number; t
   return { opacity: t, translateY: (1 - t) * LETTER_RISE_BY }
 }
 
-/** 0..1: the glide of the word from the middle of the window to the title. */
-export function glide(exitMs: number): number {
+/** The opacity and the offset in points of the word in the exit. It rises and fades out. */
+export function wordFade(exitMs: number): { opacity: number; translateY: number } {
   'worklet'
-  return easeInOut(ramp(exitMs, GLIDE_START_MS, GLIDE_START_MS + GLIDE_MS))
+  const t = easeInOut(ramp(exitMs, WORD_FADE_START_MS, WORD_FADE_START_MS + WORD_FADE_MS))
+  return { opacity: 1 - t, translateY: -WORD_RISE_BY * t }
 }
 
-/** 1 down to 0: the opacity of the splash ground. */
-export function groundOpacity(exitMs: number): number {
+/**
+ * The y of the top of the gradient edge of the ground. The ground is solid above it and gone REVEAL_BAND points below it.
+ * The edge starts under the window and rises as fast as the wave, after REVEAL_LAG_MS.
+ */
+export function groundEdge(exitMs: number, height: number, cellSize: number): number {
   'worklet'
-  return 1 - easeInOut(ramp(exitMs, GROUND_FADE_START_MS, GROUND_FADE_END_MS))
-}
-
-/** 1 down to 0: the opacity of the word in the hand-off. */
-export function wordOpacity(exitMs: number): number {
-  'worklet'
-  return 1 - ramp(exitMs, HANDOFF_AT_MS, HANDOFF_AT_MS + HANDOFF_MS)
-}
-
-/** The top left corner of the home title. HomeMenu places the title here. A test keeps the two the same. */
-export function titleOrigin(space: Theme['space'], insetsTop: number): { x: number; y: number } {
-  return { x: space.lg, y: insetsTop + space.xxl }
+  return height + REVEAL_BAND * 0.2 - Math.max(0, exitMs - REVEAL_LAG_MS) * (cellSize / ROW_STEP_MS)
 }

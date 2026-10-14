@@ -22,15 +22,15 @@ The overlay then plays the animation "Soft wave, softer".
 | Part | Time | What the player sees |
 | --- | --- | --- |
 | Hold | 0 to 250 ms | The plain ground |
-| Letters | 250 to 925 ms | The six letters of "Sudoku" rise in, 45 ms apart, in the title font of the theme |
-| Wave | exit 0 to about 1320 ms | A wave of aligned cells rises from the bottom row to the top row. A cell glows for 600 ms and then clears. The start of each cell is up to 120 ms off its row |
-| Glide | exit 150 to 900 ms | The word glides up and shrinks to half its size, onto the title of the home screen. Its colour changes to the title colour of the theme |
-| Ground | exit 100 to 800 ms | The ground fades and shows the home screen |
-| Hand-off | exit 1350 to 1450 ms | The word fades out. The real title is under it, at the same place |
+| Letters | 250 to 925 ms | The six letters of "Sudoku" rise in, 45 ms apart, in the title font of the theme, at twice the title size |
+| Wave | exit 0 to about 940 ms | A wave of aligned cells rises from the bottom row to the top row. A cell shows for 396 ms and then clears. The start of each cell is up to 120 ms off its row. About 29 % of the cells show a faint digit |
+| Ground | exit 246 to about 950 ms | The ground clears with a gradient edge, 500 points high, that rises with the wave and trails it. The home shows below the edge |
+| Word | exit 0 to 600 ms | The word rises 40 points and fades out. It stays in the middle of the window |
 
-The **intro** is the hold and the letters. It runs at once. The **exit** is the wave, the glide, the
-ground fade and the hand-off. It starts when the intro is done and the home screen is ready. It also
+The **intro** is the hold and the letters. It runs at once. The **exit** is the wave, the ground and the word fade. It starts when the intro is done and the home screen is ready. It also
 starts after 3 seconds if no screen is ready. The overlay passes every touch to the screen below.
+
+The digits follow a valid sudoku pattern.
 
 The cells are the cells of the game grid: 9 columns across the width of the window. A cell has the
 tint of the finish pulse and the pale cell lines. It has no box lines.
@@ -41,7 +41,7 @@ stateDiagram-v2
     Native --> Intro: overlay draws its first frame, native splash hides
     Intro --> Exit: intro done and home ready
     Intro --> Exit: 3 s passed
-    Exit --> [*]: hand-off done, overlay removed
+    Exit --> [*]: exit done, overlay removed
     Native --> [*]: Reduce Motion on, home ready
 ```
 
