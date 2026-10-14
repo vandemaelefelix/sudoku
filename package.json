@@ -10,7 +10,9 @@
     "boundaries": "depcruise apps/mobile/index.ts apps/mobile/devChecks.ts apps/mobile/src packages/sudoku-core/src --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "dependency-cruiser": "18.5.0",
+    "opentype.js": "1.3.4",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0"
   },

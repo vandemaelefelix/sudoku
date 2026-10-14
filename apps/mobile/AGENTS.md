@@ -17,6 +17,9 @@ React Native API:
 | --- | --- |
 | Add a dependency | For a package in Expo's bundled list, run `pnpm exec expo install <package>`. It picks the version that fits the SDK. For any other native package, run `pnpm add <package>@<version> --save-exact`. Pin the version, because a native module can break with an SDK upgrade |
 | Start the dev server | `just app` |
+| Build the development variant on a device | `just ios-dev <UDID>`. The app is "Sudoku Dev" with a DEV ribbon (ADR-022) |
+| Build the production variant on a device | `just ios-release <UDID>`. The app is "Sudoku", a Release build (ADR-022) |
+| Render the app icons | `just icons`. Change the design in `scripts/icons/geometry.mjs`, not in the PNGs |
 | Check the Expo setup | `pnpm dlx expo-doctor` |
 | Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |
 
