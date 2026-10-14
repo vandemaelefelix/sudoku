@@ -69,7 +69,10 @@ export function iconSvg({ palette, layers, nine, scale = 1, ribbon = null }) {
   }
   if (layers.includes('nine')) content.push(`<path d="${nine}" fill="${p.digit}"/>`)
   const ground = layers.includes('ground') ? `<rect width="100" height="100" fill="${p.ground}"/>` : ''
-  const body = scale === 1 ? content.join('') : `<g transform="translate(50 50) scale(${scale}) translate(-50 -50)">${content.join('')}</g>`
+  const body =
+    scale === 1
+      ? content.join('')
+      : `<g transform="translate(50 50) scale(${scale}) translate(-50 -50)">${content.join('')}</g>`
   const band = ribbon
     ? `<path d="${ribbon.d}" fill="${p.ribbon}" fill-rule="evenodd" transform="rotate(${ribbon.rotate} ${ribbon.cx} ${ribbon.cy})"/>`
     : ''

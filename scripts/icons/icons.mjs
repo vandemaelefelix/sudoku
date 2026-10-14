@@ -19,13 +19,31 @@ export function buildIcons() {
   const marks = ['waves', 'nine']
 
   const variant = (folder, dev) => [
-    { file: `${folder}/ios-light.png`, size: 1024, svg: iconSvg({ palette: 'light', layers: all, nine, ribbon: dev ? iosRibbon : null }) },
-    { file: `${folder}/ios-dark.png`, size: 1024, svg: iconSvg({ palette: 'dark', layers: marks, nine, ribbon: dev ? iosRibbon : null }) },
-    { file: `${folder}/ios-tinted.png`, size: 1024, svg: iconSvg({ palette: 'tinted', layers: marks, nine, ribbon: dev ? iosRibbon : null }) },
+    {
+      file: `${folder}/ios-light.png`,
+      size: 1024,
+      svg: iconSvg({ palette: 'light', layers: all, nine, ribbon: dev ? iosRibbon : null }),
+    },
+    {
+      file: `${folder}/ios-dark.png`,
+      size: 1024,
+      svg: iconSvg({ palette: 'dark', layers: marks, nine, ribbon: dev ? iosRibbon : null }),
+    },
+    {
+      file: `${folder}/ios-tinted.png`,
+      size: 1024,
+      svg: iconSvg({ palette: 'tinted', layers: marks, nine, ribbon: dev ? iosRibbon : null }),
+    },
     {
       file: `${folder}/android-foreground.png`,
       size: 1024,
-      svg: iconSvg({ palette: 'light', layers: ['nine'], nine, scale: ANDROID_SCALE, ribbon: dev ? androidRibbon : null }),
+      svg: iconSvg({
+        palette: 'light',
+        layers: ['nine'],
+        nine,
+        scale: ANDROID_SCALE,
+        ribbon: dev ? androidRibbon : null,
+      }),
     },
     {
       file: `${folder}/android-monochrome.png`,
@@ -38,7 +56,11 @@ export function buildIcons() {
     ...variant('production', false),
     ...variant('development', true),
     // The waves in the background layer keep the knockout of the 9 in the foreground layer.
-    { file: 'production/android-background.png', size: 1024, svg: iconSvg({ palette: 'light', layers: ['ground', 'waves'], nine, scale: ANDROID_SCALE }) },
+    {
+      file: 'production/android-background.png',
+      size: 1024,
+      svg: iconSvg({ palette: 'light', layers: ['ground', 'waves'], nine, scale: ANDROID_SCALE }),
+    },
     { file: 'splash/splash-light.png', size: 1024, svg: iconSvg({ palette: 'light', layers: marks, nine }) },
     { file: 'splash/splash-dark.png', size: 1024, svg: iconSvg({ palette: 'dark', layers: marks, nine }) },
     { file: 'favicon.png', size: 48, svg: iconSvg({ palette: 'light', layers: all, nine }) },

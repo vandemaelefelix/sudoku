@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import opentype from 'opentype.js'
+import { parse } from 'opentype.js'
 
 const FONT_DIR = new URL('../../apps/mobile/assets/fonts/', import.meta.url)
 
@@ -11,7 +11,7 @@ export const FONTS = {
 
 export function loadFont(url) {
   const bytes = readFileSync(url)
-  return opentype.parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength))
+  return parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength))
 }
 
 /** The outline of `text` as SVG path data. Its ink box is centred on (cx, cy) and is `height` units high. */

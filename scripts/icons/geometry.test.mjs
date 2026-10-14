@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ANDROID_RIBBON, ANDROID_SCALE, IOS_RIBBON, KNOCKOUT, NINE, SAFE_RADIUS, WAVE_WIDTH, WAVES, iconSvg, wavePath } from './geometry.mjs'
+import {
+  ANDROID_RIBBON,
+  ANDROID_SCALE,
+  IOS_RIBBON,
+  KNOCKOUT,
+  NINE,
+  SAFE_RADIUS,
+  WAVE_WIDTH,
+  WAVES,
+  iconSvg,
+  wavePath,
+} from './geometry.mjs'
 import { FONTS, loadFont, outline } from './glyph.mjs'
 
 const serif = loadFont(FONTS.serif)
@@ -9,7 +20,12 @@ const nine = outline(serif, '9', NINE)
 
 // A point of the design space after the Android layer scale around the centre.
 const scaled = (x, y) => [50 + (x - 50) * ANDROID_SCALE, 50 + (y - 50) * ANDROID_SCALE]
-const corners = ({ x1, y1, x2, y2 }) => [[x1, y1], [x2, y1], [x1, y2], [x2, y2]]
+const corners = ({ x1, y1, x2, y2 }) => [
+  [x1, y1],
+  [x2, y1],
+  [x1, y2],
+  [x2, y2],
+]
 
 test('the 9 is centred and has the design height', () => {
   const { x1, y1, x2, y2 } = nine.box
@@ -32,7 +48,7 @@ test('a wave runs past both edges', () => {
 test('the scaled 9 and its knockout stay inside the Android safe circle', () => {
   const { x1, y1, x2, y2 } = nine.box
   const box = { x1: x1 - KNOCKOUT, y1: y1 - KNOCKOUT, x2: x2 + KNOCKOUT, y2: y2 + KNOCKOUT }
-  for (const [x, y] of corners(box).map(([x, y]) => scaled(x, y))) {
+  for (const [x, y] of corners(box).map(([cx, cy]) => scaled(cx, cy))) {
     assert.ok(Math.hypot(x - 50, y - 50) < SAFE_RADIUS, `corner ${x}, ${y}`)
   }
 })

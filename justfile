@@ -65,6 +65,16 @@ bundle:
 icons:
     node scripts/icons/render.mjs
 
+# Build the development variant and install it on a device (ADR-022). Find the UDID with: xcrun devicectl list devices
+ios-dev device:
+    cd apps/mobile && APP_VARIANT=development pnpm exec expo prebuild --platform ios --clean
+    cd apps/mobile && APP_VARIANT=development pnpm exec expo run:ios --device "{{device}}"
+
+# Build the production variant in Release and install it on a device (ADR-022)
+ios-release device:
+    cd apps/mobile && APP_VARIANT=production pnpm exec expo prebuild --platform ios --clean
+    cd apps/mobile && APP_VARIANT=production pnpm exec expo run:ios --device "{{device}}" --configuration Release
+
 # Check relative links in the docs
 docs-check:
     python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md
@@ -93,10 +103,10 @@ dataset-manifest *flags:
 import-photos folder *flags:
     folder="$(realpath "{{folder}}")" && uv run --directory ml python -m sudoku_ml.photo_import "$folder" {{flags}}
 
-# Copy the scans that the player corrected on the phone to a folder on the Mac (#77). Find the device with: xcrun devicectl list devices
-pull-scans device destination="$HOME/scan-corrections":
+# Copy the scans that the player corrected on the phone to a folder on the Mac (#77). Find the device with: xcrun devicectl list devices. For the development variant, pass app=com.vandemaelefelix.sudoku.dev
+pull-scans device destination="$HOME/scan-corrections" app="com.vandemaelefelix.sudoku":
     mkdir -p "{{destination}}"
-    xcrun devicectl device copy from --device "{{device}}" --domain-type appDataContainer --domain-identifier com.vandemaelefelix.sudoku --source Documents/scan-corrections --destination "{{destination}}"
+    xcrun devicectl device copy from --device "{{device}}" --domain-type appDataContainer --domain-identifier "{{app}}" --source Documents/scan-corrections --destination "{{destination}}"
 
 # Move cells to the digits in a relabel CSV (header file,new_label), then rewrite data/cells.csv
 relabel file:

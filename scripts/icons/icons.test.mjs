@@ -15,7 +15,7 @@ test('builds every file that the app config uses', () => {
     'splash/splash-dark.png',
     'favicon.png',
   ]
-  assert.deepEqual([...byFile.keys()].sort(), expected.sort())
+  assert.deepEqual([...byFile.keys()].toSorted(), expected.toSorted())
 })
 
 test('the iOS light icon is 1024 px and fully opaque in both variants', () => {
