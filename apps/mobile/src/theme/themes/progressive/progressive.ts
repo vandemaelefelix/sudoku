@@ -98,5 +98,7 @@ export const progressive: Theme = {
     panel: { fill: colors.surface, radius: 0, border: colors.line, borderWidth: 0, key: p.beige200, keyRadius: 0 },
     checkRing: { color: colors.warning, round: true },
     pulse: { waveOpacity: 0.22, popScale: 1.3 },
+    summary: { border: colors.lineStrong, borderWidth: 1.5, radius: 0, rule: colors.lineStrong, ruleWidth: 1.5 },
+    tabs: { track: p.beige200, selected: colors.surface },
   },
 }
