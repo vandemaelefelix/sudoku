@@ -61,7 +61,7 @@ bundle:
     test -f apps/mobile/assets/models/cell-classifier.tflite || { echo "The model is missing. Run: just install-model <run>" >&2; exit 1; }
     pnpm --filter mobile exec expo export --platform ios --output-dir dist
 
-# Render every app icon, splash and favicon PNG into apps/mobile/assets/icons (ADR-022)
+# Render every app icon and favicon PNG into apps/mobile/assets/icons (ADR-022)
 icons:
     node scripts/icons/render.mjs
 

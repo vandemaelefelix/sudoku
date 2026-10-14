@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { SplashContext } from '@/splash/hooks/useSplash'
 import { HomeMenu } from './HomeMenu'
 
 import type { HomeStats } from '@/home/utils/homeStats.utils'
@@ -62,4 +63,28 @@ it('shows neither the card nor the line when the stats did not load', () => {
   renderMenu(null, null)
   expect(screen.queryByLabelText(/day streak/)).toBeNull()
   expect(screen.queryByText(/No finished games/)).toBeNull()
+})
+
+it('tells the splash that it is ready when the store has answered, and not before', () => {
+  const markReady = jest.fn()
+  const props = {
+    stats: null,
+    onNewGame: jest.fn(),
+    onContinue: jest.fn(),
+    onScan: jest.fn(),
+    onSettings: jest.fn(),
+    onStats: jest.fn(),
+  }
+  const { rerender } = render(
+    <SplashContext value={{ phase: 'intro', markReady }}>
+      <HomeMenu {...props} continueLevel={undefined} />
+    </SplashContext>,
+  )
+  expect(markReady).not.toHaveBeenCalled()
+  rerender(
+    <SplashContext value={{ phase: 'intro', markReady }}>
+      <HomeMenu {...props} continueLevel={null} />
+    </SplashContext>,
+  )
+  expect(markReady).toHaveBeenCalledTimes(1)
 })

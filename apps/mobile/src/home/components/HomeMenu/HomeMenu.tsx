@@ -6,6 +6,7 @@ import { useEased } from '@/game/hooks/useEased'
 import { LEVEL_NAMES } from '@/constants/level.constants'
 import type { HomeStats } from '@/home/utils/homeStats.utils'
 import { StatsCard } from '@/stats/components/StatsCard'
+import { useSplashReady } from '@/splash/hooks/useSplash'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
 import { MENU_FADE_MS } from './HomeMenu.constants'
@@ -36,6 +37,8 @@ type HomeMenuProps = {
 export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, onSettings, onStats }: HomeMenuProps) {
   const shown = useEased(continueLevel === undefined ? 0 : 1, MENU_FADE_MS)
   const menuStyle = useAnimatedStyle(() => ({ opacity: shown.get() }))
+  // The menu shows once the store answers. The splash ends its exit when this is true.
+  useSplashReady(continueLevel !== undefined)
   return (
     <View style={styles.screen}>
       <ThemeStatusBar />
