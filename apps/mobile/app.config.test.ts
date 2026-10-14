@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ExpoConfig } from 'expo/config'
 import appJson from './app.json'
+import { SPLASH_COLORS } from '@/theme/splash.colors'
 import { appVariant, variantConfig } from './app.config'
 
 const base = appJson.expo as ExpoConfig
@@ -65,6 +66,16 @@ describe('variantConfig', () => {
         expect({ path, exists: existsSync(join(__dirname, path)) }).toEqual({ path, exists: true })
       }
     }
+  })
+
+  it('gives the native splash only a ground colour, the same as the splash overlay', () => {
+    type SplashOptions = { backgroundColor?: string; image?: string; dark?: { backgroundColor?: string; image?: string } }
+    const entry = (base.plugins ?? []).find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-splash-screen')
+    const options = (entry as [string, SplashOptions] | undefined)?.[1]
+    expect(options?.backgroundColor).toBe(SPLASH_COLORS.light.ground)
+    expect(options?.dark?.backgroundColor).toBe(SPLASH_COLORS.dark.ground)
+    expect(options?.image).toBeUndefined()
+    expect(options?.dark?.image).toBeUndefined()
   })
 
   it('stops when the base config has no bundle identifier', () => {
