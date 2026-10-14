@@ -12,6 +12,8 @@ jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), useGridDetec
 jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
 jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: () => null }))
 jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: () => null }))
+const mockDismissTo = jest.fn()
+jest.mock('expo-router', () => ({ useRouter: () => ({ dismissTo: mockDismissTo }) }))
 jest.mock('@/scan/hooks/useScannedStart', () => ({ useScannedStart: jest.fn() }))
 const mockSave = jest.fn()
 jest.mock('@/scan/utils/correctionStore', () => ({ saveScanCorrection: (...args: unknown[]) => mockSave(...args) }))
@@ -141,4 +143,11 @@ it('hands Save of the review to the correction store, and keeps Play, in a devel
   props.onSave!(looks)
   expect(mockSave).toHaveBeenCalledWith(OK, looks)
   expect(mockPlay).not.toHaveBeenCalled()
+})
+
+it('hands Home of the review to the router, as a dismiss to the home route', () => {
+  finishTransition()
+  const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
+  props.onHome!()
+  expect(mockDismissTo).toHaveBeenCalledWith('/')
 })
