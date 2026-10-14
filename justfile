@@ -22,6 +22,7 @@ test: test-ts test-ml
 test-ts:
     pnpm -r test
     node --test 'scripts/oxlint/*.test.mjs'
+    node --test 'scripts/icons/*.test.mjs'
 
 # pytest (ml)
 test-ml:
