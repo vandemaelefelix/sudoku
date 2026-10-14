@@ -1,5 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
+import type { SharedValue } from 'react-native-reanimated'
+import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
+import type { Pulse } from '@/game/hooks/usePulse'
+import { pulseLook } from '@/game/utils/pulse.utils'
+import { midnight } from '@/theme/themes/midnight'
 import { CorrectionCell } from './CorrectionCell'
 import { daylight } from '@/theme/themes/daylight'
 
@@ -132,4 +137,34 @@ it('draws the solution digit of a wrong cell in the corner, and keeps the digit 
 it('draws no hint without one', () => {
   render(<CorrectionCell n={0} look={look} {...at} />)
   expect(screen.queryByTestId('correction-hint-0')).toBeNull()
+})
+
+// A fixed stand-in for a shared value. The Reanimated mock runs each animated style once, at render.
+const fixed = <T,>(value: T) => ({ value, get: () => value, set: jest.fn() }) as unknown as SharedValue<T>
+const pulseLookOfMidnight = pulseLook(midnight)
+const pulseAt = (elapsed: number): Pulse => ({
+  delays: fixed(Array.from({ length: 81 }, (_, cell) => (cell === 0 ? 0 : NO_PULSE))),
+  elapsed: fixed(elapsed),
+  look: fixed(pulseLookOfMidnight),
+})
+
+it('draws a wave in the accent colour while the solved pulse runs', () => {
+  render(<CorrectionCell n={0} look={given} pulse={pulseAt(pulseLookOfMidnight.waveMs * WAVE_PEAK_AT)} {...at} />)
+  const wave = StyleSheet.flatten(screen.getByTestId('correction-wave-0').props.style)
+  expect(wave.backgroundColor).toBe(daylight.colors.accent)
+  expect(wave.opacity).toBeCloseTo(midnight.components.pulse.waveOpacity)
+})
+
+it('pops the digit to the peak scale of the theme', () => {
+  render(<CorrectionCell n={0} look={given} pulse={pulseAt(pulseLookOfMidnight.popMs * POP_PEAK_AT)} {...at} />)
+  const digit = StyleSheet.flatten(screen.getByTestId('correction-cell-0').props.style)
+  expect(digit.transform).toEqual([
+    { translateY: expect.any(Number) },
+    { scale: expect.closeTo(midnight.components.pulse.popScale) },
+  ])
+})
+
+it('draws no wave without a pulse', () => {
+  render(<CorrectionCell n={0} look={given} {...at} />)
+  expect(screen.queryByTestId('correction-wave-0')).toBeNull()
 })

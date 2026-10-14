@@ -9,6 +9,8 @@ export const styles = StyleSheet.create((theme) => ({
   /** An open cell to check takes the warning surface, the colour of its ring. */
   selectedCheck: { backgroundColor: theme.colors.warningSurface },
   conflictFill: { backgroundColor: theme.components.cell.conflictFill },
+  // The solved wave covers the cell and lies under the digit. Its opacity comes from the pulse.
+  wave: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.accent },
   digit: { textAlign: 'center', fontVariant: ['tabular-nums'] },
   given: { ...roleFont(theme.type.given), color: theme.components.cell.given },
   entry: { ...roleFont(theme.type.entry), color: theme.components.cell.entry },
