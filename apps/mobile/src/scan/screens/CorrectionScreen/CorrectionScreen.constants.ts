@@ -9,10 +9,6 @@ export const DIGIT_SHARE = 0.6
 /** The panel starts this many panel heights below its place, so the transition slides it in from off screen. */
 export const PANEL_HIDDEN = 1.4
 
-/** Milliseconds and points of the panel swap: the new content fades in and rises SWAP_RISE, as on the design canvas. */
-export const SWAP_MS = 180
-export const SWAP_RISE = 6
-
 /** Milliseconds the panel takes to grow or shrink to new content, such as the keypad. */
 export const PANEL_RESIZE_MS = 220
 
@@ -29,3 +25,6 @@ export const PLAY_BLOCK_TEXT: Readonly<Record<PlayBlock, string | null>> = {
 
 /** The kind tag of the dev confidence overlay: Printed, Handwritten, Notes, or none for an empty cell. */
 export const KIND_TAG: Readonly<Record<CellStyle, string>> = { given: 'P', entry: 'H', notes: 'N', empty: '' }
+
+/** Milliseconds: the fade of the waiting spinner, in and out. */
+export const WAITING_FADE_MS = 200

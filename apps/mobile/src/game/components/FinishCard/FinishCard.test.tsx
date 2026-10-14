@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import * as Haptics from 'expo-haptics'
 import { Pressable } from 'react-native'
 import { SensorType, useReducedMotion } from 'react-native-reanimated'
 import type { Digit, NewGame } from '@sudoku/core'
@@ -107,16 +108,27 @@ it('gives the card one VoiceOver label with the whole result', () => {
   expect(screen.getByTestId('finish-card').props.accessibilityLabel).toContain('Solved · Medium. New best. Time')
 })
 
-it('starts a new puzzle or goes home', () => {
-  const onNewPuzzle = jest.fn()
-  const onHome = jest.fn()
-  renderCard({ onNewPuzzle, onHome })
+it.each([
+  ['New puzzle', 'onNewPuzzle'],
+  ['Back to home', 'onHome'],
+] as const)('calls back from %s', (name, callback) => {
+  const callbacks = { onNewPuzzle: jest.fn(), onHome: jest.fn() }
+  renderCard(callbacks)
   win()
   endPulse()
-  fireEvent.press(screen.getByRole('button', { name: 'New puzzle' }))
-  fireEvent.press(screen.getByRole('button', { name: 'Back to home' }))
-  expect(onNewPuzzle).toHaveBeenCalledTimes(1)
-  expect(onHome).toHaveBeenCalledTimes(1)
+  fireEvent.press(screen.getByRole('button', { name }))
+  // New puzzle calls back at the end of the sink, which reaches the JS thread through a microtask.
+  act(() => jest.runAllTicks())
+  expect(callbacks[callback]).toHaveBeenCalledTimes(1)
+})
+
+it('lands a new best with a thud', () => {
+  renderCard()
+  jest.mocked(Haptics.impactAsync).mockClear()
+  win()
+  endPulse()
+  act(() => jest.runAllTicks())
+  expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium)
 })
 
 it('has no New puzzle button without onNewPuzzle', () => {

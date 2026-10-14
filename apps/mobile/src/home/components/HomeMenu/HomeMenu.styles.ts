@@ -11,6 +11,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: theme.space.lg,
     backgroundColor: theme.colors.background,
   },
+  menu: { flex: 1, gap: theme.space.md },
   title: {
     ...roleFont(theme.type.title),
     fontSize: theme.type.title.scale,

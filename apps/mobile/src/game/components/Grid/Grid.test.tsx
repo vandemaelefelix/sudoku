@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
-import { StyleSheet } from 'react-native'
+import { Pressable, StyleSheet } from 'react-native'
 import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { GameProvider } from '@/game/components/GameProvider'
+import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { reduceSession, startSession } from '@/game/utils/session.utils'
 import { daylight } from '@/theme/themes/daylight'
@@ -60,4 +61,47 @@ it('keeps the game grid open to VoiceOver by default', () => {
   expect(screen.getByTestId('grid').props.accessibilityElementsHidden).toBe(false)
   expect(screen.getAllByRole('button')).toHaveLength(81)
   expect(screen.getAllByTestId(/^cell-\d+-wave$/)).toHaveLength(81)
+})
+
+function Moves() {
+  const { select, digit, undo, hint } = useGameActions()
+  return (
+    <>
+      <Pressable
+        testID="wrong"
+        onPress={() => {
+          select(2)
+          digit(5)
+        }}
+      />
+      <Pressable testID="undo" onPress={undo} />
+      <Pressable testID="hint" onPress={hint} />
+    </>
+  )
+}
+
+const renderWithMoves = () =>
+  render(
+    <GameProvider start={sampleStart()}>
+      <Grid />
+      <Moves />
+    </GameProvider>,
+  )
+
+describe('the mark of the last move', () => {
+  it('glows on the cell of a hint', () => {
+    renderWithMoves()
+    fireEvent.press(screen.getByTestId('hint'))
+    expect(screen.getAllByTestId('cell-flash-hint')).toHaveLength(1)
+  })
+
+  it('flashes the cell that an undo restored, and the flash leaves with the next move', () => {
+    renderWithMoves()
+    fireEvent.press(screen.getByTestId('wrong'))
+    expect(screen.queryByTestId(/^cell-flash-/)).toBeNull()
+    fireEvent.press(screen.getByTestId('undo'))
+    expect(within(screen.getByTestId('cell-2')).getByTestId('cell-flash-undo')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('hint'))
+    expect(screen.queryByTestId('cell-flash-undo')).toBeNull()
+  })
 })

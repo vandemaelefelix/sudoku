@@ -2,6 +2,8 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
 import { AppState, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
+  FadeOut,
+  ReduceMotion,
   useAnimatedReaction,
   useAnimatedStyle,
   useReducedMotion,
@@ -29,6 +31,8 @@ import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
 import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import type { ViewSize } from '@/utils/geometry.utils'
+import { pressedStyles } from '@/theme/pressed.styles'
+import { easeOut } from '@/utils/motion.utils'
 import { DARK_BAR_DIM, FLASH_PEAK } from './CameraScreen.constants'
 import { styles } from './CameraScreen.styles'
 
@@ -138,15 +142,19 @@ export function CameraScreen({
         />
       ) : (
         <>
-          <View style={styles.bottom} pointerEvents="box-none">
+          <Animated.View
+            exiting={FadeOut.duration(theme.motion.short).easing(easeOut).reduceMotion(ReduceMotion.Never)}
+            style={styles.bottom}
+            pointerEvents="box-none"
+          >
             <Pressable
               testID="shutter"
               accessibilityRole="button"
               accessibilityLabel="Take photo"
-              style={styles.shutter}
-              onPress={() => startCapture(frameQuad.get())}
+              style={({ pressed }) => [styles.shutter, pressed && pressedStyles.pressed]}
+              onPress={() => startCapture(frameQuad.get(), 'tap')}
             />
-          </View>
+          </Animated.View>
           {__DEV__ ? <EffectPicker effect={effect} settings={kvSettings} /> : null}
         </>
       )}

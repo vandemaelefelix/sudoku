@@ -65,6 +65,39 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       await expect(storage.puzzles.current()).resolves.toEqual(started)
     })
 
+    it('peeks the game it started, saved or read, without a read', async () => {
+      const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+      expect(storage.puzzles.peek()).toEqual(started)
+      const moved = place(select(newGame(), 2), 4).game
+      const saving = storage.puzzles.save(started.id, moved)
+      expect(storage.puzzles.peek()?.game).toEqual(moved)
+      await saving
+      await expect(storage.puzzles.current()).resolves.toEqual(storage.puzzles.peek())
+    })
+
+    it('peeks a started game before its write ends', async () => {
+      const starting = storage.puzzles.start({ level: 'hard', source: 'scanned', game: newGame() })
+      const peeked = storage.puzzles.peek()
+      await expect(starting).resolves.toEqual(peeked)
+    })
+
+    it('peeks no game after a discard and after a finished game', async () => {
+      const first = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+      await storage.puzzles.discard(first.id)
+      expect(storage.puzzles.peek()).toBeNull()
+      const second = await storage.puzzles.start({ level: 'hard', source: 'generated', game: nearlyWon() })
+      await storage.puzzles.save(second.id, wonGame(1_000))
+      expect(storage.puzzles.peek()).toBeNull()
+    })
+
+    it('keeps a save in peek when a read from before the save resolves after it', async () => {
+      const { id } = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+      const reading = storage.puzzles.current()
+      const moved = place(select(newGame(), 2), 4).game
+      await Promise.all([reading, storage.puzzles.save(id, moved)])
+      expect(storage.puzzles.peek()?.game).toEqual(moved)
+    })
+
     it('discards the game in progress when a new one starts', async () => {
       const first = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
       const second = await storage.puzzles.start({ level: 'hard', source: 'scanned', game: newGame() })

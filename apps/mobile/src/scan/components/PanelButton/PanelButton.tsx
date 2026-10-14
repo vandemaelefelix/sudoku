@@ -1,5 +1,9 @@
 import { Pressable } from 'react-native'
-import Animated, { FadeIn } from 'react-native-reanimated'
+import Animated, { FadeIn, ReduceMotion, useAnimatedStyle } from 'react-native-reanimated'
+import { useUnistyles } from 'react-native-unistyles'
+import { useEased } from '@/game/hooks/useEased'
+import { pressedStyles } from '@/theme/pressed.styles'
+import { easeOut } from '@/utils/motion.utils'
 import { LABEL_FADE_MS } from './PanelButton.constants'
 import { styles } from './PanelButton.styles'
 
@@ -19,7 +23,7 @@ type PanelButtonProps = {
   animateLabel?: boolean
 }
 
-/** A button of the correction panel, in the button tokens of the theme. */
+/** A button of the correction panel, in the button tokens of the theme. It fades between enabled and disabled. */
 export function PanelButton({
   testID,
   label,
@@ -31,28 +35,38 @@ export function PanelButton({
   pressed,
   animateLabel = false,
 }: PanelButtonProps) {
+  const { theme } = useUnistyles()
+  const opacity = useEased(disabled ? theme.opacity.disabled : 1)
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }))
   return (
-    <Pressable
-      testID={testID}
-      accessibilityRole="button"
-      accessibilityHint={accessibilityHint}
-      accessibilityState={pressed === undefined ? { disabled } : { disabled, selected: pressed }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[
-        styles.button,
-        kind === 'primary' ? styles.primary : styles.second,
-        grow && styles.grow,
-        disabled && styles.disabled,
-      ]}
+    <Animated.View
+      testID={testID === undefined ? undefined : `${testID}-fade`}
+      style={[grow && styles.grow, fadeStyle]}
     >
-      <Animated.Text
-        key={label}
-        {...(animateLabel ? { entering: FadeIn.duration(LABEL_FADE_MS) } : {})}
-        style={kind === 'primary' ? styles.primaryText : styles.secondText}
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityHint={accessibilityHint}
+        accessibilityState={pressed === undefined ? { disabled } : { disabled, selected: pressed }}
+        disabled={disabled}
+        onPress={onPress}
+        style={({ pressed: down }) => [
+          styles.button,
+          kind === 'primary' ? styles.primary : styles.second,
+          grow && styles.grow,
+          down && pressedStyles.pressed,
+        ]}
       >
-        {label}
-      </Animated.Text>
-    </Pressable>
+        <Animated.Text
+          key={label}
+          {...(animateLabel
+            ? { entering: FadeIn.duration(LABEL_FADE_MS).easing(easeOut).reduceMotion(ReduceMotion.Never) }
+            : {})}
+          style={kind === 'primary' ? styles.primaryText : styles.secondText}
+        >
+          {label}
+        </Animated.Text>
+      </Pressable>
+    </Animated.View>
   )
 }

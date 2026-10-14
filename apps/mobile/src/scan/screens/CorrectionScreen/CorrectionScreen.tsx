@@ -1,20 +1,20 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import Animated, {
-  Easing,
+  FadeOut,
   LinearTransition,
   useAnimatedReaction,
   useReducedMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  type EntryAnimationsValues,
-  type LayoutAnimation,
   type SharedValue,
 } from 'react-native-reanimated'
+import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
+import type { Digit } from '@sudoku/core'
 import type { RecogniseResult } from '@/scanner'
 import { LEVEL_NAMES } from '@/constants/level.constants'
 import { Icon } from '@/game/components/Icon'
@@ -25,7 +25,10 @@ import { DevMenu, type SaveState } from '@/scan/components/DevMenu'
 import { PanelButton } from '@/scan/components/PanelButton'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
+import { swapIn } from '@/scan/utils/swap.utils'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
+import { SWAP_OUT_MS } from '@/scan/constants/swap.constants'
+import { easeOut } from '@/utils/motion.utils'
 import {
   cellLook,
   drawGridLines,
@@ -34,16 +37,17 @@ import {
   type CorrectionLayout,
 } from '@/scan/utils/correction.utils'
 import { checkPlay, levelOf, type ScannedStart } from '@/scan/utils/play.utils'
+import { useHaptics } from '@/settings/hooks/useHaptics'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { SHARED_TYPE } from '@/theme/shared.tokens'
+import { pressedStyles } from '@/theme/pressed.styles'
 import {
   DIGIT_SHARE,
   FAILURE_SLIDE_MS,
   KIND_TAG,
+  WAITING_FADE_MS,
   PANEL_HIDDEN,
   PANEL_RESIZE_MS,
-  SWAP_MS,
-  SWAP_RISE,
   PLAY_BLOCK_TEXT,
   TITLE,
 } from './CorrectionScreen.constants'
@@ -68,17 +72,9 @@ export type CorrectionProps = {
   resultsAt?: SharedValue<number>
 }
 
-/** The new content of the panel fades in and rises a little, so a change of state reads as one motion. */
-function swapIn(_values: EntryAnimationsValues): LayoutAnimation {
-  'worklet'
-  const timing = { duration: SWAP_MS, easing: Easing.out(Easing.cubic) }
-  return {
-    initialValues: { opacity: 0, transform: [{ translateY: SWAP_RISE }] },
-    animations: { opacity: withTiming(1, timing), transform: [{ translateY: withTiming(0, timing) }] },
-  }
-}
-
-const PANEL_RESIZE = LinearTransition.duration(PANEL_RESIZE_MS).easing(Easing.out(Easing.cubic))
+// The old content fades out while the new content rises in, so a change of state reads as one motion.
+const SWAP_OUT = FadeOut.duration(SWAP_OUT_MS).easing(easeOut)
+const PANEL_RESIZE = LinearTransition.duration(PANEL_RESIZE_MS).easing(easeOut)
 
 export function CorrectionScreen({
   result,
@@ -122,6 +118,29 @@ export function CorrectionScreen({
     grid: corrected,
     actions,
   } = useCorrectionEdits(result, threshold)
+  const { play } = useHaptics()
+  // The check answers tick, and a picked digit taps like a number key of the game.
+  const checkActions = useMemo(
+    () => ({
+      yes: () => {
+        play('tick')
+        actions.yes()
+      },
+      no: () => {
+        play('tick')
+        actions.no()
+      },
+      setDigit: (digit: Digit) => {
+        play('tap')
+        actions.setDigit(digit)
+      },
+      clear: () => {
+        play('tap')
+        actions.clear()
+      },
+    }),
+    [actions, play],
+  )
   // The player edits only the finished screen. During the transition the cells are not pressable and show no edit marks.
   const editable = clock == null && ok !== null
   const open = editable && selected !== null ? selected : null
@@ -135,6 +154,15 @@ export function CorrectionScreen({
   const start = check?.ok ? check.start : null
   const blockText = check !== null && !check.ok ? PLAY_BLOCK_TEXT[check.block] : null
   const canPlay = start !== null && onPlay !== undefined
+  // Success when the last check makes the puzzle playable. The first summary of a review only sets the state: a scan that
+  // needs no check already had its success haptic. While a cell is open, the summary has no check, so the state waits.
+  const readyBefore = useRef<boolean | null>(null)
+  const ready = start !== null
+  useEffect(() => {
+    if (!editable || selected !== null) return
+    if (readyBefore.current === false && ready) play('success')
+    readyBefore.current = ready
+  }, [editable, selected, ready, play])
 
   // The solution shows until the next edit: it belongs to the looks it was shown for.
   const [solutionFor, setSolutionFor] = useState<readonly CellLook[] | null>(null)
@@ -204,6 +232,15 @@ export function CorrectionScreen({
   const boardBox = [gridBox, { opacity: clock ? 0 : 1 }]
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
+  // A recognised grid gets its success when the results gate opens: the digits start to sweep in at that moment.
+  // A boolean, not ok: a worklet copies what it captures to the UI thread, and the result holds images.
+  const recognised = ok !== null
+  useAnimatedReaction(
+    () => recognised && resultsAt != null && resultsAt.value >= 0,
+    (gateOpen, previous) => {
+      if (gateOpen && previous === false) scheduleOnRN(play, 'success')
+    },
+  )
   // A failure keeps the results gate closed, so the clock never reaches the panel ramp. The failure panel slides in on its own
   // timing instead, from the moment the clock reaches the results gate (any held clock with Reduce Motion).
   const failureSlide = useSharedValue(0)
@@ -211,7 +248,8 @@ export function CorrectionScreen({
     () => failed && (clock == null || reduceMotion || clock.value >= GATE_RESULTS - 1e-6),
     (go, previous) => {
       if (go === previous) return
-      failureSlide.set(go ? withTiming(1, { duration: FAILURE_SLIDE_MS }) : 0)
+      failureSlide.set(go ? withTiming(1, { duration: FAILURE_SLIDE_MS, easing: easeOut }) : 0)
+      if (go) scheduleOnRN(play, 'warning')
     },
   )
   const panelStyle = useAnimatedStyle(() => {
@@ -222,7 +260,9 @@ export function CorrectionScreen({
     }
     return { transform: [{ translateY: (1 - slide) * PANEL_HIDDEN * panel.height }] }
   })
-  const waitingStyle = useAnimatedStyle(() => ({ opacity: waiting?.value ? 1 : 0 }))
+  const waitingStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(waiting?.value ? 1 : 0, { duration: WAITING_FADE_MS, easing: easeOut }),
+  }))
   const largeTitle = title.height > 0
 
   return (
@@ -240,7 +280,7 @@ export function CorrectionScreen({
           accessibilityLabel="Retake the photo"
           onPress={() => onRetake(looks)}
           hitSlop={8}
-          style={styles.retake}
+          style={({ pressed }) => [styles.retake, pressed && pressedStyles.pressed]}
         >
           <Icon name="back" tone="text" />
           <Text style={styles.retakeText}>Retake</Text>
@@ -257,7 +297,7 @@ export function CorrectionScreen({
               accessibilityRole="button"
               accessibilityLabel="Developer menu"
               onPress={() => setDevOpen(true)}
-              style={styles.wrench}
+              style={({ pressed }) => [styles.wrench, pressed && pressedStyles.pressed]}
             >
               <Icon name="wrench" tone="textMuted" />
             </Pressable>
@@ -329,7 +369,7 @@ export function CorrectionScreen({
               // A new key mounts new content, so each state change plays the swap. The next cell keeps the key:
               // the panel stays and CorrectionCheck moves its content to the new cell.
               key={result.ok === false ? 'failure' : open === null ? 'summary' : picking ? 'pick' : 'check'}
-              {...(clock || !motion ? {} : { entering: swapIn })}
+              {...(clock || !motion ? {} : { entering: swapIn, exiting: SWAP_OUT })}
             >
               {result.ok === false ? (
                 <View testID="correction-failure" style={styles.failure}>
@@ -349,10 +389,10 @@ export function CorrectionScreen({
                   labelKinds={devTools && labelKinds}
                   animate={motion}
                   onClose={actions.close}
-                  onYes={actions.yes}
-                  onNo={actions.no}
-                  onDigit={actions.setDigit}
-                  onClear={actions.clear}
+                  onYes={checkActions.yes}
+                  onNo={checkActions.no}
+                  onDigit={checkActions.setDigit}
+                  onClear={checkActions.clear}
                   onKind={actions.setKind}
                 />
               ) : (
@@ -362,10 +402,18 @@ export function CorrectionScreen({
                   level={LEVEL_NAMES[levelOf(corrected.givens)]}
                   blockText={blockText}
                   canPlay={canPlay}
+                  animate={!clock && motion}
                   canSolve={start !== null}
                   solutionShown={solution !== null}
                   onStartCheck={actions.startCheck}
-                  onPlay={start !== null && onPlay ? () => onPlay(start, looks) : undefined}
+                  onPlay={
+                    start !== null && onPlay
+                      ? () => {
+                          play('thud')
+                          onPlay(start, looks)
+                        }
+                      : undefined
+                  }
                   onToggleSolve={() => setSolutionFor(solution === null ? looks : null)}
                 />
               )}

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import * as Haptics from 'expo-haptics'
 import type { ReactElement } from 'react'
 import { GameProvider } from '@/game/components/GameProvider'
 import { Grid } from '@/game/components/Grid'
@@ -61,4 +62,12 @@ it('makes every tool a touch target of 52 pt', () => {
   for (const name of ['Undo', 'Erase', 'Notes', 'Hint']) {
     expect(screen.getByLabelText(name)).toHaveStyle({ width: 52, height: 52 })
   }
+})
+
+it('ticks when Notes turns on and off', () => {
+  renderTools()
+  jest.mocked(Haptics.selectionAsync).mockClear()
+  fireEvent.press(screen.getByLabelText('Notes'))
+  fireEvent.press(screen.getByLabelText('Notes'))
+  expect(Haptics.selectionAsync).toHaveBeenCalledTimes(2)
 })

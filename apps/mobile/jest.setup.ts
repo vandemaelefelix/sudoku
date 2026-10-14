@@ -54,6 +54,7 @@ jest.mock('react-native-fast-tflite', () => ({
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => undefined),
   notificationAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy', Soft: 'soft', Rigid: 'rigid' },
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }))
@@ -105,9 +106,13 @@ jest.mock('react-native-reanimated', () => {
       }
       return holder.current
     },
+    // The library mock has createAnimatedComponent only on its default export.
+    createAnimatedComponent: <T>(component: T) => component,
     useAnimatedReaction: jest.fn(),
     useFrameCallback: jest.fn(() => ({ setActive: jest.fn(), isActive: true, callbackId: 1 })),
     useReducedMotion: jest.fn(() => false),
+    // The library mock has no LayoutAnimationConfig. The tests do not run layout animations.
+    LayoutAnimationConfig: ({ children }: { children?: unknown }) => children,
   }
 })
 

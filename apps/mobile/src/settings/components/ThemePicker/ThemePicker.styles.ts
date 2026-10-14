@@ -21,7 +21,15 @@ export const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
     borderRadius: Math.max(0, theme.shape.radius.md - theme.space.xs),
   },
-  selected: { backgroundColor: theme.components.segmented.selected, boxShadow: theme.elevation.key },
+  // The indicator lies under the segments at the frame of the chosen segment. The picker sets its size and place.
+  indicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    borderRadius: Math.max(0, theme.shape.radius.md - theme.space.xs),
+    backgroundColor: theme.components.segmented.selected,
+    boxShadow: theme.elevation.key,
+  },
   label: { ...roleFont(theme.type.label), fontSize: theme.type.label.scale, color: theme.colors.textMuted },
   labelSelected: { color: theme.colors.text },
 }))

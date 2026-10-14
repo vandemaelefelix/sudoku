@@ -10,6 +10,7 @@ import {
   photoToSkImage,
   photoMatrix,
 } from './transition.utils'
+import { easeOut } from '@/utils/motion.utils'
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia'
 import { toPreview } from './preview.utils'
 import type { Point, Quad } from '@/utils/geometry.utils'
@@ -144,8 +145,8 @@ describe('transitionAt', () => {
 
   it('moves the rings and the panel later by the shift, and nothing else', () => {
     const shifted = transitionAt(1.4, false, 0.1)
-    expect(shifted.rings).toBeCloseTo(0.5, 12)
-    expect(shifted.panel).toBeCloseTo(ramp(1.3, 1.2, 1.5), 12)
+    expect(shifted.rings).toBeCloseTo(easeOut(0.5), 12)
+    expect(shifted.panel).toBeCloseTo(easeOut(1 / 3), 12)
     const { rings, panel, ...rest } = shifted
     const { rings: _r, panel: _p, ...plain } = transitionAt(1.4, false)
     expect(rest).toEqual(plain)
@@ -153,9 +154,11 @@ describe('transitionAt', () => {
     expect(panel).not.toBe(_p)
   })
 
-  it('moves the rings and the panel in their own windows', () => {
-    expect(transitionAt(1.3, false).rings).toBeCloseTo(0.5, 12)
-    expect(transitionAt(1.35, false).panel).toBeCloseTo(0.5, 12)
+  it('eases the rings and the panel out in their own windows', () => {
+    expect(transitionAt(1.2, false).panel).toBe(0)
+    expect(transitionAt(1.3, false).rings).toBeCloseTo(easeOut(0.5), 12)
+    expect(transitionAt(1.35, false).panel).toBeCloseTo(easeOut(0.5), 12)
+    expect(transitionAt(1.5, false).panel).toBe(1)
   })
 })
 

@@ -19,7 +19,10 @@ import {
 
 export type MoveKind = 'number' | 'clear' | 'note' | 'erase' | 'undo' | 'hint'
 
-/** The last action that changed the board. id grows by one per move, so an effect sees a repeat of the same move. */
+/**
+ * The last action that changed the board. id grows by one per move, so an effect sees a repeat of the same move.
+ * cell is the selected cell after the move. For an undo it is the cell that the undo restored.
+ */
 export type Move = {
   id: number
   kind: MoveKind
@@ -62,6 +65,14 @@ function withGame(session: Session, game: Game): Session {
   return game === session.game ? session : { ...session, game }
 }
 
+/** The cell whose number changed, else the first cell whose notes changed, else null. An undo keeps the selection. */
+export function changedCell(before: Game, after: Game): number | null {
+  const entry = after.entries.findIndex((digit, cell) => digit !== before.entries[cell])
+  if (entry !== -1) return entry
+  const notes = after.notes.findIndex((digits, cell) => digits.join('') !== before.notes[cell]?.join(''))
+  return notes === -1 ? null : notes
+}
+
 /** The core returns the same game object when an action changes nothing. Then the session stays the same too. */
 function moved(session: Session, kind: MoveKind, result: MoveResult): Session {
   if (result.game === session.game) return session
@@ -71,7 +82,7 @@ function moved(session: Session, kind: MoveKind, result: MoveResult): Session {
     move: {
       id: (session.move?.id ?? 0) + 1,
       kind,
-      cell: result.game.selected,
+      cell: kind === 'undo' ? changedCell(session.game, result.game) : result.game.selected,
       completed: result.completed,
       mistake: result.game.mistakes > session.game.mistakes,
     },

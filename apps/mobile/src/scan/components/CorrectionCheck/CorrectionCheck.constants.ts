@@ -10,3 +10,6 @@ export const KIND_LABELS: readonly { style: CellStyle; label: string }[] = [
 
 /** Milliseconds the question and the cell place take to fade in for the next cell. */
 export const TEXT_FADE_MS = 180
+
+/** The scale of the progress dot of the open cell. */
+export const DOT_NOW_SCALE = 1.3

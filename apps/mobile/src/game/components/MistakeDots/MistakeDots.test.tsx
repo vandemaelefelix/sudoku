@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
-import * as Haptics from 'expo-haptics'
 import type { ReactElement } from 'react'
 import { Pressable, StyleSheet } from 'react-native'
 import type { Digit } from '@sudoku/core'
@@ -35,8 +34,6 @@ const renderWithMoves = () =>
     </>,
   )
 
-beforeEach(() => jest.mocked(Haptics.notificationAsync).mockClear())
-
 it('draws three empty dots and reads the mistakes for VoiceOver', () => {
   renderInGame(<MistakeDots />)
   const dots = screen.getAllByTestId(/^mistake-dot-/)
@@ -45,28 +42,20 @@ it('draws three empty dots and reads the mistakes for VoiceOver', () => {
   expect(screen.getByLabelText('0 of 3 mistakes')).toBeTruthy()
 })
 
-it('fills one dot and gives one warning haptic for a mistake', () => {
+it('fills one dot for a mistake', () => {
   renderWithMoves()
   fireEvent.press(screen.getByTestId('wrong'))
   expect(screen.getByLabelText('1 of 3 mistakes')).toBeTruthy()
-  expect(StyleSheet.flatten(screen.getByTestId('mistake-dot-0').props.style)).toMatchObject({
+  expect(StyleSheet.flatten(screen.getByTestId('mistake-dot-0-fill').props.style)).toMatchObject({
     backgroundColor: daylight.colors.danger,
   })
-  expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1)
-  expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Warning)
+  expect(screen.queryByTestId('mistake-dot-1-fill')).toBeNull()
 })
 
-it('gives no warning haptic for a right number or for undo', () => {
-  renderWithMoves()
-  fireEvent.press(screen.getByTestId('right'))
-  fireEvent.press(screen.getByTestId('undo'))
-  expect(Haptics.notificationAsync).not.toHaveBeenCalled()
-})
-
-it('gives no second warning when a later move is not a mistake', () => {
+it('keeps the dot filled after undo', () => {
   renderWithMoves()
   fireEvent.press(screen.getByTestId('wrong'))
   fireEvent.press(screen.getByTestId('undo'))
-  expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1)
   expect(screen.getByLabelText('1 of 3 mistakes')).toBeTruthy()
+  expect(screen.getByTestId('mistake-dot-0-fill')).toBeTruthy()
 })

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import * as Haptics from 'expo-haptics'
 import { AppState, Linking } from 'react-native'
 import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
 import { useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
@@ -374,6 +375,14 @@ describe('capture', () => {
     expect(capture).toHaveBeenCalledTimes(1)
   })
 
+  it('plays a thud once for the automatic lock-on', () => {
+    jest.mocked(Haptics.impactAsync).mockClear()
+    lockOn(quad, { quad, image: null, result: null })
+    act(() => effectCanvas.mock.calls.at(-1)![0].onLock(quad))
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1)
+    expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium)
+  })
+
   it('keeps onLock the same function across renders', () => {
     givenPermission('authorized')
     const view = render(<CameraScreen {...props()} />)
@@ -385,8 +394,10 @@ describe('capture', () => {
   it('captures the current frame quad on a shutter press', () => {
     givenPermission('authorized')
     render(<CameraScreen {...props()} />)
+    jest.mocked(Haptics.impactAsync).mockClear()
     fireEvent.press(screen.getByTestId('shutter'))
     expect(capture).toHaveBeenCalledWith(null, expect.any(Number))
+    expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light)
   })
 
   it('renders the transition layers and hides the shutter and the effect lab', () => {

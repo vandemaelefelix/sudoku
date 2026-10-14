@@ -1,33 +1,35 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { AccessibilityInfo, Pressable, Text, View } from 'react-native'
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated'
+import { AccessibilityInfo, Pressable, Text } from 'react-native'
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import { GRID_CELLS, type Game } from '@sudoku/core'
 import { useGameState } from '@/game/hooks/useGameState'
+import { useLeave, type LeaveCallback } from '@/game/hooks/useLeave'
+import { useHold } from '@/game/hooks/useHold'
 import { useGameTime } from '@/game/hooks/useGameTime'
 import { rightCells } from '@/game/utils/result.utils'
 import { formatClock } from '@/game/utils/time.utils'
-import { RISE_OFFSET } from './GameOverSheet.constants'
+import { easeOut } from '@/utils/motion.utils'
+import { pressedStyles } from '@/theme/pressed.styles'
+import { LOST_HOLD_MS, RISE_OFFSET } from './GameOverSheet.constants'
 import { styles } from './GameOverSheet.styles'
 
 type GameOverSheetProps = {
-  onRetry(): void
+  onRetry: LeaveCallback
   /** Without it, the sheet has no New puzzle button. */
-  onNewPuzzle?: (() => void) | undefined
+  onNewPuzzle?: LeaveCallback | undefined
   onHome(): void
 }
 
-/** Renders nothing until the game is lost. This gate reads no time and no theme, so a tick or a theme switch does not render it. */
+/**
+ * Renders nothing until the game is lost and LOST_HOLD_MS has passed. This gate reads no time and no theme, so a tick or
+ * a theme switch does not render it.
+ */
 export function GameOverSheet(props: GameOverSheetProps) {
   const { board } = useGameState()
-  if (board.status !== 'lost') return null
+  const shown = useHold(board.status === 'lost', LOST_HOLD_MS)
+  if (!shown) return null
   return <Sheet board={board} {...props} />
 }
 
@@ -48,17 +50,18 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
       return
     }
     rise.set(
-      withTiming(0, { duration: theme.motion.medium, easing: Easing.out(Easing.quad) }, (finished) => {
+      withTiming(0, { duration: theme.motion.medium, easing: easeOut }, (finished) => {
         if (finished) scheduleOnRN(focusTitle)
       }),
     )
   }, [focusTitle, reduceMotion, rise, theme.motion.medium])
-  const riseStyle = useAnimatedStyle(() => ({
-    opacity: 1 - rise.value,
-    transform: [{ translateY: rise.value * RISE_OFFSET }],
-  }))
+  // The sheet sinks before the new game shows. The game-screen route takes Back to home away.
+  const { leaveThen, guard } = useLeave(rise)
+  // The scrim fades with the rise, so the board does not go dark before the sheet arrives.
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: 1 - rise.value }))
+  const riseStyle = useAnimatedStyle(() => ({ transform: [{ translateY: rise.value * RISE_OFFSET }] }))
   return (
-    <View testID="game-over" style={styles.scrim} accessibilityViewIsModal>
+    <Animated.View testID="game-over" style={[styles.scrim, fadeStyle]} accessibilityViewIsModal>
       <Animated.View testID="game-over-sheet" style={[styles.sheet, riseStyle]}>
         <Text ref={title} accessibilityRole="header" style={styles.title}>
           Out of mistakes
@@ -66,18 +69,30 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
         <Text style={styles.body}>
           {`Three wrong numbers end this game. You had ${rightCells(board)} of ${GRID_CELLS} cells right after ${time}.`}
         </Text>
-        <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retry}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => leaveThen(onRetry)}
+          style={({ pressed }) => [styles.retry, pressed && pressedStyles.pressed]}
+        >
           <Text style={styles.retryText}>Try this puzzle again</Text>
         </Pressable>
         {onNewPuzzle && (
-          <Pressable accessibilityRole="button" onPress={onNewPuzzle} style={styles.newPuzzle}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => leaveThen(onNewPuzzle)}
+            style={({ pressed }) => [styles.newPuzzle, pressed && pressedStyles.pressed]}
+          >
             <Text style={styles.newPuzzleText}>New puzzle</Text>
           </Pressable>
         )}
-        <Pressable accessibilityRole="button" onPress={onHome} style={styles.home}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => guard(onHome)}
+          style={({ pressed }) => [styles.home, pressed && pressedStyles.pressed]}
+        >
           <Text style={styles.homeText}>Back to home</Text>
         </Pressable>
       </Animated.View>
-    </View>
+    </Animated.View>
   )
 }
