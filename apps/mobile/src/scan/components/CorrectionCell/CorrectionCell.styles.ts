@@ -16,5 +16,13 @@ export const styles = StyleSheet.create((theme) => ({
   // The solution takes the face of the givens, so the full grid reads as one set of digits.
   solution: { ...roleFont(theme.type.given), position: 'absolute', color: theme.colors.textMuted, opacity: 0.6 },
   confidence: { ...roleFont(theme.type.eyebrow), position: 'absolute', fontSize: 8, color: theme.colors.textMuted },
+  // The note role and the note corner: a hint reads as a small note of the solution, never as a digit of the player.
+  hint: {
+    ...roleFont(theme.type.note),
+    position: 'absolute',
+    top: theme.size.noteInset,
+    right: theme.size.noteInset,
+    color: theme.colors.textMuted,
+  },
   confidenceLow: { color: theme.colors.warningText },
 }))

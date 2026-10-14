@@ -41,6 +41,8 @@ type CorrectionCellProps = SweepTiming & {
   conflict?: boolean
   /** The digit of the solution, shown muted in a cell without a digit. Empty for none. */
   solution?: string
+  /** The solution digit of a wrong cell, drawn small in the corner. Empty for none. */
+  hint?: string
   confidence?: CellConfidence | null
   /** Without it, the cell is not pressable: the transition shows the cells before the player can edit them. */
   onSelect?: ((cell: number) => void) | undefined
@@ -57,6 +59,7 @@ export const CorrectionCell = memo(function CorrectionCell({
   selected = false,
   conflict = false,
   solution = '',
+  hint = '',
   confidence = null,
   onSelect,
   clock,
@@ -133,6 +136,11 @@ export const CorrectionCell = memo(function CorrectionCell({
           >
             {solution}
           </Animated.Text>
+        )}
+        {hint !== '' && (
+          <Text testID={`correction-hint-${n}`} style={styles.hint}>
+            {hint}
+          </Text>
         )}
         {confidence && (
           <>

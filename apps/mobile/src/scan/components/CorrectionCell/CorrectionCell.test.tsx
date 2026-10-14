@@ -118,3 +118,18 @@ it('shows the kind and the confidence of the dev overlay, with a low value in th
     color: daylight.colors.warningText,
   })
 })
+
+it('draws the solution digit of a wrong cell in the corner, and keeps the digit of the player', () => {
+  render(<CorrectionCell n={0} look={look} conflict hint="2" {...at} />)
+  expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('7')
+  expect(screen.getByTestId('correction-hint-0')).toHaveTextContent('2')
+  expect(StyleSheet.flatten(screen.getByTestId('correction-hint-0').props.style)).toMatchObject({
+    color: daylight.colors.textMuted,
+    position: 'absolute',
+  })
+})
+
+it('draws no hint without one', () => {
+  render(<CorrectionCell n={0} look={look} {...at} />)
+  expect(screen.queryByTestId('correction-hint-0')).toBeNull()
+})
