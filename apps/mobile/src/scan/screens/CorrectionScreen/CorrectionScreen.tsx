@@ -186,7 +186,7 @@ export function CorrectionScreen({
             count: marked.size,
             onVerify: verify,
             onScanAnother: () => onRetake(looks),
-            onHome: () => onHome?.(),
+            onHome,
           }
         : null,
     [full, verdict, marked, verify, onRetake, looks, onHome],

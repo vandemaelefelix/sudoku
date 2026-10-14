@@ -61,3 +61,14 @@ it('still shows Play and Solve without a full grid', () => {
   expect(screen.getByTestId('play')).toBeTruthy()
   expect(screen.getByTestId('solve')).toBeTruthy()
 })
+
+it('hides Home without a handler, and hints why Check is off', () => {
+  const { onHome: _none, ...rest } = handlers()
+  render(<CorrectionSummary {...base} full={{ phase: 'solved', count: 0, ...rest }} />)
+  expect(screen.queryByTestId('home')).toBeNull()
+})
+
+it('hints why Check is off while two given digits clash', () => {
+  render(<CorrectionSummary {...base} conflictCount={2} full={{ phase: 'ready', count: 0, ...handlers() }} />)
+  expect(screen.getByTestId('verify').props.accessibilityHint).toBe('Two given digits clash')
+})

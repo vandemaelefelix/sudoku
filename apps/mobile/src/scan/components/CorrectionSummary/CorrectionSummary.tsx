@@ -14,7 +14,8 @@ export type FullGridPanel = {
   count: number
   onVerify(): void
   onScanAnother(): void
-  onHome(): void
+  /** Without it, the solved panel has no Home button. */
+  onHome?: (() => void) | undefined
 }
 
 type CorrectionSummaryProps = {
@@ -109,7 +110,8 @@ export function CorrectionSummary({
             {full.phase === 'ready' ? (
               <PanelButton
                 testID="verify"
-                label="Check"
+                label="Check the grid"
+                accessibilityHint={conflictCount > 0 ? 'Two given digits clash' : undefined}
                 kind="primary"
                 grow
                 disabled={conflictCount > 0}
@@ -124,7 +126,7 @@ export function CorrectionSummary({
                   grow
                   onPress={full.onScanAnother}
                 />
-                <PanelButton testID="home" label="Home" kind="second" onPress={full.onHome} />
+                {full.onHome && <PanelButton testID="home" label="Home" kind="second" onPress={full.onHome} />}
               </>
             )}
           </Animated.View>

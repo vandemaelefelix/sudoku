@@ -145,7 +145,7 @@ loads. The correction screen turns "Play this puzzle" on only when this play gat
 A scanned game takes the level of the nearest givens target and the source `scanned`
 (ADR-011, amendment "a level for scanned puzzles").
 
-A full grid has nothing to play, so the correction screen verifies it. The player taps Check. `verifyGrid` in `@sudoku/core` trusts the printed digits and judges the handwritten digits.
+A full grid has nothing to play, so the correction screen verifies it. The player taps Check the grid. `verifyGrid` in `@sudoku/core` trusts the printed digits and judges the handwritten digits.
 
 | Result | When | The screen shows |
 | --- | --- | --- |

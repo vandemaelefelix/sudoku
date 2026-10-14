@@ -149,7 +149,7 @@ export function correctionCellLabel(cell: number, look: CellLook, conflict: bool
   const parts = [cellPlace(cell)]
   parts.push(hasDigit(look) ? `${look.style} ${look.digit}` : look.style === 'notes' ? 'notes' : 'empty')
   if (hint !== '') parts.push(`differs from the solution, solution ${hint}`)
-  else if (conflict) parts.push('same digit as another given')
+  else if (conflict) parts.push(look.style === 'entry' ? 'same digit as another cell' : 'same digit as another given')
   if (look.uncertain) parts.push('check this cell')
   return parts.join(', ')
 }
