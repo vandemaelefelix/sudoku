@@ -15,8 +15,15 @@ export const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Math.max(0, theme.shape.radius.md - theme.space.xs),
+    // The same width on every tab, in the colour of the track, so a tap does not move the labels.
+    borderWidth: theme.components.tabs.selectedBorderWidth,
+    borderColor: theme.components.tabs.track,
   },
-  selected: { backgroundColor: theme.components.tabs.selected, boxShadow: theme.elevation.key },
+  selected: {
+    backgroundColor: theme.components.tabs.selected,
+    borderColor: theme.components.tabs.selectedBorder,
+    boxShadow: theme.elevation.key,
+  },
   label: { ...roleFont(theme.type.label), fontSize: theme.type.label.scale, color: theme.colors.textMuted },
   labelSelected: { color: theme.colors.text },
 }))

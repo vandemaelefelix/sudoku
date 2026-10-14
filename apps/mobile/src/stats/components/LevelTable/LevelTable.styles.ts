@@ -21,4 +21,10 @@ export const styles = StyleSheet.create((theme) => ({
   rowLabel: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.text },
   value: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale * 0.8, color: theme.colors.text },
   none: { color: theme.colors.textMuted },
+  note: {
+    ...roleFont(theme.type.caption),
+    fontSize: theme.type.caption.scale,
+    color: theme.colors.textMuted,
+    marginTop: theme.space.md,
+  },
 }))

@@ -99,6 +99,6 @@ export const progressive: Theme = {
     checkRing: { color: colors.warning, round: true },
     pulse: { waveOpacity: 0.22, popScale: 1.3 },
     summary: { border: colors.lineStrong, borderWidth: 1.5, radius: 0, rule: colors.lineStrong, ruleWidth: 1.5 },
-    tabs: { track: p.beige200, selected: colors.surface },
+    tabs: { track: p.beige200, selected: colors.surface, selectedBorder: colors.accent, selectedBorderWidth: 1.5 },
   },
 }

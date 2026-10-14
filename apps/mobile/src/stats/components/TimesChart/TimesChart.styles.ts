@@ -23,5 +23,8 @@ export const styles = StyleSheet.create((theme) => ({
     fontSize: theme.type.eyebrow.scale,
     color: theme.colors.accent,
     marginBottom: theme.space.xs,
+    // Wide enough for "100:00" and wider than a slot, so the time never wraps. The slot centres it and the chart does not clip it.
+    width: 64,
+    textAlign: 'center',
   },
 }))

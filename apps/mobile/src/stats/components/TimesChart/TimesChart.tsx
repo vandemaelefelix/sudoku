@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native'
 import { BAR_AREA, MIN_BAR } from '@/stats/constants/chart.constants'
+import { TIMES_COUNT } from '@/stats/constants/stats.constants'
 import { countOf, formatTime, timeWords } from '@/stats/utils/format.utils'
 import { styles } from './TimesChart.styles'
 
@@ -12,6 +13,8 @@ export function TimesChart({ times }: TimesChartProps) {
   const slowest = Math.max(...times, 1)
   const fastest = Math.min(...times)
   const fastestIndex = times.indexOf(fastest)
+  // The chart always has room for TIMES_COUNT bars: a lone win stays one narrow bar, and the newest bar stays on the right.
+  const emptySlots = Math.max(0, TIMES_COUNT - times.length)
   return (
     <View
       accessible
@@ -19,10 +22,18 @@ export function TimesChart({ times }: TimesChartProps) {
       accessibilityLabel={`Times of the last ${countOf(times.length, 'win')}, newest on the right. The fastest is ${timeWords(fastest)}.`}
       style={styles.chart}
     >
+      {Array.from({ length: emptySlots }, (_, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- the empty slots are one fixed run and never reorder.
+        <View key={`empty-${index}`} testID="time-slot-empty" style={styles.slot} />
+      ))}
       {times.map((ms, index) => (
         // oxlint-disable-next-line react/no-array-index-key -- the bars are one fixed row, and two wins can have the same time.
         <View key={index} style={styles.slot}>
-          {index === fastestIndex && <Text style={styles.label}>{formatTime(ms)}</Text>}
+          {index === fastestIndex && (
+            <Text numberOfLines={1} style={styles.label}>
+              {formatTime(ms)}
+            </Text>
+          )}
           <View
             testID="time-bar"
             style={[

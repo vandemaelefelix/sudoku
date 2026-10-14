@@ -55,3 +55,12 @@ it('shows a dash for a level without games, and 0 for the counts', () => {
   expect(screen.getByLabelText('Expert, Abandoned: 0')).toBeTruthy()
   expect(screen.queryByText(/NaN|Infinity/)).toBeNull()
 })
+
+it('explains how the numbers are counted, under the table', () => {
+  render(<LevelTable levels={levels} />)
+  expect(
+    screen.getByText(
+      'Best time counts wins without hints. Average counts all wins. Mistakes and hints are per game. Flawless means a win with no mistakes and no hints. Abandoned games are not counted.',
+    ),
+  ).toBeTruthy()
+})

@@ -28,6 +28,10 @@ function Overview({ data }: { data: StatsData }) {
       <StatSection title="Streak" note="all levels">
         <StatRow label="Current" value={countOf(data.streak.current, 'day')} />
         <StatRow label="Longest" value={countOf(data.streak.longest, 'day')} />
+        <View style={styles.stripHeader}>
+          <Text style={styles.stripTitle}>Last 14 days</Text>
+          <Text style={styles.stripNote}>today on the right</Text>
+        </View>
         <DayStrip days={data.streak.recent} />
       </StatSection>
     </>

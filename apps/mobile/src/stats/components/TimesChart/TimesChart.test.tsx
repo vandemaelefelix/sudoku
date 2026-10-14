@@ -34,3 +34,19 @@ it('reads one win in the singular', () => {
   render(<TimesChart times={[60_000]} />)
   expect(screen.getByLabelText('Times of the last 1 win, newest on the right. The fastest is 1 minute.')).toBeTruthy()
 })
+
+it('keeps room for 10 bars, so one win is one narrow bar on the right', () => {
+  render(<TimesChart times={[60_000]} />)
+  expect(screen.getAllByTestId('time-bar')).toHaveLength(1)
+  expect(screen.getAllByTestId('time-slot-empty')).toHaveLength(9)
+})
+
+it('has no empty slot when 10 wins fill the chart', () => {
+  render(<TimesChart times={Array.from({ length: 10 }, (_, index) => 60_000 + index)} />)
+  expect(screen.queryByTestId('time-slot-empty')).toBeNull()
+})
+
+it('keeps the fastest time on one line, whatever the width of its slot', () => {
+  render(<TimesChart times={[60_000]} />)
+  expect(screen.getByText('01:00').props.numberOfLines).toBe(1)
+})
