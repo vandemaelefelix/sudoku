@@ -1,1 +1,1 @@
-export { CorrectionSummary } from './CorrectionSummary'
+export { CorrectionSummary, type FullGridPanel } from './CorrectionSummary'
