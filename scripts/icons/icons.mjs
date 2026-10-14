@@ -9,7 +9,7 @@ function ribbonFor(mono, spec) {
   return { d: ribbonPath(text, spec), rotate: spec.rotate, cx: spec.cx, cy: spec.cy }
 }
 
-/** Every PNG of the app icon, the splash and the favicon (ADR-022). */
+/** Every PNG of the app icon and the favicon (ADR-022). */
 export function buildIcons() {
   const nine = outline(loadFont(FONTS.serif), '9', NINE).d
   const mono = loadFont(FONTS.mono)
@@ -61,7 +61,6 @@ export function buildIcons() {
       size: 1024,
       svg: iconSvg({ palette: 'light', layers: ['ground', 'waves'], nine, scale: ANDROID_SCALE }),
     },
-    { file: 'splash/splash-light.png', size: 1024, svg: iconSvg({ palette: 'light', layers: marks, nine }) },
     { file: 'favicon.png', size: 48, svg: iconSvg({ palette: 'light', layers: all, nine }) },
   ]
 }

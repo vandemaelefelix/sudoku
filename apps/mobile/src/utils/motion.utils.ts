@@ -15,6 +15,12 @@ export function easeIn(t: number): number {
   return t ** 3
 }
 
+/** The curve of a move across the screen: slow at the start and at the end. t and the result are 0..1. */
+export function easeInOut(t: number): number {
+  'worklet'
+  return t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2
+}
+
 /**
  * An entering animation: the element fades in and rises riseBy points, after delayMs, over durationMs with easeOut.
  * It plays with Reduce Motion on too: give riseBy 0 then, so the element only fades.

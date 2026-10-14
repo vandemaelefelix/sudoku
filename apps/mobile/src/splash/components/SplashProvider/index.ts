@@ -1,0 +1,1 @@
+export { SplashProvider } from './SplashProvider'

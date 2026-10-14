@@ -1,0 +1,1 @@
+export { SplashWord } from './SplashWord'
