@@ -2,7 +2,7 @@ import type { Game } from '@sudoku/core'
 
 export type Level = 'easy' | 'medium' | 'hard' | 'expert'
 export type PuzzleSource = 'generated' | 'scanned'
-export type GameResult = 'won' | 'lost'
+export type GameResult = 'won' | 'lost' | 'abandoned'
 
 export type SavedProgress = {
   readonly id: string

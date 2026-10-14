@@ -6,7 +6,7 @@ import { GameStorageProvider } from '@/storage/components/GameStorageProvider'
 
 /**
  * Each screen draws its own themed header and background, so the stack shows no native header (ADR-016).
- * The splash overlay is outside the storage provider: it draws at once, before the storage opens (ADR-023).
+ * The splash overlay is outside the storage provider: it draws at once, before the storage opens (ADR-024).
  */
 export default function RootLayout() {
   return (

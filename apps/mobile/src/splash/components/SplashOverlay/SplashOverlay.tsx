@@ -14,7 +14,7 @@ import { SPLASH_COLORS } from '@/theme/splash.colors'
 const linear = (to: number) => withTiming(to, { duration: to, easing: Easing.linear, reduceMotion: ReduceMotion.Never })
 
 /**
- * The splash animation (ADR-023). It draws the splash ground first, so its first frame equals the native splash.
+ * The splash animation (ADR-024). It draws the splash ground first, so its first frame equals the native splash.
  * The intro clock starts at the mount. The exit clock starts when the provider says exit. The overlay takes no touch.
  */
 export function SplashOverlay() {

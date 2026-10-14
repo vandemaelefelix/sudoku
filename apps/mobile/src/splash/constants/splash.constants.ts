@@ -1,4 +1,4 @@
-// The timing and the sizes of the splash. Times are in milliseconds. The design is in ADR-023 and the splash concept.
+// The timing and the sizes of the splash. Times are in milliseconds. The design is in ADR-024 and the splash concept.
 // The intro times count from the mount of the overlay. The exit times count from the start of the exit.
 
 /** The plain ground before the first letter. */

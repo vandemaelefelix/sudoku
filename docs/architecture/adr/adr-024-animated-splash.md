@@ -2,7 +2,7 @@
 status: DRAFT
 ---
 
-# ADR-023: An animated splash from the system appearance
+# ADR-024: An animated splash from the system appearance
 
 | Field | Value |
 | --- | --- |

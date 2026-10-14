@@ -1,6 +1,6 @@
 /**
  * The colours of the splash, in light and dark mode. The native layer cannot read the saved theme,
- * so the splash follows the system appearance (ADR-023). The values come from the Op-art and Midnight palettes.
+ * so the splash follows the system appearance (ADR-024). The values come from the Op-art and Midnight palettes.
  * ground is also the native splash colour in app.json: a test keeps the two the same.
  */
 export const SPLASH_COLORS = {

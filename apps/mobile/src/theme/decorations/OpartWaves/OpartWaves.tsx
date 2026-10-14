@@ -38,6 +38,21 @@ export function OpartWaves() {
   )
 }
 
+/** The Op-art stats card edge: the same 4 lines across the content column, inside the border of the card. */
+export function OpartSummaryWaves() {
+  const { theme } = useUnistyles()
+  const { width } = useWindowDimensions()
+  const { border, borderWidth } = theme.components.summary
+  return (
+    <Waves
+      testID="decoration-opart-summary-waves"
+      width={width - 2 * theme.space.lg - 2 * borderWidth}
+      height={theme.size.panelEdge}
+      color={border}
+    />
+  )
+}
+
 /** The Op-art finish card edge: the same 4 lines across the card, in the card text colour. */
 export function OpartCardWaves() {
   const { theme } = useUnistyles()

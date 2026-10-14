@@ -1,7 +1,7 @@
 import { tick } from '@sudoku/core'
 import { migrate } from './migrations'
 import { openNodeDatabase, temporaryDatabaseFile, type NodeDatabase } from './nodeDatabase'
-import { describeGameStorage, newGame, testDeps, wonGame } from './repositories.contract'
+import { describeGameStorage, movedGame, newGame, testDeps, wonGame } from './repositories.contract'
 import { createSqliteStorage } from './sqliteStorage'
 import type { Level } from './storage.types'
 
@@ -96,5 +96,37 @@ describe('createSqliteStorage', () => {
     await expect(
       storage.puzzles.start({ level: 'nightmare' as Level, source: 'generated', game: newGame() }),
     ).rejects.toThrow('CHECK constraint failed')
+  })
+
+  it('starts a game over a saved game that does not load, and writes no history entry', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { db, storage } = await openStorage()
+    const { id } = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+    await db.runAsync('UPDATE game_in_progress SET saved_game = ? WHERE id = ?', ['{"version":99}', id])
+
+    const next = await storage.puzzles.start({ level: 'hard', source: 'generated', game: newGame() })
+
+    await expect(storage.puzzles.current()).resolves.toEqual(next)
+    await expect(storage.history.list()).resolves.toEqual([])
+    warn.mockRestore()
+  })
+
+  it('rolls back a start whose abandoned entry fails, and keeps the game in progress', async () => {
+    const { db, storage } = await openStorage()
+    const first = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+    await storage.puzzles.save(first.id, movedGame())
+    // A history entry with the id of the game makes the abandoned entry fail on the primary key.
+    const at = '2026-01-01T00:00:00.000Z'
+    await db.runAsync(
+      `INSERT INTO game_history
+        (id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at)
+        VALUES (?, 'easy', 'generated', 'lost', 1, 3, 0, ?, ?, ?)`,
+      [first.id, at, at, at],
+    )
+
+    await expect(storage.puzzles.start({ level: 'hard', source: 'generated', game: newGame() })).rejects.toThrow(
+      'UNIQUE constraint failed',
+    )
+    await expect(storage.puzzles.current()).resolves.toMatchObject({ id: first.id })
   })
 })

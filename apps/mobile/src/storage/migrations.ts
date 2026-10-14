@@ -43,6 +43,28 @@ export const MIGRATIONS: readonly string[] = [
   // A scanned game and a game saved before this migration have no seed (ADR-012, amendment "the seed").
   `ALTER TABLE game_in_progress ADD COLUMN seed INTEGER CHECK (seed IS NULL OR seed >= 0);
   ALTER TABLE game_history ADD COLUMN seed INTEGER CHECK (seed IS NULL OR seed >= 0);`,
+  // SQLite cannot change a CHECK constraint, so the history table is built again with the result abandoned (ADR-023).
+  `CREATE TABLE game_history_next (
+    id TEXT PRIMARY KEY NOT NULL,
+    level TEXT NOT NULL CHECK (level IN ${LEVELS}),
+    source TEXT NOT NULL CHECK (source IN ${SOURCES}),
+    result TEXT NOT NULL CHECK (result IN ('won', 'lost', 'abandoned')),
+    played_ms INTEGER NOT NULL CHECK (played_ms >= 0),
+    mistakes INTEGER NOT NULL CHECK (mistakes >= 0),
+    hints_used INTEGER NOT NULL CHECK (hints_used >= 0),
+    finished_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    seed INTEGER CHECK (seed IS NULL OR seed >= 0)
+  );
+  INSERT INTO game_history_next
+    (id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at, deleted_at, seed)
+    SELECT id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at, deleted_at, seed
+    FROM game_history ORDER BY rowid;
+  DROP TABLE game_history;
+  ALTER TABLE game_history_next RENAME TO game_history;
+  CREATE INDEX game_history_best_time ON game_history (level, result, played_ms) WHERE deleted_at IS NULL;`,
 ]
 
 /**

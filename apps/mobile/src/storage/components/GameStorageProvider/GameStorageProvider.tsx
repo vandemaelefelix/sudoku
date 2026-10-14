@@ -1,3 +1,4 @@
+import { randomUUID } from 'expo-crypto'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createMemoryStorage, openStorage, type GameStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
@@ -16,7 +17,8 @@ export function GameStorageProvider({ open = openStorage, children }: GameStorag
     open()
       .catch((error: unknown) => {
         devWarn('storage', `The game storage does not open, so games are not saved: ${errorMessage(error)}`)
-        return createMemoryStorage()
+        // The real clock and ids: the stats count days, and the default fake clock stays on 1 January 2026.
+        return createMemoryStorage({ newId: randomUUID, now: () => new Date().toISOString() })
       })
       .then((opened) => {
         if (live) setStorage(opened)
