@@ -18,6 +18,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.text,
     marginBottom: theme.space.lg,
   },
+  noStats: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
   section: {
     ...roleFont(theme.type.label),
     fontSize: theme.type.label.scale,

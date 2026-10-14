@@ -4,18 +4,22 @@ import type { Level } from '@sudoku/core'
 import { newGeneratedGame } from '@/game/utils/start.utils'
 import { HomeMenu } from '@/home/components/HomeMenu'
 import { useConfirmReplace } from '@/home/hooks/useConfirmReplace'
+import { loadHomeStats, type HomeStats } from '@/home/utils/homeStats.utils'
+import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
 export function HomeScreen() {
   const router = useRouter()
-  const { puzzles } = useGameStorage()
+  const { puzzles, stats } = useGameStorage()
+  const { includeScanned } = useIncludeScanned()
   const confirmReplace = useConfirmReplace()
   // peek() knows the game when a screen before read or started it. Else the menu waits for the focus read.
   const [continueLevel, setContinueLevel] = useState<Level | null | undefined>(() => {
     const known = puzzles.peek()
     return known === undefined ? undefined : (known?.level ?? null)
   })
+  const [homeStats, setHomeStats] = useState<HomeStats | null | undefined>(undefined)
   // start() discards the game before it, so a second tap must not start a second game.
   const busy = useRef(false)
 
@@ -32,10 +36,19 @@ export function HomeScreen() {
           // The menu waits for an answer. Without one it shows without Continue: a new game still works.
           if (live) setContinueLevel(null)
         })
+      loadHomeStats(stats, includeScanned)
+        .then((loaded) => {
+          if (live) setHomeStats(loaded)
+        })
+        .catch((error: unknown) => {
+          devWarn('storage', `The stats do not load: ${errorMessage(error)}`)
+          // The menu waits for an answer. Without one it shows without the card: a new game still works.
+          if (live) setHomeStats(null)
+        })
       return () => {
         live = false
       }
-    }, [puzzles]),
+    }, [puzzles, stats, includeScanned]),
   )
 
   const once = useCallback(async (task: () => Promise<void>) => {
@@ -66,12 +79,15 @@ export function HomeScreen() {
   return (
     <HomeMenu
       continueLevel={continueLevel}
+      stats={homeStats}
       onNewGame={newGame}
       // navigate, not push: a second tap finds the open screen on top and pushes no second copy.
       // Two game screens for one game each save, so the older one can overwrite newer moves.
       onContinue={() => router.navigate('/game')}
       onScan={() => router.navigate('/scan')}
       onSettings={() => router.navigate('/settings')}
+      // navigate, like Continue: a second tap finds the open screen and pushes no second copy.
+      onStats={() => router.navigate('/stats')}
     />
   )
 }
