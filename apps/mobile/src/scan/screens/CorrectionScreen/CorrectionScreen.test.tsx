@@ -880,6 +880,17 @@ describe('CorrectionScreen with a full grid', () => {
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1)
   })
 
+  it('does not replay the success haptic when the player opens and closes a cell of a solved grid', async () => {
+    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} />)
+    jest.mocked(Haptics.notificationAsync).mockClear()
+    fireEvent.press(screen.getByTestId('verify'))
+    await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1))
+    press(`correction-press-${firstOpen}`)
+    press(`correction-press-${firstOpen}`)
+    expect(screen.getByText('Solved')).toBeTruthy()
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1)
+  })
+
   it('brings Play and Solve back when an edit empties a cell', () => {
     render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
     fireEvent.press(screen.getByTestId('verify'))

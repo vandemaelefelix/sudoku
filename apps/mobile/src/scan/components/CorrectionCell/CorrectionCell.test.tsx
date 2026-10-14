@@ -168,3 +168,10 @@ it('draws no wave without a pulse', () => {
   render(<CorrectionCell n={0} look={given} {...at} />)
   expect(screen.queryByTestId('correction-wave-0')).toBeNull()
 })
+
+it('reads a wrong cell with its solution digit, not as a clash of givens', () => {
+  render(<CorrectionCell n={0} look={look} conflict hint="2" {...at} />)
+  const label = screen.getByTestId('correction-press-0').props.accessibilityLabel
+  expect(label).toContain('differs from the solution, solution 2')
+  expect(label).not.toContain('given')
+})

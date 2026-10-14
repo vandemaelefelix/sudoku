@@ -165,9 +165,13 @@ export function CorrectionScreen({
   // while the player fixes a wrong cell in the check sheet.
   const full = editable && corrected.givens.every((digit, cell) => digit !== 0 || corrected.entries[cell] !== 0)
   const { verdict, verify } = useVerify(corrected, full)
-  // The pulse and the title wait for the sheet to close, so the player sees them.
-  const solved = verdict?.status === 'solved' && open === null
-  const pulse = useSolvedPulse(solved)
+  const solved = verdict?.status === 'solved'
+  // The celebration (pulse and haptic) starts once the sheet is closed, so the player sees it. It then stays on until the
+  // verdict changes: opening and closing a cell of a solved grid must not replay it.
+  const [celebrated, setCelebrated] = useState(false)
+  const celebrate = solved && (celebrated || open === null)
+  if (celebrate !== celebrated) setCelebrated(celebrate)
+  const pulse = useSolvedPulse(celebrated)
   // The cells to mark: the wrong entries of the unique solution, or the cells that break a rule.
   const marked = useMemo<ReadonlySet<number>>(() => {
     if (verdict?.status === 'wrong') return new Set(Object.keys(verdict.hints).map(Number))
@@ -189,9 +193,9 @@ export function CorrectionScreen({
   )
   const solvedBefore = useRef(false)
   useEffect(() => {
-    if (solved && !solvedBefore.current) play('success')
-    solvedBefore.current = solved
-  }, [solved, play])
+    if (celebrated && !solvedBefore.current) play('success')
+    solvedBefore.current = celebrated
+  }, [celebrated, play])
   // Success when the last check makes the puzzle playable. The first summary of a review only sets the state: a scan that
   // needs no check already had its success haptic. While a cell is open, the summary has no check, so the state waits.
   const readyBefore = useRef<boolean | null>(null)
@@ -372,7 +376,7 @@ export function CorrectionScreen({
           selected={open === n}
           conflict={editable && ((conflicts[n] ?? false) || marked.has(n))}
           hint={verdict?.status === 'wrong' ? String(verdict.hints[n] ?? '') : ''}
-          pulse={solved ? pulse : undefined}
+          pulse={celebrated ? pulse : undefined}
           solution={solution === null || look.digit !== '' ? '' : String(solution[n] ?? '')}
           confidence={confidences?.[n] ?? null}
           onSelect={editable ? actions.select : undefined}
