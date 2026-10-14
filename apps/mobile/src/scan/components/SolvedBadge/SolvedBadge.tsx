@@ -12,8 +12,9 @@ export function SolvedBadge() {
   return (
     <Animated.View
       testID="solved-badge"
-      accessibilityRole="image"
-      accessibilityLabel="Solved"
+      // The title next to it says "Solved", so VoiceOver skips the badge.
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       entering={IN}
       style={styles.badge}
     >

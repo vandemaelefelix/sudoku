@@ -175,3 +175,8 @@ it('reads a wrong cell with its solution digit, not as a clash of givens', () =>
   expect(label).toContain('differs from the solution, solution 2')
   expect(label).not.toContain('given')
 })
+
+it('reads a marked entry as a clash with another cell, not with a given', () => {
+  render(<CorrectionCell n={0} look={look} conflict {...at} />)
+  expect(screen.getByTestId('correction-press-0').props.accessibilityLabel).toContain('same digit as another cell')
+})

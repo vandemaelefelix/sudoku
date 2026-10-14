@@ -10,7 +10,7 @@ export type Verify = {
 
 /**
  * The verify state of a full grid. After the first tap the verdict follows every edit, so fixing the last wrong cell
- * solves the grid. The solver runs only for a full grid that the player verified, never per key.
+ * solves the grid. The solver runs only for a full grid that the player verified, never before the first tap.
  */
 export function useVerify(grid: CorrectedGrid, full: boolean): Verify {
   const [tapped, setTapped] = useState(false)
