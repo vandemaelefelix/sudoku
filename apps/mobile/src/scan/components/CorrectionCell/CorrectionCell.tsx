@@ -9,6 +9,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { NO_PULSE } from '@/game/constants/pulse.constants'
+import type { Pulse } from '@/game/hooks/usePulse'
+import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
 import { CorrectionRing } from '@/scan/components/CorrectionRing'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { correctionCellLabel } from '@/scan/utils/correctionEdit.utils'
@@ -41,7 +44,11 @@ type CorrectionCellProps = SweepTiming & {
   conflict?: boolean
   /** The digit of the solution, shown muted in a cell without a digit. Empty for none. */
   solution?: string
+  /** The solution digit of a wrong cell, drawn small in the corner. Empty for none. */
+  hint?: string
   confidence?: CellConfidence | null
+  /** The solved pulse of the grid. Without it, the cell stays still. */
+  pulse?: Pulse | undefined
   /** Without it, the cell is not pressable: the transition shows the cells before the player can edit them. */
   onSelect?: ((cell: number) => void) | undefined
 }
@@ -57,7 +64,9 @@ export const CorrectionCell = memo(function CorrectionCell({
   selected = false,
   conflict = false,
   solution = '',
+  hint = '',
   confidence = null,
+  pulse,
   onSelect,
   clock,
   resultsAt,
@@ -76,6 +85,10 @@ export const CorrectionCell = memo(function CorrectionCell({
     pick.set(0)
     pick.set(withTiming(1, { duration: PICK_FADE_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }))
   }, [look.digit, clock, pick])
+  const { delays, elapsed, look: pulseLook } = pulse ?? {}
+  const waveStyle = useAnimatedStyle(() => ({
+    opacity: pulseLook ? waveOpacity(elapsed?.get() ?? 0, delays?.get()[n] ?? NO_PULSE, pulseLook.get()) : 0,
+  }))
   const digitStyle = useAnimatedStyle(() => {
     let alpha = 1
     if (clock) {
@@ -84,7 +97,11 @@ export const CorrectionCell = memo(function CorrectionCell({
     }
     const picked = pick.get()
     const rise = (1 - alpha) * DIGIT_RISE + (systemReduceMotion ? 0 : (1 - picked) * DIGIT_RISE)
-    return { opacity: alpha * picked, transform: [{ translateY: rise }] }
+    const pop = pulseLook ? popScale(elapsed?.get() ?? 0, delays?.get()[n] ?? NO_PULSE, pulseLook.get()) : 1
+    return {
+      opacity: alpha * picked,
+      transform: pulseLook ? [{ translateY: rise }, { scale: pop }] : [{ translateY: rise }],
+    }
   })
   const disabled = onSelect == null
   const entry = look.style === 'entry'
@@ -96,7 +113,7 @@ export const CorrectionCell = memo(function CorrectionCell({
         // During the transition the cells are not controls yet, so VoiceOver skips them.
         accessible={!disabled}
         accessibilityRole="button"
-        accessibilityLabel={correctionCellLabel(n, look, conflict)}
+        accessibilityLabel={correctionCellLabel(n, look, conflict, hint)}
         accessibilityState={{ selected, disabled }}
         disabled={disabled}
         onPress={() => onSelect?.(n)}
@@ -110,6 +127,9 @@ export const CorrectionCell = memo(function CorrectionCell({
               selected ? (look.uncertain ? styles.selectedCheck : styles.selected) : styles.conflictFill,
             ]}
           />
+        )}
+        {pulse && (
+          <Animated.View testID={`correction-wave-${n}`} pointerEvents="none" style={[styles.wave, waveStyle]} />
         )}
         <Animated.Text
           testID={`correction-cell-${n}`}
@@ -133,6 +153,11 @@ export const CorrectionCell = memo(function CorrectionCell({
           >
             {solution}
           </Animated.Text>
+        )}
+        {hint !== '' && (
+          <Text testID={`correction-hint-${n}`} style={styles.hint}>
+            {hint}
+          </Text>
         )}
         {confidence && (
           <>

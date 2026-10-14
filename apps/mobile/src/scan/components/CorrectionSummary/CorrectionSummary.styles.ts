@@ -25,5 +25,8 @@ export const styles = StyleSheet.create((theme) => ({
   statusDanger: { color: theme.colors.danger },
   level: { ...roleText(theme.type.eyebrow), color: theme.colors.textMuted },
   blocked: { ...roleText(theme.type.caption), marginTop: -theme.space.sm, color: theme.colors.danger },
+  differ: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // A small sample of a wrong cell: the conflict fill. It explains the marks without a sentence.
+  sample: { width: 22, height: 22, backgroundColor: theme.components.cell.conflictFill },
   buttons: { flexDirection: 'row', gap: 10 },
 }))
