@@ -47,6 +47,11 @@ should not force a storage rewrite.
 - The best time of a level is the shortest time played of a won **generated** game without
   hints. A scanned game never counts, because its level is an estimate (ADR-011).
 
+## Amendment 2026-10-14: the abandoned result and the stats
+
+[ADR-023](adr-023-player-stats.md) amends this ADR. The history gets a third result, `abandoned`
+(migration 4). A new `StatsRepository` counts the stats. The other points stay.
+
 ## Consequences
 
 - The repository interfaces are where Jest tests (ADR-010 layer 2) swap in an in-memory fake.
