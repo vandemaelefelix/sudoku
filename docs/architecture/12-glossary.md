@@ -162,4 +162,3 @@ status: DRAFT
 | Verify | The check of a full scanned grid. `verifyGrid` says solved, wrong or clash. The button says "Check the grid". "Check" in code means the per-cell check of an uncertain cell |
 | Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. White in light mode, near black in dark mode. It follows the system appearance, not the saved theme (ADR-024) |
 | Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
-| Hand-off | The moment when the word of the splash overlay fades out and the real title of the home screen shows at the same place |

@@ -40,8 +40,8 @@ cannot read.
 4. The overlay has `pointerEvents="none"`.
 5. With Reduce Motion on, the app draws no overlay. The native splash hides when the home is ready.
 6. The splash colours follow the system appearance. The word uses the title font of the saved theme.
-   Its colour changes to the title colour during the glide.
-7. This ADR supersedes decision 5 of ADR-022.
+7. The word does not glide to the home title. It rises and fades out in the middle of the window. The ground clears with a gradient edge that follows the wave.
+8. This ADR supersedes decision 5 of ADR-022.
 
 ## Consequences
 

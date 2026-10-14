@@ -147,6 +147,7 @@ jest.mock('@shopify/react-native-skia', () => {
     Path: (props: object) => createElement(View, { testID: 'skia-path', ...props }),
     Image: (props: object) => createElement(View, { testID: 'skia-image', ...props }),
     createPicture: jest.fn(() => ({})),
+    matchFont: jest.fn(() => ({ measureText: () => ({ width: 10 }) })),
     FillType: { Winding: 0, EvenOdd: 1 },
     PaintStyle: { Fill: 0, Stroke: 1 },
     StrokeCap: { Butt: 0, Round: 1, Square: 2 },
