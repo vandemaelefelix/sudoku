@@ -149,7 +149,7 @@ A full grid has nothing to play, so the correction screen verifies it. The playe
 
 | Result | When | The screen shows |
 | --- | --- | --- |
-| Solved | Every row, column and box holds 1 to 9 | The title "Solved", a badge and the solved pulse. The buttons are Scan another and Home |
+| Solved | Every row, column and box holds 1 to 9 | The title "Solved" and the solved pulse. The buttons are Scan another and Home |
 | Wrong | The printed digits have one solution, and an entry differs | The conflict fill on each wrong entry, with the solution digit small in the corner. The status counts the cells |
 | Clash | The printed digits have no unique solution, and cells share a digit in a unit | The conflict fill on those cells. The status counts the cells |
 

@@ -1,1 +1,0 @@
-export { SolvedBadge } from './SolvedBadge'
