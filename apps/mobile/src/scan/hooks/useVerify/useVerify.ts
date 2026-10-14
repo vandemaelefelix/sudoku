@@ -17,9 +17,6 @@ export function useVerify(grid: CorrectedGrid, full: boolean): Verify {
   useEffect(() => {
     if (!full) setTapped(false)
   }, [full])
-  const verdict = useMemo(
-    () => (tapped && full ? verifyGrid(grid.givens, grid.entries) : null),
-    [tapped, full, grid],
-  )
+  const verdict = useMemo(() => (tapped && full ? verifyGrid(grid.givens, grid.entries) : null), [tapped, full, grid])
   return useMemo(() => ({ verdict, verify: () => setTapped(true) }), [verdict])
 }
