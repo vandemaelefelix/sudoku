@@ -17,6 +17,7 @@ const TEXT_PAIRS: Pair[] = [
   ['warning text on warning surface', (t) => t.colors.warningText, (t) => t.colors.warningSurface],
   ['danger on surface', (t) => t.colors.danger, (t) => t.colors.surface],
   ['conflict on conflict fill', (t) => t.components.cell.conflict, (t) => t.components.cell.conflictFill],
+  ['muted on conflict fill', (t) => t.colors.textMuted, (t) => t.components.cell.conflictFill],
   ...(['fill', 'peer', 'same', 'selected'] as const).flatMap((fill): Pair[] => [
     [`given on ${fill}`, (t) => t.components.cell.given, (t) => t.components.cell[fill]],
     [`entry on ${fill}`, (t) => t.components.cell.entry, (t) => t.components.cell[fill]],
