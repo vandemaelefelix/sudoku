@@ -62,7 +62,6 @@ export function buildIcons() {
       svg: iconSvg({ palette: 'light', layers: ['ground', 'waves'], nine, scale: ANDROID_SCALE }),
     },
     { file: 'splash/splash-light.png', size: 1024, svg: iconSvg({ palette: 'light', layers: marks, nine }) },
-    { file: 'splash/splash-dark.png', size: 1024, svg: iconSvg({ palette: 'dark', layers: marks, nine }) },
     { file: 'favicon.png', size: 48, svg: iconSvg({ palette: 'light', layers: all, nine }) },
   ]
 }

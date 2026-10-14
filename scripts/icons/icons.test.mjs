@@ -12,7 +12,6 @@ test('builds every file that the app config uses', () => {
     ),
     'production/android-background.png',
     'splash/splash-light.png',
-    'splash/splash-dark.png',
     'favicon.png',
   ]
   assert.deepEqual([...byFile.keys()].toSorted(), expected.toSorted())

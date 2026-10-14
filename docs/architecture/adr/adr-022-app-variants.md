@@ -38,7 +38,7 @@ Android rules (an adaptive icon with a safe zone, plus a monochrome layer).
    the name "Sudoku Dev", the scheme `sudoku-dev` and icons with a "DEV" ribbon.
 4. `scripts/icons/` draws every icon layer in one 100 × 100 design. `just icons` renders the PNGs
    into `apps/mobile/assets/icons/`. The PNGs are committed.
-5. The splash screen shows a still image of the mark until #93 (animate the splash screen).
+5. The splash screen shows a still image of the mark with the colours of the icon, in light and dark mode, until #93 (animate the splash screen).
 
 ## Consequences
 
