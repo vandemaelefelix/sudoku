@@ -12,12 +12,12 @@ export const styles = StyleSheet.create((theme) => ({
   chartNote: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
   empty: {
     marginTop: theme.space.xl,
-    gap: theme.space.sm,
-    padding: theme.space.lg,
+    overflow: 'hidden',
     borderWidth: theme.components.summary.borderWidth,
     borderColor: theme.components.summary.border,
     borderRadius: theme.components.summary.radius,
   },
+  emptyBody: { gap: theme.space.sm, padding: theme.space.lg },
   emptyTitle: { ...roleFont(theme.type.question), fontSize: theme.type.question.scale, color: theme.colors.text },
   emptyText: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
 }))

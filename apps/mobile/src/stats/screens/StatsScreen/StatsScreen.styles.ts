@@ -23,6 +23,15 @@ export const styles = StyleSheet.create((theme, rt) => ({
   display: { ...roleText(theme.type.display), color: theme.colors.text },
   card: { marginBottom: theme.space.xl },
   message: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
+  stripHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingTop: theme.space.md,
+    paddingBottom: theme.space.sm,
+  },
+  stripTitle: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.text },
+  stripNote: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
   settings: {
     marginTop: theme.space.xl,
     borderTopWidth: theme.components.summary.ruleWidth,

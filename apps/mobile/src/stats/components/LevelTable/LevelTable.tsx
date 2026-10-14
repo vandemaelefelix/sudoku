@@ -26,6 +26,9 @@ const GROUPS: readonly (readonly Row[])[] = [
   [{ label: 'Abandoned', cell: (s) => String(s.abandoned) }],
 ]
 
+const NOTE =
+  'Best time counts wins without hints. Average counts all wins. Mistakes and hints are per game. Flawless means a win with no mistakes and no hints. Abandoned games are not counted.'
+
 type LevelTableProps = { levels: Record<Level, LevelSummary> }
 
 /** All four levels side by side, so the player compares them without a tab change. */
@@ -64,6 +67,7 @@ export function LevelTable({ levels }: LevelTableProps) {
           ))}
         </View>
       ))}
+      <Text style={styles.note}>{NOTE}</Text>
     </View>
   )
 }

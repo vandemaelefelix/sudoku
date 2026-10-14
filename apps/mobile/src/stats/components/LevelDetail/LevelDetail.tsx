@@ -6,6 +6,7 @@ import { TimesChart } from '@/stats/components/TimesChart'
 import { NONE } from '@/stats/constants/stats.constants'
 import { countOf, formatAverage, formatPercent, formatTime } from '@/stats/utils/format.utils'
 import type { Level, LevelSummary } from '@/storage'
+import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { styles } from './LevelDetail.styles'
 
 type LevelDetailProps = { level: Level; summary: LevelSummary; times: readonly number[] }
@@ -15,10 +16,13 @@ export function LevelDetail({ level, summary, times }: LevelDetailProps) {
   if (summary.played === 0 && summary.abandoned === 0) {
     return (
       <View style={styles.empty}>
-        <Text accessibilityRole="header" style={styles.emptyTitle}>
-          No {LEVEL_NAMES[level]} games yet.
-        </Text>
-        <Text style={styles.emptyText}>Finish one and your win rate, best time and average time show up here.</Text>
+        <ThemeDecoration slot="summaryEdge" />
+        <View style={styles.emptyBody}>
+          <Text accessibilityRole="header" style={styles.emptyTitle}>
+            No {LEVEL_NAMES[level]} games yet.
+          </Text>
+          <Text style={styles.emptyText}>Finish one and your win rate, best time and average time show up here.</Text>
+        </View>
       </View>
     )
   }

@@ -171,6 +171,6 @@ export type Theme = {
     /** The stats card and the empty state of a level (border, radius) and the rules between the sections of the stats screen. Widths and radius in points. */
     summary: { border: string; borderWidth: number; radius: number; rule: string; ruleWidth: number }
     /** The tab bar of the stats screen. */
-    tabs: { track: string; selected: string }
+    tabs: { track: string; selected: string; selectedBorder: string; selectedBorderWidth: number }
   }
 }

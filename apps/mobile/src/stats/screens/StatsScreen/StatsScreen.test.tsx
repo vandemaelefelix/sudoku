@@ -84,6 +84,12 @@ it('counts a scanned game after the switch turns on', async () => {
   await waitFor(() => expect(screen.getByLabelText('Easy, Played: 1')).toBeTruthy())
 })
 
+it('labels the strip of the last 14 days', async () => {
+  renderScreen(await storageWithGames())
+  await waitFor(() => expect(screen.getByText('Last 14 days')).toBeTruthy())
+  expect(screen.getByText('today on the right')).toBeTruthy()
+})
+
 it('writes 1 day, not 1 days', async () => {
   renderScreen(await storageWithGames())
   await waitFor(() => expect(screen.getByLabelText('Current: 1 day')).toBeTruthy())
