@@ -1,6 +1,9 @@
 import type { CellStyle } from '@/scan/utils/correction.utils'
 import type { PlayBlock } from '@/scan/utils/play.utils'
 
+/** The title once a full scanned grid verifies as solved. */
+export const SOLVED_TITLE = 'Solved'
+
 export const TITLE = 'Check the scan'
 
 /** The font size of a digit as a share of the cell side, for a role at the system scale. */

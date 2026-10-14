@@ -20,10 +20,13 @@ import { LEVEL_NAMES } from '@/constants/level.constants'
 import { Icon } from '@/game/components/Icon'
 import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/components/CorrectionCell'
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
-import { CorrectionSummary } from '@/scan/components/CorrectionSummary'
+import { CorrectionSummary, type FullGridPanel } from '@/scan/components/CorrectionSummary'
 import { DevMenu, type SaveState } from '@/scan/components/DevMenu'
 import { PanelButton } from '@/scan/components/PanelButton'
+import { SolvedBadge } from '@/scan/components/SolvedBadge'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
+import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
+import { useVerify } from '@/scan/hooks/useVerify'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 import { swapIn } from '@/scan/utils/swap.utils'
 import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
@@ -49,6 +52,7 @@ import {
   PANEL_HIDDEN,
   PANEL_RESIZE_MS,
   PLAY_BLOCK_TEXT,
+  SOLVED_TITLE,
   TITLE,
 } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
@@ -63,6 +67,8 @@ export type CorrectionProps = {
   onPlay?: (start: ScannedStart, looks: readonly CellLook[]) => void
   /** Save the scan with the corrections (development builds). With it, the dev menu shows Save. */
   onSave?: (looks: readonly CellLook[]) => Promise<boolean>
+  /** Home, on the solved panel. */
+  onHome?: (() => void) | undefined
   /** The transition clock. Without it, everything shows (the review phase). */
   clock?: SharedValue<number>
   reduceMotion?: boolean
@@ -82,6 +88,7 @@ export function CorrectionScreen({
   onRetake,
   onPlay,
   onSave,
+  onHome,
   clock,
   reduceMotion = false,
   waiting,
@@ -154,6 +161,37 @@ export function CorrectionScreen({
   const start = check?.ok ? check.start : null
   const blockText = check !== null && !check.ok ? PLAY_BLOCK_TEXT[check.block] : null
   const canPlay = start !== null && onPlay !== undefined
+  // The grid is full when no cell is empty, with or without a conflict. It does not depend on the open cell: the marks stay
+  // while the player fixes a wrong cell in the check sheet.
+  const full = editable && corrected.givens.every((digit, cell) => digit !== 0 || corrected.entries[cell] !== 0)
+  const { verdict, verify } = useVerify(corrected, full)
+  // The pulse and the title wait for the sheet to close, so the player sees them.
+  const solved = verdict?.status === 'solved' && open === null
+  const pulse = useSolvedPulse(solved)
+  // The cells to mark: the wrong entries of the unique solution, or the cells that break a rule.
+  const marked = useMemo<ReadonlySet<number>>(() => {
+    if (verdict?.status === 'wrong') return new Set(Object.keys(verdict.hints).map(Number))
+    if (verdict?.status === 'clash') return new Set(verdict.cells)
+    return new Set()
+  }, [verdict])
+  const fullPanel = useMemo<FullGridPanel | null>(
+    () =>
+      full
+        ? {
+            phase: verdict === null ? 'ready' : verdict.status,
+            count: marked.size,
+            onVerify: verify,
+            onScanAnother: () => onRetake(looks),
+            onHome: () => onHome?.(),
+          }
+        : null,
+    [full, verdict, marked, verify, onRetake, looks, onHome],
+  )
+  const solvedBefore = useRef(false)
+  useEffect(() => {
+    if (solved && !solvedBefore.current) play('success')
+    solvedBefore.current = solved
+  }, [solved, play])
   // Success when the last check makes the puzzle playable. The first summary of a review only sets the state: a scan that
   // needs no check already had its success haptic. While a cell is open, the summary has no check, so the state waits.
   const readyBefore = useRef<boolean | null>(null)
@@ -287,10 +325,11 @@ export function CorrectionScreen({
         </Pressable>
         {!largeTitle && (
           <Text accessibilityRole="header" style={styles.barTitle}>
-            {TITLE}
+            {solved ? SOLVED_TITLE : TITLE}
           </Text>
         )}
         <View style={styles.barEnd}>
+          {solved && !largeTitle && <SolvedBadge />}
           {devTools && (
             <Pressable
               testID="dev-open"
@@ -314,8 +353,9 @@ export function CorrectionScreen({
           ]}
         >
           <Text accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.display}>
-            {TITLE}
+            {solved ? SOLVED_TITLE : TITLE}
           </Text>
+          {solved && <SolvedBadge />}
           <ThemeDecoration slot="titleMark" />
         </Animated.View>
       )}
@@ -330,7 +370,9 @@ export function CorrectionScreen({
           left={grid.x + (n % 9) * cellSize}
           top={grid.y + Math.floor(n / 9) * cellSize}
           selected={open === n}
-          conflict={editable && (conflicts[n] ?? false)}
+          conflict={editable && ((conflicts[n] ?? false) || marked.has(n))}
+          hint={verdict?.status === 'wrong' ? String(verdict.hints[n] ?? '') : ''}
+          pulse={solved ? pulse : undefined}
           solution={solution === null || look.digit !== '' ? '' : String(solution[n] ?? '')}
           confidence={confidences?.[n] ?? null}
           onSelect={editable ? actions.select : undefined}
@@ -405,6 +447,7 @@ export function CorrectionScreen({
                   animate={!clock && motion}
                   canSolve={start !== null}
                   solutionShown={solution !== null}
+                  full={fullPanel}
                   onStartCheck={actions.startCheck}
                   onPlay={
                     start !== null && onPlay

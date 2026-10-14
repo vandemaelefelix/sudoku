@@ -600,16 +600,6 @@ describe('CorrectionScreen play gate', () => {
     expect(onPlay).not.toHaveBeenCalled()
   })
 
-  it('blocks a scan that is already solved', () => {
-    const over: { [n: number]: Partial<CellResult> } = {}
-    puzzle.solution.forEach((digit, n) => {
-      if (puzzle.givens[n] === 0) over[n] = { digit, kind: 'handwritten', confidence: 1 }
-    })
-    playUi(scanOf(puzzle.givens, over))
-    expect(playOn()).toBe(false)
-    expect(screen.getByTestId('play-blocked')).toHaveTextContent('This puzzle is already solved.')
-  })
-
   it('follows an edit: a fixed conflict turns Play on', () => {
     // A misread gives the second given of row 1 the digit of the first.
     const row = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter((cell) => puzzle.givens[cell] !== 0)
@@ -804,5 +794,103 @@ describe('CorrectionScreen in the new themes', () => {
     expect(screen.getByTestId('decoration-progressive-disc')).toBeTruthy()
     press('correction-press-0')
     expect(screen.queryByTestId('decoration-progressive-stripes')).toBeNull()
+  })
+})
+
+const fullScan = (wrong?: { cell: number; digit: number }) => {
+  const over: { [n: number]: Partial<CellResult> } = {}
+  puzzle.solution.forEach((digit, n) => {
+    over[n] = {
+      digit: wrong?.cell === n ? wrong.digit : digit,
+      kind: puzzle.givens[n] === 0 ? 'handwritten' : 'printed',
+      confidence: 1,
+    }
+  })
+  return okResult(over)
+}
+
+describe('CorrectionScreen with a full grid', () => {
+  it('offers Check, and no Play or Solve', () => {
+    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
+    expect(screen.getByText('Grid is full')).toBeTruthy()
+    expect(screen.getByTestId('verify')).toBeTruthy()
+    expect(screen.queryByTestId('play')).toBeNull()
+    expect(screen.queryByTestId('solve')).toBeNull()
+  })
+
+  it('shows Solved, the badge, the wave and the buttons when the grid is right', () => {
+    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onHome={jest.fn()} />)
+    fireEvent.press(screen.getByTestId('verify'))
+    expect(screen.getByText('Solved')).toBeTruthy()
+    expect(screen.getByTestId('solved-badge')).toBeTruthy()
+    expect(screen.getByTestId('scan-another')).toBeTruthy()
+    expect(screen.getByTestId('correction-wave-0')).toBeTruthy()
+  })
+
+  it('marks a wrong entry with the fill and the hint, and keeps its digit', () => {
+    render(
+      <CorrectionScreen
+        result={fullScan({ cell: firstOpen, digit: wrongDigit })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
+    fireEvent.press(screen.getByTestId('verify'))
+    expect(screen.getByText('1 cell differs')).toBeTruthy()
+    expect(screen.getByTestId(`correction-hint-${firstOpen}`)).toHaveTextContent(String(puzzle.solution[firstOpen]))
+    expect(screen.getByTestId(`correction-cell-${firstOpen}`)).toHaveTextContent(String(wrongDigit))
+    expect(screen.getByTestId(`correction-fill-${firstOpen}`)).toBeTruthy()
+    expect(screen.queryByTestId('solved-badge')).toBeNull()
+  })
+
+  it('marks no cell before the player taps Check', () => {
+    render(
+      <CorrectionScreen
+        result={fullScan({ cell: firstOpen, digit: wrongDigit })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
+    expect(screen.queryByTestId(`correction-hint-${firstOpen}`)).toBeNull()
+    expect(screen.queryByTestId(`correction-fill-${firstOpen}`)).toBeNull()
+  })
+
+  it('keeps the marks while the player opens a wrong cell, and solves when the player fixes it', () => {
+    render(
+      <CorrectionScreen
+        result={fullScan({ cell: firstOpen, digit: wrongDigit })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
+    fireEvent.press(screen.getByTestId('verify'))
+    press(`correction-press-${firstOpen}`)
+    expect(screen.getByTestId(`correction-hint-${firstOpen}`)).toBeTruthy()
+    press(`correction-key-${puzzle.solution[firstOpen]}`)
+    expect(screen.queryByTestId(`correction-hint-${firstOpen}`)).toBeNull()
+  })
+
+  it('plays the success haptic once when the grid turns solved', async () => {
+    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} />)
+    jest.mocked(Haptics.notificationAsync).mockClear()
+    fireEvent.press(screen.getByTestId('verify'))
+    await waitFor(() =>
+      expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success),
+    )
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it('brings Play and Solve back when an edit empties a cell', () => {
+    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
+    fireEvent.press(screen.getByTestId('verify'))
+    press(`correction-press-${firstOpen}`)
+    press('correction-clear')
+    expect(screen.queryByTestId('verify')).toBeNull()
+    expect(screen.getByTestId('play')).toBeTruthy()
+  })
+
+  it('offers no Check for a grid that is not full', () => {
+    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} />)
+    expect(screen.queryByTestId('verify')).toBeNull()
   })
 })

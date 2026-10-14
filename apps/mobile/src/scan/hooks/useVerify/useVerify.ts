@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { verifyGrid, type GridVerdict } from '@sudoku/core'
 import type { CorrectedGrid } from '@/scan/utils/correctionEdit.utils'
 
@@ -14,9 +14,8 @@ export type Verify = {
  */
 export function useVerify(grid: CorrectedGrid, full: boolean): Verify {
   const [tapped, setTapped] = useState(false)
-  useEffect(() => {
-    if (!full) setTapped(false)
-  }, [full])
+  // The tap belongs to a full grid. React renders again at once when state is set during the render of its own component.
+  if (!full && tapped) setTapped(false)
   const verdict = useMemo(() => (tapped && full ? verifyGrid(grid.givens, grid.entries) : null), [tapped, full, grid])
   return useMemo(() => ({ verdict, verify: () => setTapped(true) }), [verdict])
 }

@@ -44,12 +44,7 @@ describe('verifyGrid', () => {
     const cell = 0
     const grid = [...puzzle.solution]
     grid[cell] = grid[1]!
-    const verdict = verifyGrid(zeros, grid)
-    expect(verdict.status).toBe('clash')
-    if (verdict.status === 'clash') {
-      expect(verdict.cells).toContain(0)
-      expect(verdict.cells).toContain(1)
-    }
+    expect(verifyGrid(zeros, grid)).toEqual({ status: 'clash', cells: expect.arrayContaining([0, 1]) })
   })
 
   it('throws a RangeError for a grid with an empty cell', () => {
