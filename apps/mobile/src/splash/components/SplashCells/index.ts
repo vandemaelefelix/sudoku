@@ -1,0 +1,1 @@
+export { SplashCells } from './SplashCells'

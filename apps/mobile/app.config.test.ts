@@ -69,7 +69,11 @@ describe('variantConfig', () => {
   })
 
   it('gives the native splash only a ground colour, the same as the splash overlay', () => {
-    type SplashOptions = { backgroundColor?: string; image?: string; dark?: { backgroundColor?: string; image?: string } }
+    type SplashOptions = {
+      backgroundColor?: string
+      image?: string
+      dark?: { backgroundColor?: string; image?: string }
+    }
     const entry = (base.plugins ?? []).find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-splash-screen')
     const options = (entry as [string, SplashOptions] | undefined)?.[1]
     expect(options?.backgroundColor).toBe(SPLASH_COLORS.light.ground)
