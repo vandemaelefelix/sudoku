@@ -19,26 +19,35 @@ export const INTRO_END_MS = HOLD_MS + (LETTER_COUNT - 1) * LETTER_STEP_MS + LETT
 export const WORD_SCALE = 2
 
 export const GRID_COLUMNS = 9
-export const ROW_STEP_MS = 30
+export const ROW_STEP_MS = 21
 export const JITTER_MS = 120
-export const GLOW_MS = 600
+export const GLOW_MS = 396
 
 /** The part of GLOW_MS at which a cell glows most. */
 export const GLOW_PEAK_AT = 0.3
+/** The share of the cells that show a digit. */
+export const DIGIT_SHARE = 0.29
+
+/** The size of a digit, as a part of the cell. */
+export const DIGIT_SIZE = 0.55
+export const DIGIT_ALPHA = 0.6
 export const TINT_ALPHA = 0.28
 export const LINE_ALPHA = 0.9
 
-export const GROUND_FADE_START_MS = 100
-export const GROUND_FADE_END_MS = 800
-export const GLIDE_START_MS = 150
-export const GLIDE_MS = 750
+/** The word rises this many points and fades out at the start of the exit. */
+export const WORD_RISE_BY = 40
+export const WORD_FADE_START_MS = 0
+export const WORD_FADE_MS = 600
 
-/** The word fades out here. Every cell under the title has cleared by then. */
-export const HANDOFF_AT_MS = 1350
-export const HANDOFF_MS = 100
+/**
+ * The edge of the ground rises with the wave. Below the edge the home shows. The edge is a gradient REVEAL_BAND points
+ * high, and it trails the wave by REVEAL_LAG_MS.
+ */
+export const REVEAL_BAND = 500
+export const REVEAL_LAG_MS = 246
 
-/** The last frame of the exit. */
-export const EXIT_END_MS = 1500
+/** The last frame of the exit. The last cell and the edge of the ground are gone by then, on every window size. */
+export const EXIT_END_MS = 1000
 
 /** The exit starts after this time even when no screen is ready. */
 export const MAX_WAIT_MS = 3000

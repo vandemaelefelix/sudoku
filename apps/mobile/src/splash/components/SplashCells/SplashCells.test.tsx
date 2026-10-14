@@ -7,7 +7,14 @@ import { SplashCells } from './SplashCells'
 function Cells() {
   const exit = useSharedValue(500)
   return (
-    <SplashCells exit={exit} width={390} height={844} tint={SPLASH_COLORS.light.tint} line={SPLASH_COLORS.light.line} />
+    <SplashCells
+      exit={exit}
+      width={390}
+      height={844}
+      ground={SPLASH_COLORS.light.ground}
+      tint={SPLASH_COLORS.light.tint}
+      line={SPLASH_COLORS.light.line}
+    />
   )
 }
 

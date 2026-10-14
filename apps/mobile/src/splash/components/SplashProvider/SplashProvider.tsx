@@ -28,13 +28,14 @@ export function SplashProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(id)
   }, [])
 
-  const phase: SplashPhase = reduced || finished ? 'done' : ready && introDone ? 'exit' : 'intro'
+  const exiting = ready && introDone
+  const phase: SplashPhase = reduced || finished ? 'done' : exiting ? 'exit' : 'intro'
 
   useEffect(() => {
-    if (phase !== 'exit') return
+    if (!exiting) return
     const id = setTimeout(() => setFinished(true), EXIT_END_MS)
     return () => clearTimeout(id)
-  }, [phase])
+  }, [exiting])
 
   // There is no overlay to hide the native splash, so the first screen does it.
   useEffect(() => {
