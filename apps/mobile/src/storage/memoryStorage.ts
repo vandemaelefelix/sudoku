@@ -78,6 +78,9 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
   }
 
   const history: HistoryRepository = {
+    async clear() {
+      entries.length = 0
+    },
     async list() {
       return [...entries]
     },

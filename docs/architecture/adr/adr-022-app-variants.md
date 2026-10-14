@@ -49,6 +49,12 @@ Android rules (an adaptive icon with a safe zone, plus a monochrome layer).
 - `just pull-scans` takes the bundle ID of the variant.
 - iOS applies the iOS 26 glass effect to the PNG icon. An Icon Composer `.icon` file is not used.
 
+## Amendment 2026-10-14: the variant at run time
+
+`app.config.ts` puts `extra.appVariant: 'development'` in the development config. The production config has no mark.
+`isDevelopmentVariant()` reads it with `expo-constants`. The development variant uses it for tools that the production app
+must not show, such as the reset of the stats (ADR-023).
+
 ## Reassessment Triggers
 
 - EAS Build is adopted (ADR-010): move `APP_VARIANT` into the build profiles of `eas.json`.

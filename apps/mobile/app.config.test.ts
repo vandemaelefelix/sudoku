@@ -51,6 +51,11 @@ describe('variantConfig', () => {
     expect(dev.android?.package).toBe('com.vandemaelefelix.sudoku.dev')
   })
 
+  it('tells the app that it is the development variant, and leaves the production config without a mark', () => {
+    expect(variantConfig(base, 'development').extra).toMatchObject({ appVariant: 'development' })
+    expect(variantConfig(base, 'production').extra?.appVariant).toBeUndefined()
+  })
+
   it('uses the ribbon icons in development, except the shared Android background', () => {
     const dev = variantConfig(base, 'development')
     const paths = imagePaths(dev)

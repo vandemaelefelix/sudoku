@@ -168,7 +168,7 @@ export type Theme = {
     checkRing: { color: string; round: boolean }
     /** waveOpacity: the opacity of colors.accent at the peak of the wave. popScale: the digit scale at the peak of the pop. */
     pulse: { waveOpacity: number; popScale: number }
-    /** The stats card and the empty state of a level (border, radius) and the rules between the sections of the stats screen. Widths and radius in points. */
+    /** The stats card and the empty state of a level (border, radius) and the strong rules of the stats screen (the table header and the chart base). Widths and radius in points. */
     summary: { border: string; borderWidth: number; radius: number; rule: string; ruleWidth: number }
     /** The tab bar of the stats screen. */
     tabs: { track: string; selected: string; selectedBorder: string; selectedBorderWidth: number }

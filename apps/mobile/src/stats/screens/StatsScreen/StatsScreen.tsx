@@ -11,12 +11,14 @@ import { LevelTable } from '@/stats/components/LevelTable'
 import { LevelTabs } from '@/stats/components/LevelTabs'
 import { StatRow } from '@/stats/components/StatRow'
 import { StatSection } from '@/stats/components/StatSection'
+import { ResetStats } from '@/stats/components/ResetStats'
 import { StatsCard } from '@/stats/components/StatsCard'
 import type { StatsTab } from '@/stats/constants/stats.constants'
 import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useStats, type StatsData } from '@/stats/hooks/useStats'
 import { countOf } from '@/stats/utils/format.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
+import { isDevelopmentVariant } from '@/utils/appVariant.utils'
 import { styles } from './StatsScreen.styles'
 
 type StatsScreenProps = { onBack(): void }
@@ -44,7 +46,9 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
   const [tab, setTab] = useState<StatsTab>('all')
   const { includeScanned, setIncludeScanned } = useIncludeScanned()
   const haptics = useHaptics()
-  const state = useStats(includeScanned)
+  // A reset changes the key, so the numbers load again.
+  const [reloadKey, setReloadKey] = useState(0)
+  const state = useStats(includeScanned, reloadKey)
   // A theme with a title block shows a large title under the bar. The others put the title in the bar.
   const hasTitleBlock = theme.size.titleBlock > 0
 
@@ -104,6 +108,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
                 }}
               />
             </View>
+            {isDevelopmentVariant() && <ResetStats onReset={() => setReloadKey((key) => key + 1)} />}
           </>
         )}
       </ScrollView>

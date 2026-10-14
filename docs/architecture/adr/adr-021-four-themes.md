@@ -137,5 +137,5 @@ The stats card (ADR-023) shows 4 wavy lines in Op-art, across a white card. The 
    | `summaryEdge` | A band on the top edge of the stats card | — | — | 4 wavy lines in `colors.lineStrong`, as wide as the content column | — |
 
    The height of the band is `size.panelEdge`. A theme with `size.panelEdge` of 0 draws nothing.
-2. **A component token group, `components.summary`.** It holds `border`, `borderWidth`, `radius`, `rule` and `ruleWidth`. The stats card, the empty state of a level and the rules between the sections of the stats screen read it. `radius` equals `components.button.radius` in all four themes.
+2. **A component token group, `components.summary`.** It holds `border`, `borderWidth`, `radius`, `rule` and `ruleWidth`. The stats card, the empty state of a level and the strong rules of the stats screen (the table header and the chart base) read it. The lines between the sections use the thin `colors.line`, so they do not crowd the sections. `radius` equals `components.button.radius` in all four themes.
 3. **A component token group, `components.tabs`.** It holds `track` and `selected`, the colours of the tab bar of the stats screen. The values equal `components.segmented` in all four themes. A component reads only its own group (apps/mobile/AGENTS.md, Theme, rule 4), so the tab bar does not borrow the group of the theme picker.

@@ -86,10 +86,10 @@ after a backend exists.
    | Played | Won and lost games. Abandoned games are a separate count |
    | Win rate | Won divided by played. An abandoned game is not in the sum |
    | Best time | The shortest time of a won generated game without hints (ADR-012, amendment) |
-   | Average time | The mean time of won generated games. It includes games with hints |
+   | Average time | The mean time of the same games as the best time: won generated games without hints. A level has an average only when it has a best time |
    | Flawless win | A won game with zero mistakes and zero hints |
    | Day streak | The number of days in a row with at least one won game, in the time zone that the caller gives. A streak stays alive until the end of the next day |
-   | Scanned games | Off by default (`includeScanned`). A scanned level is an estimate (ADR-011). When on, scanned games count in every stat except the best time |
+   | Scanned games | Off by default (`includeScanned`). A scanned level is an estimate (ADR-011). When on, scanned games count in every stat except the best and the average time |
 
    The streak counts back from today. A streak stays alive until the end of the next day.
 5. **One contract test fixes the rules for every implementation.**
@@ -102,6 +102,12 @@ after a backend exists.
    - The device keeps its own stats after a backend exists (SUD-01).
    - A leaderboard is a separate remote service. It does not go through `StatsRepository`.
 7. **The entry gets no move log.** A verified leaderboard needs a new ADR.
+
+## Amendment 2026-10-14: reset in the development variant
+
+`HistoryRepository.clear()` soft-deletes every history entry (ADR-012), so the list, the best times and the stats start
+again. The game in progress stays. The stats screen shows a "Reset stats" button, after a question, only when
+`isDevelopmentVariant()` is true (ADR-022). The production app has no way to delete the history.
 
 ## Consequences
 

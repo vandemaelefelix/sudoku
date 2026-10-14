@@ -60,7 +60,7 @@ it('explains how the numbers are counted, under the table', () => {
   render(<LevelTable levels={levels} />)
   expect(
     screen.getByText(
-      'Best time counts wins without hints. Average counts all wins. Mistakes and hints are per game. Flawless means a win with no mistakes and no hints. Abandoned games are not counted.',
+      'Best time and average count wins without hints, on generated puzzles. Mistakes and hints are per game. Flawless means a win with no mistakes and no hints. Abandoned games are not counted.',
     ),
   ).toBeTruthy()
 })

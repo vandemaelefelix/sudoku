@@ -24,7 +24,7 @@ function summarize(entries: readonly HistoryEntry[], level: Level | null, filter
     abandoned: rows.filter((entry) => entry.result === 'abandoned').length,
     winRate: finished.length === 0 ? null : won.length / finished.length,
     bestMs: best.length === 0 ? null : Math.min(...best),
-    averageMs: mean(won.map((entry) => entry.playedMs)),
+    averageMs: mean(best),
     flawlessWins: won.filter((entry) => entry.mistakes === 0 && entry.hintsUsed === 0).length,
     averageMistakes: mean(finished.map((entry) => entry.mistakes)),
     averageHints: mean(finished.map((entry) => entry.hintsUsed)),

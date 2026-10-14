@@ -30,7 +30,7 @@ export function LevelDetail({ level, summary, times }: LevelDetailProps) {
     <>
       <StatSection title="Times">
         <StatRow label="Best" note="no hints" value={formatTime(summary.bestMs)} />
-        <StatRow label="Average" note="won games" value={formatTime(summary.averageMs)} />
+        <StatRow label="Average" note="no hints" value={formatTime(summary.averageMs)} />
         {times.length > 0 && (
           <>
             <View style={styles.chartHeader}>
