@@ -45,6 +45,7 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ADR-017 | The finish card tilts with Reanimated's useAnimatedSensor. No new dependency. No tilt with Reduce Motion. | Concept | 2026-10-12 | Felix | [ADR-017](adr/adr-017-card-motion-sensor.md) |
 | ADR-022 | Two app variants from `APP_VARIANT`: development (`.dev` bundle ID, "Sudoku Dev", DEV ribbon, the default) and production. The app icon is generated from one SVG design by `just icons`. | Cross-concept | 2026-10-14 | Felix | [ADR-022](adr/adr-022-app-variants.md) |
 | ADR-023 | The history gets a third result, `abandoned`. A `StatsRepository` counts the stats in SQL. One contract test fixes the rules for every implementation. A sync layer wraps the local history. No move log. Amends ADR-012. | Cross-concept | 2026-10-14 | Felix | [ADR-023](adr/adr-023-player-stats.md) |
+| ADR-024 | An animated splash. The native splash is a plain ground, white or near black by the system appearance. A `SplashOverlay` plays "Soft wave, softer" and hands off to the home title. No overlay with Reduce Motion. Supersedes decision 5 of ADR-022. | Concept | 2026-10-14 | Felix | [ADR-024](adr/adr-024-animated-splash.md) |
 
 ### Game
 
