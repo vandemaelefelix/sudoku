@@ -206,3 +206,42 @@ describe('migration 3', () => {
     ).rejects.toThrow('CHECK constraint failed')
   })
 })
+
+const secondAt = (second: number) => `2026-10-12T09:00:0${second}.000Z`
+
+describe('migration 4: the abandoned result', () => {
+  const HISTORY_ROW = `INSERT INTO game_history
+    (id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at, seed)
+    VALUES (?, ?, 'generated', ?, ?, 0, 0, ?, ?, ?, ?)`
+
+  it('keeps every history row, its order and its index', async () => {
+    await migrate(db, MIGRATIONS.slice(0, 3))
+    await db.runAsync(HISTORY_ROW, ['a', 'easy', 'won', 60_000, secondAt(1), secondAt(1), secondAt(1), 412_077])
+    await db.runAsync(HISTORY_ROW, ['b', 'hard', 'lost', 30_000, secondAt(2), secondAt(2), secondAt(2), null])
+
+    await migrate(db)
+
+    const rows = await db.getAllAsync<{ id: string; result: string; seed: number | null }>(
+      'SELECT id, result, seed FROM game_history ORDER BY rowid',
+      [],
+    )
+    expect(rows).toEqual([
+      { id: 'a', result: 'won', seed: 412_077 },
+      { id: 'b', result: 'lost', seed: null },
+    ])
+    const index = await db.getFirstAsync<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'game_history_best_time'",
+      [],
+    )
+    expect(index).toEqual({ name: 'game_history_best_time' })
+  })
+
+  it('accepts abandoned and refuses any other result', async () => {
+    await migrate(db)
+    const at = '2026-10-12T09:00:00.000Z'
+    await db.runAsync(HISTORY_ROW, ['c', 'easy', 'abandoned', 1_000, at, at, at, null])
+    await expect(db.runAsync(HISTORY_ROW, ['d', 'easy', 'paused', 1_000, at, at, at, null])).rejects.toThrow(
+      'CHECK constraint failed',
+    )
+  })
+})

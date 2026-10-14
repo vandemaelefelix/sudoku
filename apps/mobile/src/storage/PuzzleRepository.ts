@@ -1,7 +1,7 @@
-import { fromSavedGame, toSavedGame, type Game } from '@sudoku/core'
+import { fromSavedGame, hasMoves, toSavedGame, type Game } from '@sudoku/core'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 import { insertHistoryEntry } from './HistoryRepository'
-import type { SqlDatabase } from './sql.types'
+import type { SqlDatabase, SqlExecutor } from './sql.types'
 import type { GameResult, Level, PuzzleSource, SavedProgress, StorageDeps } from './storage.types'
 
 /** The game in progress (ADR-012). Screens use this interface, never SQL. */
@@ -89,6 +89,32 @@ function createQueue() {
   }
 }
 
+/**
+ * A game that a new game replaces is abandoned when the player made a move (ADR-023).
+ * A saved game that does not load leaves no entry: its time and mistakes are unknown.
+ */
+async function recordAbandoned(txn: SqlExecutor, row: ProgressRow, now: string): Promise<void> {
+  let game: Game
+  try {
+    game = fromSavedGame(JSON.parse(row.saved_game))
+  } catch (error) {
+    devWarn('storage', `The replaced game ${row.id} does not load, so it has no history entry: ${errorMessage(error)}`)
+    return
+  }
+  if (!hasMoves(game)) return
+  await insertHistoryEntry(txn, {
+    id: row.id,
+    level: row.level,
+    source: row.source,
+    seed: row.seed,
+    result: 'abandoned',
+    playedMs: game.playedMs,
+    mistakes: game.mistakes,
+    hintsUsed: game.hintsUsed,
+    finishedAt: now,
+  })
+}
+
 export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps): PuzzleRepository {
   const inOrder = createQueue()
 
@@ -98,6 +124,12 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
         inOrder(async () => {
           const now = deps.now()
           await db.withExclusiveTransactionAsync(async (txn) => {
+            const replaced = await txn.getFirstAsync<ProgressRow>(
+              `SELECT id, level, source, seed, saved_game FROM game_in_progress
+              WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
+              [],
+            )
+            if (replaced !== null) await recordAbandoned(txn, replaced, now)
             await txn.runAsync('UPDATE game_in_progress SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL', [
               now,
               now,
