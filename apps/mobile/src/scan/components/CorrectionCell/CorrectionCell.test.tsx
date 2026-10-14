@@ -143,7 +143,7 @@ it('draws no hint without one', () => {
 const fixed = <T,>(value: T) => ({ value, get: () => value, set: jest.fn() }) as unknown as SharedValue<T>
 const pulseLookOfMidnight = pulseLook(midnight)
 const pulseAt = (elapsed: number): Pulse => ({
-  delays: fixed(Array.from({ length: 81 }, (_, cell) => (cell === 0 ? 0 : NO_PULSE))),
+  delays: fixed<readonly number[]>(Array.from({ length: 81 }, (_, cell) => (cell === 0 ? 0 : NO_PULSE))),
   elapsed: fixed(elapsed),
   look: fixed(pulseLookOfMidnight),
 })
