@@ -9,7 +9,7 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined)
 
 /**
  * Owns the phase of the splash: the intro runs at once. The exit starts when the intro is done and a screen calls
- * markReady, or after MAX_WAIT_MS. With Reduce Motion the phase is done from the start (ADR-023).
+ * markReady, or after MAX_WAIT_MS. With Reduce Motion the phase is done from the start (ADR-024).
  */
 export function SplashProvider({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion()

@@ -156,7 +156,10 @@ status: DRAFT
 | Development variant | The app variant for daily work: "Sudoku Dev", bundle ID `com.vandemaelefelix.sudoku.dev`, an icon with a DEV ribbon. The default (ADR-022) |
 | Production variant | The app variant for real use and release: "Sudoku", bundle ID `com.vandemaelefelix.sudoku`, the clean icon (ADR-022) |
 | DEV ribbon | The cobalt band with "DEV" cut out of it on the development variant icon: across the top-right corner on iOS, a strip below the 9 on Android |
+| Abandoned game | A game that a new game replaces before it ends. It has the history result `abandoned`. It is not in the win rate. See ADR-023 |
+| Flawless win | A won game with zero mistakes and zero hints. See ADR-023 |
+| Day streak | The number of days in a row with at least one won game, in the time zone of the player. See ADR-023 |
 | Verify | The check of a full scanned grid. `verifyGrid` says solved, wrong or clash. The button says "Check the grid". "Check" in code means the per-cell check of an uncertain cell |
-| Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. White in light mode, near black in dark mode. It follows the system appearance, not the saved theme (ADR-023) |
-| Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-023) |
+| Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. White in light mode, near black in dark mode. It follows the system appearance, not the saved theme (ADR-024) |
+| Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
 | Hand-off | The moment when the word of the splash overlay fades out and the real title of the home screen shows at the same place |

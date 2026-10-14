@@ -1,10 +1,12 @@
-import { createGame, pause, place, select, tick, toggleNote, type Game } from '@sudoku/core'
+import { createGame, pause, place, select, tick, toggleNote, type Digit, type Game } from '@sudoku/core'
 import { createSaveQueue, needsSave } from './save.utils'
 import { sampleStart } from './sample.utils'
 
 // Cell 2 is empty in the canvas puzzle. Its solution is 4.
 const OPEN = 2
 const fresh = () => createGame(sampleStart())
+/** Three wrong numbers end the game. */
+const lostGame = () => [1, 2, 3].reduce((game, digit) => place(game, digit as Digit).game, select(fresh(), OPEN))
 
 describe('needsSave', () => {
   it('a selection alone does not need a save', () => {
@@ -62,6 +64,31 @@ describe('createSaveQueue', () => {
     await flush()
     expect(write).toHaveBeenCalledTimes(2)
     expect(write).toHaveBeenLastCalledWith(third)
+  })
+
+  it('hands a finished game to the write at once, behind the running write but before any later start', () => {
+    const { write } = deferredWrites()
+    const save = createSaveQueue(write, report())
+    const finished = lostGame()
+    expect(finished.status).toBe('lost')
+    save(fresh())
+    save(place(select(fresh(), OPEN), 5).game)
+    save(finished)
+    expect(write).toHaveBeenCalledTimes(2)
+    expect(write).toHaveBeenLastCalledWith(finished)
+  })
+
+  it('writes nothing more after a finished game, and reports its failure', async () => {
+    const { writes, write } = deferredWrites()
+    const reporter = report()
+    const save = createSaveQueue(write, reporter)
+    save(fresh())
+    save(lostGame())
+    writes[0]?.finish()
+    writes[1]?.fail(new Error('disk full'))
+    await flush()
+    expect(write).toHaveBeenCalledTimes(2)
+    expect(reporter.failed).toHaveBeenCalledWith(new Error('disk full'))
   })
 
   it('returns before the write ends', () => {

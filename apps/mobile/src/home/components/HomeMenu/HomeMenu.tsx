@@ -4,6 +4,8 @@ import { LEVELS, type Level } from '@sudoku/core'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { useEased } from '@/game/hooks/useEased'
 import { LEVEL_NAMES } from '@/constants/level.constants'
+import type { HomeStats } from '@/home/utils/homeStats.utils'
+import { StatsCard } from '@/stats/components/StatsCard'
 import { useSplashReady } from '@/splash/hooks/useSplash'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
@@ -18,17 +20,21 @@ const GLIDE = LinearTransition.duration(MENU_FADE_MS).easing(easeOut)
 type HomeMenuProps = {
   /** The level of the game in progress. Null when no game is in progress, undefined until the store answers. */
   continueLevel: Level | null | undefined
+  /** The numbers of the stats card. Undefined until the store answers. Null when they do not load. */
+  stats: HomeStats | null | undefined
   onNewGame(level: Level): void
   onContinue(): void
   onScan(): void
   onSettings(): void
+  onStats(): void
 }
 
 /**
- * The menu waits for the store, then fades in with Continue in place, so the level list never jumps down.
- * A later change of Continue fades it, and the list glides to its new place.
+ * The menu waits for the game in progress, then fades in with Continue in place, so the level list never jumps down.
+ * A later change of Continue fades it, and the list glides to its new place. The stats card fades in when its numbers
+ * arrive, because reading the streak grows with the history and must not hold back the menu. The links glide below it.
  */
-export function HomeMenu({ continueLevel, onNewGame, onContinue, onScan, onSettings }: HomeMenuProps) {
+export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, onSettings, onStats }: HomeMenuProps) {
   const shown = useEased(continueLevel === undefined ? 0 : 1, MENU_FADE_MS)
   const menuStyle = useAnimatedStyle(() => ({ opacity: shown.get() }))
   // The menu shows once the store answers. The splash ends its exit when this is true.
@@ -67,7 +73,16 @@ export function HomeMenu({ continueLevel, onNewGame, onContinue, onScan, onSetti
               <Text style={styles.label}>{LEVEL_NAMES[level]}</Text>
             </Pressable>
           ))}
-          <View style={styles.links}>
+          {stats != null && (
+            <Animated.View entering={CONTINUE_IN} layout={GLIDE}>
+              {stats.played === 0 ? (
+                <Text style={styles.noStats}>No finished games yet. Your stats show up here.</Text>
+              ) : (
+                <StatsCard winRate={stats.winRate} streak={stats.streak} onPress={onStats} />
+              )}
+            </Animated.View>
+          )}
+          <Animated.View layout={GLIDE} style={styles.links}>
             <Pressable
               accessibilityRole="button"
               onPress={onScan}
@@ -82,7 +97,7 @@ export function HomeMenu({ continueLevel, onNewGame, onContinue, onScan, onSetti
             >
               <Text style={styles.label}>Settings</Text>
             </Pressable>
-          </View>
+          </Animated.View>
         </Animated.View>
       </Animated.View>
     </View>

@@ -1,5 +1,6 @@
-import { fromSavedGame, toSavedGame, type SavedGame } from '@sudoku/core'
+import { fromSavedGame, hasMoves, toSavedGame, type SavedGame } from '@sudoku/core'
 import type { BestTimes, HistoryRepository } from './HistoryRepository'
+import { createMemoryStatsRepository } from './memoryStats'
 import { resultOf, type PuzzleRepository } from './PuzzleRepository'
 import type { GameStorage } from './gameStorage.types'
 import type { HistoryEntry, Level, PuzzleSource, StorageDeps } from './storage.types'
@@ -30,6 +31,20 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
   const puzzles: PuzzleRepository = {
     async start({ level, source, seed = null, game }) {
       if (resultOf(game) !== null) throw new RangeError(`A ${game.status} game cannot start`)
+      const replaced = load()
+      if (replaced !== null && hasMoves(replaced.game)) {
+        entries.unshift({
+          id: replaced.id,
+          level: replaced.level,
+          source: replaced.source,
+          seed: replaced.seed,
+          result: 'abandoned',
+          playedMs: replaced.game.playedMs,
+          mistakes: replaced.game.mistakes,
+          hintsUsed: replaced.game.hintsUsed,
+          finishedAt: deps.now(),
+        })
+      }
       progress = { id: deps.newId(), level, source, seed, saved: toSavedGame(game) }
       return { id: progress.id, level, source, seed, game }
     },
@@ -63,6 +78,9 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
   }
 
   const history: HistoryRepository = {
+    async clear() {
+      entries.length = 0
+    },
     async list() {
       return [...entries]
     },
@@ -79,5 +97,5 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
     },
   }
 
-  return { puzzles, history }
+  return { puzzles, history, stats: createMemoryStatsRepository(() => entries, deps) }
 }

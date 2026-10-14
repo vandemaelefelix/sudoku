@@ -16,6 +16,7 @@ describe('@sudoku/core', () => {
       'resume',
       'tick',
       'completeDigits',
+      'hasMoves',
       'isWrong',
       'valueAt',
       'toSavedGame',

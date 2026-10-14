@@ -40,18 +40,19 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ADR-008 | `@sudoku/core` is an internal package. The scanner is a module inside the app. Boundaries enforced by lint. | Cross-concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | ADR-010 | Four test layers. The real scanner is tested on the phone by a fixture runner. CI on Linux, no iOS build. | Cross-concept | 2026-10-09 | Felix | [ADR-010](adr/adr-010-testing-and-ci.md) |
 | ADR-015 | Unistyles 3 with three token tiers. Two themes first: Daylight and Midnight. Theme decorations for structure, none built in v1. Points 2 and 9 amended by ADR-021. | Cross-concept | 2026-10-12 | Felix | [ADR-015](adr/adr-015-theming.md) |
-| ADR-021 | Four themes: Daylight, Midnight, Op-art and Progressive. One theme registry. The first theme decorations: `panelEdge`, `titleMark` and `cardEdge`. Fonts bundled at build time. Amends ADR-015. | Cross-concept | 2026-10-13 | Felix | [ADR-021](adr/adr-021-four-themes.md) |
+| ADR-021 | Four themes: Daylight, Midnight, Op-art and Progressive. One theme registry. The first theme decorations: `panelEdge`, `titleMark` and `cardEdge`. Fonts bundled at build time. Amends ADR-015. Amended 2026-10-14: the `summaryEdge` slot, `components.summary` and `components.tabs`. | Cross-concept | 2026-10-13 | Felix | [ADR-021](adr/adr-021-four-themes.md) |
 | ADR-016 | Expo Router 57 with a native stack. Route files in `src/app/` only render a feature screen. Params are URL strings, data comes from the repositories. **Pending the iPhone check of #51.** | Cross-concept | 2026-10-12 | Felix | [ADR-016](adr/adr-016-navigation.md) |
 | ADR-017 | The finish card tilts with Reanimated's useAnimatedSensor. No new dependency. No tilt with Reduce Motion. | Concept | 2026-10-12 | Felix | [ADR-017](adr/adr-017-card-motion-sensor.md) |
 | ADR-022 | Two app variants from `APP_VARIANT`: development (`.dev` bundle ID, "Sudoku Dev", DEV ribbon, the default) and production. The app icon is generated from one SVG design by `just icons`. | Cross-concept | 2026-10-14 | Felix | [ADR-022](adr/adr-022-app-variants.md) |
-| ADR-023 | An animated splash. The native splash is a plain ground, white or near black by the system appearance. A `SplashOverlay` plays "Soft wave, softer" and hands off to the home title. No overlay with Reduce Motion. Supersedes decision 5 of ADR-022. | Concept | 2026-10-14 | Felix | [ADR-023](adr/adr-023-animated-splash.md) |
+| ADR-023 | The history gets a third result, `abandoned`. A `StatsRepository` counts the stats in SQL. One contract test fixes the rules for every implementation. A sync layer wraps the local history. No move log. Amends ADR-012. | Cross-concept | 2026-10-14 | Felix | [ADR-023](adr/adr-023-player-stats.md) |
+| ADR-024 | An animated splash. The native splash is a plain ground, white or near black by the system appearance. A `SplashOverlay` plays "Soft wave, softer" and hands off to the home title. No overlay with Reduce Motion. Supersedes decision 5 of ADR-022. | Concept | 2026-10-14 | Felix | [ADR-024](adr/adr-024-animated-splash.md) |
 
 ### Game
 
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
 | ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints, later. v1: the level comes from the number of givens, a hint reveals a random cell, no pool (amendment 2026-10-12). A scanned puzzle takes the level of the nearest givens target (amendment 2026-10-12). The app draws seeds below 1 000 000. The seed is the puzzle number (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
-| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. The seed is stored. The best time counts only generated games (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
+| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. The seed is stored. The best time counts only generated games (amendment 2026-10-12). Amended by ADR-023: the `abandoned` result and `StatsRepository`. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
 ### Scanning and ML
 
 | ID | Decision | Impact | Since | Owner | Source |

@@ -23,6 +23,8 @@ export function variantConfig(config: ExpoConfig, variant: AppVariant): ExpoConf
     ...config,
     name: `${config.name} Dev`,
     scheme: 'sudoku-dev',
+    // Read at run time by isDevelopmentVariant. The production config has no mark.
+    extra: { ...config.extra, appVariant: 'development' },
     icon: `${DEV_ICONS}/ios-light.png`,
     ios: {
       ...config.ios,
