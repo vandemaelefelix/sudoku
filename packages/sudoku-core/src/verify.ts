@@ -28,7 +28,7 @@ function duplicateCells(grid: readonly number[]): number[] {
       }
     }
   }
-  return [...marked].sort((a, b) => a - b)
+  return Array.from({ length: GRID_CELLS }, (_, cell) => cell).filter((cell) => marked.has(cell))
 }
 
 /**

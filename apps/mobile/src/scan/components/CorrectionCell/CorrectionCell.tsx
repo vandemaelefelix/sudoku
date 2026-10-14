@@ -98,7 +98,10 @@ export const CorrectionCell = memo(function CorrectionCell({
     const picked = pick.get()
     const rise = (1 - alpha) * DIGIT_RISE + (systemReduceMotion ? 0 : (1 - picked) * DIGIT_RISE)
     const pop = pulseLook ? popScale(elapsed?.get() ?? 0, delays?.get()[n] ?? NO_PULSE, pulseLook.get()) : 1
-    return { opacity: alpha * picked, transform: [{ translateY: rise }, { scale: pop }] }
+    return {
+      opacity: alpha * picked,
+      transform: pulseLook ? [{ translateY: rise }, { scale: pop }] : [{ translateY: rise }],
+    }
   })
   const disabled = onSelect == null
   const entry = look.style === 'entry'

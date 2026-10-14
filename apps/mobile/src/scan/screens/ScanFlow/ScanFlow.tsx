@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useWindowDimensions } from 'react-native'
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
@@ -24,6 +25,8 @@ export function ScanFlow() {
     [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge],
   )
   const play = useScannedStart()
+  const router = useRouter()
+  const home = useCallback(() => router.dismissTo('/'), [router])
   const [phase, setPhase] = useState<Phase>({ phase: 'live' })
   // A new key mounts a new CameraScreen: the effect scene, its warm-up and the flattened grid start new.
   const [scene, setScene] = useState(0)
@@ -38,8 +41,8 @@ export function ScanFlow() {
   const save = useCallback((looks: readonly CellLook[]) => saveScanCorrection(review, looks), [review])
 
   const reviewProps = useMemo(
-    () => (review === null ? undefined : { onPlay: play, ...(__DEV__ ? { onSave: save } : {}) }),
-    [review, play, save],
+    () => (review === null ? undefined : { onPlay: play, onHome: home, ...(__DEV__ ? { onSave: save } : {}) }),
+    [review, play, home, save],
   )
 
   // The camera screen keeps its correction screen after the transition: the review shows the same screen, not a new one.
