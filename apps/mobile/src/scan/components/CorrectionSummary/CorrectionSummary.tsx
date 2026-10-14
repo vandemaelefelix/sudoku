@@ -8,6 +8,16 @@ import { easeOut } from '@/utils/motion.utils'
 import { STATUS_FADE_MS } from './CorrectionSummary.constants'
 import { styles } from './CorrectionSummary.styles'
 
+/** Set for a full grid. phase 'ready': the player has not tapped Check. count: the wrong or clashing cells. */
+export type FullGridPanel = {
+  phase: 'ready' | 'wrong' | 'clash' | 'solved'
+  count: number
+  onVerify(): void
+  onScanAnother(): void
+  /** Without it, the solved panel has no Home button. */
+  onHome?: (() => void) | undefined
+}
+
 type CorrectionSummaryProps = {
   /** The cells that still have a ring. */
   toCheck: number
@@ -26,6 +36,7 @@ type CorrectionSummaryProps = {
   onStartCheck(): void
   onPlay?: (() => void) | undefined
   onToggleSolve(): void
+  full?: FullGridPanel | null | undefined
 }
 
 // A new status crossfades with the old one, and the buttons glide to a new place, so a change of state does not jump.
@@ -33,7 +44,7 @@ const STATUS_IN = FadeIn.duration(STATUS_FADE_MS).easing(easeOut).reduceMotion(R
 const STATUS_OUT = FadeOut.duration(STATUS_FADE_MS).easing(easeOut).reduceMotion(ReduceMotion.Never)
 const GLIDE = LinearTransition.duration(STATUS_FADE_MS).easing(easeOut)
 
-type Status = 'check' | 'clash' | 'ready' | 'blocked'
+type Status = 'check' | 'clash' | 'full' | 'ready' | 'blocked'
 
 /** The summary state of the correction panel: what is left to check, the level, Play and Solve. */
 export function CorrectionSummary({
@@ -48,16 +59,18 @@ export function CorrectionSummary({
   onStartCheck,
   onPlay,
   onToggleSolve,
+  full = null,
 }: CorrectionSummaryProps) {
   let status: Status = 'ready'
   if (toCheck > 0) status = 'check'
   else if (conflictCount > 0) status = 'clash'
+  else if (full !== null) status = 'full'
   else if (blockText !== null) status = 'blocked'
   const fade = animate ? { entering: STATUS_IN, exiting: STATUS_OUT } : {}
   return (
     <View testID="correction-summary" style={styles.summary}>
       <View style={styles.head}>
-        <Animated.View key={status} {...fade} style={styles.statusSlot}>
+        <Animated.View key={full === null ? status : `${status}-${full.phase}`} {...fade} style={styles.statusSlot}>
           {toCheck > 0 ? (
             <Pressable
               testID="start-check"
@@ -74,39 +87,84 @@ export function CorrectionSummary({
             </Pressable>
           ) : conflictCount > 0 ? (
             <Text style={[styles.status, styles.statusDanger]}>{`${conflictCount} givens clash`}</Text>
+          ) : full !== null ? (
+            <FullStatus phase={full.phase} count={full.count} />
           ) : (
             <Text style={styles.status}>{blockText === null ? 'Ready to play' : 'Check the givens'}</Text>
           )}
         </Animated.View>
-        <Text testID="correction-level" style={styles.level}>
-          {level}
-        </Text>
+        {full === null && (
+          <Text testID="correction-level" style={styles.level}>
+            {level}
+          </Text>
+        )}
       </View>
       {blockText !== null && (
         <Animated.Text testID="play-blocked" {...fade} style={styles.blocked}>
           {blockText}
         </Animated.Text>
       )}
-      <Animated.View {...(animate ? { entering: swapInButtons, layout: GLIDE } : {})} style={styles.buttons}>
-        <PanelButton
-          testID="play"
-          label="Play this puzzle"
-          kind="primary"
-          grow
-          disabled={!canPlay}
-          accessibilityHint={blockText ?? undefined}
-          onPress={onPlay}
-        />
-        <PanelButton
-          testID="solve"
-          label={solutionShown ? 'Hide' : 'Solve'}
-          kind="second"
-          disabled={!canSolve}
-          pressed={solutionShown}
-          animateLabel={animate}
-          onPress={onToggleSolve}
-        />
-      </Animated.View>
+      {full !== null ? (
+        full.phase === 'wrong' || full.phase === 'clash' ? null : (
+          <Animated.View {...(animate ? { entering: swapInButtons, layout: GLIDE } : {})} style={styles.buttons}>
+            {full.phase === 'ready' ? (
+              <PanelButton
+                testID="verify"
+                label="Check the grid"
+                accessibilityHint={conflictCount > 0 ? 'Two given digits clash' : undefined}
+                kind="primary"
+                grow
+                disabled={conflictCount > 0}
+                onPress={full.onVerify}
+              />
+            ) : (
+              <>
+                <PanelButton
+                  testID="scan-another"
+                  label="Scan another"
+                  kind="primary"
+                  grow
+                  onPress={full.onScanAnother}
+                />
+                {full.onHome && <PanelButton testID="home" label="Home" kind="second" onPress={full.onHome} />}
+              </>
+            )}
+          </Animated.View>
+        )
+      ) : (
+        <Animated.View {...(animate ? { entering: swapInButtons, layout: GLIDE } : {})} style={styles.buttons}>
+          <PanelButton
+            testID="play"
+            label="Play this puzzle"
+            kind="primary"
+            grow
+            disabled={!canPlay}
+            accessibilityHint={blockText ?? undefined}
+            onPress={onPlay}
+          />
+          <PanelButton
+            testID="solve"
+            label={solutionShown ? 'Hide' : 'Solve'}
+            kind="second"
+            disabled={!canSolve}
+            pressed={solutionShown}
+            animateLabel={animate}
+            onPress={onToggleSolve}
+          />
+        </Animated.View>
+      )}
+    </View>
+  )
+}
+
+function FullStatus({ phase, count }: { phase: FullGridPanel['phase']; count: number }) {
+  if (phase === 'solved') return null
+  if (phase === 'ready') return <Text style={styles.status}>Grid is full</Text>
+  const text = phase === 'wrong' ? `${count} ${count === 1 ? 'cell differs' : 'cells differ'}` : `${count} cells clash`
+  return (
+    <View style={styles.differ}>
+      {phase === 'wrong' && <View testID="differ-sample" style={styles.sample} />}
+      <Text style={[styles.status, styles.statusDanger]}>{text}</Text>
     </View>
   )
 }

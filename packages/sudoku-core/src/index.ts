@@ -1,6 +1,7 @@
 export { createEmptyGrid, GRID_CELLS } from './grid'
 export type { Grid } from './types'
 export { solve, type SolveResult } from './solver'
+export { verifyGrid, type GridVerdict } from './verify'
 export { BOXES, COLUMNS, peersOf, ROWS } from './units'
 export type { Completion, Digit, Game, GameStatus, MoveResult, Random, UndoStep } from './game/types'
 export { MAX_MISTAKES, UNDO_LIMIT } from './game/constants'

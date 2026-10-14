@@ -9,6 +9,8 @@ export const styles = StyleSheet.create((theme) => ({
   /** An open cell to check takes the warning surface, the colour of its ring. */
   selectedCheck: { backgroundColor: theme.colors.warningSurface },
   conflictFill: { backgroundColor: theme.components.cell.conflictFill },
+  // The solved wave covers the cell and lies under the digit. Its opacity comes from the pulse.
+  wave: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.accent },
   digit: { textAlign: 'center', fontVariant: ['tabular-nums'] },
   given: { ...roleFont(theme.type.given), color: theme.components.cell.given },
   entry: { ...roleFont(theme.type.entry), color: theme.components.cell.entry },
@@ -16,5 +18,13 @@ export const styles = StyleSheet.create((theme) => ({
   // The solution takes the face of the givens, so the full grid reads as one set of digits.
   solution: { ...roleFont(theme.type.given), position: 'absolute', color: theme.colors.textMuted, opacity: 0.6 },
   confidence: { ...roleFont(theme.type.eyebrow), position: 'absolute', fontSize: 8, color: theme.colors.textMuted },
+  // The note role and the note corner: a hint reads as a small note of the solution, never as a digit of the player.
+  hint: {
+    ...roleFont(theme.type.note),
+    position: 'absolute',
+    top: theme.size.noteInset,
+    right: theme.size.noteInset,
+    color: theme.colors.textMuted,
+  },
   confidenceLow: { color: theme.colors.warningText },
 }))

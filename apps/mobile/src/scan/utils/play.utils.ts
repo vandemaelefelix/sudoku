@@ -1,8 +1,8 @@
 import { GIVENS_TARGET, LEVELS, solve, type Level, type NewGame } from '@sudoku/core'
 import type { CorrectedGrid } from '@/scan/utils/correctionEdit.utils'
 
-/** Why "Play this puzzle" stays off. none and several: the number of solutions of the givens. */
-export type PlayBlock = 'conflict' | 'none' | 'several' | 'solved'
+/** Why "Play this puzzle" stays off. none and several: the number of solutions of the givens. full: no cell is empty, so there is nothing to play. */
+export type PlayBlock = 'conflict' | 'none' | 'several' | 'full'
 
 /** The plain grid that a scan hands to the game (SUD-03), with the level of its givens. */
 export type ScannedStart = { level: Level; puzzle: Required<NewGame> }
@@ -23,13 +23,12 @@ export function levelOf(givens: readonly number[]): Level {
  */
 export function checkPlay(grid: CorrectedGrid, conflicts: readonly boolean[]): PlayCheck {
   if (conflicts.some(Boolean)) return { ok: false, block: 'conflict' }
+  // A full grid has nothing to play. The screen offers verify, and verifyGrid judges it (a wrong entry is a mistake here).
+  if (grid.givens.every((digit, cell) => digit !== 0 || grid.entries[cell] !== 0)) return { ok: false, block: 'full' }
   const solved = solve(grid.givens)
   if (solved.count === 0) return { ok: false, block: 'none' }
   if (solved.count === 2) return { ok: false, block: 'several' }
   const { solution } = solved
-  // createGame makes a full, correct grid a won game, and PuzzleRepository.start refuses a won game.
-  const full = solution.every((digit, cell) => grid.givens[cell] === digit || grid.entries[cell] === digit)
-  if (full) return { ok: false, block: 'solved' }
   return {
     ok: true,
     start: { level: levelOf(grid.givens), puzzle: { givens: grid.givens, solution, entries: grid.entries } },

@@ -159,3 +159,4 @@ status: DRAFT
 | Abandoned game | A game that a new game replaces before it ends. It has the history result `abandoned`. It is not in the win rate. See ADR-023 |
 | Flawless win | A won game with zero mistakes and zero hints. See ADR-023 |
 | Day streak | The number of days in a row with at least one won game, in the time zone of the player. See ADR-023 |
+| Verify | The check of a full scanned grid. `verifyGrid` says solved, wrong or clash. The button says "Check the grid". "Check" in code means the per-cell check of an uncertain cell |
