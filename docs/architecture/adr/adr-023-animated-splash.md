@@ -51,6 +51,7 @@ cannot read.
   `just ios-release` run `expo prebuild --clean`.
 - On a fast phone the intro adds about 0.9 s before the home is fully visible. The home is ready
   and takes touches earlier, because the overlay passes touches through.
+- During the intro the ground hides the home menu, but the menu already takes touches. A tap on the blank splash can start a game at a level the player did not see. This follows from decision 4.
 - A light splash opens a Midnight home with a white-to-dark change during the wave. This is by
   design.
 - Android is not built yet. Android 12 and later may draw the app icon on a splash with no image.
