@@ -45,9 +45,9 @@ export const SHARED_SIZE: Theme['size'] = {
   panelEdge: 0,
 }
 
-export const SHARED_OPACITY: Theme['opacity'] = { disabled: 0.3, locked: 0.35 }
+export const SHARED_OPACITY: Theme['opacity'] = { disabled: 0.3, locked: 0.35, pressed: 0.7 }
 
-export const SHARED_MOTION: Theme['motion'] = { short: 150, medium: 350, long: 700, pulseStep: 45, pop: 450 }
+export const SHARED_MOTION: Theme['motion'] = { short: 150, medium: 280, long: 700, pulseStep: 45, pop: 450 }
 
 /** The finish card of the design canvas: a dark holographic card. Opaque text colours keep the contrast test exact. */
 export const SHARED_FINISH_CARD: Theme['components']['finishCard'] = {

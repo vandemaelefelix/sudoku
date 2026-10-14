@@ -92,7 +92,8 @@ export type Theme = {
     panelEdge: number
   }
   /** disabled: a control that cannot act now. locked: the controls of a game that ended. */
-  opacity: { disabled: number; locked: number }
+  /** pressed: a button while the finger is on it. */
+  opacity: { disabled: number; locked: number; pressed: number }
   elevation: {
     /** React Native boxShadow strings, or 'none'. */
     key: string

@@ -1,9 +1,10 @@
 import { Canvas, Image as SkiaImage, type SkImage } from '@shopify/react-native-skia'
 import { useEffect, useRef } from 'react'
 import { View } from 'react-native'
-import { Easing, useSharedValue, withTiming } from 'react-native-reanimated'
+import { useSharedValue, withTiming } from 'react-native-reanimated'
 import { FLAT_SIDE } from '@/scan/utils/flatImage.utils'
 import { cellPlace } from '@/scan/utils/correctionEdit.utils'
+import { easeOut } from '@/utils/motion.utils'
 import { CROP_SIDE, FAR_OPACITY, PAN_MS } from './CellCrop.constants'
 import { styles } from './CellCrop.styles'
 
@@ -48,7 +49,7 @@ export function CellCrop({ image, cell, animate = false }: CellCropProps) {
     // stays a short pan and fades in, so the crop never sweeps across the whole photo.
     x.set(to.x + Math.sign(cols) * CROP_SIDE)
     y.set(to.y + Math.sign(rows) * CROP_SIDE)
-    const timing = { duration: PAN_MS, easing: Easing.out(Easing.cubic) }
+    const timing = { duration: PAN_MS, easing: easeOut }
     x.set(withTiming(to.x, timing))
     y.set(withTiming(to.y, timing))
     if (Math.max(Math.abs(cols), Math.abs(rows)) > 1) {

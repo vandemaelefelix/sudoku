@@ -31,6 +31,30 @@ it('toggles a note in notes mode', () => {
   expect(session.move).toMatchObject({ kind: 'note' })
 })
 
+it('records the restored cell for an undo, not the selected cell', () => {
+  const session = run(
+    start(),
+    { type: 'select', cell: OPEN },
+    { type: 'digit', digit: 4 },
+    { type: 'select', cell: 0 },
+    { type: 'undo' },
+  )
+  expect(session.game.selected).toBe(0)
+  expect(session.move).toMatchObject({ kind: 'undo', cell: OPEN })
+})
+
+it('records the cell of an undone note', () => {
+  const session = run(
+    start(),
+    { type: 'select', cell: OPEN },
+    { type: 'toggleNotesMode' },
+    { type: 'digit', digit: 3 },
+    { type: 'select', cell: 0 },
+    { type: 'undo' },
+  )
+  expect(session.move).toMatchObject({ kind: 'undo', cell: OPEN })
+})
+
 it('returns the same session when an action changes nothing', () => {
   const session = start()
   expect(reduceSession(session, { type: 'undo' })).toBe(session)

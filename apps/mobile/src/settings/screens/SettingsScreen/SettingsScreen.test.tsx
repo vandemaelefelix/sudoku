@@ -1,8 +1,11 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react-native'
+import * as Haptics from 'expo-haptics'
 import Storage from 'expo-sqlite/kv-store'
 import { StyleSheet } from 'react-native'
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
+import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
+import { useHaptics } from '@/settings/hooks/useHaptics'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
 import { THEME_PREFERENCE_KEY } from '@/theme/preference'
 import { daylight } from '@/theme/themes/daylight'
@@ -71,4 +74,30 @@ it('shows a switch in the preview at once', async () => {
   // Cell 31 is in the box of cell 39, not in its row or column, and holds no 8.
   const cell31 = screen.getByTestId('cell-31', { includeHiddenElements: true })
   expect(StyleSheet.flatten(cell31.props.style).backgroundColor).toBe(daylight.components.cell.fill)
+})
+
+describe('the haptics switch', () => {
+  afterEach(async () => {
+    const { result, unmount } = renderHook(() => useHaptics())
+    await act(async () => result.current.setOn(true))
+    unmount()
+  })
+
+  it('is on by default, and turning it off saves the switch and plays no tick', async () => {
+    render(<SettingsScreen onBack={jest.fn()} />)
+    const row = screen.getByLabelText('Haptics')
+    expect(row.props.value).toBe(true)
+    jest.mocked(Haptics.selectionAsync).mockClear()
+    await act(async () => fireEvent(row, 'valueChange', false))
+    expect(Storage.setItemAsync).toHaveBeenLastCalledWith(HAPTICS_KEY, 'off')
+    expect(Haptics.selectionAsync).not.toHaveBeenCalled()
+  })
+
+  it('ticks for an assist switch and a theme choice', async () => {
+    render(<SettingsScreen onBack={jest.fn()} />)
+    jest.mocked(Haptics.selectionAsync).mockClear()
+    await act(async () => fireEvent(screen.getByLabelText('Box'), 'valueChange', false))
+    fireEvent.press(screen.getByRole('button', { name: 'Midnight' }))
+    expect(Haptics.selectionAsync).toHaveBeenCalledTimes(2)
+  })
 })

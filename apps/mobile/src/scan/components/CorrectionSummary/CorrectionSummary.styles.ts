@@ -10,6 +10,7 @@ export const styles = StyleSheet.create((theme) => ({
     justifyContent: 'space-between',
     gap: theme.space.md,
   },
+  statusSlot: { flexShrink: 1 },
   toCheck: { minHeight: theme.size.touch, marginVertical: -8, flexDirection: 'row', alignItems: 'center', gap: 10 },
   glyph: {
     width: 16,

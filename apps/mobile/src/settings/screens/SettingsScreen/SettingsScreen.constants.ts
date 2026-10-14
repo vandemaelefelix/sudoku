@@ -11,3 +11,9 @@ export const ASSIST_ROWS: ReadonlyArray<{ name: AssistName; label: string; descr
   },
   { name: 'sameNumbers', label: 'Same numbers', description: 'Shade every cell that holds the selected number.' },
 ]
+
+/** The switch row of the haptics. */
+export const HAPTICS_ROW = {
+  label: 'Haptics',
+  description: 'Feel a tap for numbers, mistakes, hints and wins.',
+} as const

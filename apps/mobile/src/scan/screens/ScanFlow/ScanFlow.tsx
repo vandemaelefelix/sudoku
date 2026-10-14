@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useWindowDimensions } from 'react-native'
+import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
@@ -7,6 +8,8 @@ import { useScannedStart } from '@/scan/hooks/useScannedStart'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
 import { correctionLayout, type CellLook } from '@/scan/utils/correction.utils'
 import { saveScanCorrection } from '@/scan/utils/correctionStore'
+import { easeOut } from '@/utils/motion.utils'
+import { styles } from './ScanFlow.styles'
 
 type Phase = { phase: 'live' } | { phase: 'review'; result: RecogniseResult }
 
@@ -40,13 +43,16 @@ export function ScanFlow() {
   )
 
   // The camera screen keeps its correction screen after the transition: the review shows the same screen, not a new one.
+  // A retake crossfades from the review to the new camera. The first scene comes in with the route.
+  const fade = theme.motion.medium
   return (
-    <CameraScreen
+    <Animated.View
       key={scene}
-      layout={layout}
-      onDone={done}
-      onRetake={retake}
-      {...(reviewProps ? { review: reviewProps } : {})}
-    />
+      style={styles.scene}
+      {...(scene > 0 ? { entering: FadeIn.duration(fade).easing(easeOut).reduceMotion(ReduceMotion.Never) } : {})}
+      exiting={FadeOut.duration(fade).easing(easeOut).reduceMotion(ReduceMotion.Never)}
+    >
+      <CameraScreen layout={layout} onDone={done} onRetake={retake} {...(reviewProps ? { review: reviewProps } : {})} />
+    </Animated.View>
   )
 }

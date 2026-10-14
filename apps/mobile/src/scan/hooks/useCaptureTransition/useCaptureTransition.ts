@@ -6,13 +6,16 @@ import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
 import { useTransitionClock } from '@/scan/hooks/useTransitionClock'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import { toPreview } from '@/scan/utils/preview.utils'
+import { useHaptics } from '@/settings/hooks/useHaptics'
 import type { CaptureFrame, Gates, TransitionPlan } from '@/scan/utils/transition.utils'
 import { type Quad, rectQuad, type ViewSize } from '@/utils/geometry.utils'
+import type { HapticName } from '@/utils/haptics.utils'
 import { devLog } from '@/utils/log.utils'
 
 /**
  * Lock-on and the capture transition into the correction screen.
  * startCapture: keeps its identity while capture does, because the UI thread holds it as onLock from the first frame.
+ * Its haptic is thud for the automatic lock-on, which the player did not tap, and tap for the shutter.
  * stepClock: the transition clock step, for the overlay to call first in each UI frame. onDone: called once with an ok result.
  */
 export function useCaptureTransition({
@@ -43,16 +46,18 @@ export function useCaptureTransition({
   const latestResult = useRef<RecogniseResult | null>(null)
   const planVersion = useRef(0)
 
+  const { play } = useHaptics()
   const startCapture = useCallback(
-    (quad: Quad | null) => {
+    (quad: Quad | null, haptic: HapticName = 'thud') => {
       if (lockedAt.current != null) return
       lockedAt.current = Date.now()
+      play(haptic)
       // The frame aspect at lock-on: the photo has the field of view of the frames.
       const aspect = detection.get()?.aspect ?? 0
       setLockedView(quad == null ? null : toPreview(quad, aspect, viewSize.get()))
       capture(quad, aspect)
     },
-    [capture, detection, viewSize],
+    [capture, detection, viewSize, play],
   )
 
   const capturing = state.phase === 'capturing' ? state : null

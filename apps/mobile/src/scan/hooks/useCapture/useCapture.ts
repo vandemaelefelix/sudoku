@@ -1,4 +1,3 @@
-import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics'
 import type { SkImage } from '@shopify/react-native-skia'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSharedValue } from 'react-native-reanimated'
@@ -116,7 +115,6 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
     ) => setState((previous) => (previous.phase === 'capturing' ? { ...previous, ...change } : previous))
     setState({ phase: 'capturing', quad, image: null, imageFailed: false, result: null })
     const started = Date.now()
-    impactAsync(ImpactFeedbackStyle.Light).catch(() => undefined)
 
     const settle = (photoMs: number, result: RecogniseResult) => {
       if (__DEV__) console.log(formatScanLog(photoMs, Date.now() - started, result))
