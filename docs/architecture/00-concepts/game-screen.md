@@ -79,6 +79,8 @@ and spreads out, cell by cell. A digit in the wave grows for a moment. A key tha
 complete plays a short animation, then fades. A haptic goes with each pulse. With Reduce
 Motion on, the screen shows no pulse animation.
 
+The correction screen plays the same pulse across the whole grid from the centre cell when a scanned grid verifies as solved.
+
 ### Feedback
 
 Each move gives one **haptic** and, for some moves, one **cell mark**. One move never gives
