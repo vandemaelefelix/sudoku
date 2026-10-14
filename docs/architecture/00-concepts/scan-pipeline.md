@@ -139,11 +139,21 @@ loads. The correction screen turns "Play this puzzle" on only when this play gat
 | Two givens break a rule | Yes | The conflict chip and the marks |
 | The givens have no solution | Yes | "This puzzle has no solution. Check the marked cells." |
 | The givens have more than one solution | Yes | "A given is missing or wrong." |
-| The givens and the entries fill the grid | Yes | "This puzzle is already solved." |
+| The givens and the entries fill the grid | Yes. The panel offers Check | "Grid is full" |
 | A handwritten entry is wrong | No. It loads as a wrong entry, not a mistake | Nothing |
 
 A scanned game takes the level of the nearest givens target and the source `scanned`
 (ADR-011, amendment "a level for scanned puzzles").
+
+A full grid has nothing to play, so the correction screen verifies it. The player taps Check the grid. `verifyGrid` in `@sudoku/core` trusts the printed digits and judges the handwritten digits.
+
+| Result | When | The screen shows |
+| --- | --- | --- |
+| Solved | Every row, column and box holds 1 to 9 | The title "Solved" and the solved pulse. The buttons are Scan another and Home |
+| Wrong | The printed digits have one solution, and an entry differs | The conflict fill on each wrong entry, with the solution digit small in the corner. The status counts the cells |
+| Clash | The printed digits have no unique solution, and cells share a digit in a unit | The conflict fill on those cells. The status counts the cells |
+
+After the first tap, each edit updates the result. An edit that empties a cell brings back Play and Solve.
 
 ## Open questions
 

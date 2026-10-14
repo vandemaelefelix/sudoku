@@ -73,15 +73,19 @@ describe('checkPlay', () => {
     expect(checkPlay(gridOf(EMPTY), NO_CONFLICTS)).toEqual({ ok: false, block: 'several' })
   })
 
-  it('blocks a grid that the givens and the entries fill', () => {
-    const entries = puzzle.solution.map((digit, cell) => (puzzle.givens[cell] === 0 ? digit : 0))
-    expect(checkPlay(gridOf(puzzle.givens, entries), NO_CONFLICTS)).toEqual({ ok: false, block: 'solved' })
+  it('blocks a full grid, whatever its entries', () => {
+    const right = puzzle.solution.map((digit, cell) => (puzzle.givens[cell] === 0 ? digit : 0))
+    expect(checkPlay(gridOf(puzzle.givens, right), NO_CONFLICTS)).toEqual({ ok: false, block: 'full' })
+    const wrong = right.map((digit, cell) => (cell === open ? wrongDigit : digit))
+    expect(checkPlay(gridOf(puzzle.givens, wrong), NO_CONFLICTS)).toEqual({ ok: false, block: 'full' })
   })
 
-  it('does not block a full grid with one wrong entry', () => {
-    const entries = puzzle.solution.map((digit, cell) =>
-      cell === open ? wrongDigit : puzzle.givens[cell] === 0 ? digit : 0,
-    )
-    expect(checkPlay(gridOf(puzzle.givens, entries), NO_CONFLICTS).ok).toBe(true)
+  it('blocks a full grid that has no given, as a page read as all handwritten', () => {
+    expect(checkPlay(gridOf(EMPTY, puzzle.solution), NO_CONFLICTS)).toEqual({ ok: false, block: 'full' })
+  })
+
+  it('reports a given conflict before a full grid', () => {
+    const conflicts = NO_CONFLICTS.map((_, cell) => cell === 0 || cell === 1)
+    expect(checkPlay(gridOf(puzzle.solution), conflicts)).toEqual({ ok: false, block: 'conflict' })
   })
 })

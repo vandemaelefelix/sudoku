@@ -1,6 +1,9 @@
 import type { CellStyle } from '@/scan/utils/correction.utils'
 import type { PlayBlock } from '@/scan/utils/play.utils'
 
+/** The title once a full scanned grid verifies as solved. */
+export const SOLVED_TITLE = 'Solved'
+
 export const TITLE = 'Check the scan'
 
 /** The font size of a digit as a share of the cell side, for a role at the system scale. */
@@ -15,12 +18,12 @@ export const PANEL_RESIZE_MS = 220
 /** Milliseconds a failure panel needs to slide up. */
 export const FAILURE_SLIDE_MS = 300
 
-/** The panel line for each play block. A given conflict has none: its status line and its marks say it. */
+/** The panel line for each play block. A given conflict and a full grid have none: their status line and their marks say it. */
 export const PLAY_BLOCK_TEXT: Readonly<Record<PlayBlock, string | null>> = {
   conflict: null,
   none: 'This puzzle has no solution. Check the marked cells.',
   several: 'A given is missing or wrong.',
-  solved: 'This puzzle is already solved.',
+  full: null,
 }
 
 /** The kind tag of the dev confidence overlay: Printed, Handwritten, Notes, or none for an empty cell. */
