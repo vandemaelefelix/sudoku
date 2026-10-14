@@ -5,30 +5,48 @@
     "scheme": "sudoku",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icons/production/ios-light.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vandemaelefelix.sudoku",
+      "icon": {
+        "light": "./assets/icons/production/ios-light.png",
+        "dark": "./assets/icons/production/ios-dark.png",
+        "tinted": "./assets/icons/production/ios-tinted.png"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "Sudoku uses the camera to scan a paper sudoku. The photos never leave your iPhone."
       }
     },
     "android": {
+      "package": "com.vandemaelefelix.sudoku",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/icons/production/android-foreground.png",
+        "backgroundImage": "./assets/icons/production/android-background.png",
+        "monochromeImage": "./assets/icons/production/android-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icons/favicon.png"
     },
     "plugins": [
       "expo-router",
       "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icons/splash/splash-light.png",
+          "imageWidth": 200,
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/icons/splash/splash-dark.png",
+            "backgroundColor": "#0f1d5c"
+          }
+        }
+      ],
       [
         "expo-font",
         {
