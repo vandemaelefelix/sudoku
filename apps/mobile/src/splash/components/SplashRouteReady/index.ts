@@ -1,0 +1,1 @@
+export { SplashRouteReady } from './SplashRouteReady'

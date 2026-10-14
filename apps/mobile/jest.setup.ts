@@ -59,6 +59,12 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }))
 
+jest.mock('expo-splash-screen', () => ({
+  preventAutoHideAsync: jest.fn(async () => true),
+  hide: jest.fn(),
+  hideAsync: jest.fn(async () => undefined),
+}))
+
 // The library ships its own mock: a provider with zero insets and a 320 × 640 frame.
 jest.mock(
   'react-native-safe-area-context',

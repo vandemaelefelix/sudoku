@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { SplashContext } from '@/splash/hooks/useSplash'
 import { HomeMenu } from './HomeMenu'
 
 function renderMenu(continueLevel: 'medium' | null = null) {
@@ -34,4 +35,21 @@ it('links to Scan and to Settings', () => {
   fireEvent.press(screen.getByRole('button', { name: 'Settings' }))
   expect(onScan).toHaveBeenCalledTimes(1)
   expect(onSettings).toHaveBeenCalledTimes(1)
+})
+
+it('tells the splash that it is ready when the store has answered, and not before', () => {
+  const markReady = jest.fn()
+  const props = { onNewGame: jest.fn(), onContinue: jest.fn(), onScan: jest.fn(), onSettings: jest.fn() }
+  const { rerender } = render(
+    <SplashContext value={{ phase: 'intro', markReady }}>
+      <HomeMenu {...props} continueLevel={undefined} />
+    </SplashContext>,
+  )
+  expect(markReady).not.toHaveBeenCalled()
+  rerender(
+    <SplashContext value={{ phase: 'intro', markReady }}>
+      <HomeMenu {...props} continueLevel={null} />
+    </SplashContext>,
+  )
+  expect(markReady).toHaveBeenCalledTimes(1)
 })
