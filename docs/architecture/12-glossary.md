@@ -152,3 +152,7 @@ status: DRAFT
 | Digit pass | The Digits screen: a person confirms a screen of pre-labelled cells per digit and corrects the exceptions |
 | Discarded cell | A cell that a person rejected in the digit pass. It stays in `cells/discarded/`. Training ignores it |
 | Cell source | The sudoku photo, row and column (0-8) that a cut cell comes from: the columns `photo_id`, `row` and `col` of `cells.csv` (ADR-018) |
+| App variant | One of two builds of the app with its own bundle ID: the development variant and the production variant. `APP_VARIANT` selects it (ADR-022) |
+| Development variant | The app variant for daily work: "Sudoku Dev", bundle ID `com.vandemaelefelix.sudoku.dev`, an icon with a DEV ribbon. The default (ADR-022) |
+| Production variant | The app variant for real use and release: "Sudoku", bundle ID `com.vandemaelefelix.sudoku`, the clean icon (ADR-022) |
+| DEV ribbon | The cobalt band with "DEV" cut out of it on the development variant icon: across the top-right corner on iOS, a strip below the 9 on Android |
