@@ -145,10 +145,11 @@ export function cellPlace(cell: number): string {
 }
 
 /** The VoiceOver label of a correction cell, for example "Row 1, column 3, entry 7, check this cell". */
-export function correctionCellLabel(cell: number, look: CellLook, conflict: boolean): string {
+export function correctionCellLabel(cell: number, look: CellLook, conflict: boolean, hint = ''): string {
   const parts = [cellPlace(cell)]
   parts.push(hasDigit(look) ? `${look.style} ${look.digit}` : look.style === 'notes' ? 'notes' : 'empty')
-  if (conflict) parts.push('same digit as another given')
+  if (hint !== '') parts.push(`differs from the solution, solution ${hint}`)
+  else if (conflict) parts.push('same digit as another given')
   if (look.uncertain) parts.push('check this cell')
   return parts.join(', ')
 }
