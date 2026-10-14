@@ -818,11 +818,10 @@ describe('CorrectionScreen with a full grid', () => {
     expect(screen.queryByTestId('solve')).toBeNull()
   })
 
-  it('shows Solved, the badge, the wave and the buttons when the grid is right', () => {
+  it('shows Solved, the wave and the buttons when the grid is right', () => {
     render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onHome={jest.fn()} />)
     fireEvent.press(screen.getByTestId('verify'))
     expect(screen.getByText('Solved')).toBeTruthy()
-    expect(screen.getByTestId('solved-badge', { includeHiddenElements: true })).toBeTruthy()
     expect(screen.getByTestId('scan-another')).toBeTruthy()
     expect(screen.getByTestId('correction-wave-0')).toBeTruthy()
   })
@@ -840,7 +839,6 @@ describe('CorrectionScreen with a full grid', () => {
     expect(screen.getByTestId(`correction-hint-${firstOpen}`)).toHaveTextContent(String(puzzle.solution[firstOpen]))
     expect(screen.getByTestId(`correction-cell-${firstOpen}`)).toHaveTextContent(String(wrongDigit))
     expect(screen.getByTestId(`correction-fill-${firstOpen}`)).toBeTruthy()
-    expect(screen.queryByTestId('solved-badge', { includeHiddenElements: true })).toBeNull()
   })
 
   it('marks no cell before the player taps Check', () => {

@@ -23,7 +23,6 @@ import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
 import { CorrectionSummary, type FullGridPanel } from '@/scan/components/CorrectionSummary'
 import { DevMenu, type SaveState } from '@/scan/components/DevMenu'
 import { PanelButton } from '@/scan/components/PanelButton'
-import { SolvedBadge } from '@/scan/components/SolvedBadge'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
 import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
 import { useVerify } from '@/scan/hooks/useVerify'
@@ -333,7 +332,6 @@ export function CorrectionScreen({
           </Text>
         )}
         <View style={styles.barEnd}>
-          {solved && !largeTitle && <SolvedBadge />}
           {devTools && (
             <Pressable
               testID="dev-open"
@@ -359,7 +357,6 @@ export function CorrectionScreen({
           <Text accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.display}>
             {solved ? SOLVED_TITLE : TITLE}
           </Text>
-          {solved && <SolvedBadge />}
           <ThemeDecoration slot="titleMark" />
         </Animated.View>
       )}
