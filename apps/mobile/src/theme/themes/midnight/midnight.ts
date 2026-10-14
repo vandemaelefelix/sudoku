@@ -81,5 +81,7 @@ export const midnight: Theme = {
     },
     checkRing: { color: colors.warning, round: false },
     pulse: { waveOpacity: 0.32, popScale: 1.3 },
+    summary: { border: colors.line, borderWidth: 1, radius: 16, rule: colors.line, ruleWidth: 1 },
+    tabs: { track: p.night850, selected: colors.surface },
   },
 }

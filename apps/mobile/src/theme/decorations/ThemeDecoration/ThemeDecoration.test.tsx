@@ -15,6 +15,7 @@ it.each(['daylight', 'midnight'] as const)('draws nothing in %s', (name) => {
   render(<ThemeDecoration slot="panelEdge" />)
   render(<ThemeDecoration slot="titleMark" />)
   render(<ThemeDecoration slot="cardEdge" style={{ margin: -10 }} />)
+  render(<ThemeDecoration slot="summaryEdge" />)
   expect(screen.toJSON()).toBeNull()
 })
 
@@ -44,4 +45,17 @@ it('draws the stripes and the disc in Progressive', () => {
   )
   expect(screen.getByTestId('decoration-progressive-stripes')).toBeTruthy()
   expect(screen.getByTestId('decoration-progressive-disc')).toBeTruthy()
+})
+
+it('draws the wavy lines on the Op-art summary edge, as wide as the content column', () => {
+  inTheme(THEMES.opart)
+  render(<ThemeDecoration slot="summaryEdge" />)
+  expect(screen.getByTestId('decoration-opart-summary-waves')).toBeTruthy()
+  expect(screen.getByTestId('skia-path').props.color).toBe(THEMES.opart.components.summary.border)
+})
+
+it('draws nothing on the Progressive summary edge', () => {
+  inTheme(THEMES.progressive)
+  render(<ThemeDecoration slot="summaryEdge" />)
+  expect(screen.toJSON()).toBeNull()
 })

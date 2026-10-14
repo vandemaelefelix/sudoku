@@ -1,1 +1,1 @@
-export { OpartCardWaves, OpartWaves } from './OpartWaves'
+export { OpartCardWaves, OpartSummaryWaves, OpartWaves } from './OpartWaves'
