@@ -27,7 +27,7 @@ const GROUPS: readonly (readonly Row[])[] = [
 ]
 
 const NOTE =
-  'Best time counts wins without hints. Average counts all wins. Mistakes and hints are per game. Flawless means a win with no mistakes and no hints. Abandoned games are not counted.'
+  'Best time and average count wins without hints, on generated puzzles. Mistakes and hints are per game. Flawless means a win with no mistakes and no hints. Abandoned games are not counted.'
 
 type LevelTableProps = { levels: Record<Level, LevelSummary> }
 

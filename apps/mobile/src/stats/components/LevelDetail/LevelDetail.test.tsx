@@ -30,7 +30,7 @@ const NOTHING: LevelSummary = {
 it('shows the times and the game numbers of the level', () => {
   render(<LevelDetail level="medium" summary={MEDIUM} times={[300_000, 272_000]} />)
   expect(screen.getByLabelText('Best, no hints: 04:32')).toBeTruthy()
-  expect(screen.getByLabelText('Average, won games: 07:15')).toBeTruthy()
+  expect(screen.getByLabelText('Average, no hints: 07:15')).toBeTruthy()
   expect(screen.getByLabelText('Win rate: 75%')).toBeTruthy()
   expect(screen.getByLabelText('Played, 9 won, 3 lost: 12')).toBeTruthy()
   expect(screen.getByLabelText('Flawless wins, no mistakes, no hints: 4')).toBeTruthy()

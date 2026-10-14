@@ -21,7 +21,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
   barTitle: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
   titleBlock: { height: theme.size.titleBlock, justifyContent: 'flex-end', marginBottom: theme.space.md },
   display: { ...roleText(theme.type.display), color: theme.colors.text },
-  card: { marginBottom: theme.space.xl },
+  card: { marginBottom: theme.space.xl + theme.space.xs },
   message: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
   stripHeader: {
     flexDirection: 'row',
@@ -33,8 +33,8 @@ export const styles = StyleSheet.create((theme, rt) => ({
   stripTitle: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.text },
   stripNote: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
   settings: {
-    marginTop: theme.space.xl,
-    borderTopWidth: theme.components.summary.ruleWidth,
-    borderTopColor: theme.components.summary.rule,
+    marginTop: theme.space.xxl + theme.space.sm,
+    borderTopWidth: theme.shape.stroke.thin,
+    borderTopColor: theme.colors.line,
   },
 }))

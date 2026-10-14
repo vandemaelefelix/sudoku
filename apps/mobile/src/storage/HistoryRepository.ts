@@ -1,5 +1,5 @@
 import type { SqlExecutor } from './sql.types'
-import type { GameResult, HistoryEntry, Level, PuzzleSource } from './storage.types'
+import type { GameResult, HistoryEntry, Level, PuzzleSource, StorageDeps } from './storage.types'
 
 /** The shortest time played of a won generated game without hints, per level (ADR-012). A level without such a game is missing. */
 export type BestTimes = Partial<Record<Level, number>>
@@ -9,6 +9,11 @@ export type HistoryRepository = {
   /** Newest first. */
   list(): Promise<HistoryEntry[]>
   bestTimes(): Promise<BestTimes>
+  /**
+   * Removes every entry from the list and the stats. The rows stay as soft deletes (ADR-012), and the game in progress stays.
+   * The development variant offers it to reset the stats while testing.
+   */
+  clear(): Promise<void>
 }
 
 type HistoryRow = {
@@ -45,8 +50,12 @@ export async function insertHistoryEntry(txn: SqlExecutor, entry: HistoryEntry):
   )
 }
 
-export function createSqliteHistoryRepository(db: SqlExecutor): HistoryRepository {
+export function createSqliteHistoryRepository(db: SqlExecutor, deps: StorageDeps): HistoryRepository {
   return {
+    async clear() {
+      const now = deps.now()
+      await db.runAsync('UPDATE game_history SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL', [now, now])
+    },
     async list() {
       const rows = await db.getAllAsync<HistoryRow>(
         `SELECT id, level, source, seed, result, played_ms, mistakes, hints_used, finished_at

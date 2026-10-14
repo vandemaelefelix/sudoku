@@ -194,6 +194,32 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       await expect(storage.history.bestTimes()).resolves.toEqual({})
     })
 
+    describe('clear', () => {
+      it('removes every history entry from the list, the best times and the stats', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000))
+        await finishGame(storage, 'hard', lostGame(20_000))
+        await storage.history.clear()
+        await expect(storage.history.list()).resolves.toEqual([])
+        await expect(storage.history.bestTimes()).resolves.toEqual({})
+        await expect(storage.stats.summary(null, WITH_SCANNED)).resolves.toMatchObject({ played: 0, abandoned: 0 })
+        await expect(storage.stats.streak('UTC', WITH_SCANNED)).resolves.toMatchObject({ current: 0, longest: 0 })
+      })
+
+      it('keeps the game in progress', async () => {
+        const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
+        await storage.puzzles.save(started.id, movedGame())
+        await storage.history.clear()
+        await expect(storage.puzzles.current()).resolves.toMatchObject({ id: started.id })
+      })
+
+      it('counts the games that finish afterwards', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000))
+        await storage.history.clear()
+        await finishGame(storage, 'easy', wonGame(30_000))
+        await expect(storage.stats.summary('easy', GENERATED)).resolves.toMatchObject({ played: 1, bestMs: 30_000 })
+      })
+    })
+
     it('refuses to start a won or a lost game', async () => {
       await expect(storage.puzzles.start({ level: 'easy', source: 'generated', game: wonGame(1_000) })).rejects.toThrow(
         RangeError,
@@ -373,11 +399,21 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
           abandoned: 0,
           winRate: 0.75,
           bestMs: 60_000,
-          averageMs: 60_000,
+          averageMs: 75_000,
           flawlessWins: 1,
           averageMistakes: 1,
           averageHints: 0.25,
         })
+      })
+
+      it('has an average time only where it has a best time: both count the same games', async () => {
+        await finishGame(storage, 'easy', wonWithHint(30_000))
+        await finishGame(storage, 'hard', wonGame(10_000), 'scanned')
+        const [easy, hard] = await Promise.all([
+          storage.stats.summary('easy', WITH_SCANNED),
+          storage.stats.summary('hard', WITH_SCANNED),
+        ])
+        for (const summary of [easy, hard]) expect(summary).toMatchObject({ bestMs: null, averageMs: null })
       })
 
       it('gives a win rate of 0 for a level with only lost games', async () => {
@@ -415,7 +451,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         })
         await expect(storage.stats.summary('easy', WITH_SCANNED)).resolves.toMatchObject({
           played: 2,
-          averageMs: 35_000,
+          averageMs: 60_000,
           bestMs: 60_000,
         })
       })

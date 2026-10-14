@@ -17,9 +17,9 @@ export type StatsState = { status: 'loading' } | { status: 'failed' } | { status
 
 /**
  * Reads every number of the stats screen at once, so a tab change shows no wait. It reads again when the filter changes
- * and keeps the old numbers on screen until the new ones arrive.
+ * and keeps the old numbers on screen until the new ones arrive. A new `reloadKey` reads again, for example after a reset.
  */
-export function useStats(includeScanned: boolean): StatsState {
+export function useStats(includeScanned: boolean, reloadKey = 0): StatsState {
   const { stats } = useGameStorage()
   const [state, setState] = useState<StatsState>({ status: 'loading' })
 
@@ -48,7 +48,8 @@ export function useStats(includeScanned: boolean): StatsState {
     return () => {
       live = false
     }
-  }, [stats, includeScanned])
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reloadKey only triggers a new read.
+  }, [stats, includeScanned, reloadKey])
 
   return state
 }

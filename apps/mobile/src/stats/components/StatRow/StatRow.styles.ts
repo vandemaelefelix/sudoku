@@ -6,7 +6,7 @@ export const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    paddingVertical: theme.space.md,
+    paddingVertical: theme.space.md + theme.space.xs / 2,
     borderBottomWidth: theme.shape.stroke.thin,
     borderBottomColor: theme.colors.line,
   },

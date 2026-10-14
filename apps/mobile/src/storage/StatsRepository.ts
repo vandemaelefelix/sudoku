@@ -15,7 +15,7 @@ export type LevelSummary = {
   winRate: number | null
   /** The shortest time of a won generated game without hints. A scanned game never counts, whatever the filter says. */
   bestMs: number | null
-  /** The mean time of the won games. */
+  /** The mean time of the same games as the best time, so a level has an average only when it has a best time. */
   averageMs: number | null
   /** Won games with no mistake and no hint. */
   flawlessWins: number
@@ -47,14 +47,14 @@ type SummaryRow = {
 }
 
 // One row for every call: an aggregate without GROUP BY always returns a row, with NULL or 0 when no game matches.
-// The best time reads only generated games, whatever the filter says (ADR-012, amendment).
+// The best and the average time read the same games: won, generated, no hints, whatever the filter says (ADR-012, amendment).
 const SUMMARY_SQL = `SELECT
     COALESCE(SUM(result = 'won'), 0) AS won,
     COALESCE(SUM(result = 'lost'), 0) AS lost,
     COALESCE(SUM(result = 'abandoned'), 0) AS abandoned,
     COALESCE(SUM(result = 'won' AND mistakes = 0 AND hints_used = 0), 0) AS flawless,
     MIN(CASE WHEN result = 'won' AND hints_used = 0 AND source = 'generated' THEN played_ms END) AS best_ms,
-    AVG(CASE WHEN result = 'won' THEN played_ms END) AS average_ms,
+    AVG(CASE WHEN result = 'won' AND hints_used = 0 AND source = 'generated' THEN played_ms END) AS average_ms,
     AVG(CASE WHEN result IN ('won', 'lost') THEN mistakes END) AS average_mistakes,
     AVG(CASE WHEN result IN ('won', 'lost') THEN hints_used END) AS average_hints
   FROM game_history
