@@ -1,0 +1,114 @@
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native'
+import type { Game } from '@sudoku/core'
+import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
+import { createMemoryStorage, type GameStorage } from '@/storage'
+import { GameStorageContext } from '@/storage/hooks/useGameStorage'
+import { lostGame, newGame, wonGame } from '@/storage/repositories.contract'
+import type { Theme } from '@/theme/theme.types'
+import { THEMES } from '@/theme/themes/registry'
+import { StatsScreen } from './StatsScreen'
+
+jest.mock('@/utils/timeZone.utils', () => ({ deviceTimeZone: () => 'UTC' }))
+
+function inTheme(theme: Theme) {
+  const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
+  return jest.spyOn(unistyles, 'useUnistyles').mockReturnValue({ theme, rt: unistyles.UnistylesRuntime } as never)
+}
+
+// The switch is one store for the whole test file, so each test turns it off again.
+afterEach(async () => {
+  jest.restoreAllMocks()
+  const { result, unmount } = renderHook(() => useIncludeScanned())
+  await act(async () => result.current.setIncludeScanned(false))
+  unmount()
+})
+
+async function finish(storage: GameStorage, game: Game) {
+  const { id } = await storage.puzzles.start({ level: 'medium', source: 'generated', game: newGame() })
+  await storage.puzzles.save(id, game)
+}
+
+async function storageWithGames() {
+  const storage = createMemoryStorage()
+  await finish(storage, wonGame(60_000))
+  await finish(storage, lostGame(20_000))
+  return storage
+}
+
+function renderScreen(storage: GameStorage, onBack = jest.fn()) {
+  render(
+    <GameStorageContext value={storage}>
+      <StatsScreen onBack={onBack} />
+    </GameStorageContext>,
+  )
+  return onBack
+}
+
+it('shows the card and the table of all levels first', async () => {
+  renderScreen(await storageWithGames())
+  await waitFor(() => expect(screen.getByLabelText('50% won, 1 day streak')).toBeTruthy())
+  expect(screen.getByRole('tab', { name: 'All', selected: true })).toBeTruthy()
+  expect(screen.getByLabelText('Medium, Played: 2')).toBeTruthy()
+  expect(screen.getByRole('header', { name: /^Streak/ })).toBeTruthy()
+})
+
+it('shows the detail of a level on its tab, and the streak only on All', async () => {
+  renderScreen(await storageWithGames())
+  await waitFor(() => screen.getByRole('tab', { name: 'Medium' }))
+  fireEvent.press(screen.getByRole('tab', { name: 'Medium' }))
+  expect(screen.getByLabelText('Best, no hints: 01:00')).toBeTruthy()
+  expect(screen.queryByRole('header', { name: /^Streak/ })).toBeNull()
+  fireEvent.press(screen.getByRole('tab', { name: 'Expert' }))
+  expect(screen.getByText('No Expert games yet.')).toBeTruthy()
+})
+
+it('has a back button that calls onBack', async () => {
+  const onBack = renderScreen(await storageWithGames())
+  fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+  expect(onBack).toHaveBeenCalledTimes(1)
+})
+
+it('shows the empty numbers on a device without games', async () => {
+  renderScreen(createMemoryStorage())
+  await waitFor(() => expect(screen.getByLabelText('No games finished, 0 day streak')).toBeTruthy())
+  expect(screen.queryByText(/NaN|Infinity/)).toBeNull()
+})
+
+it('counts a scanned game after the switch turns on', async () => {
+  const storage = createMemoryStorage()
+  const { id } = await storage.puzzles.start({ level: 'easy', source: 'scanned', game: newGame() })
+  await storage.puzzles.save(id, wonGame(30_000))
+  renderScreen(storage)
+  await waitFor(() => screen.getByLabelText('Easy, Played: 0'))
+  await act(async () => fireEvent(screen.getByLabelText('Include scanned puzzles'), 'valueChange', true))
+  await waitFor(() => expect(screen.getByLabelText('Easy, Played: 1')).toBeTruthy())
+})
+
+it('writes 1 day, not 1 days', async () => {
+  renderScreen(await storageWithGames())
+  await waitFor(() => expect(screen.getByLabelText('Current: 1 day')).toBeTruthy())
+})
+
+it('says that the stats do not load when the storage fails', async () => {
+  jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+  const storage = createMemoryStorage()
+  jest.spyOn(storage.stats, 'summary').mockRejectedValue(new Error('locked'))
+  renderScreen(storage)
+  await waitFor(() => expect(screen.getByText('The stats do not load.')).toBeTruthy())
+})
+
+it('puts the title in the bar in Daylight', async () => {
+  inTheme(THEMES.daylight)
+  renderScreen(await storageWithGames())
+  await waitFor(() => screen.getByRole('tab', { name: 'All' }))
+  expect(screen.queryByTestId('title-block')).toBeNull()
+  expect(screen.getByRole('header', { name: 'Stats' })).toBeTruthy()
+})
+
+it('puts the title in a title block under the bar in Op-art', async () => {
+  inTheme(THEMES.opart)
+  renderScreen(await storageWithGames())
+  await waitFor(() => screen.getByRole('tab', { name: 'All' }))
+  expect(screen.getByTestId('title-block')).toBeTruthy()
+  expect(screen.getByRole('header', { name: 'Stats' })).toBeTruthy()
+})
