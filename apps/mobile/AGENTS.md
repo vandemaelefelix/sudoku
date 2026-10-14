@@ -33,7 +33,7 @@ Run lint, typecheck and tests before you say a task is done.
   `pnpm exec expo run:ios`. Cloud builds (EAS) are not used yet (ADR-010).
 - Keep the folders: `src/app/` (routes), `src/home/` (home UI), `src/game/` (game UI),
   `src/settings/` (settings UI and `SettingsRepository`: screens, components, hooks, utils,
-  constants), `src/scan/` (scan UI), `src/scanner/` (scanner, entered only through
+  constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/scan/` (scan UI), `src/scanner/` (scanner, entered only through
   `src/scanner/index.ts`) and `src/storage/` (game storage).
 - Navigation follows ADR-016: Expo Router 57. A route file in `src/app/` only renders one screen
   from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
@@ -42,7 +42,7 @@ Run lint, typecheck and tests before you say a task is done.
 
 ## Layout inside a feature
 
-A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/scan/`, `src/storage/`) has these folders. Create a folder only when it
+A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/stats/`, `src/scan/`, `src/storage/`) has these folders. Create a folder only when it
 has a file.
 
 | Folder | Holds |
