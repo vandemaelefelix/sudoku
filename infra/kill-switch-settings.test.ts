@@ -110,7 +110,7 @@ describe('parseApiOnArgs', () => {
 
 describe('LOG_DELIVERY_ACTIONS', () => {
   it('holds the actions that API Gateway checks for a stage with access logging', () => {
-    assert.deepEqual([...LOG_DELIVERY_ACTIONS].sort(), [
+    assert.deepEqual(LOG_DELIVERY_ACTIONS.toSorted(), [
       'logs:CreateLogDelivery',
       'logs:DeleteLogDelivery',
       'logs:DescribeLogGroups',
