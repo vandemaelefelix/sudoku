@@ -29,6 +29,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | Commands (setup, test, lint) | `justfile`, or run `just --list` |
 | Rules for the Expo app | `apps/mobile/AGENTS.md` |
 | How the backend deploys | `infra/README.md` |
+| How the sync Lambda works and how to test it | `services/sync-api/README.md` |
 
 ## Rules that bind all work
 

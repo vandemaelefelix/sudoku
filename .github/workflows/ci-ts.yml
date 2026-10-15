@@ -5,6 +5,7 @@ on:
     paths: &paths
       - apps/**
       - packages/**
+      - services/**
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -24,6 +25,12 @@ on:
 jobs:
   ts:
     runs-on: ubuntu-latest
+    # The sync-api DB tests need DynamoDB Local. Keep the tag equal to dynamodb_image in the justfile.
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:3.3.1
+        ports:
+          - 8000:8000
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -33,12 +40,15 @@ jobs:
           cache: pnpm
       - uses: extractions/setup-just@v4
       - run: pnpm install --frozen-lockfile
+      # boundaries reads the types that sst install writes to .sst/. It needs no AWS credentials. app() skips layer 2 of the account guard in CI (ADR-027).
+      - run: pnpm exec sst install --stage felix
       - run: just typecheck
       - run: just lint-ts
       - run: just boundaries
       - run: just test-ts
-      # sst install needs no AWS credentials. app() skips layer 2 of the account guard in CI (ADR-027).
-      - run: pnpm exec sst install --stage felix
+      - run: pnpm --filter @sudoku/sync-api test:db
+        env:
+          DYNAMODB_ENDPOINT: http://localhost:8000
       - run: pnpm typecheck:infra
       # The model is not in git (ADR-007, amendment). Metro needs a file to bundle; its content does not matter here.
       - run: touch apps/mobile/assets/models/cell-classifier.tflite

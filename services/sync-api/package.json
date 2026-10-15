@@ -1,0 +1,24 @@
+{
+  "name": "@sudoku/sync-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1150.0",
+    "@aws-sdk/lib-dynamodb": "3.1150.0",
+    "@sudoku/sync-contract": "workspace:*",
+    "sst": "4.17.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.164",
+    "@types/node": "26.6.4",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.3"
+  }
+}

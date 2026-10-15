@@ -25,7 +25,7 @@ sudoku/
 │   ├── sudoku-core/             # @sudoku/core: board, rules, generator, solver, hints. Pure TS
 │   └── sync-contract/           # zod schemas of the sync API, shared by the app and the Lambda
 ├── services/
-│   └── sync-api/                # Lambda: POST /v1/sync, DELETE /v1/account (ADR-027)
+│   └── sync-api/                # Lambda: POST /v1/sync, DELETE /v1/account (ADR-027). test/: unit and DynamoDB Local
 ├── infra/                       # SST infrastructure, one file per area (ADR-027)
 ├── ml/                          # Python (uv): datasets, training, evaluation, export, promote
 │   ├── src/
@@ -82,7 +82,7 @@ flowchart TB
 | **Account** (`src/account/`) | Sign-in, sign-out and delete account with Clerk. Gives a fresh token for each request ([ADR-027](adr/adr-027-backend-platform.md)) | `@clerk/expo` | the game UI |
 | **Sync** (`src/sync/`) | Pushes the waiting list and pulls the changes on each trigger. Silent on failure ([ADR-028](adr/adr-028-history-sync.md)) | local storage, account, sync contract | the game UI |
 | **Sync contract** (`packages/sync-contract/`) | The zod schemas of the requests and responses | zod | React Native, AWS SDK |
-| **sync-api** (`services/sync-api/`) | The Lambda: maps the token to our own user ID, stores and returns history entries, deletes an account, counts writes for SUD-11 | sync contract, AWS SDK | the app |
+| **sync-api** (`services/sync-api/`) | The Lambda: maps the token to our own user ID, stores and returns history entries, deletes an account, counts writes for SUD-11 | sync contract, AWS SDK | the app, `infra/` |
 | **Fixture runner** | Development builds only. Runs the real scanner on fixture photos, writes cell images, reports scores ([ADR-010](adr/adr-010-testing-and-ci.md)) | scanner module | — |
 | **ml/** | Dataset assembly, synthetic data, training, evaluation on fixtures, export, promote | contracts/, fixtures/ | anything in apps/ or packages/ |
 
@@ -117,3 +117,15 @@ recognise(photo: Photo, quad: Quad): Promise<{
 
 Smoothing the live corners, the lock-on rule and the animation live in the Scan UI, not in the
 scanner. See [scan-pipeline](00-concepts/scan-pipeline.md).
+
+## Backend boundaries
+
+dependency-cruiser enforces these rules in `just boundaries` ([ADR-027](adr/adr-027-backend-platform.md)):
+
+| Rule | Forbids |
+| --- | --- |
+| `adr-027-app-does-not-import-infra` | `apps/` and `packages/` import `infra/` or `sst.config.ts` |
+| `adr-027-app-does-not-import-services` | `apps/` and `packages/` import `services/` |
+| `adr-027-services-do-not-import-the-app` | `services/` imports `apps/` |
+| `adr-027-services-do-not-import-infra` | `services/` imports `infra/` or `sst.config.ts` |
+| `adr-027-infra-reads-only-the-table-design` | `infra/` and `sst.config.ts` import a file of `services/` other than `services/sync-api/src/tableDesign.ts` |

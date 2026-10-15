@@ -14,4 +14,10 @@ describe('sst.config.ts', () => {
   it('declares the Clerk secret key in run()', () => {
     assert.match(source, /await import\('\.\/infra\/clerk\.ts'\)/)
   })
+
+  it('creates the table and the sync API, and returns the API URL', () => {
+    assert.match(source, /await import\('\.\/infra\/storage\.ts'\)/)
+    assert.match(source, /const \{ api \} = await import\('\.\/infra\/api\.ts'\)/)
+    assert.match(source, /return \{ apiUrl: api\.url \}/)
+  })
 })

@@ -69,6 +69,36 @@ module.exports = {
       to: { path: '^apps/mobile/src/(account|sync)/' },
     },
     {
+      name: 'adr-027-app-does-not-import-services',
+      comment:
+        'ADR-027: the app and the packages never import the Lambda code. The API is their only link to the backend.',
+      severity: 'error',
+      from: { path: '^(apps|packages)/' },
+      to: { path: '^services/' },
+    },
+    {
+      name: 'adr-027-services-do-not-import-the-app',
+      comment: 'ADR-027: the Lambda shares only @sudoku/sync-contract with the app.',
+      severity: 'error',
+      from: { path: '^services/' },
+      to: { path: '^apps/' },
+    },
+    {
+      name: 'adr-027-services-do-not-import-infra',
+      comment: 'ADR-027: the Lambda reads its resources through the SST Resource object, not through the SST code.',
+      severity: 'error',
+      from: { path: '^services/' },
+      to: { path: '^(infra/|sst\\.config\\.ts$)' },
+    },
+    {
+      name: 'adr-027-infra-reads-only-the-table-design',
+      comment:
+        'ADR-027: infra/storage.ts reads the table layout from tableDesign.ts, so the test table matches. The SST code reads no other Lambda file.',
+      severity: 'error',
+      from: { path: '^(infra/|sst\\.config\\.ts$)' },
+      to: { path: '^services/', pathNot: '^services/sync-api/src/tableDesign\\.ts$' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',
@@ -142,7 +172,8 @@ module.exports = {
       severity: 'error',
       from: {},
       // The model file is git-ignored (ADR-007, amendment), so CI cannot resolve it.
-      to: { couldNotResolve: true, pathNot: '\\.tflite$' },
+      // aws-lambda is types only: @types/aws-lambda has no package that a resolver finds by that name.
+      to: { couldNotResolve: true, pathNot: ['\\.tflite$', '^aws-lambda$'] },
     },
   ],
   options: {

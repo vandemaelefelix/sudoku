@@ -7,5 +7,11 @@
       "@assets/*": ["./apps/mobile/assets/*"]
     }
   },
-  "include": ["apps/mobile/App.tsx", "apps/mobile/src", "packages/sudoku-core/src", "packages/sync-contract/src"]
+  "include": [
+    "apps/mobile/App.tsx",
+    "apps/mobile/src",
+    "packages/sudoku-core/src",
+    "packages/sync-contract/src",
+    "services/sync-api/src"
+  ]
 }
