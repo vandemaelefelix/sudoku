@@ -210,9 +210,7 @@ match with the `iss` of the token. The publishable key of the development instan
 `apps/mobile/app.config.ts`, in the development variant. The production variant gets the key of the
 production instance, the two Google client IDs and the reversed iOS URL scheme from
 `PRODUCTION_BACKEND` in the same file. All of them are public values. The production sync URL is
-`null` until the production API exists. Until then the production app signs in but does not sync.
-After the production deploy, a follow-up commit adds the URL that `just deploy-api production`
-prints.
+the URL that `just deploy-api production` printed. The production app syncs and deletes the account in the app.
 
 ### Cost
 
@@ -410,8 +408,7 @@ The release needs these steps, in this order. Only the developer can do them.
 4. Set the secret `ClerkSecretKey` for `production`. The issuer is in `config.ts`. The publishable
    key and the Google client IDs are in `app.config.ts`.
 5. Run `just deploy-api production` again. It creates the table, the function and the API.
-   A follow-up commit adds the `apiUrl` that this command prints to `PRODUCTION_BACKEND.syncApiUrl`
-   in `app.config.ts`.
+   The `apiUrl` that this command prints is in `PRODUCTION_BACKEND.syncApiUrl` in `app.config.ts`.
 6. Publish the privacy policy only after the smoke test of step 7 passes on
    production. Do not publish before. The source is
    [`docs/privacy/privacy-policy.md`](../docs/privacy/privacy-policy.md). The repository is
@@ -420,6 +417,5 @@ The release needs these steps, in this order. Only the developer can do them.
    chooses the host.
 7. Run the smoke test: sign up, finish a game, see it in DynamoDB, delete the account.
 
-Do not ship a production app build until step 5 sets the production sync URL. Without it the
-account section hides "Delete account", but sign-up still works. That breaches App Store
-guideline 5.1.1(v).
+Production sync and in-app account deletion work. Step 5 set the production sync URL.
+Other blockers stay open: the Apple Developer Program, guideline 4.8 and the App Store privacy labels.

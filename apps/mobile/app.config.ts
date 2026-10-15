@@ -10,7 +10,7 @@ export const DEVELOPMENT_CLERK_PUBLISHABLE_KEY = 'pk_test_ZnJlZS1sZW9wYXJkLTUyOT
 
 // The sync API of the development variant: the felix stage (ADR-027, ADR-028). The URL is public and grants no access.
 // SYNC_API_URL overrides it at prebuild or start, to point a build at another stage. The production variant gets its URL from
-// PRODUCTION_BACKEND. Its URL is null until the production stage is deployed, so the production app signs in but does not sync.
+// PRODUCTION_BACKEND, which holds the URL of the production stage.
 export const DEVELOPMENT_SYNC_API_URL = 'https://hd381htgth.execute-api.eu-west-1.amazonaws.com'
 
 const GOOGLE_CLIENT_SUFFIX = '.apps.googleusercontent.com'
@@ -30,7 +30,7 @@ const CLERK_DEVELOPMENT = {
 
 /**
  * The public values of the production Clerk instance and the production API (ADR-027, amendment "the production
- * release"). The sync URL is null until the production stage is deployed. With a null key the production variant has no
+ * release"). The production sync API is deployed. With a null key the production variant has no
  * account section and no sync.
  */
 export type ProductionBackend = {
@@ -42,7 +42,7 @@ export type ProductionBackend = {
 
 export const PRODUCTION_BACKEND: ProductionBackend = {
   clerkPublishableKey: 'pk_live_Y2xlcmsuc3Vkb2t1LmZlbGl4dmFuZGVtYWVsZS5iZSQ',
-  syncApiUrl: null,
+  syncApiUrl: 'https://dfdhsxd374.execute-api.eu-west-1.amazonaws.com',
   googleIosClientId: `579798513006-3j8bts21f938o7pp100nv0tujpjfer7i${GOOGLE_CLIENT_SUFFIX}`,
   googleWebClientId: `579798513006-n4jlbj4c7tsa4987btou7ilp4jf7ro62${GOOGLE_CLIENT_SUFFIX}`,
 }
