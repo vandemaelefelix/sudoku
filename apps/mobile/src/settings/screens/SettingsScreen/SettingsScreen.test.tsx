@@ -1,7 +1,9 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react-native'
 import * as Haptics from 'expo-haptics'
 import Storage from 'expo-sqlite/kv-store'
+import type { ReactNode } from 'react'
 import { ScrollView, StyleSheet } from 'react-native'
+import { AccountContext, UNCONFIGURED_ACCOUNT } from '@/account/hooks/useAccount'
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
 import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
@@ -27,7 +29,7 @@ afterEach(async () => {
 })
 
 it('lists the four assists in the canvas order, all on by default', () => {
-  render(<SettingsScreen onBack={jest.fn()} />)
+  render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   const labels = screen.getAllByText(/^(Row and column|Box|Selected cell|Same numbers)$/, {
     includeHiddenElements: true,
   })
@@ -37,14 +39,14 @@ it('lists the four assists in the canvas order, all on by default', () => {
 })
 
 it('turns an assist off and saves it', async () => {
-  render(<SettingsScreen onBack={jest.fn()} />)
+  render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   await act(async () => fireEvent.press(screen.getByLabelText('Box')))
   expect(screen.getByLabelText('Box').props.accessibilityState).toMatchObject({ checked: false })
   expect(Storage.setItemAsync).toHaveBeenLastCalledWith(ASSISTS_KEY, JSON.stringify({ ...DEFAULT_ASSISTS, box: false }))
 })
 
 it('saves the theme choice', async () => {
-  render(<SettingsScreen onBack={jest.fn()} />)
+  render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   expect(screen.getByRole('button', { name: 'Cobalt', selected: true })).toBeTruthy()
   await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Forest' })))
   expect(screen.getByRole('button', { name: 'Forest', selected: true })).toBeTruthy()
@@ -52,7 +54,7 @@ it('saves the theme choice', async () => {
 })
 
 it('shows the appearance under the theme, Light by default, and saves a new choice', async () => {
-  render(<SettingsScreen onBack={jest.fn()} />)
+  render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   expect(screen.getByText('Appearance')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Light', selected: true })).toBeTruthy()
   await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Colour' })))
@@ -64,7 +66,7 @@ it('shows the appearance under the theme, Light by default, and saves a new choi
 
 it('has a back button of 44 pt that calls onBack', () => {
   const onBack = jest.fn()
-  render(<SettingsScreen onBack={onBack} />)
+  render(<SettingsScreen onBack={onBack} onSignIn={jest.fn()} />)
   const back = screen.getByRole('button', { name: 'Back' })
   fireEvent.press(back)
   expect(onBack).toHaveBeenCalled()
@@ -72,7 +74,7 @@ it('has a back button of 44 pt that calls onBack', () => {
 })
 
 it('shows the headings and the hint of the canvas', () => {
-  render(<SettingsScreen onBack={jest.fn()} />)
+  render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   expect(screen.getByText('Settings')).toBeTruthy()
   expect(screen.getByText('Assists')).toBeTruthy()
   expect(screen.getByText('Turn these off for a raw game.')).toBeTruthy()
@@ -80,7 +82,7 @@ it('shows the headings and the hint of the canvas', () => {
 })
 
 it('shows a switch in the preview at once', async () => {
-  render(<SettingsScreen onBack={jest.fn()} />)
+  render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   await act(async () => fireEvent.press(screen.getByLabelText('Box')))
   // Cell 31 is in the box of cell 39, not in its row or column, and holds no 8.
   const cell31 = screen.getByTestId('cell-31', { includeHiddenElements: true })
@@ -95,7 +97,7 @@ describe('the haptics switch', () => {
   })
 
   it('is on by default, and turning it off saves the switch and plays no tick', async () => {
-    render(<SettingsScreen onBack={jest.fn()} />)
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
     const row = screen.getByLabelText('Haptics')
     expect(row.props.accessibilityState).toMatchObject({ checked: true })
     jest.mocked(Haptics.selectionAsync).mockClear()
@@ -105,7 +107,7 @@ describe('the haptics switch', () => {
   })
 
   it('ticks for an assist switch and a theme choice', async () => {
-    render(<SettingsScreen onBack={jest.fn()} />)
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
     jest.mocked(Haptics.selectionAsync).mockClear()
     await act(async () => fireEvent.press(screen.getByLabelText('Box')))
     fireEvent.press(screen.getByRole('button', { name: 'Forest' }))
@@ -115,25 +117,25 @@ describe('the haptics switch', () => {
 
 it('draws the scroll bars in the colour of the theme, so they show on a dark Colour page', () => {
   const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
-  const view = render(<SettingsScreen onBack={jest.fn()} />)
+  const view = render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   expect(view.UNSAFE_getByType(ScrollView).props.indicatorStyle).toBe(cobalt.scrollIndicator)
   view.unmount()
   jest
     .spyOn(unistyles, 'useUnistyles')
     .mockReturnValue({ theme: cobaltColour, rt: unistyles.UnistylesRuntime } as never)
-  const colour = render(<SettingsScreen onBack={jest.fn()} />)
+  const colour = render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
   expect(colour.UNSAFE_getByType(ScrollView).props.indicatorStyle).toBe(cobaltColour.scrollIndicator)
   jest.restoreAllMocks()
 })
 
 describe('the Op-art look of the page (ADR-026)', () => {
   it('puts a short wavy rule under each of the four headings', () => {
-    render(<SettingsScreen onBack={jest.fn()} />)
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
     expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(4)
   })
 
   it('draws the assists in one framed block with square corners and the border of the stats card', () => {
-    render(<SettingsScreen onBack={jest.fn()} />)
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
     const style = StyleSheet.flatten(screen.getByTestId('assist-card').props.style)
     expect(style).toMatchObject({
       borderRadius: cobalt.components.summary.radius,
@@ -144,11 +146,31 @@ describe('the Op-art look of the page (ADR-026)', () => {
   })
 
   it('divides the rows by the strong rule of the box-line weight', () => {
-    render(<SettingsScreen onBack={jest.fn()} />)
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
     const second = screen.getByTestId('assist-row-Box')
     expect(StyleSheet.flatten(second.props.style)).toMatchObject({
       borderTopWidth: cobalt.components.summary.ruleWidth,
       borderTopColor: cobalt.components.summary.rule,
     })
+  })
+})
+
+function SignedOut({ children }: { children: ReactNode }) {
+  return <AccountContext value={{ ...UNCONFIGURED_ACCOUNT, status: 'signedOut' }}>{children}</AccountContext>
+}
+
+describe('the account section', () => {
+  it('is not there when the build has no account', () => {
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
+    expect(screen.queryByText('Account')).toBeNull()
+  })
+
+  it('comes after Feedback and opens the sign-in screen', () => {
+    const onSignIn = jest.fn()
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={onSignIn} />, { wrapper: SignedOut })
+    const headings = screen.getAllByRole('header').map((heading) => heading.props.children)
+    expect(headings.slice(-2)).toEqual(['Feedback', 'Account'])
+    fireEvent.press(screen.getByRole('button', { name: 'Sign in' }))
+    expect(onSignIn).toHaveBeenCalled()
   })
 })
