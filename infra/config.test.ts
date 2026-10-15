@@ -13,8 +13,9 @@ describe('CLERK_ISSUER', () => {
     assert.match(CLERK_ISSUER.felix ?? '', /^https:\/\/[a-z0-9-]+\.clerk\.accounts\.dev$/)
   })
 
-  it('has no issuer for production until it has its own instance', () => {
-    assert.equal(CLERK_ISSUER.production, null)
+  it('gives production its own instance on the production domain, without a slash at the end', () => {
+    assert.equal(CLERK_ISSUER.production, 'https://clerk.sudoku.felixvandemaele.be')
+    assert.notEqual(CLERK_ISSUER.production, CLERK_ISSUER.felix)
   })
 })
 
@@ -24,8 +25,8 @@ describe('hasClerk', () => {
     assert.equal(hasClerk('dev'), true)
   })
 
-  it('is false for production until it has its own instance', () => {
-    assert.equal(hasClerk('production'), false)
+  it('is true for production, which has its own instance', () => {
+    assert.equal(hasClerk('production'), true)
   })
 })
 
@@ -35,9 +36,13 @@ describe('deployPlan', () => {
     assert.deepEqual(deployPlan('dev'), { account: false, app: true })
   })
 
-  it('gives production only the account-wide resources while it has no issuer', () => {
+  it('gives production the account-wide resources and the whole app, now that it has an issuer', () => {
     assert.equal(ACCOUNT_STAGE, 'production')
-    assert.deepEqual(deployPlan('production'), { account: true, app: false })
+    assert.deepEqual(deployPlan('production'), { account: true, app: true })
+  })
+
+  it('still gives production only the account-wide resources when its issuer is removed', () => {
+    assert.deepEqual(deployPlan('production', { ...CLERK_ISSUER, production: null }), { account: true, app: false })
   })
 
   it('gives production the whole app as soon as it has an issuer', () => {

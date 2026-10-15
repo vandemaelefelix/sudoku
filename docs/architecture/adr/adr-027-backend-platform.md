@@ -437,11 +437,14 @@ The release of the backend to production makes these decisions.
 2. **Clerk plan: Hobby is recommended.** The 7-day session is fixed. The app asks for a new token before each request,
    so a player signs in again only after 7 days without the app. Move to Pro only if this hurts. The developer decides.
 3. **The domain is `sudoku.felixvandemaele.be`.** The issuer of `production` is
-   `https://clerk.sudoku.felixvandemaele.be`. `CLERK_ISSUER.production` stays `null` until the developer checks the
-   issuer with the `openid-configuration` URL and sets `ClerkSecretKey`.
+   `https://clerk.sudoku.felixvandemaele.be`. The Clerk production instance uses this domain. The DNS of the domain is at
+   Vercel, with five CNAME records. `CLERK_ISSUER.production` holds the issuer, which answers on its
+   `openid-configuration` URL. The developer sets `ClerkSecretKey` for `production` before the first deploy.
+   With an issuer, `deployPlan('production')` deploys the whole app.
 4. **The production Clerk and Google values are public.** They go in `PRODUCTION_BACKEND` in
-   `apps/mobile/app.config.ts`: the publishable key, the API URL and the two Google client IDs. All four are `null`
-   until they exist. With a `null` key the production variant has no account section.
+   `apps/mobile/app.config.ts`: the publishable key, the API URL and the two Google client IDs. The key and the two IDs hold the production values.
+   The API URL is `null` until `just deploy-api production` prints it. A follow-up commit adds it. Until then the
+   production app signs in but does not sync. With a `null` key the production variant has no account section.
 5. **Guideline 4.8: ship email and Google.** The app does not add Sign in with Apple now. It needs the paid Apple
    Developer Program. Add it at the first rejection under guideline 4.8, or before the first submission.
 6. **The privacy policy is Markdown in the repo.** The source is `docs/privacy/privacy-policy.md`. The public page lives
