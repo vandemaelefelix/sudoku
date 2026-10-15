@@ -11,6 +11,9 @@ on:
       - .npmrc
       - .nvmrc
       - tsconfig.base.json
+      - tsconfig.infra.json
+      - sst.config.ts
+      - infra/**
       - .oxlintrc.json
       - .dependency-cruiser.cjs
       - justfile

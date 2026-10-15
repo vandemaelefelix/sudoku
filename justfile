@@ -23,6 +23,7 @@ test-ts:
     pnpm -r test
     node --test 'scripts/oxlint/*.test.mjs'
     node --test 'scripts/icons/*.test.mjs'
+    node --test 'infra/*.test.ts'
 
 # pytest (ml)
 test-ml:
@@ -77,7 +78,7 @@ ios-release device:
 
 # Check relative links in the docs
 docs-check:
-    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md
+    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md infra
 
 # Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
 preprocess-fixtures:
@@ -141,3 +142,30 @@ label-rollback session:
 # Copy the old layout (<old_ml_root>/datasets and data/) into data/ and the image store. Dry run without --apply. Flags: --apply, --force, --prefer-log
 migrate-layout old_ml_root *flags:
     old="$(realpath "{{old_ml_root}}")" && uv run --directory ml python -m sudoku_ml.migrate_layout "$old" {{flags}}
+
+# SST reads AWS_* variables before its own profile. These recipes remove them, so only the profile sudoku is used (ADR-027)
+sudoku_aws := "env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN AWS_PROFILE=sudoku"
+
+# Sign in to the personal AWS account. The profile sudoku reads this session. A bare aws login writes into the wrong profile
+aws-login:
+    aws login --profile sudoku-login
+
+# Deploy the backend to a stage: felix, dev or production. Run just aws-login first
+deploy-api stage:
+    {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} pnpm exec sst deploy --stage "{{stage}}"
+
+# Show what a deploy would change on a stage, without a change
+diff-api stage:
+    {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} pnpm exec sst diff --stage "{{stage}}"
+
+# Remove a stage of the backend. SST refuses production (protect)
+remove-api stage:
+    {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} pnpm exec sst remove --stage "{{stage}}"
+
+# Typecheck sst.config.ts and infra/. It downloads the SST providers the first time
+typecheck-infra:
+    {{sudoku_aws}} pnpm exec sst install --stage felix
+    pnpm typecheck:infra
