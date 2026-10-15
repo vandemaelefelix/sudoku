@@ -7,6 +7,14 @@ export const AWS_REGION = 'eu-west-1'
 export const STAGES = ['felix', 'dev', 'production'] as const
 export type Stage = (typeof STAGES)[number]
 
+// The only repository that may take a deploy role (ADR-027, decision 8). The trust policy matches it exactly.
+export const GITHUB_REPO = 'vandemaelefelix/sudoku'
+
+// The repository uses immutable OIDC subject claims. These IDs come from the GitHub API:
+// `gh api repos/vandemaelefelix/sudoku/actions/oidc/customization/sub` (`sub_claim_prefix`) and `gh api repos/vandemaelefelix/sudoku`.
+export const GITHUB_OWNER_ID = '32290789'
+export const GITHUB_REPOSITORY_ID = '1412094169'
+
 // A budget and other account-wide resources exist once per account, so only this stage creates them.
 export const ACCOUNT_STAGE: Stage = 'production'
 

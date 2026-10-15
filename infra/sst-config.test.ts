@@ -18,7 +18,11 @@ describe('sst.config.ts', () => {
   it('creates the table and the sync API, and returns the API URL', () => {
     assert.match(source, /await import\('\.\/infra\/storage\.ts'\)/)
     assert.match(source, /const \{ api \} = await import\('\.\/infra\/api\.ts'\)/)
-    assert.match(source, /return \{ apiUrl: api\.url \}/)
+    assert.match(source, /return \{ apiUrl: api\.url, \.\.\.deployRoles \}/)
+  })
+
+  it('creates the GitHub deploy roles', () => {
+    assert.match(source, /await import\('\.\/infra\/github-oidc\.ts'\)/)
   })
 
   it('refuses a stopped stage before it creates a resource', () => {

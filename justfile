@@ -94,6 +94,10 @@ ios-release device:
     cd apps/mobile && APP_VARIANT=production pnpm exec expo prebuild --platform ios --clean
     cd apps/mobile && APP_VARIANT=production pnpm exec expo run:ios --device "{{device}}" --configuration Release
 
+# Lint the GitHub Actions workflows and actions. Needs actionlint: brew install actionlint
+lint-workflows:
+    actionlint
+
 # Check relative links in the docs
 docs-check:
     python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md infra services

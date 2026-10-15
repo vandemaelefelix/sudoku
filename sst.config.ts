@@ -46,9 +46,10 @@ export default $config({
     await assertNotStopped($app.stage, $cli.command)
     await import('./infra/defaults.ts')
     await import('./infra/budget.ts')
+    const { deployRoles } = await import('./infra/github-oidc.ts')
     await import('./infra/clerk.ts')
     await import('./infra/storage.ts')
     const { api } = await import('./infra/api.ts')
-    return { apiUrl: api.url }
+    return { apiUrl: api.url, ...deployRoles }
   },
 })
