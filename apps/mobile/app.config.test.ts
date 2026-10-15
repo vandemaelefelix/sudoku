@@ -57,6 +57,15 @@ describe('variantConfig', () => {
     expect(variantConfig(base, 'production').extra?.appVariant).toBeUndefined()
   })
 
+  it('gives only the development variant the publishable key of the Clerk development instance (ADR-027)', () => {
+    const key = variantConfig(base, 'development').extra?.clerkPublishableKey as string
+    expect(key).toMatch(/^pk_test_/)
+    // A publishable key is the base64 of the Frontend API host with a `$` at the end.
+    const host = Buffer.from(key.slice('pk_test_'.length), 'base64').toString()
+    expect(host).toMatch(/^[a-z0-9-]+\.clerk\.accounts\.dev\$$/)
+    expect(variantConfig(base, 'production').extra?.clerkPublishableKey).toBeUndefined()
+  })
+
   it('uses the ribbon icons in development, except the shared Android background', () => {
     const dev = variantConfig(base, 'development')
     const paths = imagePaths(dev)
