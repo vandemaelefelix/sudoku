@@ -11,7 +11,7 @@ export type AuthErrors = Partial<Record<AuthField, string>>
 
 type ApiErrorLike = { code?: unknown; meta?: { paramName?: unknown } }
 
-function isOffline(error: unknown): boolean {
+export function isOffline(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false
   if ((error as { code?: unknown }).code === OFFLINE_ERROR_CODE) return true
   // React Native fetch rejects with this TypeError when the phone has no network.

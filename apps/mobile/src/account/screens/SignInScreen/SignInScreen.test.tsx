@@ -1,4 +1,5 @@
 import { useSignIn } from '@clerk/expo'
+import { useSignInWithGoogle } from '@clerk/expo/google'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { AccountContext, UNCONFIGURED_ACCOUNT } from '@/account/hooks/useAccount'
@@ -107,4 +108,34 @@ it('disables the button while the request runs', async () => {
   expect(signIn.password).toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'Sign in' }).props.accessibilityState).toMatchObject({ disabled: true })
   await act(async () => release?.())
+})
+
+function googleGives(flow: () => Promise<unknown>) {
+  jest.mocked(useSignInWithGoogle).mockReturnValue({
+    startGoogleAuthenticationFlow: jest.fn(flow),
+  } as unknown as ReturnType<typeof useSignInWithGoogle>)
+}
+
+describe('Google', () => {
+  it('finishes after the Google sheet gives a session', async () => {
+    fakeSignIn('complete')
+    const setActive = jest.fn(async () => undefined)
+    googleGives(async () => ({ createdSessionId: 'sess_1', setActive }))
+    const onDone = jest.fn()
+    renderScreen({ onDone })
+    await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue with Google' })))
+    expect(setActive).toHaveBeenCalledWith({ session: 'sess_1' })
+    expect(onDone).toHaveBeenCalled()
+  })
+
+  it('shows a short message when Google fails', async () => {
+    fakeSignIn('complete')
+    googleGives(async () => {
+      throw new Error('boom')
+    })
+    renderScreen()
+    await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue with Google' })))
+    expect(screen.getByText('Google sign-in did not work. Try again.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
+  })
 })

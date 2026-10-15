@@ -4,10 +4,12 @@ import { AuthButton } from '@/account/components/AuthButton'
 import { AuthLayout } from '@/account/components/AuthLayout'
 import { CodeStep } from '@/account/components/CodeStep'
 import { FormMessage } from '@/account/components/FormMessage'
+import { GoogleButton } from '@/account/components/GoogleButton'
 import { TextField } from '@/account/components/TextField'
 import { UNCONFIGURED_MESSAGE } from '@/account/constants/account.constants'
 import { useAccount } from '@/account/hooks/useAccount'
 import { useEmailSignUp } from '@/account/hooks/useEmailSignUp'
+import { useGoogleSignIn } from '@/account/hooks/useGoogleSignIn'
 import { styles } from './SignUpScreen.styles'
 
 type SignUpScreenProps = { onDone(): void; onBack(): void; onSignIn(): void }
@@ -28,6 +30,8 @@ export function SignUpScreen(props: SignUpScreenProps) {
 
 function SignUpForm({ onDone, onBack, onSignIn }: SignUpScreenProps) {
   const { step, busy, errors, submit, verifyCode, resendCode, editDetails } = useEmailSignUp(onDone)
+  const google = useGoogleSignIn(onDone)
+  const waiting = busy || google.busy
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const passwordRef = useRef<TextInput>(null)
@@ -67,10 +71,11 @@ function SignUpForm({ onDone, onBack, onSignIn }: SignUpScreenProps) {
           returnKeyType="go"
           onSubmitEditing={create}
         />
-        <FormMessage tone="danger" message={errors.form} />
+        <FormMessage tone="danger" message={errors.form ?? google.error} />
         <View style={styles.actions}>
-          <AuthButton label="Create account" kind="primary" busy={busy} onPress={create} />
-          <AuthButton label="I have an account" kind="outline" disabled={busy} onPress={onSignIn} />
+          <AuthButton label="Create account" kind="primary" busy={busy} disabled={google.busy} onPress={create} />
+          <GoogleButton busy={google.busy} disabled={busy} onPress={google.signIn} />
+          <AuthButton label="I have an account" kind="outline" disabled={waiting} onPress={onSignIn} />
         </View>
       </View>
     </AuthLayout>

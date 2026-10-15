@@ -3,6 +3,7 @@ export type AuthField = 'email' | 'password' | 'code' | 'form'
 
 export const GENERIC_AUTH_ERROR = 'This did not work. Try again.'
 export const OFFLINE_AUTH_ERROR = 'No connection. Try again when you are online.'
+export const GOOGLE_AUTH_ERROR = 'Google sign-in did not work. Try again.'
 
 /** The short message for each Clerk error code. A code that is not here gets GENERIC_AUTH_ERROR. */
 export const AUTH_ERROR_MESSAGES: Readonly<Record<string, string>> = {
