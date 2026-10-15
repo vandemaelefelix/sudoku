@@ -324,6 +324,20 @@ describe('migration 5: the owner and the waiting list', () => {
     })
   })
 
+  it('lets an account adopt the old entries that are not deleted', async () => {
+    await migrateFromVersion4()
+    await expect(createSqliteStorage(db, testDeps()).history.adoptUnowned('user-alice')).resolves.toBe(2)
+    const owners = await db.getAllAsync<{ id: string; owner_user_id: string | null }>(
+      'SELECT id, owner_user_id FROM game_history ORDER BY rowid',
+      [],
+    )
+    expect(owners).toEqual([
+      { id: 'a', owner_user_id: 'user-alice' },
+      { id: 'b', owner_user_id: 'user-alice' },
+      { id: 'c', owner_user_id: null },
+    ])
+  })
+
   it('creates the sync state as one value per key', async () => {
     await migrate(db)
     await db.runAsync('INSERT INTO sync_state (key, value) VALUES (?, ?)', ['cursor', 'abc'])

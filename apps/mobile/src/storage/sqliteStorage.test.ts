@@ -88,6 +88,29 @@ describe('createSqliteStorage', () => {
     await expect(storage.history.list(null)).resolves.toEqual([])
   })
 
+  it('writes no entry of a remote batch when one entry breaks a CHECK', async () => {
+    const { storage } = await openStorage()
+    const at = '2026-10-01T09:00:00.000Z'
+    const entry = {
+      id: 'r1',
+      level: 'easy',
+      source: 'generated',
+      seed: null,
+      result: 'won',
+      playedMs: 60_000,
+      mistakes: 0,
+      hintsUsed: 0,
+      finishedAt: at,
+      createdAt: at,
+      updatedAt: at,
+      deletedAt: null,
+    } as const
+    await expect(
+      storage.history.upsertRemote([entry, { ...entry, id: 'r2', playedMs: -1 }], 'user-alice'),
+    ).rejects.toThrow('CHECK constraint failed')
+    await expect(storage.history.list('user-alice')).resolves.toEqual([])
+  })
+
   it('keeps a saved game that does not load, and gives null', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
     const { db, storage } = await openStorage()

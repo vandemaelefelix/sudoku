@@ -1,6 +1,6 @@
 import { createGame, hint, place, select, tick, type Game } from '@sudoku/core'
 import type { GameStorage } from './gameStorage.types'
-import type { Level, PuzzleSource, StorageDeps } from './storage.types'
+import type { HistoryRecord, Level, PuzzleSource, StorageDeps } from './storage.types'
 
 // The puzzle of the design canvas. Cell 2 is empty and needs a 4.
 const GIVENS = digits('530070000600195000098000060800060003400803001700020006060000280000419005000080079')
@@ -55,6 +55,8 @@ export function testDeps(): StorageDeps {
   }
 }
 
+const ALICE = 'user-alice'
+const BOB = 'user-bob'
 const GENERATED = { includeScanned: false, owner: null }
 const WITH_SCANNED = { includeScanned: true, owner: null }
 
@@ -68,6 +70,33 @@ async function finishGame(
   const { id } = await storage.puzzles.start({ level, source, game: newGame(), owner })
   await storage.puzzles.save(id, game, owner)
   return id
+}
+
+/** The one item of a list. Fails the test when the list does not have exactly one item. */
+function single<T>(items: readonly T[]): T {
+  const [item] = items
+  if (items.length !== 1 || item === undefined) throw new Error(`Expected one item, got ${items.length}`)
+  return item
+}
+
+/** A history entry as the server sends it. */
+function remote(id: string, changes: Partial<HistoryRecord> = {}): HistoryRecord {
+  const at = '2026-10-01T09:00:00.000Z'
+  return {
+    id,
+    level: 'easy',
+    source: 'generated',
+    seed: null,
+    result: 'won',
+    playedMs: 60_000,
+    mistakes: 0,
+    hintsUsed: 0,
+    finishedAt: at,
+    createdAt: at,
+    updatedAt: at,
+    deletedAt: null,
+    ...changes,
+  }
 }
 
 /** Storage whose clock the test sets, so a win lands on a chosen day. */
@@ -239,9 +268,6 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
     })
 
     describe('owner', () => {
-      const ALICE = 'user-alice'
-      const BOB = 'user-bob'
-
       it('writes the owner of the finish to the history entry', async () => {
         const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id, result: 'won' }])
@@ -304,6 +330,207 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         await expect(storage.stats.recentTimes('easy', 5, signedOut)).resolves.toEqual([30_000])
         await expect(storage.stats.streak('UTC', alice)).resolves.toMatchObject({ current: 0, longest: 1 })
         await expect(storage.stats.streak('UTC', signedOut)).resolves.toMatchObject({ current: 1 })
+      })
+    })
+
+    describe('waiting list', () => {
+      it('holds a finished game of the owner with its timestamps', async () => {
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const entry = single(await storage.history.list(ALICE))
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([
+          { ...entry, id, createdAt: entry.finishedAt, updatedAt: entry.finishedAt, deletedAt: null },
+        ])
+      })
+
+      it('holds only the entries of the owner, oldest change first, up to the limit', async () => {
+        const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        await finishGame(storage, 'easy', wonGame(50_000), 'generated', null)
+        await finishGame(storage, 'easy', wonGame(40_000), 'generated', BOB)
+        const second = await finishGame(storage, 'hard', lostGame(20_000), 'generated', ALICE)
+        const third = await finishGame(storage, 'hard', wonGame(90_000), 'generated', ALICE)
+        const ids = async (limit: number) => (await storage.history.pending(ALICE, limit)).map((record) => record.id)
+        await expect(ids(10)).resolves.toEqual([first, second, third])
+        await expect(ids(2)).resolves.toEqual([first, second])
+      })
+
+      it('drops the entries that the server accepted', async () => {
+        const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const second = await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+        await storage.history.markPushed([first], '2026-10-12T10:00:00.000Z')
+        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([{ id: second }])
+        await storage.history.markPushed([second, 'unknown'], '2026-10-12T10:00:00.000Z')
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('changes nothing for an empty list of ids', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        await storage.history.markPushed([], '2026-10-12T10:00:00.000Z')
+        await expect(storage.history.pending(ALICE, 10)).resolves.toHaveLength(1)
+      })
+
+      it('holds a cleared entry again, as a deleted entry with a newer change', async () => {
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const sent = single(await storage.history.pending(ALICE, 10))
+        await storage.history.markPushed([id], sent.updatedAt)
+        await storage.history.clear(ALICE)
+        const deleted = single(await storage.history.pending(ALICE, 10))
+        expect(deleted).toMatchObject({ id, deletedAt: expect.any(String) })
+        expect(deleted.updatedAt > sent.updatedAt).toBe(true)
+      })
+
+      it('keeps an entry that changed after the time of the push', async () => {
+        const { storage: clockedStorage, setNow } = await clocked(open)
+        storage = clockedStorage
+        setNow('2026-10-12T10:00:00.000Z')
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const at = '2026-10-12T10:01:00.000Z'
+        await storage.history.pending(ALICE, 10)
+        setNow('2026-10-12T10:02:00.000Z')
+        await storage.history.clear(ALICE)
+        await storage.history.markPushed([id], at)
+        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([
+          { id, deletedAt: '2026-10-12T10:02:00.000Z' },
+        ])
+      })
+
+      it('never holds a game finished while signed out', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+    })
+
+    describe('upsertRemote', () => {
+      it('adds a new entry that is not on the waiting list', async () => {
+        await storage.history.upsertRemote([remote('r1', { seed: 412_077 })], ALICE)
+        const {
+          createdAt: _createdAt,
+          updatedAt: _updatedAt,
+          deletedAt: _deletedAt,
+          ...entry
+        } = remote('r1', {
+          seed: 412_077,
+        })
+        await expect(storage.history.list(ALICE)).resolves.toEqual([entry])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+        await expect(storage.history.list(null)).resolves.toEqual([])
+      })
+
+      it('replaces an entry with a newer change', async () => {
+        await storage.history.upsertRemote([remote('r1')], ALICE)
+        await storage.history.upsertRemote(
+          [remote('r1', { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' })],
+          ALICE,
+        )
+        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 45_000 }])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('ignores an older change', async () => {
+        await storage.history.upsertRemote([remote('r1', { updatedAt: '2026-10-02T09:00:00.000Z' })], ALICE)
+        await storage.history.upsertRemote([remote('r1', { playedMs: 45_000 })], ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 60_000 }])
+      })
+
+      it('ignores a change with the same time', async () => {
+        await storage.history.upsertRemote([remote('r1')], ALICE)
+        await storage.history.upsertRemote([remote('r1', { playedMs: 45_000 })], ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 60_000 }])
+      })
+
+      it('removes an entry that the server deleted', async () => {
+        await storage.history.upsertRemote([remote('r1')], ALICE)
+        const later = '2026-10-02T09:00:00.000Z'
+        await storage.history.upsertRemote([remote('r1', { updatedAt: later, deletedAt: later })], ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toEqual([])
+        await expect(storage.stats.summary(null, { includeScanned: true, owner: ALICE })).resolves.toMatchObject({
+          played: 0,
+        })
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('keeps a deleted entry it did not know, so an older copy does not bring it back', async () => {
+        const later = '2026-10-02T09:00:00.000Z'
+        await storage.history.upsertRemote([remote('r1', { updatedAt: later, deletedAt: later })], ALICE)
+        await storage.history.upsertRemote([remote('r1')], ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toEqual([])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('never takes an entry from another owner', async () => {
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
+        await storage.history.upsertRemote([remote(id, { updatedAt: '2030-01-01T00:00:00.000Z' })], ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toEqual([])
+        await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id, playedMs: 60_000 }])
+        await expect(storage.history.pending(BOB, 10)).resolves.toMatchObject([{ id }])
+      })
+
+      it('changes nothing when the server sends back an entry of this device', async () => {
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const sent = single(await storage.history.pending(ALICE, 10))
+        await storage.history.markPushed([id], sent.updatedAt)
+        await storage.history.upsertRemote([sent], ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('lists the entries by the time they finished, whatever the order of the upsert', async () => {
+        await storage.history.upsertRemote(
+          [
+            remote('r2', { finishedAt: '2026-10-02T09:00:00.000Z' }),
+            remote('r3', { finishedAt: '2026-10-03T09:00:00.000Z' }),
+            remote('r1', { finishedAt: '2026-09-30T09:00:00.000Z' }),
+          ],
+          ALICE,
+        )
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
+        expect(ids).toEqual([id, 'r3', 'r2', 'r1'])
+      })
+
+      it('keeps the newest of two copies in one call', async () => {
+        await storage.history.upsertRemote(
+          [remote('r1', { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' }), remote('r1')],
+          ALICE,
+        )
+        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 45_000 }])
+      })
+
+      it('clears an entry with a change from a clock ahead of this one, and puts it on the waiting list', async () => {
+        const future = '2030-01-01T00:00:00.000Z'
+        await storage.history.upsertRemote([remote('r1', { updatedAt: future })], ALICE)
+        await storage.history.clear(ALICE)
+        const deleted = single(await storage.history.pending(ALICE, 10))
+        expect(deleted).toMatchObject({ id: 'r1', deletedAt: expect.any(String) })
+        expect(deleted.updatedAt > future).toBe(true)
+      })
+    })
+
+    describe('adoptUnowned', () => {
+      it('gives the entries without an owner to the account and puts them on the waiting list', async () => {
+        const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        const second = await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)
+        await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(2)
+        await expect(storage.history.list(null)).resolves.toEqual([])
+        const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
+        expect(ids).toEqual([second, first])
+        const pending = (await storage.history.pending(ALICE, 10)).map((record) => record.id)
+        expect(pending).toEqual([first, second])
+      })
+
+      it('leaves a cleared entry without an owner', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await storage.history.clear(null)
+        const live = await finishGame(storage, 'easy', wonGame(50_000), 'generated', null)
+        await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(1)
+        const pending = (await storage.history.pending(ALICE, 10)).map((record) => record.id)
+        expect(pending).toEqual([live])
+      })
+
+      it('leaves the entries of another account', async () => {
+        const bob = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
+        await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(0)
+        await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id: bob }])
+        await expect(storage.history.list(ALICE)).resolves.toEqual([])
       })
     })
 
