@@ -19,7 +19,7 @@ export function stripInternalNotes(markdown) {
 
 // Cobalt light colours from apps/mobile/src/theme/themes/cobalt/palette.ts. Contrast of ink and accent on the page is above 7:1.
 const css = `
-:root{--ink:#0f1d5c;--muted:#4f5a9a;--accent:#1f3fd1;--bg:#f4f6ff;--tint:#e3e8ff;--line:#c3cbef}
+:root{color-scheme:light;--ink:#0f1d5c;--muted:#4f5a9a;--accent:#1f3fd1;--bg:#f4f6ff;--tint:#e3e8ff;--line:#c3cbef}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:1.0625rem/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header,main,footer{max-width:42rem;margin:0 auto;padding:1rem}
@@ -29,7 +29,8 @@ a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 h1{font-size:2.25rem;line-height:1.2;margin:1.5rem 0 1rem}
 h2{font-size:1.4rem;margin:2rem 0 .5rem}
 .lead{font-size:1.25rem}
-table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+.table-wrap{overflow-x:auto}
 th,td{border:1px solid var(--line);padding:.5rem;text-align:left;vertical-align:top}
 th{background:var(--tint)}
 footer{color:var(--muted);border-top:1px solid var(--line);margin-top:3rem}
@@ -57,7 +58,10 @@ ${body}
 
 export async function build() {
   const policy = stripInternalNotes(await readFile(policyPath, 'utf8'))
-  const privacyBody = marked.parse(policy, { async: false })
+  const privacyBody = marked
+    .parse(policy, { async: false })
+    .replace(/<table>/g, '<div class="table-wrap"><table>')
+    .replace(/<\/table>/g, '</table></div>')
 
   await rm(outDir, { recursive: true, force: true })
   await mkdir(join(outDir, 'privacy'), { recursive: true })

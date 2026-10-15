@@ -12,16 +12,27 @@ pnpm --filter @sudoku/site build   # writes site/dist/ (git-ignored)
 pnpm --filter @sudoku/site test
 ```
 
-The site has no JavaScript, no cookies, no analytics and no third-party request (SUD-02).
+The site has no JavaScript, no cookies and no analytics (SUD-02). Pages load no third-party resource.
+Vercel hosts the site. Vercel processes the IP address of a visitor to serve the pages. The policy says so.
 Nothing in `apps/` or `packages/` imports this folder.
 
 ## Vercel setup (the developer only)
 
 1. In Vercel, use your personal Hobby team. Choose **Add New, Project**. Import the GitHub repository `vandemaelefelix/sudoku`.
-2. Set **Root Directory** to `site`. Set **Framework Preset** to `Other`. Keep the build command and the output
-   directory from `vercel.json`.
+2. Set these project settings. They must match `vercel.json`.
+
+   | Setting | Value |
+   | --- | --- |
+   | Root Directory | `site` |
+   | Include source files outside of the Root Directory | On. The build reads `docs/privacy/privacy-policy.md`. |
+   | Framework Preset | `Other` |
+   | Install Command | `pnpm install --frozen-lockfile --filter @sudoku/site...` |
+   | Build Command | `node build.mjs` |
+   | Output Directory | `dist` |
+   | Environment variable | `ENABLE_EXPERIMENTAL_COREPACK=1`. Vercel then uses the pnpm version of the root `packageManager`. |
+
 3. Set the **Production Branch** to `develop` (the integration branch), or `main` when you release from it.
-4. Deploy. Then open **Settings, Domains**. Add `sudoku.felixvandemaele.be`. The DNS is on Vercel already, so
+4. Deploy. Vercel also deploys a preview for every pull request branch. Then open **Settings, Domains**. Add `sudoku.felixvandemaele.be`. The DNS is on Vercel already, so
    Vercel adds the record itself.
 5. Open `https://sudoku.felixvandemaele.be` and `https://sudoku.felixvandemaele.be/privacy`. Check both pages.
 6. In Google Cloud, open the OAuth consent screen, **Branding**. Enter `https://sudoku.felixvandemaele.be` as the home
