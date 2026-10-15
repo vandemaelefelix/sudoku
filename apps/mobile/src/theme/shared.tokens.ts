@@ -24,12 +24,6 @@ export const SHARED_TYPE: Theme['type'] = {
 
 export const SHARED_SPACE: Theme['space'] = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 }
 
-export const SHARED_SHAPE: Theme['shape'] = {
-  radius: { sm: 6, md: 14, lg: 16, xl: 26, pill: 999 },
-  gridLine: { outer: 2, box: 2, cell: 1 },
-  stroke: { thin: 1, dot: 1.5, ring: 2 },
-}
-
 export const SHARED_SIZE: Theme['size'] = {
   touch: 44,
   icon: 24,
@@ -40,6 +34,7 @@ export const SHARED_SIZE: Theme['size'] = {
   dot: { size: 8, gap: 6 },
   noteInset: 2,
   preview: 180,
+  toggle: { width: 52, height: 28, thumb: 18 },
   card: { width: 300, grid: 256 },
   titleBlock: 0,
   panelEdge: 0,
@@ -48,27 +43,3 @@ export const SHARED_SIZE: Theme['size'] = {
 export const SHARED_OPACITY: Theme['opacity'] = { disabled: 0.3, locked: 0.35, pressed: 0.7 }
 
 export const SHARED_MOTION: Theme['motion'] = { short: 150, medium: 280, long: 700, pulseStep: 45, pop: 450 }
-
-/** The finish card of the design canvas: a dark holographic card. Opaque text colours keep the contrast test exact. */
-export const SHARED_FINISH_CARD: Theme['components']['finishCard'] = {
-  top: '#151a29',
-  middle: '#20306a',
-  bottom: '#2a4cbd',
-  text: '#ffffff',
-  textMuted: '#c9d3f0',
-  given: '#ffffff',
-  entry: '#a9c2ff',
-  line: 'rgba(255,255,255,0.18)',
-  boxLine: 'rgba(255,255,255,0.5)',
-  shine: 'rgba(255,255,255,0.34)',
-  shineCool: 'rgba(170,205,255,0.28)',
-  shineWarm: 'rgba(255,190,235,0.2)',
-  shineClear: 'rgba(255,255,255,0)',
-  badge: '#f0c25a',
-  badgeText: '#2a1a00',
-  radius: 24,
-  badgeRadius: 999,
-  buttonRadius: 999,
-  frame: null,
-  shadow: null,
-}

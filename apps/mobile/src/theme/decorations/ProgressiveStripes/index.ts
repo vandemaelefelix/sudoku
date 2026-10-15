@@ -1,1 +1,0 @@
-export { ProgressiveStripes } from './ProgressiveStripes'

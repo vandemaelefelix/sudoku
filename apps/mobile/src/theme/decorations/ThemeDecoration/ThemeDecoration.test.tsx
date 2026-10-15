@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react-native'
-import type { Theme } from '@/theme/theme.types'
+import type { Theme, ThemeName } from '@/theme/theme.types'
 import { THEMES } from '@/theme/themes/registry'
 import { ThemeDecoration } from './ThemeDecoration'
 
@@ -10,52 +10,36 @@ function inTheme(theme: Theme) {
 
 afterEach(() => jest.restoreAllMocks())
 
-it.each(['daylight', 'midnight'] as const)('draws nothing in %s', (name) => {
-  inTheme(THEMES[name])
-  render(<ThemeDecoration slot="panelEdge" />)
-  render(<ThemeDecoration slot="titleMark" />)
-  render(<ThemeDecoration slot="cardEdge" style={{ margin: -10 }} />)
-  render(<ThemeDecoration slot="summaryEdge" />)
-  expect(screen.toJSON()).toBeNull()
-})
+describe.each(['cobalt', 'forest', 'bordeaux'] as const satisfies readonly ThemeName[])('%s', (name) => {
+  const theme = THEMES[name]
 
-it('draws the wavy lines on the Op-art panel edge, and no title mark', () => {
-  inTheme(THEMES.opart)
-  render(<ThemeDecoration slot="panelEdge" />)
-  expect(screen.getByTestId('decoration-opart-waves')).toBeTruthy()
-  expect(screen.getByTestId('skia-path').props.color).toBe(THEMES.opart.colors.lineStrong)
-})
-
-it('draws the wavy lines across the Op-art finish card, in the card text colour', () => {
-  inTheme(THEMES.opart)
-  render(<ThemeDecoration slot="cardEdge" style={{ marginTop: -11 }} />)
-  expect(screen.getByTestId('decoration-opart-card-waves').props.style).toMatchObject({
-    width: THEMES.opart.size.card.width,
+  it('draws the wavy lines on the panel edge', () => {
+    inTheme(theme)
+    render(<ThemeDecoration slot="panelEdge" />)
+    expect(screen.getByTestId('decoration-opart-waves')).toBeTruthy()
+    expect(screen.getByTestId('skia-path').props.color).toBe(theme.colors.lineStrong)
   })
-  expect(screen.getByTestId('skia-path').props.color).toBe(THEMES.opart.components.finishCard.text)
-})
 
-it('draws the stripes and the disc in Progressive', () => {
-  inTheme(THEMES.progressive)
-  render(
-    <>
-      <ThemeDecoration slot="panelEdge" />
-      <ThemeDecoration slot="titleMark" />
-    </>,
-  )
-  expect(screen.getByTestId('decoration-progressive-stripes')).toBeTruthy()
-  expect(screen.getByTestId('decoration-progressive-disc')).toBeTruthy()
-})
+  it('draws a short wavy rule of two lines for a section heading, in the strong line colour', () => {
+    inTheme(theme)
+    render(<ThemeDecoration slot="sectionRule" />)
+    expect(screen.getByTestId('decoration-opart-section-rule')).toBeTruthy()
+    expect(screen.getByTestId('skia-path').props.color).toBe(theme.colors.lineStrong)
+  })
 
-it('draws the wavy lines on the Op-art summary edge, as wide as the content column', () => {
-  inTheme(THEMES.opart)
-  render(<ThemeDecoration slot="summaryEdge" />)
-  expect(screen.getByTestId('decoration-opart-summary-waves')).toBeTruthy()
-  expect(screen.getByTestId('skia-path').props.color).toBe(THEMES.opart.components.summary.border)
-})
+  it('draws the wavy lines across the finish card, in the card text colour', () => {
+    inTheme(theme)
+    render(<ThemeDecoration slot="cardEdge" style={{ marginTop: -11 }} />)
+    expect(screen.getByTestId('decoration-opart-card-waves').props.style).toMatchObject({
+      width: theme.size.card.width,
+    })
+    expect(screen.getByTestId('skia-path').props.color).toBe(theme.components.finishCard.text)
+  })
 
-it('draws nothing on the Progressive summary edge', () => {
-  inTheme(THEMES.progressive)
-  render(<ThemeDecoration slot="summaryEdge" />)
-  expect(screen.toJSON()).toBeNull()
+  it('draws the wavy lines on the summary edge, as wide as the content column', () => {
+    inTheme(theme)
+    render(<ThemeDecoration slot="summaryEdge" />)
+    expect(screen.getByTestId('decoration-opart-summary-waves')).toBeTruthy()
+    expect(screen.getByTestId('skia-path').props.color).toBe(theme.components.summary.border)
+  })
 })

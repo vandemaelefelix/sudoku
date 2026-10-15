@@ -1,6 +1,7 @@
 import { contrastRatio } from './contrast.utils'
+import { mixHex } from './opart/opart.colour.utils'
 import type { Theme } from './theme.types'
-import { THEMES } from '@/theme/themes/registry'
+import { APPEARANCES, COLOUR_THEMES, THEMES, THEME_NAMES, themeFor } from '@/theme/themes/registry'
 
 type Pair = [label: string, foreground: (t: Theme) => string, background: (t: Theme) => string]
 
@@ -17,7 +18,6 @@ const TEXT_PAIRS: Pair[] = [
   ['warning text on warning surface', (t) => t.colors.warningText, (t) => t.colors.warningSurface],
   ['danger on surface', (t) => t.colors.danger, (t) => t.colors.surface],
   ['conflict on conflict fill', (t) => t.components.cell.conflict, (t) => t.components.cell.conflictFill],
-  ['muted on conflict fill', (t) => t.colors.textMuted, (t) => t.components.cell.conflictFill],
   ...(['fill', 'peer', 'same', 'selected'] as const).flatMap((fill): Pair[] => [
     [`given on ${fill}`, (t) => t.components.cell.given, (t) => t.components.cell[fill]],
     [`entry on ${fill}`, (t) => t.components.cell.entry, (t) => t.components.cell[fill]],
@@ -27,6 +27,9 @@ const TEXT_PAIRS: Pair[] = [
     (t) => t.components.cell.note,
     (t) => t.components.cell[fill],
   ]),
+  // A segmented control and a tab bar draw their selected cell with the fill of the selected grid cell.
+  ['accent label on the selected cell', (t) => t.colors.accent, (t) => t.components.cell.selected],
+  ['muted label on a segment', (t) => t.colors.textMuted, (t) => t.colors.surface],
   [
     'primary button text on the primary button',
     (t) => t.components.button.onPrimary,
@@ -41,9 +44,6 @@ const TEXT_PAIRS: Pair[] = [
   ['muted on a pad key', (t) => t.colors.textMuted, (t) => t.components.panel.key],
   ['key digit on key', (t) => t.components.key.digit, (t) => t.components.key.fill],
   ['key note digit on key', (t) => t.components.key.noteDigit, (t) => t.components.key.fill],
-  ['text on segmented track', (t) => t.colors.text, (t) => t.components.segmented.track],
-  ['muted on segmented track', (t) => t.colors.textMuted, (t) => t.components.segmented.track],
-  ['text on segmented selection', (t) => t.colors.text, (t) => t.components.segmented.selected],
   ['finish card text on its lightest stop', (t) => t.components.finishCard.text, (t) => t.components.finishCard.bottom],
   [
     'finish card muted text on its lightest stop',
@@ -59,8 +59,57 @@ const TEXT_PAIRS: Pair[] = [
   ],
 ]
 
-describe.each(Object.values(THEMES))('$name', (theme) => {
+const ALL_THEMES = APPEARANCES.flatMap((appearance) => THEME_NAMES.map((name) => themeFor(name, appearance)))
+
+/** The colour of a stripe of the hatch over the conflict fill. The Light themes have no hatch: the fill alone. */
+function hatchStripe(t: Theme): string {
+  const { conflictFill, conflictHatch } = t.components.cell
+  return conflictHatch === null ? conflictFill : mixHex(conflictFill, conflictHatch.color, conflictHatch.opacity)
+}
+
+/** Shapes that carry meaning need 3 : 1 (WCAG 1.4.11): the thumb of a toggle against its track, the ring of a cell against its fill. */
+const SHAPE_PAIRS: Pair[] = [
+  ['thumb of a toggle that is on, on its track', (t) => t.components.switch.thumbOn, (t) => t.components.switch.on],
+  ['thumb of a toggle that is off, on its track', (t) => t.components.switch.thumbOff, (t) => t.components.switch.off],
+  // The worst case of the hatch: a white digit over a stripe, which is the stripe colour laid over the conflict fill.
+  ['conflict digit on a stripe of the hatch', (t) => t.components.cell.conflict, hatchStripe],
+  ['selection ring on the selected cell', (t) => t.components.cell.ring, (t) => t.components.cell.selected],
+]
+
+describe.each(ALL_THEMES)('$name $appearance', (theme) => {
   it.each(TEXT_PAIRS)('%s meets WCAG AA (4.5 : 1)', (_label, foreground, background) => {
     expect(contrastRatio(foreground(theme), background(theme))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(SHAPE_PAIRS)('%s meets 3 : 1', (_label, foreground, background) => {
+    expect(contrastRatio(foreground(theme), background(theme))).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('the six themes', () => {
+  it('are three colourways in two appearances', () => {
+    expect(ALL_THEMES).toHaveLength(6)
+    expect(ALL_THEMES.map((theme) => `${theme.name}/${theme.appearance}`)).toEqual([
+      'cobalt/light',
+      'forest/light',
+      'bordeaux/light',
+      'cobalt/colour',
+      'forest/colour',
+      'bordeaux/colour',
+    ])
+  })
+
+  it('keep the conflict amber and the check ring apart in Colour', () => {
+    for (const theme of Object.values(COLOUR_THEMES)) {
+      expect(theme.components.cell.conflictFill).not.toBe(theme.components.checkRing.color)
+    }
+  })
+
+  it('draw Light content on a white page and Colour content on the accent', () => {
+    for (const theme of Object.values(THEMES)) expect(theme.colors.background).toBe('#ffffff')
+    for (const theme of Object.values(COLOUR_THEMES)) {
+      expect(theme.colors.background).not.toBe('#ffffff')
+      expect(theme.colors.text).toBe('#ffffff')
+    }
   })
 })

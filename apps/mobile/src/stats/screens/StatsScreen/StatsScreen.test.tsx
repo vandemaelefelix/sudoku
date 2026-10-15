@@ -83,7 +83,7 @@ it('counts a scanned game after the switch turns on', async () => {
   await storage.puzzles.save(id, wonGame(30_000))
   renderScreen(storage)
   await waitFor(() => screen.getByLabelText('Easy, Played: 0'))
-  await act(async () => fireEvent(screen.getByLabelText('Include scanned puzzles'), 'valueChange', true))
+  await act(async () => fireEvent.press(screen.getByLabelText('Include scanned puzzles')))
   await waitFor(() => expect(screen.getByLabelText('Easy, Played: 1')).toBeTruthy())
 })
 
@@ -106,21 +106,24 @@ it('says that the stats do not load when the storage fails', async () => {
   await waitFor(() => expect(screen.getByText('The stats do not load.')).toBeTruthy())
 })
 
-it('puts the title in the bar in Daylight', async () => {
-  inTheme(THEMES.daylight)
+it('puts the title in the bar when a theme has no title block', async () => {
+  inTheme({ ...THEMES.cobalt, size: { ...THEMES.cobalt.size, titleBlock: 0 } })
   renderScreen(await storageWithGames())
   await waitFor(() => screen.getByRole('tab', { name: 'All' }))
   expect(screen.queryByTestId('title-block')).toBeNull()
   expect(screen.getByRole('header', { name: 'Stats' })).toBeTruthy()
 })
 
-it('puts the title in a title block under the bar in Op-art', async () => {
-  inTheme(THEMES.opart)
-  renderScreen(await storageWithGames())
-  await waitFor(() => screen.getByRole('tab', { name: 'All' }))
-  expect(screen.getByTestId('title-block')).toBeTruthy()
-  expect(screen.getByRole('header', { name: 'Stats' })).toBeTruthy()
-})
+it.each(['cobalt', 'forest', 'bordeaux'] as const)(
+  'puts the title in a title block under the bar in %s',
+  async (name) => {
+    inTheme(THEMES[name])
+    renderScreen(await storageWithGames())
+    await waitFor(() => screen.getByRole('tab', { name: 'All' }))
+    expect(screen.getByTestId('title-block')).toBeTruthy()
+    expect(screen.getByRole('header', { name: 'Stats' })).toBeTruthy()
+  },
+)
 
 it('has no reset button outside the development variant', async () => {
   renderScreen(await storageWithGames())

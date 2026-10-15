@@ -1,4 +1,4 @@
-import { stripeLefts, wavePoints } from './geometry'
+import { wavePoints } from './geometry'
 
 describe('wavePoints', () => {
   it('runs past both edges, so the line has no visible end', () => {
@@ -10,8 +10,4 @@ describe('wavePoints', () => {
   it('stays within amp of the centre line', () => {
     for (const point of wavePoints(100, 10, 2, 40)) expect(Math.abs(point.y - 10)).toBeLessThanOrEqual(2)
   })
-})
-
-it('places stripes one stripe and one gap apart', () => {
-  expect(stripeLefts(20, 3, 5)).toEqual([0, 8, 16])
 })

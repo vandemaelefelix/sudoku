@@ -1,1 +1,0 @@
-export { ProgressiveDisc } from './ProgressiveDisc'

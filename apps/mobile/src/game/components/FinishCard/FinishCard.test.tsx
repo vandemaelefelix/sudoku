@@ -8,11 +8,11 @@ import { useGameActions } from '@/game/hooks/useGameActions'
 import type { FinishInfo } from '@/game/utils/finish.utils'
 import { pulseLook, solvePulseDuration } from '@/game/utils/pulse.utils'
 import { sampleStart } from '@/game/utils/sample.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { FinishCard } from './FinishCard'
 
 const reanimated = jest.requireMock<typeof import('react-native-reanimated')>('react-native-reanimated')
-const SOLVE_MS = solvePulseDuration(pulseLook(daylight))
+const SOLVE_MS = solvePulseDuration(pulseLook(cobalt))
 const NOW = () => new Date(Date.UTC(2026, 9, 12, 9, 0, 0))
 const GENERATED: FinishInfo = { level: 'medium', source: 'generated', seed: 412_077, bestBeforeMs: 810_000 }
 

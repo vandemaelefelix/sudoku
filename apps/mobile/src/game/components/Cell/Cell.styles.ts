@@ -8,7 +8,12 @@ export const styles = StyleSheet.create((theme) => ({
   peer: { backgroundColor: theme.components.cell.peer },
   same: { backgroundColor: theme.components.cell.same },
   conflict: { backgroundColor: theme.components.cell.conflictFill },
-  selected: { backgroundColor: theme.components.cell.selected },
+  // In Colour the selected cell also has a ring (ADR-026). In Light selectedRingWidth is 0.
+  selected: {
+    backgroundColor: theme.components.cell.selected,
+    borderWidth: theme.components.cell.selectedRingWidth,
+    borderColor: theme.components.cell.ring,
+  },
   ring: { borderWidth: theme.shape.stroke.ring, borderColor: theme.components.cell.ring },
   wave: {
     position: 'absolute',

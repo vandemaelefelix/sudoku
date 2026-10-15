@@ -1,1 +1,0 @@
-export { opart } from './opart'

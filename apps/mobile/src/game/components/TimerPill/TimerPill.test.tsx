@@ -5,7 +5,7 @@ import { Pressable, StyleSheet } from 'react-native'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { TimerPill } from './TimerPill'
 
 const renderInGame = (ui: ReactElement) => render(<GameProvider start={sampleStart()}>{ui}</GameProvider>)
@@ -65,7 +65,7 @@ it('fills the pill with the accent and shows the play icon during a pause', () =
   // The Reanimated mock reads the shared values in render, and the fade starts in an effect after the press.
   screen.rerender(<GameProvider start={sampleStart()}>{<TimerPill />}</GameProvider>)
   expect(StyleSheet.flatten(screen.getByTestId('timer-pill-fill').props.style)).toMatchObject({
-    backgroundColor: daylight.colors.accent,
+    backgroundColor: cobalt.colors.accent,
     opacity: 1,
   })
   // The time takes onAccent through interpolateColor, which the Reanimated mock does not compute.
@@ -75,7 +75,7 @@ it('fills the pill with the accent and shows the play icon during a pause', () =
 it('draws the pill border and the pause icon while the game is playing', () => {
   renderInGame(<TimerPill />)
   expect(StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)).toMatchObject({
-    borderColor: daylight.colors.line,
+    borderColor: cobalt.colors.line,
   })
   expect(StyleSheet.flatten(screen.getByTestId('timer-pill-fill').props.style)).toMatchObject({ opacity: 0 })
   expect(screen.getAllByTestId('skia-path')[0]?.props.path).toBe('M9 5v14M15 5v14')
@@ -95,7 +95,7 @@ it('mutes the time, drops the icon and has no action when the game ends', () => 
   expect(area.props.accessible).toBe(true)
   expect(StyleSheet.flatten(area.props.style)).toMatchObject({ minHeight: 44 })
   expect(StyleSheet.flatten(screen.getByText('00:00').props.style)).toMatchObject({
-    color: daylight.colors.textMuted,
+    color: cobalt.colors.textMuted,
   })
   const pill = StyleSheet.flatten(screen.getByTestId('timer-pill').props.style)
   expect(pill.borderWidth ?? 0).toBe(0)
