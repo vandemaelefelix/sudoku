@@ -10,7 +10,8 @@ export type PuzzleRepository = {
   /**
    * Starts a game in progress and discards the one before it. Rejects with a RangeError for a won or lost game.
    * peek() gives the new game as soon as start() returns, so a screen can open it while the write runs.
-   * `owner` is the account at this start, null when signed out. The replaced game, when abandoned, gets it (ADR-028).
+   * `owner` is the Clerk user ID at this start, or null when signed out.
+   * The replaced game, when abandoned, gets it (ADR-028).
    */
   start(input: {
     level: Level
@@ -24,7 +25,7 @@ export type PuzzleRepository = {
   /**
    * Saves the game after a move. A won or lost game moves to the history in the same transaction.
    * Does nothing when `id` is not the game in progress.
-   * `owner` is the account at this save, null when signed out. A finished game gets it (ADR-028).
+   * `owner` is the Clerk user ID at this save, or null when signed out. A finished game gets it (ADR-028).
    */
   save(id: string, game: Game, owner: string | null): Promise<void>
   discard(id: string): Promise<void>

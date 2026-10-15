@@ -268,7 +268,7 @@ describe('migration 5: the owner and the waiting list', () => {
   it('keeps every history row and gives it no owner and no push', async () => {
     await migrateFromVersion4()
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      `SELECT id, result, played_ms, seed, updated_at, deleted_at, owner_user_id, pushed_at
+      `SELECT id, result, played_ms, seed, updated_at, deleted_at, owner_id, pushed_at
         FROM game_history ORDER BY rowid`,
       [],
     )
@@ -280,7 +280,7 @@ describe('migration 5: the owner and the waiting list', () => {
         seed: 412_077,
         updated_at: secondAt(1),
         deleted_at: null,
-        owner_user_id: null,
+        owner_id: null,
         pushed_at: null,
       },
       {
@@ -290,7 +290,7 @@ describe('migration 5: the owner and the waiting list', () => {
         seed: null,
         updated_at: secondAt(2),
         deleted_at: null,
-        owner_user_id: null,
+        owner_id: null,
         pushed_at: null,
       },
       {
@@ -300,7 +300,7 @@ describe('migration 5: the owner and the waiting list', () => {
         seed: null,
         updated_at: secondAt(4),
         deleted_at: secondAt(4),
-        owner_user_id: null,
+        owner_id: null,
         pushed_at: null,
       },
     ])
@@ -324,17 +324,17 @@ describe('migration 5: the owner and the waiting list', () => {
     })
   })
 
-  it('lets an account adopt the old entries that are not deleted', async () => {
+  it('lets an owner adopt the old entries that are not deleted', async () => {
     await migrateFromVersion4()
     await expect(createSqliteStorage(db, testDeps()).history.adoptUnowned('user-alice')).resolves.toBe(2)
-    const owners = await db.getAllAsync<{ id: string; owner_user_id: string | null }>(
-      'SELECT id, owner_user_id FROM game_history ORDER BY rowid',
+    const owners = await db.getAllAsync<{ id: string; owner_id: string | null }>(
+      'SELECT id, owner_id FROM game_history ORDER BY rowid',
       [],
     )
     expect(owners).toEqual([
-      { id: 'a', owner_user_id: 'user-alice' },
-      { id: 'b', owner_user_id: 'user-alice' },
-      { id: 'c', owner_user_id: null },
+      { id: 'a', owner_id: 'user-alice' },
+      { id: 'b', owner_id: 'user-alice' },
+      { id: 'c', owner_id: null },
     ])
   })
 

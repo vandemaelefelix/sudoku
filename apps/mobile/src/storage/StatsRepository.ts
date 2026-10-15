@@ -4,7 +4,7 @@ import type { Level, StorageDeps } from './storage.types'
 
 /**
  * The stats that depend on which games count. Scanned games count only when `includeScanned` is true (ADR-023).
- * Only the entries of `owner` count: an account id, or null for the games finished while signed out (ADR-028).
+ * Only the entries of `owner` count: a Clerk user ID, or null for the games finished while signed out (ADR-028).
  */
 export type StatsFilter = { includeScanned: boolean; owner: string | null }
 
@@ -61,16 +61,16 @@ const SUMMARY_SQL = `SELECT
     AVG(CASE WHEN result IN ('won', 'lost') THEN mistakes END) AS average_mistakes,
     AVG(CASE WHEN result IN ('won', 'lost') THEN hints_used END) AS average_hints
   FROM game_history
-  WHERE deleted_at IS NULL AND owner_user_id IS ? AND (? IS NULL OR level = ?) AND (? = 1 OR source = 'generated')`
+  WHERE deleted_at IS NULL AND owner_id IS ? AND (? IS NULL OR level = ?) AND (? = 1 OR source = 'generated')`
 
 const RECENT_SQL = `SELECT played_ms FROM (
     SELECT played_ms, finished_at, rowid AS row_id FROM game_history
-    WHERE result = 'won' AND level = ? AND deleted_at IS NULL AND owner_user_id IS ? AND (? = 1 OR source = 'generated')
+    WHERE result = 'won' AND level = ? AND deleted_at IS NULL AND owner_id IS ? AND (? = 1 OR source = 'generated')
     ORDER BY finished_at DESC, rowid DESC LIMIT ?
   ) ORDER BY finished_at ASC, row_id ASC`
 
 const WINS_SQL = `SELECT finished_at FROM game_history
-  WHERE result = 'won' AND deleted_at IS NULL AND owner_user_id IS ? AND (? = 1 OR source = 'generated')`
+  WHERE result = 'won' AND deleted_at IS NULL AND owner_id IS ? AND (? = 1 OR source = 'generated')`
 
 export function createSqliteStatsRepository(db: SqlExecutor, deps: StorageDeps): StatsRepository {
   const summary: StatsRepository['summary'] = async (level, { includeScanned, owner }) => {

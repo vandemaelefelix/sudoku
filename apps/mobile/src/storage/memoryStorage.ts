@@ -20,7 +20,7 @@ function nextMillisecond(iso: string): string {
 }
 
 function isPending(row: HistoryRow): boolean {
-  return row.pushedAt === null || row.pushedAt < row.record.updatedAt
+  return row.pushedAt !== row.record.updatedAt
 }
 
 function countingDeps(): StorageDeps {
@@ -131,16 +131,19 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
         .slice(0, limit)
         .map((row) => row.record)
     },
-    async markPushed(ids, at) {
-      for (const row of rows) if (ids.includes(row.record.id)) row.pushedAt = at
+    async markPushed(pushed) {
+      for (const row of rows) {
+        const accepted = pushed.some(({ id, updatedAt }) => id === row.record.id && updatedAt === row.record.updatedAt)
+        if (accepted) row.pushedAt = row.record.updatedAt
+      }
     },
     async upsertRemote(records, owner) {
       for (const record of records) {
         const row = rows.find((candidate) => candidate.record.id === record.id)
         if (row === undefined) {
           rows.push({ record, owner, pushedAt: record.updatedAt, seq: rows.length })
-        } else if (row.owner === owner && record.updatedAt > row.record.updatedAt) {
-          row.record = record
+        } else if (row.owner === owner && record.updatedAt >= row.record.updatedAt) {
+          if (record.updatedAt > row.record.updatedAt) row.record = record
           row.pushedAt = record.updatedAt
         }
       }

@@ -354,43 +354,64 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       })
 
       it('drops the entries that the server accepted', async () => {
-        const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const second = await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
-        await storage.history.markPushed([first], '2026-10-12T10:00:00.000Z')
-        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([{ id: second }])
-        await storage.history.markPushed([second, 'unknown'], '2026-10-12T10:00:00.000Z')
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+        const [first, second] = await storage.history.pending(ALICE, 10)
+        if (first === undefined || second === undefined) throw new Error('Expected two entries')
+        await storage.history.markPushed([first])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([{ id: second.id }])
+        await storage.history.markPushed([second, { id: 'unknown', updatedAt: second.updatedAt }])
         await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
       })
 
-      it('changes nothing for an empty list of ids', async () => {
+      it('changes nothing for an empty list', async () => {
         await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        await storage.history.markPushed([], '2026-10-12T10:00:00.000Z')
+        await storage.history.markPushed([])
         await expect(storage.history.pending(ALICE, 10)).resolves.toHaveLength(1)
       })
 
       it('holds a cleared entry again, as a deleted entry with a newer change', async () => {
         const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([id], sent.updatedAt)
+        await storage.history.markPushed([sent])
         await storage.history.clear(ALICE)
         const deleted = single(await storage.history.pending(ALICE, 10))
         expect(deleted).toMatchObject({ id, deletedAt: expect.any(String) })
         expect(deleted.updatedAt > sent.updatedAt).toBe(true)
       })
 
-      it('keeps an entry that changed after the time of the push', async () => {
+      it('keeps an entry that changed after the push', async () => {
+        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const sent = single(await storage.history.pending(ALICE, 10))
+        await storage.history.clear(ALICE)
+        await storage.history.markPushed([sent])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([{ id, deletedAt: expect.any(String) }])
+      })
+
+      it('ignores a repeated mark, also after a newer change', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const sent = single(await storage.history.pending(ALICE, 10))
+        await storage.history.markPushed([sent])
+        await storage.history.markPushed([sent])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+        await storage.history.clear(ALICE)
+        const deleted = single(await storage.history.pending(ALICE, 10))
+        await storage.history.markPushed([sent])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([deleted])
+        await storage.history.markPushed([deleted])
+        await storage.history.markPushed([deleted])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('drops an entry of a clock ahead once the server accepts it', async () => {
         const { storage: clockedStorage, setNow } = await clocked(open)
         storage = clockedStorage
+        setNow('2030-01-01T00:00:00.000Z')
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         setNow('2026-10-12T10:00:00.000Z')
-        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const at = '2026-10-12T10:01:00.000Z'
-        await storage.history.pending(ALICE, 10)
-        setNow('2026-10-12T10:02:00.000Z')
-        await storage.history.clear(ALICE)
-        await storage.history.markPushed([id], at)
-        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([
-          { id, deletedAt: '2026-10-12T10:02:00.000Z' },
-        ])
+        const sent = single(await storage.history.pending(ALICE, 10))
+        await storage.history.markPushed([sent])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
       })
 
       it('never holds a game finished while signed out', async () => {
@@ -437,6 +458,21 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 60_000 }])
       })
 
+      it('takes a local entry off the waiting list when the server sends the same change', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        const sent = single(await storage.history.pending(ALICE, 10))
+        await storage.history.upsertRemote([{ ...sent, playedMs: 45_000 }], ALICE)
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: sent.id, playedMs: 60_000 }])
+      })
+
+      it('keeps the waiting list of an entry of another owner with the same change', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
+        const sent = single(await storage.history.pending(BOB, 10))
+        await storage.history.upsertRemote([sent], ALICE)
+        await expect(storage.history.pending(BOB, 10)).resolves.toEqual([sent])
+      })
+
       it('removes an entry that the server deleted', async () => {
         await storage.history.upsertRemote([remote('r1')], ALICE)
         const later = '2026-10-02T09:00:00.000Z'
@@ -465,9 +501,9 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       })
 
       it('changes nothing when the server sends back an entry of this device', async () => {
-        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([id], sent.updatedAt)
+        await storage.history.markPushed([sent])
         await storage.history.upsertRemote([sent], ALICE)
         await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
         await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
@@ -506,7 +542,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
     })
 
     describe('adoptUnowned', () => {
-      it('gives the entries without an owner to the account and puts them on the waiting list', async () => {
+      it('gives the entries without an owner to the owner and puts them on the waiting list', async () => {
         const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
         const second = await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)
         await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(2)
@@ -526,7 +562,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         expect(pending).toEqual([live])
       })
 
-      it('leaves the entries of another account', async () => {
+      it('leaves the entries of another owner', async () => {
         const bob = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
         await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(0)
         await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id: bob }])

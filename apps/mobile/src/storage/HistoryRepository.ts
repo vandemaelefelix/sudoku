@@ -7,7 +7,7 @@ export type BestTimes = Partial<Record<Level, number>>
 
 /**
  * Finished and lost games (ADR-012). A game reaches the history through PuzzleRepository.save.
- * Every entry has an owner: an account id, or null for a game finished while signed out (ADR-028).
+ * Every entry has an owner: the Clerk user ID, or null for a game finished while signed out (ADR-028).
  * Each method sees only the entries of the owner it gets.
  */
 export type HistoryRepository = {
@@ -21,18 +21,20 @@ export type HistoryRepository = {
    */
   clear(owner: string | null): Promise<void>
   /**
-   * The waiting list (ADR-028): the entries of the owner that the server has not accepted in their last change.
+   * The waiting list (ADR-028): the entries of the owner where pushed_at is null or differs from updated_at.
    * Includes deleted entries. The oldest change comes first. At most `limit` entries.
    */
   pending(owner: string, limit: number): Promise<HistoryRecord[]>
   /**
-   * Records that the server accepted `ids`. `at` is a time read before pending(), so an entry that changes
-   * during the request stays on the waiting list. Unknown ids change nothing.
+   * Records the pairs that the server accepted (ADR-028): pushed_at becomes updatedAt only where the row
+   * still has that updatedAt. So an entry that changes during the request stays on the waiting list,
+   * and a repeated call changes nothing. Unknown ids change nothing.
    */
-  markPushed(ids: readonly string[], at: string): Promise<void>
+  markPushed(pushed: readonly Pick<HistoryRecord, 'id' | 'updatedAt'>[]): Promise<void>
   /**
    * Writes the entries from the server, all in one transaction (ADR-028). An entry is written only when its id
    * is new, or when its updatedAt is newer and the row has the same owner. A written entry is off the waiting list.
+   * An entry with an equal updatedAt changes only pushed_at, so it is off the waiting list too.
    * A deleted entry is written too, so an older copy cannot bring it back. Rejects, and writes nothing,
    * when one entry breaks a CHECK.
    */
@@ -78,7 +80,7 @@ function entryOf(row: HistoryRow): HistoryEntry {
 export async function insertHistoryEntry(txn: SqlExecutor, entry: HistoryEntry, owner: string | null): Promise<void> {
   await txn.runAsync(
     `INSERT INTO game_history
-      (id, level, source, seed, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at, owner_user_id)
+      (id, level, source, seed, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at, owner_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       entry.id,
@@ -101,12 +103,12 @@ export async function insertHistoryEntry(txn: SqlExecutor, entry: HistoryEntry, 
 // by 1 ms, so the deleted entry goes back on the waiting list and wins on the server (ADR-028).
 const CLEAR_SQL = `UPDATE game_history
   SET deleted_at = ?, updated_at = MAX(?, strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, '+0.001 seconds'))
-  WHERE deleted_at IS NULL AND owner_user_id IS ?`
+  WHERE deleted_at IS NULL AND owner_id IS ?`
 
 // A row of another owner never changes: the WHERE of the DO UPDATE also compares the owner.
 const UPSERT_SQL = `INSERT INTO game_history
     (id, level, source, seed, result, played_ms, mistakes, hints_used, finished_at,
-      created_at, updated_at, deleted_at, owner_user_id, pushed_at)
+      created_at, updated_at, deleted_at, owner_id, pushed_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (id) DO UPDATE SET
     level = excluded.level,
@@ -122,7 +124,19 @@ const UPSERT_SQL = `INSERT INTO game_history
     deleted_at = excluded.deleted_at,
     pushed_at = excluded.pushed_at
   WHERE excluded.updated_at > game_history.updated_at
-    AND game_history.owner_user_id IS excluded.owner_user_id`
+    AND game_history.owner_id IS excluded.owner_id`
+
+// pushed_at holds the accepted updatedAt, never a clock time. A row that changed since keeps waiting (ADR-028).
+const MARK_PUSHED_SQL = `UPDATE game_history SET pushed_at = updated_at
+  WHERE EXISTS (
+    SELECT 1 FROM json_each(?) AS pair
+      WHERE json_extract(pair.value, '$[0]') = game_history.id
+        AND json_extract(pair.value, '$[1]') = game_history.updated_at
+  )`
+
+// The server holds this change already, so only the waiting list changes (ADR-028).
+const SAME_CHANGE_SQL = `UPDATE game_history SET pushed_at = updated_at
+  WHERE id = ? AND updated_at = ? AND owner_id IS ?`
 
 /** `inOrder` is the write queue of the connection, shared with the other repositories. Reads skip it. */
 export function createSqliteHistoryRepository(
@@ -139,7 +153,7 @@ export function createSqliteHistoryRepository(
     async list(owner) {
       const rows = await db.getAllAsync<HistoryRow>(
         `SELECT ${ENTRY_COLUMNS} FROM game_history
-          WHERE deleted_at IS NULL AND owner_user_id IS ? ORDER BY finished_at DESC, rowid DESC`,
+          WHERE deleted_at IS NULL AND owner_id IS ? ORDER BY finished_at DESC, rowid DESC`,
         [owner],
       )
       return rows.map(entryOf)
@@ -147,7 +161,7 @@ export function createSqliteHistoryRepository(
     async bestTimes(owner) {
       const rows = await db.getAllAsync<{ level: Level; best: number }>(
         `SELECT level, MIN(played_ms) AS best FROM game_history
-          WHERE result = 'won' AND hints_used = 0 AND source = 'generated' AND deleted_at IS NULL AND owner_user_id IS ?
+          WHERE result = 'won' AND hints_used = 0 AND source = 'generated' AND deleted_at IS NULL AND owner_id IS ?
           GROUP BY level`,
         [owner],
       )
@@ -158,7 +172,7 @@ export function createSqliteHistoryRepository(
     async pending(owner, limit) {
       const rows = await db.getAllAsync<RecordRow>(
         `SELECT ${ENTRY_COLUMNS}, created_at, updated_at, deleted_at FROM game_history
-          WHERE owner_user_id = ? AND (pushed_at IS NULL OR pushed_at < updated_at)
+          WHERE owner_id = ? AND (pushed_at IS NULL OR pushed_at <> updated_at)
           ORDER BY updated_at ASC, rowid ASC LIMIT ?`,
         [owner, limit],
       )
@@ -169,12 +183,9 @@ export function createSqliteHistoryRepository(
         deletedAt: row.deleted_at,
       }))
     },
-    markPushed: (ids, at) =>
+    markPushed: (pushed) =>
       inOrder(async () => {
-        await db.runAsync('UPDATE game_history SET pushed_at = ? WHERE id IN (SELECT value FROM json_each(?))', [
-          at,
-          JSON.stringify(ids),
-        ])
+        await db.runAsync(MARK_PUSHED_SQL, [JSON.stringify(pushed.map(({ id, updatedAt }) => [id, updatedAt]))])
       }),
     upsertRemote: (records, owner) =>
       inOrder(() =>
@@ -198,13 +209,15 @@ export function createSqliteHistoryRepository(
               // The server has this change, so the entry is off the waiting list (ADR-028).
               record.updatedAt,
             ])
+            // oxlint-disable-next-line no-await-in-loop -- this runs after the upsert of the same id.
+            await txn.runAsync(SAME_CHANGE_SQL, [record.id, record.updatedAt, owner])
           }
         }),
       ),
     adoptUnowned: (owner) =>
       inOrder(async () => {
         const { changes } = await db.runAsync(
-          'UPDATE game_history SET owner_user_id = ? WHERE owner_user_id IS NULL AND deleted_at IS NULL',
+          'UPDATE game_history SET owner_id = ? WHERE owner_id IS NULL AND deleted_at IS NULL',
           [owner],
         )
         return changes
