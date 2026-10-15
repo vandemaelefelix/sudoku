@@ -44,5 +44,6 @@ export default $config({
     assertKnownStage($app.stage)
     await assertPersonalAccount()
     await import('./infra/defaults.ts')
+    await import('./infra/budget.ts')
   },
 })
