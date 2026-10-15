@@ -10,4 +10,8 @@ describe('sst.config.ts', () => {
     assert.doesNotMatch(source, /'eu-west-1'/)
     assert.doesNotMatch(source, /\['felix', 'dev', 'production'\]/)
   })
+
+  it('declares the Clerk secret key in run()', () => {
+    assert.match(source, /await import\('\.\/infra\/clerk\.ts'\)/)
+  })
 })
