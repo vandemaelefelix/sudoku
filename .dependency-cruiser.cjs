@@ -99,6 +99,14 @@ module.exports = {
       to: { path: '^services/', pathNot: '^services/sync-api/src/tableDesign\\.ts$' },
     },
     {
+      name: 'adr-028-storage-does-not-use-sync-or-account',
+      comment:
+        'ADR-028: the storage tells the sync about a change through subscribe. It never imports the sync or the account.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/storage/' },
+      to: { path: '^apps/mobile/src/(account|sync)/' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',

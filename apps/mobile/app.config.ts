@@ -8,6 +8,11 @@ const DEV_ICONS = './assets/icons/development'
 // The production variant gets the key of the production instance in app.json. Until then it has none.
 export const DEVELOPMENT_CLERK_PUBLISHABLE_KEY = 'pk_test_ZnJlZS1sZW9wYXJkLTUyOTguY2xlcmsuYWNjb3VudHMuZGV2JA'
 
+// The sync API of the development variant: the felix stage (ADR-027, ADR-028). The URL is public and grants no access.
+// SYNC_API_URL overrides it at prebuild or start, to point a build at another stage. The production variant has no
+// URL until the production stage exists, so the production app does not sync.
+export const DEVELOPMENT_SYNC_API_URL = 'https://hd381htgth.execute-api.eu-west-1.amazonaws.com'
+
 const GOOGLE_CLIENT_SUFFIX = '.apps.googleusercontent.com'
 const GOOGLE_IOS_CLIENT_ID = `579798513006-s2jpt2fc7ohah7kcu3s7jg968evv5s8n${GOOGLE_CLIENT_SUFFIX}`
 
@@ -36,14 +41,23 @@ function required(value: string | undefined, key: string): string {
 }
 
 /** app.json is the production config. The development variant installs beside it (ADR-022). */
-export function variantConfig(config: ExpoConfig, variant: AppVariant): ExpoConfig {
+export function variantConfig(
+  config: ExpoConfig,
+  variant: AppVariant,
+  syncApiUrl: string | undefined = process.env.SYNC_API_URL,
+): ExpoConfig {
   if (variant === 'production') return config
   return {
     ...config,
     name: `${config.name} Dev`,
     scheme: 'sudoku-dev',
     // Read at run time by isDevelopmentVariant. The production config has no mark and no Clerk key: the production instance comes later (ADR-027).
-    extra: { ...config.extra, appVariant: 'development', ...CLERK_DEVELOPMENT },
+    extra: {
+      ...config.extra,
+      appVariant: 'development',
+      ...CLERK_DEVELOPMENT,
+      syncApiUrl: syncApiUrl === undefined || syncApiUrl === '' ? DEVELOPMENT_SYNC_API_URL : syncApiUrl,
+    },
     icon: `${DEV_ICONS}/ios-light.png`,
     ios: {
       ...config.ios,

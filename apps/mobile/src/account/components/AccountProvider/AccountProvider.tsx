@@ -51,15 +51,22 @@ function ClerkBridge({ children }: { children: ReactNode }) {
   // The Keychain read is local and fast. Clerk can be slow or offline, so the app does not wait for it.
   const ready = cachedOwner !== undefined || status !== 'loading'
   const email = status === 'signedIn' ? (user?.primaryEmailAddress?.emailAddress ?? null) : null
-  const getApiToken = useCallback(async () => {
-    if (status !== 'signedIn') return null
-    try {
-      return await getToken({ template: API_TOKEN_TEMPLATE })
-    } catch (error) {
-      devWarn('account', `Clerk gave no API token: ${errorMessage(error)}`)
-      return null
-    }
-  }, [status, getToken])
+  const getApiToken = useCallback(
+    async (options?: { fresh?: boolean }) => {
+      if (status !== 'signedIn') return null
+      try {
+        return await getToken(
+          options?.fresh === true
+            ? { template: API_TOKEN_TEMPLATE, skipCache: true }
+            : { template: API_TOKEN_TEMPLATE },
+        )
+      } catch (error) {
+        devWarn('account', `Clerk gave no API token: ${errorMessage(error)}`)
+        return null
+      }
+    },
+    [status, getToken],
+  )
   const trySignOut = useCallback(async () => {
     try {
       await signOut()

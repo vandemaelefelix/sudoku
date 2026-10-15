@@ -217,3 +217,9 @@ jest.mock('@clerk/expo/google', () => ({
 // The Unistyles mock resolves every StyleSheet.create with the first registered theme, so configure must run before a styles file loads.
 // oxlint-disable-next-line import/no-unassigned-import -- the module registers the themes as its side effect.
 require('@/theme/unistyles')
+
+// The network state is native. Tests call the listener that the code registers.
+jest.mock('expo-network', () => ({
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+  getNetworkStateAsync: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
+}))

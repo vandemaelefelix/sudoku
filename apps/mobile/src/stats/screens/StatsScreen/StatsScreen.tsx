@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
 import { Icon } from '@/game/components/Icon'
@@ -21,7 +21,13 @@ import { pressedStyles } from '@/theme/pressed.styles'
 import { isDevelopmentVariant } from '@/utils/appVariant.utils'
 import { styles } from './StatsScreen.styles'
 
-type StatsScreenProps = { onBack(): void }
+type StatsScreenProps = {
+  onBack(): void
+  /** Shown at the bottom of the scroll content. The route gives it, so this folder never imports the sync. */
+  footer?: ReactNode
+  /** A new value reads the numbers again, for example after a sync wrote entries. */
+  refreshKey?: number
+}
 
 function Overview({ data }: { data: StatsData }) {
   return (
@@ -41,14 +47,14 @@ function Overview({ data }: { data: StatsData }) {
 }
 
 /** The card of all levels, then a tab bar: the overview of all levels, or the detail of one level. */
-export function StatsScreen({ onBack }: StatsScreenProps) {
+export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps) {
   const { theme } = useUnistyles()
   const [tab, setTab] = useState<StatsTab>('all')
   const { includeScanned, setIncludeScanned } = useIncludeScanned()
   const haptics = useHaptics()
   // A reset changes the key, so the numbers load again.
   const [reloadKey, setReloadKey] = useState(0)
-  const state = useStats(includeScanned, reloadKey)
+  const state = useStats(includeScanned, reloadKey + refreshKey)
   // A theme with a title block shows a large title under the bar. The others put the title in the bar.
   const hasTitleBlock = theme.size.titleBlock > 0
 
@@ -116,6 +122,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
             {isDevelopmentVariant() && <ResetStats onReset={() => setReloadKey((key) => key + 1)} />}
           </>
         )}
+        {footer}
       </ScrollView>
     </>
   )

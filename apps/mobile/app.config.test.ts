@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import type { ExpoConfig } from 'expo/config'
 import appJson from './app.json'
 import { SPLASH_GROUND } from '@/theme/splash.colors'
-import { appVariant, DEVELOPMENT_CLERK_PUBLISHABLE_KEY, variantConfig } from './app.config'
+import { appVariant, DEVELOPMENT_CLERK_PUBLISHABLE_KEY, DEVELOPMENT_SYNC_API_URL, variantConfig } from './app.config'
 
 const base = appJson.expo as ExpoConfig
 
@@ -36,6 +36,23 @@ describe('appVariant', () => {
 
   it('stops on an unknown name', () => {
     expect(() => appVariant('prod')).toThrow('APP_VARIANT')
+  })
+})
+
+describe('the sync API URL', () => {
+  it('gives the development variant the committed URL', () => {
+    expect(variantConfig(base, 'development', undefined).extra?.syncApiUrl).toBe(DEVELOPMENT_SYNC_API_URL)
+    expect(variantConfig(base, 'development', '').extra?.syncApiUrl).toBe(DEVELOPMENT_SYNC_API_URL)
+  })
+
+  it('lets SYNC_API_URL override it', () => {
+    expect(variantConfig(base, 'development', 'https://other.example.com').extra?.syncApiUrl).toBe(
+      'https://other.example.com',
+    )
+  })
+
+  it('gives the production variant no URL, also with the override', () => {
+    expect(variantConfig(base, 'production', 'https://other.example.com').extra?.syncApiUrl).toBeUndefined()
   })
 })
 
