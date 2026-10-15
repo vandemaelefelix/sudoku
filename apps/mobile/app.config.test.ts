@@ -96,6 +96,30 @@ describe('variantConfig', () => {
     expect(variantConfig(base, 'development').userInterfaceStyle).toBe('automatic')
   })
 
+  it('gives the development variant the public Clerk and Google values, and production none', () => {
+    const extra = variantConfig(base, 'development').extra
+    expect(extra?.clerkPublishableKey).toMatch(/^pk_test_/)
+    expect(extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID).toMatch(/\.apps\.googleusercontent\.com$/)
+    expect(extra?.EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID).toMatch(/\.apps\.googleusercontent\.com$/)
+    expect(variantConfig(base, 'production').extra?.clerkPublishableKey).toBeUndefined()
+  })
+
+  it('registers the reversed iOS client ID as the URL scheme that the Google sheet returns to', () => {
+    const extra = variantConfig(base, 'development').extra
+    const clientId = String(extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID).replace('.apps.googleusercontent.com', '')
+    expect(extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME).toBe(`com.googleusercontent.apps.${clientId}`)
+  })
+
+  it('lists the Clerk plugins, so the native sign-in modules and the iOS 17 target come with a prebuild', () => {
+    const names = (base.plugins ?? []).map((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin))
+    expect(names).toEqual(expect.arrayContaining(['@clerk/expo', '@clerk/expo-google-signin']))
+  })
+
+  it('leaves out the Sign in with Apple entitlement: ADR-027 has no Apple sign-in and a free Apple team cannot sign it', () => {
+    const entry = (base.plugins ?? []).find((plugin) => Array.isArray(plugin) && plugin[0] === '@clerk/expo')
+    expect((entry as [string, { appleSignIn?: boolean }] | undefined)?.[1]).toEqual({ appleSignIn: false })
+  })
+
   it('stops when the base config has no bundle identifier', () => {
     const { ios: _ios, ...withoutIos } = base
     expect(() => variantConfig(withoutIos, 'development')).toThrow('bundleIdentifier')
