@@ -1,4 +1,4 @@
-import { ACCOUNT_STAGE } from './config.ts'
+import { deployPlan, type Stage } from './config.ts'
 import { DEPLOY_ROLES, GITHUB_OIDC_HOST, trustPolicy } from './github-oidc-policy.ts'
 
 // AWS allows one OIDC provider per issuer, so only the account stage creates it (ADR-027, decision 5).
@@ -28,4 +28,4 @@ function createDeployRoles() {
   }
 }
 
-export const deployRoles = $app.stage === ACCOUNT_STAGE ? createDeployRoles() : {}
+export const deployRoles = deployPlan($app.stage as Stage).account ? createDeployRoles() : {}

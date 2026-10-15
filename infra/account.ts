@@ -18,10 +18,11 @@ export function isStage(name: string): name is Stage {
   return (STAGES as readonly string[]).includes(name)
 }
 
-export function assertKnownStage(name: string): void {
+export function assertKnownStage(name: string): Stage {
   if (!isStage(name)) {
     throw new Error(`Unknown stage "${name}". Use one of: ${STAGES.join(', ')}.`)
   }
+  return name
 }
 
 // Uses the SST global `aws`, so call it only inside run().

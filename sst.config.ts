@@ -39,14 +39,24 @@ export default $config({
   async run() {
     // Layer 3 of the account guard. It runs before any resource, also in CI.
     const { assertKnownStage, assertPersonalAccount } = await import('./infra/account.ts')
-    assertKnownStage($app.stage)
+    const stage = assertKnownStage($app.stage)
     await assertPersonalAccount()
     // Layer 4: a plain `sst deploy` or `sst dev` also refuses a stopped stage. `remove` and `diff` pass (ADR-027, decision 9).
     const { assertNotStopped } = await import('./infra/kill-switch-guard.ts')
     await assertNotStopped($app.stage, $cli.command)
+    // Throws for felix and dev without an issuer, before any resource exists (their table has no deletion protection).
+    const { deployPlan } = await import('./infra/config.ts')
+    const plan = deployPlan(stage)
     await import('./infra/defaults.ts')
     await import('./infra/budget.ts')
     const { deployRoles } = await import('./infra/github-oidc.ts')
+    // The account-wide resources of this stage are in budget.ts. Production without a Clerk issuer stops here.
+    if (!plan.app) {
+      console.log(
+        `Stage ${$app.stage} has no Clerk issuer. It deploys only its account-wide resources and skips the table, the function and the API. Set CLERK_ISSUER in infra/config.ts to deploy them.`,
+      )
+      return { ...deployRoles }
+    }
     await import('./infra/clerk.ts')
     await import('./infra/storage.ts')
     const { api } = await import('./infra/api.ts')
