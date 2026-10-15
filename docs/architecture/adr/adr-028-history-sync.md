@@ -226,7 +226,7 @@ The app code in `src/sync/` follows these rules. They do not change decisions 1 
 | 410 | The app deletes every local entry of the owner with `HistoryRepository.deleteOwner`, clears the state of the owner and signs out. It shows one alert. The service stays stopped for that owner until the app starts again. `deleteOwner` is the only hard delete of the history |
 | The line | The stats screen shows "Synced 5 min ago" only when signed in and after a first sync |
 | The network | `expo-network` tells the app when the network comes back. The app reads the state once at the start, so the first reconnect after an offline start triggers. It is a native module, so it needs a new development build |
-| The API URL | `extra.syncApiUrl` in `app.config.ts`. The development variant has the `felix` stage. `SYNC_API_URL` overrides it. The production variant has none, so it does not sync until the production stage exists |
+| The API URL | `extra.syncApiUrl` in `app.config.ts`. The development variant has the `felix` stage. `SYNC_API_URL` overrides it. The production variant has none until the first production deploy prints the URL. Without it the app does not sync |
 
 The run reads up to 1000 rows of the waiting list to find one batch of valid entries. An entry that
 breaks the contract stays on the list, and the app never deletes it. More than 900 such entries at the

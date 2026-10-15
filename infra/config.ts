@@ -21,12 +21,15 @@ export const ACCOUNT_STAGE: Stage = 'production'
 // The development instance of the Clerk application "Sudoku". felix and dev share it (ADR-027).
 const CLERK_DEVELOPMENT_ISSUER = 'https://free-leopard-5298.clerk.accounts.dev'
 
+// The production instance of the Clerk application "Sudoku". Its domain has DNS at Vercel (ADR-027).
+const CLERK_PRODUCTION_ISSUER = 'https://clerk.sudoku.felixvandemaele.be'
+
 // The `iss` claim of the Clerk tokens of each stage. The JWT authorizer needs an exact match (ADR-027).
 // null means that the stage has no Clerk instance yet.
 export const CLERK_ISSUER: Record<Stage, string | null> = {
   felix: CLERK_DEVELOPMENT_ISSUER,
   dev: CLERK_DEVELOPMENT_ISSUER,
-  production: null,
+  production: CLERK_PRODUCTION_ISSUER,
 }
 
 export const hasClerk = (stage: Stage): boolean => CLERK_ISSUER[stage] !== null
