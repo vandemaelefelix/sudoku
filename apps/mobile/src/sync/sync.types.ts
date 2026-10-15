@@ -24,6 +24,14 @@ export type SyncApiResult =
   | { kind: 'server_error' }
   | { kind: 'rejected' }
 
+/** The client of `DELETE /v1/account` never throws. Only `ok` means the account is gone (ADR-027, decision 10). */
+export type DeleteAccountResult =
+  | { kind: 'ok' }
+  | { kind: 'unauthorized' }
+  | { kind: 'offline' }
+  | { kind: 'throttled' }
+  | { kind: 'server_error' }
+
 /** `partial` means the run stopped at the most rounds with work left. It is not a failure: no backoff. */
 export type RunResult = 'synced' | 'partial' | 'failed' | 'skipped' | 'stopped' | 'deleted'
 

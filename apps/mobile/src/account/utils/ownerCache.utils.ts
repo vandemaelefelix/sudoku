@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store'
-import { OWNER_CACHE_KEY } from '@/account/constants/account.constants'
+import { OWNER_CACHE_KEY, PENDING_SIGN_OUT_KEY } from '@/account/constants/account.constants'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
 /** The cached Clerk user ID. A failed read gives null, so the Keychain never stops the play (SUD-01). */
@@ -19,5 +19,24 @@ export async function writeCachedOwner(owner: string | null): Promise<void> {
     else await SecureStore.setItemAsync(OWNER_CACHE_KEY, owner)
   } catch (error) {
     devWarn('account', `The Keychain did not keep the owner: ${errorMessage(error)}`)
+  }
+}
+
+/** True when a deleted account is still signed in at Clerk. A failed read gives false. */
+export async function readPendingSignOut(): Promise<boolean> {
+  try {
+    return (await SecureStore.getItemAsync(PENDING_SIGN_OUT_KEY)) !== null
+  } catch (error) {
+    devWarn('account', `The Keychain gave no pending sign-out: ${errorMessage(error)}`)
+    return false
+  }
+}
+
+export async function writePendingSignOut(pending: boolean): Promise<void> {
+  try {
+    if (pending) await SecureStore.setItemAsync(PENDING_SIGN_OUT_KEY, '1')
+    else await SecureStore.deleteItemAsync(PENDING_SIGN_OUT_KEY)
+  } catch (error) {
+    devWarn('account', `The Keychain did not keep the pending sign-out: ${errorMessage(error)}`)
   }
 }

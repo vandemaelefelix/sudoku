@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 import { Text } from 'react-native'
 import { useAccount } from '@/account/hooks/useAccount'
 import { useOwner } from '@/storage/hooks/useOwner'
-import { OWNER_CACHE_KEY } from '@/account/constants/account.constants'
+import { OWNER_CACHE_KEY, PENDING_SIGN_OUT_KEY } from '@/account/constants/account.constants'
 import { AccountProvider } from './AccountProvider'
 
 type AuthResult = ReturnType<typeof useAuth>
@@ -225,5 +225,27 @@ describe('the owner before Clerk has loaded (ADR-028)', () => {
     expect(getToken).toHaveBeenLastCalledWith({ template: 'sudoku-api', skipCache: true })
     await result.current.account.getApiToken()
     expect(getToken).toHaveBeenLastCalledWith({ template: 'sudoku-api' })
+  })
+})
+
+describe('after the server deleted the account', () => {
+  it('forces no owner and a signed-out status although Clerk is still signed in, and flags the sign-out', async () => {
+    signedIn('user_alice', 'alice@example.com')
+    const { result } = await renderAccount()
+    expect(result.current.owner).toBe('user_alice')
+    act(() => result.current.account.markDeleted({ signedOut: false }))
+    await waitFor(() => expect(result.current.owner).toBeNull())
+    expect(result.current.account.status).toBe('signedOut')
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(OWNER_CACHE_KEY)
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(PENDING_SIGN_OUT_KEY, '1')
+  })
+
+  it('signs out again at the next start, without a message, and forgets the flag', async () => {
+    const signOut = signedIn('user_alice', 'alice@example.com')
+    jest.mocked(SecureStore.getItemAsync).mockImplementation(async (key) => (key === PENDING_SIGN_OUT_KEY ? '1' : null))
+    const { result } = await renderAccount()
+    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(PENDING_SIGN_OUT_KEY))
+    await waitFor(() => expect(result.current.owner).toBeNull())
   })
 })

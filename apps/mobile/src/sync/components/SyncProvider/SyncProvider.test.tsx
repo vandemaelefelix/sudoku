@@ -44,6 +44,7 @@ function accountOf(status: Account['status'], overrides: Partial<Account> = {}):
     email: null,
     signOut: jest.fn(async () => true),
     getApiToken: jest.fn(async () => 'token'),
+    markDeleted: jest.fn(),
     ...overrides,
   }
 }
