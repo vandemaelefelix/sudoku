@@ -21,6 +21,8 @@ status: DRAFT
 | R-12 | **The iOS TFLite runtime is frozen at 2.17.** `react-native-fast-tflite` bundles the last TFLite published for iOS. A newer converter can emit an op version that 2.17 does not know. | High | Low | float32 only. Promote checks every op version against 2.17 (model contract). |
 | R-13 | **Wrong labels in the training data**, about 0.6 % of the real cells. They cap the measured accuracy and teach the model mistakes. | Medium | High | The `just suspects` tool ranks the likely wrong digit and kind labels. The Review screen of the labelling page (`just label-cells`) is the label check. The retrain is still open. |
 | R-14 | **Validation leaks.** Cells cut from the same photo look alike, so a random split puts near-twins in training and validation and flatters the numbers. | Medium | High | Split by groups of near-identical cells now (#4). Split by photo once cells carry a scan id. |
+| R-15 | **A misuse of the API runs up the AWS bill.** A script with a valid account or many fake accounts. | Medium | Low | SUD-11: a stage throttle, a daily write count per player, Clerk bot protection and email check, budget alerts and a kill switch ([ADR-027](adr/adr-027-backend-platform.md)). |
+| R-16 | **Clerk changes or ends its free plan.** The accounts live at Clerk. | Medium | Low | Our own user ID behind identity rows. A move needs a user import and new identity rows, the game data stays ([ADR-027](adr/adr-027-backend-platform.md)). |
 
 ## Technical Debt
 

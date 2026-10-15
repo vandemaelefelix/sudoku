@@ -13,16 +13,17 @@ flowchart LR
     app["Sudoku app<br>[iOS, React Native]<br>Game + scanner, fully offline"]
     ml["ML workstation<br>[Python, on the Mac]<br>Trains and exports models"]
     tf["TestFlight / App Store<br>[Apple]<br>Distribution"]
-    be["Backend<br>[Future, maybe AWS]<br>Accounts, history, leaderboard"]
+    clerk["Clerk<br>[SaaS]<br>Accounts and sign-in"]
+    be["Backend<br>[AWS, SST]<br>Sync API, a copy of the history"]
 
     player -->|plays, corrects scans| app
     paper -.->|seen through the camera| app
     ml -->|promoted model file,<br>committed to the repo| app
     app -->|corrected scans,<br>exported by hand| ml
     tf -->|installs| app
-    app -.->|later| be
-
-    style be stroke-dasharray: 5 5
+    app -->|signs in| clerk
+    app -->|finished games,<br>after sign-in| be
+    be -.->|checks tokens| clerk
 ```
 
 | Neighbour | Exchanges with the system | Channel |
@@ -31,7 +32,8 @@ flowchart LR
 | Paper sudoku | Is seen. The photo, flattened grid and cell images stay on the phone | Camera frames |
 | ML workstation | Delivers model files to the app. Receives corrected scans as training data | The repository (promote step), the iOS share sheet |
 | TestFlight / App Store | Distributes builds | Xcode / EAS build |
-| Backend (future) | Not designed. The app must be able to add sync later without restructuring | — |
+| Clerk | Holds the accounts, sends the verification emails and signs the tokens ([ADR-027](adr/adr-027-backend-platform.md)) | `@clerk/expo`, HTTPS |
+| Backend | Keeps a copy of every finished game of a signed-in player. Never camera frames, photos or cell images (SUD-02) | HTTPS, `POST /v1/sync` ([ADR-028](adr/adr-028-history-sync.md)) |
 
 ## 3.2 Technical Context
 
