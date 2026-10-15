@@ -41,6 +41,9 @@ describe('trustPolicy', () => {
   })
 })
 
+const conditions = (workflowFile: string) =>
+  trustPolicy('x', workflowFile).Statement[0]!.Condition.StringEquals as Record<string, string>
+
 describe('DEPLOY_ROLES', () => {
   it('gives each role its own workflow file', () => {
     assert.equal(DEPLOY_ROLES.dev.workflowFile, DEV_WORKFLOW)
@@ -49,13 +52,11 @@ describe('DEPLOY_ROLES', () => {
   })
 
   it('makes the dev and production trust differ only by job_workflow_ref', () => {
-    const conditions = (workflowFile: string) =>
-      trustPolicy('x', workflowFile).Statement[0]!.Condition.StringEquals as Record<string, string>
     const dev = conditions(DEPLOY_ROLES.dev.workflowFile)
     const production = conditions(DEPLOY_ROLES.production.workflowFile)
     const differing = Object.keys(dev).filter((key) => dev[key] !== production[key])
     assert.deepEqual(differing, [`${HOST}:job_workflow_ref`])
-    assert.deepEqual(Object.keys(dev).sort(), Object.keys(production).sort())
+    assert.deepEqual(Object.keys(dev).toSorted(), Object.keys(production).toSorted())
   })
 
   it('keeps the production workflow out of the dev trust and the other way round', () => {
