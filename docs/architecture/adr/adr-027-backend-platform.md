@@ -447,5 +447,6 @@ The release of the backend to production makes these decisions.
    the account in the app. With a `null` key the production variant has no account section.
 5. **Guideline 4.8: ship email and Google.** The app does not add Sign in with Apple now. It needs the paid Apple
    Developer Program. Add it at the first rejection under guideline 4.8, or before the first submission.
-6. **The privacy policy is Markdown in the repo.** The source is `docs/privacy/privacy-policy.md`. The public page lives
-   outside this private repository. ADR-013 holds the App Store privacy labels.
+6. **The privacy policy is Markdown in the repo.** The source is `docs/privacy/privacy-policy.md`. Vercel hosts the home
+   page and the privacy page at `sudoku.felixvandemaele.be`. `site/build.mjs` builds them from the repo. ADR-013 holds
+   the App Store privacy labels.

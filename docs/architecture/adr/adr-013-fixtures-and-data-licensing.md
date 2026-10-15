@@ -75,3 +75,4 @@ It no longer describes the app as a whole. Decision 5 stays valid for the camera
    usage data (SUD-02).
 3. **A privacy policy page is required.** The source is [`docs/privacy/privacy-policy.md`](../../privacy/privacy-policy.md).
    The App Store form and the Google consent screen link to the public page.
+   Vercel hosts the page at `https://sudoku.felixvandemaele.be/privacy`. `site/build.mjs` renders it from the source.

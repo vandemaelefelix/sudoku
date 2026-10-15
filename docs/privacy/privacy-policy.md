@@ -1,20 +1,17 @@
 ---
-status: DRAFT
-publish: blocked until the production smoke test passes
+status: ACCEPTED
+publish: allowed for the Google consent screen. Check again before the App Store submission.
 ---
 
 # Privacy policy of Sudoku
 
-<!-- Do not publish this file yet. In-app deletion ships on develop. Publish only after the production smoke test passes. -->
+<!-- Source of the public page. `site/build.mjs` renders it at build time. See ../../site/README.md. Check this policy again before the App Store submission. -->
 
 Last changed: 2026-10-15
 
-This file is the source of the public privacy page. The developer copies it to the host of the page. See
-[`infra/README.md`](../../infra/README.md), "The production release".
-
 ## Who
 
-Felix Vandemaele runs the Sudoku app. Contact: `<contact email, added before the page is published>`.
+Felix Vandemaele runs the Sudoku app. Contact: <vandemaelefelix@gmail.com>.
 
 ## Without an account
 
@@ -35,6 +32,17 @@ You can make an account to back up your finished games. The app then holds this 
 
 Clerk Inc. is the sign-in service. It acts as a processor for us. It keeps session and device data, such as your IP
 address, to run the sign-in. AWS DynamoDB in Ireland keeps the history and the daily request count.
+
+## International transfers
+
+Clerk processes data in the United States. The United States is outside the European Economic Area. The transfer uses
+a safeguard under Chapter V of the GDPR. This is the EU-US Data Privacy Framework where Clerk is certified. Otherwise
+it is the standard contractual clauses in the data processing agreement with Clerk. AWS keeps the games in Ireland.
+
+## This website
+
+Vercel hosts this website. Vercel processes the IP address of a visitor to serve the pages. The website sets no
+cookies. The website has no analytics. The website makes no request to another party.
 
 ## Legal basis
 
@@ -58,7 +66,7 @@ When you delete the account:
 
 1. Clerk removes your user at once.
 2. The history rows are removed at once.
-3. A small record keeps only the delete date for 30 days. It holds no email and no games.
+3. A small record keeps your user ID and the delete date for 30 days. It holds no email and no games.
 4. Backups of the table age out within 35 days.
 
 The server log has one line per request. It holds our user ID and no email. It is kept for one month.
@@ -69,8 +77,19 @@ Open Settings, then Account, then Delete account. You can also send an email to 
 
 ## Your rights
 
-Under the GDPR you can ask for access to your data, for a correction, or for a deletion. You can complain to the Belgian
-Data Protection Authority.
+Under the GDPR you have these rights:
+
+- Access: ask for a copy of your data.
+- Correction: ask us to fix wrong data.
+- Deletion: delete your account in the app, or ask us.
+- Portability: ask for your data in a structured, common format.
+- Restriction: ask us to pause the use of your data.
+- Objection: object to the use of your data.
+
+Send an email to the contact address. We answer within one month.
+
+You can complain to a supervisory authority. In Belgium this is the Data Protection Authority
+(Gegevensbeschermingsautoriteit), <https://www.gegevensbeschermingsautoriteit.be>.
 
 ## Children
 
