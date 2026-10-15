@@ -15,6 +15,7 @@ const NEW = '2026-10-15T08:45:00.000Z'
 let table: TestTable
 let users = 0
 const newUser = () => `push-user-${++users}`
+const owner = (userId: string) => ({ sub: `sub-of-${userId}`, userId })
 const deps = () => ({ db: table.db, tableName: table.tableName })
 
 beforeAll(async () => {
@@ -54,7 +55,7 @@ describe('the write rule (ADR-028 decision 6)', () => {
   it('stores a new entry and stamps syncedAt with the server time', async () => {
     const userId = newUser()
     const entry = entryWithId(1, { updatedAt: MID })
-    const result = await push(deps(), userId, [entry], NOW)
+    const result = await push(deps(), owner(userId), [entry], NOW)
     expect(result).toEqual({ acceptedIds: [entry.id], stored: 1, noop: 0, capped: 0, conflicts: 0 })
     expect(await gameRow(userId, entry.id)).toMatchObject({ updatedAt: MID, syncedAt: NOW.toISOString() })
     expect(await gameRow(userId, entry.id)).not.toHaveProperty('id')
@@ -62,10 +63,10 @@ describe('the write rule (ADR-028 decision 6)', () => {
 
   it('accepts an older or equal updatedAt as a no-op: the row stays and nothing counts', async () => {
     const userId = newUser()
-    await push(deps(), userId, [entryWithId(1, { updatedAt: MID, mistakes: 1 })], NOW)
+    await push(deps(), owner(userId), [entryWithId(1, { updatedAt: MID, mistakes: 1 })], NOW)
     const result = await push(
       deps(),
-      userId,
+      owner(userId),
       [entryWithId(1, { updatedAt: OLD, mistakes: 7 }), entryWithId(1, { updatedAt: MID, mistakes: 8 })],
       LATER,
     )
@@ -76,30 +77,35 @@ describe('the write rule (ADR-028 decision 6)', () => {
 
   it('overwrites with a newer updatedAt and a new syncedAt', async () => {
     const userId = newUser()
-    await push(deps(), userId, [entryWithId(1, { updatedAt: MID })], NOW)
-    await push(deps(), userId, [entryWithId(1, { updatedAt: NEW, mistakes: 5 })], LATER)
+    await push(deps(), owner(userId), [entryWithId(1, { updatedAt: MID })], NOW)
+    await push(deps(), owner(userId), [entryWithId(1, { updatedAt: NEW, mistakes: 5 })], LATER)
     expect(await gameRow(userId, entryWithId(1).id)).toMatchObject({ mistakes: 5, syncedAt: LATER.toISOString() })
   })
 
   it('stores a soft delete with a newer updatedAt', async () => {
     const userId = newUser()
-    await push(deps(), userId, [entryWithId(1, { updatedAt: MID })], NOW)
-    await push(deps(), userId, [entryWithId(1, { updatedAt: NEW, deletedAt: NEW })], LATER)
+    await push(deps(), owner(userId), [entryWithId(1, { updatedAt: MID })], NOW)
+    await push(deps(), owner(userId), [entryWithId(1, { updatedAt: NEW, deletedAt: NEW })], LATER)
     expect(await gameRow(userId, entryWithId(1).id)).toMatchObject({ deletedAt: NEW, updatedAt: NEW })
   })
 
   it('gives the same accepted ids and the same count for the same request twice', async () => {
     const userId = newUser()
     const entries = [entryWithId(1), entryWithId(2), entryWithId(3)]
-    const first = await push(deps(), userId, entries, NOW)
-    const second = await push(deps(), userId, entries, LATER)
+    const first = await push(deps(), owner(userId), entries, NOW)
+    const second = await push(deps(), owner(userId), entries, LATER)
     expect(second.acceptedIds).toEqual(first.acceptedIds)
     expect(await writes(userId)).toBe(3)
   })
 
   it('keeps request order and lists an id once', async () => {
     const userId = newUser()
-    const result = await push(deps(), userId, [entryWithId(3), entryWithId(1), entryWithId(3), entryWithId(2)], NOW)
+    const result = await push(
+      deps(),
+      owner(userId),
+      [entryWithId(3), entryWithId(1), entryWithId(3), entryWithId(2)],
+      NOW,
+    )
     expect(result.acceptedIds).toEqual([entryWithId(3).id, entryWithId(1).id, entryWithId(2).id])
   })
 })
@@ -109,7 +115,7 @@ describe('the daily count (ADR-027 decision 9)', () => {
     const userId = newUser()
     await setCount(userId, 198)
     const entries = [1, 2, 3, 4, 5].map((n) => entryWithId(n))
-    const result = await push(deps(), userId, entries, NOW)
+    const result = await push(deps(), owner(userId), entries, NOW)
     expect(result).toEqual({
       acceptedIds: [entries[0]!.id, entries[1]!.id],
       stored: 2,
@@ -123,9 +129,9 @@ describe('the daily count (ADR-027 decision 9)', () => {
 
   it('still accepts a no-op after the cap', async () => {
     const userId = newUser()
-    await push(deps(), userId, [entryWithId(1)], NOW)
+    await push(deps(), owner(userId), [entryWithId(1)], NOW)
     await setCount(userId, 200)
-    const result = await push(deps(), userId, [entryWithId(2), entryWithId(1)], NOW)
+    const result = await push(deps(), owner(userId), [entryWithId(2), entryWithId(1)], NOW)
     expect(result).toEqual({ acceptedIds: [entryWithId(1).id], stored: 0, noop: 1, capped: 1, conflicts: 0 })
   })
 
@@ -133,7 +139,7 @@ describe('the daily count (ADR-027 decision 9)', () => {
     const userId = newUser()
     await setCount(userId, 200)
     const nextDay = new Date('2026-10-16T00:00:01.000Z')
-    const result = await push(deps(), userId, [entryWithId(1)], nextDay)
+    const result = await push(deps(), owner(userId), [entryWithId(1)], nextDay)
     expect(result.stored).toBe(1)
     const { Item } = await table.db.send(
       new GetCommand({ TableName: table.tableName, Key: { pk: userPk(userId), sk: countSk('2026-10-16') } }),
@@ -148,13 +154,13 @@ describe('the daily count (ADR-027 decision 9)', () => {
     const [a, b] = await Promise.all([
       push(
         deps(),
-        userId,
+        owner(userId),
         [1, 2, 3, 4, 5].map((n) => entryWithId(n)),
         NOW,
       ),
       push(
         deps(),
-        userId,
+        owner(userId),
         [6, 7, 8, 9, 10].map((n) => entryWithId(n)),
         NOW,
       ),

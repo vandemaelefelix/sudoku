@@ -260,3 +260,18 @@ The build of `POST /v1/sync` makes decisions 5, 6 and 9 concrete. The code is in
    500 rows, also when no row follows. The next call reads no rows and takes `since` from the
    `after` of its request (rule 2 of "the end of the read").
 
+
+## Amendment 2026-10-15: delete the account
+
+The build of `DELETE /v1/account` makes decisions 3 and 9 concrete. The details are in the
+amendment "delete the account" of
+[ADR-027](adr-027-backend-platform.md).
+
+1. **The tombstone keeps `userId` and `createdAt`.** It adds `deletedAt` and `expiresAt`. The
+   delete needs the `userId` to remove the rows.
+2. **The server deletes the rows of both kinds.** The game rows and the daily count rows share
+   the partition `USER#<userId>`. The tombstone comes first and the Clerk user last, so no row
+   stays after a failed step and a retry. A push refuses to write after the tombstone: it answers
+   410 `account_deleted`.
+3. **The app flow is: the API call first, then the local cleanup, then the sign-out.** The app
+   half follows in a later change.

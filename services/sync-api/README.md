@@ -1,6 +1,6 @@
 # sync-api
 
-The Lambda of `POST /v1/sync`. It backs up the finished games of a player and returns the games of
+The Lambda of `POST /v1/sync` and `DELETE /v1/account`. It backs up the finished games of a player and returns the games of
 the other devices of that player. The decisions are in
 [ADR-027](../../docs/architecture/adr/adr-027-backend-platform.md) and
 [ADR-028](../../docs/architecture/adr/adr-028-history-sync.md). The concept is
@@ -13,6 +13,8 @@ the other devices of that player. The decisions are in
 | `src/handler.ts` | The Lambda entry. It builds the dependencies and calls `route()`. The only file that imports `sst` |
 | `src/route.ts` | The dispatch on the route key. One log line per request. A 500 on an unexpected error |
 | `src/sync.ts` | The steps of one sync, in the order of the table below |
+| `src/account.ts` | `DELETE /v1/account`: the tombstone, the rows in pages, then the Clerk user |
+| `src/clerk.ts` | The Clerk Backend API call that deletes a user. 200, or 404 with `resource_not_found`, means deleted |
 | `src/identity.ts` | Find or create the identity row. A tombstone gives `AccountDeleted` |
 | `src/push.ts` | The write rule and the daily count: one transaction per history entry |
 | `src/pull.ts` | The query on `bySynced` and the next cursor |
@@ -41,6 +43,18 @@ A step that refuses stops the call. No refusal writes a row.
 | 7 | Pull from `bySynced`, from `since` minus 5 minutes, at most 500 rows | — |
 
 The push runs before the pull, so the response holds the own changes of the caller.
+
+## Delete the account
+
+`DELETE /v1/account` takes no body. The player comes only from the `sub` of the token.
+
+| Answer | When |
+| --- | --- |
+| 204, no body | The tombstone, the rows and the Clerk user are done. A second call also gives 204 |
+| 401 | The token has no `sub` |
+| 500 | Clerk failed, or a DynamoDB call failed. A retry of the whole call is safe. After a Clerk failure the player stays tombstoned: a sync answers 410 |
+
+The route needs Clerk on the stage: it reads the secret `ClerkSecretKey`, which `infra/api.ts` links wherever the API exists. Without the secret the call answers 500 with the log name `ClerkError`. It never logs the `sub`, the token or the Clerk answer.
 
 ## Logging
 
