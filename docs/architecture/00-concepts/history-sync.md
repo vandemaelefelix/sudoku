@@ -119,12 +119,18 @@ the one TTL attribute of the table, in epoch seconds.
 
 | Row | pk | sk | Fields besides the key |
 | --- | --- | --- | --- |
-| Identity | `IDENTITY#clerk#<sub>` | `IDENTITY` | `userId`, `createdAt`. A tombstone adds `deletedAt` and `expiresAt` |
+| Identity | `IDENTITY#clerk#<sub>` | `IDENTITY` | `userId`, `createdAt`. A tombstone keeps both and adds `deletedAt` and `expiresAt` |
 | Game | `USER#<userId>` | `GAME#<id>` | The history entry without `id`, and `syncedAt` |
 | Daily count | `USER#<userId>` | `COUNT#<yyyy-mm-dd>` | `writes`, `expiresAt` (the start of the UTC day plus 2 days) |
 
 Only game rows have `syncedAt`, so the index `bySynced` holds only game rows. The Lambda is in
 [`services/sync-api/`](../../../services/sync-api/README.md).
+
+**Delete the account.** `DELETE /v1/account` runs three steps in this order: delete the Clerk
+user, turn the identity row into a tombstone, delete every row of the partition `USER#<userId>`.
+The answer is 204, also for a second call. After it, a sync with the same `sub` gets 410
+`account_deleted`. The details are in the amendment "delete the account" of
+[ADR-027](../adr/adr-027-backend-platform.md).
 
 **The cloud side.** Clerk signs the player in. The API Gateway checks the Clerk token. The Lambda
 maps the Clerk user ID to our own user ID and reads and writes one DynamoDB table
@@ -173,6 +179,7 @@ flowchart LR
 | --- | --- |
 | Does AWS bill requests that the throttle turns away? If yes, the kill switch deletes the stage instead | Issue #108, at the first deploy of the kill switch |
 | Does the new AWS account allow a reserved concurrency of 2? If not, ask for a higher quota | Issue #108, at the first deploy |
+| A failed row delete after the Clerk delete leaves orphan rows. The player cannot retry, because Clerk ended the sessions. Add a sweeper if a log line shows it | After the first real use |
 | The leaderboard: best-time rows, a global index and display names | A later ADR |
 | Shared scans for training: an upload link to a private S3 bucket, an explicit tap per scan (SUD-02) | A later ADR |
 

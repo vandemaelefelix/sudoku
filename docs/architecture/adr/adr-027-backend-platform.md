@@ -376,3 +376,34 @@ This amendment makes decision 8 concrete. The reasons for the workflow design ar
    kill-switch flag of the stage is read (decision 9 of the kill switch amendment).
 5. **Reassessment triggers.** A second project uses the account. A collaborator gets write access.
    Either one makes `AdministratorAccess` too wide. Then write a policy for the deploy roles.
+
+## Amendment 2026-10-15: delete the account
+
+The build of `DELETE /v1/account` makes decision 10 concrete. The code is in
+[`services/sync-api/src/account.ts`](../../../services/sync-api/src/account.ts).
+
+1. **The order is the Clerk user, the tombstone, the rows.** Each step is safe to repeat. A failed
+   call is retried whole.
+2. **The Lambda calls the Clerk Backend API with `fetch`.** It sends `DELETE
+   https://api.clerk.com/v1/users/{user_id}` with the `ClerkSecretKey`. It adds no Clerk SDK, so
+   the bundle stays small. 200 and 404 both mean "deleted". Any other status, a timeout or a
+   network error gives 500 before any write. The 404 case is not yet checked against a real
+   Clerk instance. Check it once on `felix` (see the pull request).
+3. **The tombstone keeps `userId`.** One `UpdateItem` sets `deletedAt` (first value kept) and
+   `expiresAt` (30 days, refreshed on each call). It creates the row for a player who never
+   synced. A retry needs the `userId` to find the rows.
+4. **The rows go in pages.** The Lambda queries the partition of the player on the base table,
+   so one loop deletes the game rows and the daily count rows. It deletes 25 keys per batch, up
+   to 4 batches in parallel. It retries unprocessed items 5 times with a short wait. A second
+   pass removes a row that a sync wrote just before the tombstone.
+5. **The answer is 204 with no body**, also for a repeat call. A failure is 500. The route never
+   answers 410, because a tombstone is a normal state for it.
+6. **The function timeout is 30 seconds**, the API Gateway maximum (decision 3 allows a value per
+   function). A sync takes under 1 second, so the cost bound (SUD-11) does not change.
+7. **The Lambda reads `ClerkSecretKey` only on this route.** `infra/api.ts` links the secret to
+   the function.
+8. **A known gap: orphan rows.** After step 1, Clerk ends the sessions of the player. The app
+   cannot get a new token for a retry. The token it holds works for 60 seconds. If step 3 fails
+   and the window ends, the rows stay. They hold game data only, and no call can reach them. This
+   gap is accepted for v1. Reassess it if a log line shows a failed row delete.
+9. **No Apple token yet.** When Apple sign-in exists, the delete also revokes the Apple token.
