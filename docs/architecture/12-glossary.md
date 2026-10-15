@@ -199,3 +199,7 @@ status: DRAFT
 | Profile `sudoku` | The AWS profile of the backend. It takes its credentials from the `aws login` session of the profile `sudoku-login` through `credential_process` (ADR-027) |
 | Account stage | The stage that creates the account-wide resources, such as the budget: `production` (ADR-027) |
 | Budget alert | An AWS Budgets email at $3 forecast or at $6 actual. The kill switch adds the alert at $9 (SUD-11, ADR-027) |
+| Development instance | The Clerk instance that the `felix` and `dev` stages and the development variant use. Its keys start with `pk_test_` and `sk_test_` (ADR-027) |
+| Issuer | The `iss` of a Clerk token: the Frontend API URL of the Clerk instance. The JWT authorizer needs an exact match with `CLERK_ISSUER` in `infra/config.ts` (ADR-027) |
+| Publishable key | The public key of a Clerk instance. The app config of each variant holds it. It is not a secret (ADR-027) |
+| JWT template | The Clerk template `sudoku-api`. It adds `"aud": "sudoku-api"` to a token that lives 60 seconds. The app asks for it before every request (ADR-027) |

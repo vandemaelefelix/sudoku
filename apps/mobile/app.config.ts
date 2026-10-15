@@ -4,6 +4,10 @@ export type AppVariant = 'development' | 'production'
 
 const DEV_ICONS = './assets/icons/development'
 
+// The development instance of Clerk (ADR-027). A publishable key is not a secret.
+// The production variant gets the key of the production instance in app.json. Until then it has none.
+export const DEVELOPMENT_CLERK_PUBLISHABLE_KEY = 'pk_test_ZnJlZS1sZW9wYXJkLTUyOTguY2xlcmsuYWNjb3VudHMuZGV2JA'
+
 /** ADR-022: an unset APP_VARIANT means development, so a plain `expo run:ios` never replaces the production app. */
 export function appVariant(value: string | undefined): AppVariant {
   if (value === undefined || value === '' || value === 'development') return 'development'
@@ -24,7 +28,7 @@ export function variantConfig(config: ExpoConfig, variant: AppVariant): ExpoConf
     name: `${config.name} Dev`,
     scheme: 'sudoku-dev',
     // Read at run time by isDevelopmentVariant. The production config has no mark.
-    extra: { ...config.extra, appVariant: 'development' },
+    extra: { ...config.extra, appVariant: 'development', clerkPublishableKey: DEVELOPMENT_CLERK_PUBLISHABLE_KEY },
     icon: `${DEV_ICONS}/ios-light.png`,
     ios: {
       ...config.ios,
