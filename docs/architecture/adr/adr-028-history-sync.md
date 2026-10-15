@@ -260,18 +260,26 @@ The build of `POST /v1/sync` makes decisions 5, 6 and 9 concrete. The code is in
    500 rows, also when no row follows. The next call reads no rows and takes `since` from the
    `after` of its request (rule 2 of "the end of the read").
 
-
 ## Amendment 2026-10-15: delete the account
 
-The build of `DELETE /v1/account` makes decisions 3 and 9 concrete. The details are in the
-amendment "delete the account" of
-[ADR-027](adr-027-backend-platform.md).
+The build of `DELETE /v1/account` makes decisions 3 and 9 concrete. The server details are in the
+amendment "delete the account" of [ADR-027](adr-027-backend-platform.md). The app flow is below.
 
 1. **The tombstone keeps `userId` and `createdAt`.** It adds `deletedAt` and `expiresAt`. The
    delete needs the `userId` to remove the rows.
 2. **The server deletes the rows of both kinds.** The game rows and the daily count rows share
-   the partition `USER#<userId>`. The tombstone comes first and the Clerk user last, so no row
-   stays after a failed step and a retry. A push refuses to write after the tombstone: it answers
-   410 `account_deleted`.
-3. **The app flow is: the API call first, then the local cleanup, then the sign-out.** The app
-   half follows in a later change.
+   the partition `USER#<userId>`. The order is the tombstone, then the rows, then the Clerk user.
+   No row stays after a failed step and a retry. A push refuses to write after the tombstone: it
+   answers 410 `account_deleted`.
+3. **The app calls the server first.** After the server deletes the Clerk user, Clerk cannot give a new token. For
+   this reason the app takes one fresh `sudoku-api` token and a retry after a network error or a 5xx keeps the same token. The app retries 2 times,
+   1 second apart. The client waits 35 seconds for the call. The Lambda stops after 30 seconds, so a retry never runs
+   beside the first call.
+4. **The sync stops before the call.** The app aborts the run that goes on and blocks new runs. A run that gets 410
+   during the delete cannot start a second cleanup. The cleanup runs once for each owner in a session.
+5. **A lost answer counts as a delete.** After an attempt whose answer was lost, a 401 or a missing token means the
+   server deleted the Clerk user. The app then cleans up as for a 2xx. A 401 on the first attempt stays an error.
+6. **Only a 2xx, or the case in rule 5, changes the phone.** The app deletes the history entries of the owner,
+   clears the sync state and signs out. It sets the owner to null for the rest of the session and clears the Keychain
+   owner cache, also when the sign-out fails. A failed sign-out is tried again, without a message, at the next start.
+7. **Offline or a failure changes nothing.** The app shows a message. The sync runs again. The player can try again.

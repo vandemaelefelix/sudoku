@@ -6,13 +6,14 @@ import { useOwner } from '@/storage/hooks/useOwner'
 import { runAdoptStep } from '@/sync/adoptStep'
 import { ADOPT_ACCEPT, ADOPT_DECLINE, ADOPT_MESSAGE, ADOPT_TITLE } from '@/sync/constants/sync.constants'
 import { IDLE_SYNC, SyncContext } from '@/sync/hooks/useSync'
+import { SyncControlContext, type SyncControl } from '@/sync/hooks/useSyncControl'
 import { useSyncTriggers } from '@/sync/hooks/useSyncTriggers'
-import { createSyncApi, type SyncApi } from '@/sync/syncApi'
+import { createSyncApi, type AccountApi, type SyncApi } from '@/sync/syncApi'
 import { createAppSyncService } from '@/sync/createAppSyncService'
 import type { SyncService } from '@/sync/SyncService'
 import { readSyncApiUrl } from '@/sync/utils/syncConfig.utils'
 
-type SyncProviderProps = { apiUrl?: string | null; api?: SyncApi; children: ReactNode }
+type SyncProviderProps = { apiUrl?: string | null; api?: SyncApi; accountApi?: AccountApi; children: ReactNode }
 
 const noStatus = () => IDLE_SYNC
 const noSubscription = () => () => undefined
@@ -35,7 +36,7 @@ function askToAdopt(): Promise<boolean> {
  * Syncs the history of a signed-in player (ADR-028). It renders the children at once and never waits for the network (SUD-01).
  * A build without an API URL, or without an account, has no sync: every call is a no-op.
  */
-export function SyncProvider({ apiUrl = readSyncApiUrl(), api, children }: SyncProviderProps) {
+export function SyncProvider({ apiUrl = readSyncApiUrl(), api, accountApi, children }: SyncProviderProps) {
   const storage = useGameStorage()
   const account = useAccount()
   const owner = useOwner()
@@ -54,6 +55,17 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, children }: SyncP
     // oxlint-disable-next-line react/refs -- getAccount only reads the ref later, in an event.
     return createAppSyncService(storage, client, getAccount)
   }, [api, apiUrl, storage, unconfigured, getAccount])
+
+  const control = useMemo<SyncControl | null>(() => {
+    const client = accountApi ?? (apiUrl === null ? null : createSyncApi({ baseUrl: apiUrl }))
+    if (client === null || service === null) return null
+    return {
+      deleteAccount: (token) => client.deleteAccount(token),
+      stop: () => service.stop(),
+      pause: () => service.pause(),
+      resume: () => service.resume(),
+    }
+  }, [accountApi, apiUrl, service])
 
   useSyncTriggers(service)
 
@@ -98,5 +110,9 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, children }: SyncP
   }, [service, signedInOwner, storage, getAccount])
 
   const status = useSyncExternalStore(service?.subscribe ?? noSubscription, service?.status ?? noStatus)
-  return <SyncContext value={status}>{children}</SyncContext>
+  return (
+    <SyncControlContext value={control}>
+      <SyncContext value={status}>{children}</SyncContext>
+    </SyncControlContext>
+  )
 }

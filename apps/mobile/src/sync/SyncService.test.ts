@@ -355,3 +355,53 @@ describe('a deleted account', () => {
     await expect(service.trigger('network')).resolves.toBe('ignored')
   })
 })
+
+describe('pause and resume', () => {
+  it('aborts the run that goes on, keeps the session and ignores triggers until resume', async () => {
+    const { api, waiting } = gatedApi()
+    const { service, onAccountDeleted } = serviceWith(api)
+    service.setSession(sessionOf(ALICE))
+    const run = service.trigger('sign-in')
+    await flush()
+    const paused = service.pause()
+    waiting.shift()?.({ kind: 'account_deleted' })
+    await paused
+    await expect(run).resolves.not.toBe('deleted')
+    expect(onAccountDeleted).not.toHaveBeenCalled()
+    await expect(service.trigger('network')).resolves.toBe('ignored')
+    service.resume()
+    const next = service.trigger('network')
+    await flush()
+    expect(waiting).toHaveLength(1)
+    waiting.shift()?.(OK)
+    await expect(next).resolves.toBe('synced')
+  })
+})
+
+describe('stop', () => {
+  it('ends the session and waits for the run that goes on', async () => {
+    const { api, release } = gatedApi()
+    const { service } = serviceWith(api)
+    await finishGame(storage, ALICE)
+    service.setSession(sessionOf(ALICE))
+    const run = service.trigger('sign-in')
+    await flush()
+    let stopped = false
+    const stop = service.stop().then(() => {
+      stopped = true
+    })
+    await flush()
+    expect(stopped).toBe(false)
+    release()
+    await stop
+    await run
+    expect(stopped).toBe(true)
+    await expect(service.trigger('foreground')).resolves.toBe('ignored')
+  })
+
+  it('resolves at once when no run goes on', async () => {
+    const { api } = scriptedApi([OK])
+    const { service } = serviceWith(api)
+    await expect(service.stop()).resolves.toBeUndefined()
+  })
+})

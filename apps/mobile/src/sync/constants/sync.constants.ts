@@ -16,6 +16,9 @@ export const ROUND_PAUSE_MS = 1_100
 
 export const REQUEST_TIMEOUT_MS = 20_000
 
+/** Longer than the 30 s of the Lambda, so a retry never runs beside the first call (ADR-028). */
+export const DELETE_TIMEOUT_MS = 35_000
+
 export const BACKOFF_BASE_MS = 30_000
 export const BACKOFF_MAX_MS = 15 * 60_000
 
