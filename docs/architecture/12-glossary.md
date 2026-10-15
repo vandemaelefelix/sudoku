@@ -174,6 +174,11 @@ status: DRAFT
 | Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. It is white for every look, because the native layer cannot read the saved theme. The overlay then fades it to the page colour of the saved look (ADR-024, ADR-025, ADR-026) |
 | Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
 | Account | A Clerk account of a player. Optional: a player who is signed out plays as normal and nothing uploads (ADR-027) |
+| Account section | The last section of Settings. Signed out, it offers "Sign in". Signed in, it shows the email and "Sign out". A build without a publishable key does not show it |
+| Sign-in screen | The route `sign-in` (email, password and Google) or `sign-up` (create an account). The email code is a step inside each screen, not a route |
+| Email code | The 6-digit code that Clerk sends to the email. Sign-up needs it to prove the email. Sign-in needs it on a new device (client trust) |
+| Publishable key | The public Clerk key (`pk_test_…` or `pk_live_…`) that names the Clerk instance. It is in `app.config.ts` for the development variant. It grants no access |
+| API token | The Clerk JWT of the template `sudoku-api` that each sync request sends. It lives 60 s. Clerk keeps and renews it. `useApiToken` gives it (ADR-027) |
 | User ID | Our own UUID for a player, on the server only. Every row of the player in DynamoDB uses it. An identity row maps a login to it. The phone never holds it (ADR-027) |
 | Clerk user ID | The `sub` of a Clerk token, such as `user_2abc`. The app knows it at sign-in, also offline. It is the owner on the phone. The server maps it to a user ID (ADR-027, ADR-028) |
 | Identity row | The DynamoDB row `IDENTITY#<provider>#<subject>` that maps one login to a user ID. A new sign-in provider adds identity rows (ADR-027) |

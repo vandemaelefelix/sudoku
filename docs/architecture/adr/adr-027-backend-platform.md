@@ -188,6 +188,17 @@ The backend has these limits:
 - The Lambda tests run with Vitest against a local DynamoDB in a container. The test table must
   match `infra/storage.ts`.
 - A budget alert can come hours late. The throttles bound the cost of those hours.
+- The app needs iOS 17.0 or later. The config plugin of `@clerk/expo` raises the iOS
+  deployment target from 16.4 to 17.0. The app has no players on iOS 16.
+- The app turns off the Sign in with Apple entitlement of the Clerk plugin
+  (`appleSignIn: false`). v1 has no Apple sign-in, and a free Apple team cannot sign the
+  entitlement.
+- The publishable key and the Google client IDs of the development instance are in
+  `app.config.ts`. They are public values. The production variant has no key until the
+  production instance exists, so it shows no account section.
+- Native Google sign-in uses the free Apple team (Team ID and the `.dev` bundle ID in Clerk). The
+  iPhone test checks it. If it fails, the app ships email only and Google waits for the Apple
+  Developer Program.
 
 ## Reassessment Triggers
 
