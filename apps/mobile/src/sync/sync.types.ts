@@ -25,6 +25,9 @@ export type SyncApiResult =
 
 export type RunResult = 'synced' | 'failed' | 'skipped' | 'stopped' | 'deleted'
 
+/** `changed` is true when the run wrote entries from another device. `retryAfterMs` comes from a 429. */
+export type RunOutcome = { result: RunResult; changed: boolean; retryAfterMs: number | null }
+
 export type SyncStatus = { lastSyncedAt: string | null; revision: number }
 
 export type RemoteRecords = { records: HistoryRecord[]; dropped: number }
