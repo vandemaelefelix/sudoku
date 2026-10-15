@@ -44,7 +44,7 @@ format:
 format-check:
     pnpm format:check
 
-# SUD-03, SUD-04, SUD-05 and the sync contract (ADR-028)
+# SUD-03, SUD-04, SUD-05, the sync contract and the account boundary (ADR-027, ADR-028)
 boundaries:
     pnpm boundaries
 

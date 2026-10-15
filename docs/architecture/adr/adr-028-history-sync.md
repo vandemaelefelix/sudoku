@@ -80,6 +80,13 @@ The leaderboard compares players, so the cloud counts it. It is a later feature.
      means no owner.
    - It creates `sync_state (key TEXT PRIMARY KEY, value TEXT)` for the cursor and the owner of
      that cursor.
+   - The app keeps the last signed-in Clerk user ID in the Keychain (`expo-secure-store`). At
+     start, the owner is this cached ID until Clerk has loaded. A game started offline, or
+     before Clerk loads, keeps the owner of the player who signed in.
+   - The app reads the Keychain once at start and renders after that read. The read is local and
+     fast, and a failed read gives no cached ID. The app never waits for Clerk (SUD-01).
+   - When Clerk loads signed in, the owner is its user ID and the app stores it. When Clerk loads
+     signed out, or the player signs out, the app clears the cache and the owner is null.
    - A game finished while signed out gets no owner.
    - A game finished while signed in gets the owner.
    - `StatsFilter` gets `owner: string | null`. Every stat counts only the history entries of that
