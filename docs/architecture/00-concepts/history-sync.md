@@ -41,8 +41,9 @@ when the network comes back while the app is open, and after sign-in.
 **The cursor.** The server alone makes the cursor. The app stores it as an opaque string. It
 holds the watermark (the highest `syncedAt` pulled) and, while a pull pages, the
 `LastEvaluatedKey` of DynamoDB. Each call reads from 5 minutes before the watermark, at most
-500 rows. `more: true` means "call again". The full rules are decision 6 of
-[ADR-028](../adr/adr-028-history-sync.md).
+500 rows. `more: true` means "call again". A page that stops at exactly 500 rows still gives
+`more: true`. The next call reads no rows and takes the watermark from the key of that page. The
+full rules are decision 6 of [ADR-028](../adr/adr-028-history-sync.md).
 
 **The waiting list.** A history entry waits for the server while its `pushed_at` is null or
 differs from its `updated_at`. `pushed_at` holds the `updatedAt` that the server accepted, never a
@@ -97,6 +98,18 @@ app knows it at sign-in, also offline. A game finished while signed out has no o
 games of the account and stops the sync. A second account never sees or uploads the games of
 the first. When the server answers 410 `account_deleted`, the app signs out and keeps nothing of
 that account. The full rules are in [ADR-028](../adr/adr-028-history-sync.md).
+
+**The rows.** One DynamoDB table holds three kinds of row (ADR-028 decision 9). `expiresAt` is
+the one TTL attribute of the table, in epoch seconds.
+
+| Row | pk | sk | Fields besides the key |
+| --- | --- | --- | --- |
+| Identity | `IDENTITY#clerk#<sub>` | `IDENTITY` | `userId`, `createdAt`. A tombstone adds `deletedAt` and `expiresAt` |
+| Game | `USER#<userId>` | `GAME#<id>` | The history entry without `id`, and `syncedAt` |
+| Daily count | `USER#<userId>` | `COUNT#<yyyy-mm-dd>` | `writes`, `expiresAt` (the start of the UTC day plus 2 days) |
+
+Only game rows have `syncedAt`, so the index `bySynced` holds only game rows. The Lambda is in
+[`services/sync-api/`](../../../services/sync-api/README.md).
 
 **The cloud side.** Clerk signs the player in. The API Gateway checks the Clerk token. The Lambda
 maps the Clerk user ID to our own user ID and reads and writes one DynamoDB table

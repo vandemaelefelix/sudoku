@@ -14,8 +14,11 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `defaults.ts` | The function defaults: Node 24, arm64, 512 MB, 10 s, 1 month of log retention |
 | `budget-alerts.ts`, `budget.ts` | The monthly budget and its email alerts |
 | `clerk.ts` | The Clerk secret key of each stage with a Clerk instance |
+| `storage.ts` | The DynamoDB table `SyncTable`. Its layout comes from `services/sync-api/src/tableDesign.ts` |
+| `api.ts` | The HTTP API `SyncApi`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` |
+| `backend-settings.ts` | The throttle, the access log format, the audience and the issuer check of `api.ts`, and the point-in-time recovery of `storage.ts` |
 
-`config.ts`, `account.ts` and `budget-alerts.ts` have no SST globals. `just test-ts` runs their
+`config.ts`, `account.ts`, `budget-alerts.ts` and `backend-settings.ts` have no SST globals. `just test-ts` runs their
 tests with `node --test`.
 
 ## One-time setup
@@ -224,6 +227,25 @@ deploy of the stage:
 5. Clear the clipboard: `pbcopy < /dev/null`.
 
 Do not run `sst secret list` in a session with an agent. It prints the values in plain text.
+## The sync API
+
+`storage.ts` and `api.ts` deploy the sync API on every stage. The Lambda code is in
+[`services/sync-api/`](../services/sync-api/README.md).
+
+- A stage needs its Clerk issuer in `CLERK_ISSUER` of `config.ts`. Without it, the deploy fails
+  before it creates the API.
+- The deploy prints the output `apiUrl`. SST also writes it to `.sst/outputs.json`.
+- The throttle is 1 request per second with a burst of 10, on each route. Check it after a
+  deploy. Find the API ID in the `apiUrl`:
+
+  ```sh
+  AWS_PROFILE=sudoku aws apigatewayv2 get-stage --api-id <api id> --stage-name '$default'
+  ```
+
+  `DefaultRouteSettings` must show `ThrottlingRateLimit: 1` and `ThrottlingBurstLimit: 10`.
+
+- The access log keeps the request, the route, the status and the latency. It leaves out the IP
+  and the user agent (ADR-027, amendment "the sync API").
 
 ## The kill switch
 

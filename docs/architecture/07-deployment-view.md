@@ -32,5 +32,17 @@ in [`infra/README.md`](../../infra/README.md).
 The SST state lives in the account, in the buckets `sst-state-*` and `sst-asset-*`. SST creates
 them on the first deploy.
 
+## The sync API per stage
+
+Every stage has its own copy of these resources. `infra/storage.ts` and `infra/api.ts` create them.
+
+| Resource | Settings |
+| --- | --- |
+| DynamoDB table `SyncTable` | On demand. `pk` and `sk`, the local index `bySynced` on `syncedAt`, the TTL attribute `expiresAt`. Point-in-time recovery and deletion protection only in `production` |
+| Lambda `SyncApiFunction` | One function for every route. Node 24, arm64, 512 MB, 10 s. Linked to the table |
+| HTTP API `SyncApi` | `POST /v1/sync` behind the Clerk JWT authorizer (audience `sudoku-api`). 1 request per second with a burst of 10 on each route. No CORS. The access log has no IP and no user agent |
+
+A stage without a Clerk issuer in `infra/config.ts` fails the deploy.
+
 Open: local Xcode builds or EAS Build, and how TestFlight builds are cut. Decided when the app
 first runs on the device.
