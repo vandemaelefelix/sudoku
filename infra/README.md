@@ -14,9 +14,9 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `github-oidc-policy.ts`, `github-oidc.ts` | The GitHub OIDC provider, the two deploy roles and their trust policy. Only the account stage creates them |
 | `defaults.ts` | The function defaults: Node 24, arm64, 512 MB, 10 s, 1 month of log retention |
 | `budget-alerts.ts`, `budget.ts` | The monthly budget and its email alerts |
-| `clerk.ts` | The Clerk secret key of each stage with a Clerk instance |
+| `clerk.ts` | The Clerk secret key of each stage with a Clerk instance. `api.ts` links it to the Lambda for `DELETE /v1/account` |
 | `storage.ts` | The DynamoDB table `SyncTable`. Its layout comes from `services/sync-api/src/tableDesign.ts` |
-| `api.ts` | The HTTP API `SyncApi`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` |
+| `api.ts` | The HTTP API `SyncApi` with the routes `POST /v1/sync` and `DELETE /v1/account`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` (30 s timeout, linked to the table and `ClerkSecretKey`) |
 | `kill-switch.ts` | The SNS topic of the budget, its policy, the `kill-switch` Lambda and the alert email. Only the account stage creates them |
 | `kill-switch-settings.ts` | The flag name, the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
 | `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The deploy workflow of #109 will call it |

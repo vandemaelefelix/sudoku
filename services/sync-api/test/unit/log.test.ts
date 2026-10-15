@@ -20,3 +20,9 @@ describe('logLine', () => {
     expect(JSON.parse(logLine({ conflicts: 2 }))).toEqual({ conflicts: 2 })
   })
 })
+
+describe('logLine, delete account', () => {
+  it('keeps the deleted rows count', () => {
+    expect(JSON.parse(logLine({ deletedRows: 3 }))).toEqual({ deletedRows: 3 })
+  })
+})

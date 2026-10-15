@@ -11,6 +11,7 @@ export interface LogFields {
   noop?: number
   capped?: number
   conflicts?: number
+  deletedRows?: number
   changes?: number
   more?: boolean
   durationMs?: number
@@ -30,6 +31,7 @@ const ALLOWED: readonly (keyof LogFields)[] = [
   'noop',
   'capped',
   'conflicts',
+  'deletedRows',
   'changes',
   'more',
   'durationMs',

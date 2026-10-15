@@ -3,8 +3,9 @@ import { TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import type { HistoryEntry } from '@sudoku/sync-contract'
 import { DAILY_CAP, countExpiresAt, dayKey } from './dailyCount'
 import type { SyncDeps } from './deps'
+import { AccountDeleted } from './identity'
 import { toGameItem } from './items'
-import { countSk, userPk } from './tableDesign'
+import { countSk, identityKey, userPk } from './tableDesign'
 
 export interface PushResult {
   // Request order, each id once.
@@ -14,6 +15,11 @@ export interface PushResult {
   capped: number
   // Transaction attempts that met a TransactionConflict, retried or not.
   conflicts: number
+}
+
+export interface Owner {
+  sub: string
+  userId: string
 }
 
 type Outcome = 'stored' | 'noop' | 'capped' | 'conflict'
@@ -30,7 +36,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 // the request is still accepted.
 export async function push(
   deps: Pick<SyncDeps, 'db' | 'tableName' | 'sleep'>,
-  userId: string,
+  owner: Owner,
   entries: readonly HistoryEntry[],
   now: Date,
 ): Promise<PushResult> {
@@ -38,7 +44,7 @@ export async function push(
   const accepted = new Set<string>()
   for (const entry of entries) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- The cap stores entries in request order, so the writes run one by one.
-    const outcome = await writeEntry(deps, userId, entry, now, result)
+    const outcome = await writeEntry(deps, owner, entry, now, result)
     if (outcome === 'stored') result.stored++
     if (outcome === 'noop') result.noop++
     if (outcome === 'capped') result.capped++
@@ -52,7 +58,7 @@ export async function push(
 
 async function writeEntry(
   deps: Pick<SyncDeps, 'db' | 'tableName' | 'sleep'>,
-  userId: string,
+  { sub, userId }: Owner,
   entry: HistoryEntry,
   now: Date,
   result: PushResult,
@@ -79,6 +85,14 @@ async function writeEntry(
           ExpressionAttributeValues: { ':one': 1, ':cap': DAILY_CAP, ':expiresAt': countExpiresAt(now) },
         },
       },
+      {
+        // A delete that tombstones the identity after the read in sync() must stop this write (ADR-027 decision 10).
+        ConditionCheck: {
+          TableName: deps.tableName,
+          Key: identityKey(sub),
+          ConditionExpression: 'attribute_not_exists(deletedAt)',
+        },
+      },
     ],
   })
   for (let attempt = 0; attempt <= CONFLICT_RETRIES; attempt++) {
@@ -103,7 +117,8 @@ async function tryTransaction(deps: Pick<SyncDeps, 'db'>, command: TransactWrite
     return 'stored'
   } catch (error) {
     if (!(error instanceof TransactionCanceledException)) throw error
-    const [game, count] = error.CancellationReasons ?? []
+    const [game, count, identity] = error.CancellationReasons ?? []
+    if (identity?.Code === 'ConditionalCheckFailed') throw new AccountDeleted()
     // The server holds an equal or newer updatedAt, so the id counts as accepted.
     if (game?.Code === 'ConditionalCheckFailed') return 'noop'
     if (count?.Code === 'ConditionalCheckFailed') return 'capped'
