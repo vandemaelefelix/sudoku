@@ -15,8 +15,9 @@ const MAX_PASSES = 2
 
 type Key = { pk: string; sk: string }
 
-// DELETE /v1/account (ADR-027 decision 10). The order is binding: the Clerk user, the tombstone, the rows.
-// Every step is safe to repeat, so a failed call is retried whole. Writes the row count for the log into `fields`.
+// DELETE /v1/account (ADR-027 decision 10). The order is binding: the tombstone, the rows, the Clerk user.
+// Every step is safe to repeat, so a failed call is retried whole while the Clerk session is valid.
+// A Clerk failure leaves the player tombstoned: a sync answers 410 until a retry succeeds. Writes the row count for the log into `fields`.
 export async function deleteAccount(
   deps: SyncDeps,
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -25,12 +26,12 @@ export async function deleteAccount(
   const sub = event.requestContext.authorizer?.jwt?.claims?.sub
   if (typeof sub !== 'string' || sub === '') return unauthorized()
 
-  await deps.clerk.deleteUser(sub)
   const userId = await writeTombstone(deps, sub)
   if (userId) {
     fields.userId = userId
     fields.deletedRows = await deleteRows(deps, userId)
   }
+  await deps.clerk.deleteUser(sub)
   return { statusCode: 204 }
 }
 

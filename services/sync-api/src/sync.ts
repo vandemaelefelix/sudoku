@@ -49,7 +49,14 @@ export async function sync(
   }
 
   // Push before pull, so the response holds the own changes. One server time for the whole request.
-  const pushed = await push(deps, userId, request.entries, deps.now())
+  let pushed: Awaited<ReturnType<typeof push>>
+  try {
+    pushed = await push(deps, { sub, userId }, request.entries, deps.now())
+  } catch (error) {
+    // The delete tombstoned the player after the identity read.
+    if (error instanceof AccountDeleted) return refuse(fields, 'account_deleted')
+    throw error
+  }
   let pulled: Awaited<ReturnType<typeof pull>>
   try {
     pulled = await pull(deps, userId, cursor)

@@ -126,8 +126,9 @@ the one TTL attribute of the table, in epoch seconds.
 Only game rows have `syncedAt`, so the index `bySynced` holds only game rows. The Lambda is in
 [`services/sync-api/`](../../../services/sync-api/README.md).
 
-**Delete the account.** `DELETE /v1/account` runs three steps in this order: delete the Clerk
-user, turn the identity row into a tombstone, delete every row of the partition `USER#<userId>`.
+**Delete the account.** `DELETE /v1/account` runs three steps in this order: turn the identity row into a tombstone,
+delete every row of the partition `USER#<userId>`, delete the Clerk user. A failed step leaves the
+tombstone, so a sync answers 410 until a retry succeeds.
 The answer is 204, also for a second call. After it, a sync with the same `sub` gets 410
 `account_deleted`. The details are in the amendment "delete the account" of
 [ADR-027](../adr/adr-027-backend-platform.md).
@@ -179,7 +180,6 @@ flowchart LR
 | --- | --- |
 | Does AWS bill requests that the throttle turns away? If yes, the kill switch deletes the stage instead | Issue #108, at the first deploy of the kill switch |
 | Does the new AWS account allow a reserved concurrency of 2? If not, ask for a higher quota | Issue #108, at the first deploy |
-| A failed row delete after the Clerk delete leaves orphan rows. The player cannot retry, because Clerk ended the sessions. Add a sweeper if a log line shows it | After the first real use |
 | The leaderboard: best-time rows, a global index and display names | A later ADR |
 | Shared scans for training: an upload link to a private S3 bucket, an explicit tap per scan (SUD-02) | A later ADR |
 

@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { ClerkError, createClerkClient } from '../../src/clerk'
+import { ClerkError, createClerkClient, lazyClerkClient } from '../../src/clerk'
 
 type Call = [string, RequestInit]
 
-const reply = (status: number) => {
+const NOT_FOUND = '{"errors":[{"message":"Resource not found","code":"resource_not_found"}]}'
+
+const reply = (status: number, body = '{"errors":[{"message":"secret detail"}]}') => {
   const calls: Call[] = []
   const fetchFake = async (url: string, init: RequestInit) => {
     calls.push([url, init])
-    return new Response('{"errors":[{"message":"secret detail"}]}', { status })
+    return new Response(body, { status })
   }
   return { calls, fetchFake }
 }
@@ -31,8 +33,24 @@ describe('createClerkClient', () => {
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer sk_test_key')
   })
 
-  it.each([200, 404])('treats %i as deleted', async (status) => {
-    await expect(createClerkClient('k', reply(status).fetchFake).deleteUser('u')).resolves.toBeUndefined()
+  it('treats 200 as deleted', async () => {
+    await expect(createClerkClient('k', reply(200).fetchFake).deleteUser('u')).resolves.toBeUndefined()
+  })
+
+  it('treats 404 with the code resource_not_found as already deleted', async () => {
+    await expect(createClerkClient('k', reply(404, NOT_FOUND).fetchFake).deleteUser('u')).resolves.toBeUndefined()
+  })
+
+  it.each([
+    ['another code', '{"errors":[{"code":"route_not_found"}]}'],
+    ['no JSON', '<html>Not Found</html>'],
+    ['an empty body', ''],
+  ])('rejects a 404 with %s', async (_name, body) => {
+    const error = await createClerkClient('k', reply(404, body).fetchFake)
+      .deleteUser('u')
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ClerkError)
+    expect((error as ClerkError).message).toBe('Clerk answered 404.')
   })
 
   it.each([401, 429, 500])('rejects with ClerkError on %i, with the status only', async (status) => {
@@ -49,5 +67,22 @@ describe('createClerkClient', () => {
 
   it('aborts after the timeout', async () => {
     await expect(createClerkClient('k', hanging, 20).deleteUser('u')).rejects.toBeInstanceOf(ClerkError)
+  })
+})
+
+describe('lazyClerkClient', () => {
+  it('rejects with ClerkError when the stage has no Clerk secret', async () => {
+    const client = lazyClerkClient(() => {
+      throw new Error('ClerkSecretKey is not linked.')
+    })
+    const error = await client.deleteUser('u').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ClerkError)
+    expect((error as ClerkError).message).toBe('No Clerk secret is linked.')
+  })
+
+  it('reads the secret only when it deletes', async () => {
+    let reads = 0
+    lazyClerkClient(() => String(++reads))
+    expect(reads).toBe(0)
   })
 })

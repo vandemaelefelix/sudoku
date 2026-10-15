@@ -270,6 +270,8 @@ amendment "delete the account" of
 1. **The tombstone keeps `userId` and `createdAt`.** It adds `deletedAt` and `expiresAt`. The
    delete needs the `userId` to remove the rows.
 2. **The server deletes the rows of both kinds.** The game rows and the daily count rows share
-   the partition `USER#<userId>`.
+   the partition `USER#<userId>`. The tombstone comes first and the Clerk user last, so no row
+   stays after a failed step and a retry. A push refuses to write after the tombstone: it answers
+   410 `account_deleted`.
 3. **The app flow is: the API call first, then the local cleanup, then the sign-out.** The app
    half follows in a later change.

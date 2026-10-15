@@ -3,7 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
 import { Resource } from 'sst'
-import { createClerkClient } from './clerk'
+import { lazyClerkClient } from './clerk'
 import type { SyncDeps } from './deps'
 import type { Response } from './http'
 import { consoleLogger } from './log'
@@ -25,7 +25,7 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer): P
     newUserId: randomUUID,
     log: consoleLogger,
     // Lazy: a sync never reads the secret.
-    clerk: { deleteUser: (sub) => createClerkClient(clerkSecret()).deleteUser(sub) },
+    clerk: lazyClerkClient(clerkSecret),
   }
   return route(deps, event)
 }

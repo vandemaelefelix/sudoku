@@ -1,10 +1,19 @@
-import { BatchWriteCommand, GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import {
+  BatchWriteCommand,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  ScanCommand,
+  TransactWriteCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { SyncDeps } from '../../src/deps'
-import { ClerkError } from '../../src/clerk'
+import { ClerkError, lazyClerkClient } from '../../src/clerk'
 import type { LogFields } from '../../src/log'
 import { route } from '../../src/route'
-import { countSk, identityKey, userPk } from '../../src/tableDesign'
+import { BY_SYNCED, countSk, identityKey, userPk } from '../../src/tableDesign'
+import { entryWithId } from '../fixtures'
 import { syncEvent } from './event'
 import { seedGames, times } from './seed'
 import { createTestTable, type TestTable } from './table'
@@ -40,6 +49,17 @@ describe('DELETE /v1/account', () => {
           KeyConditionExpression: 'pk = :pk',
           ExpressionAttributeValues: { ':pk': userPk(userId) },
           ConsistentRead: true,
+        }),
+      )
+    ).Items ?? []
+  const bySynced = async (userId: string) =>
+    (
+      await table.db.send(
+        new QueryCommand({
+          TableName: table.tableName,
+          IndexName: BY_SYNCED,
+          KeyConditionExpression: 'pk = :pk',
+          ExpressionAttributeValues: { ':pk': userPk(userId) },
         }),
       )
     ).Items ?? []
@@ -90,6 +110,8 @@ describe('DELETE /v1/account', () => {
   it('deletes the Clerk user, writes the tombstone and deletes every row', async () => {
     reset()
     await seedPlayer('sub_a', 'user-a', 60)
+    expect((await rows('user-a')).map((row) => row.sk)).toContain(countSk('2026-10-15'))
+    expect(await bySynced('user-a')).toHaveLength(60)
     const response = await del('sub_a')
     expect(response.statusCode).toBe(204)
     expect(response.body ?? '').toBe('')
@@ -102,6 +124,7 @@ describe('DELETE /v1/account', () => {
       expiresAt: NOW.getTime() / 1000 + 30 * DAY,
     })
     expect(await rows('user-a')).toEqual([])
+    expect(await bySynced('user-a')).toEqual([])
     expect(logged.at(-1)).toMatchObject({
       status: 204,
       userId: 'user-a',
@@ -109,7 +132,7 @@ describe('DELETE /v1/account', () => {
     })
   })
 
-  it('calls Clerk first, while the identity row is still live and the rows exist', async () => {
+  it('calls Clerk last, after the tombstone and the row delete', async () => {
     reset()
     await seedPlayer('sub_order', 'user-order', 3)
     let seen: { deletedAt: unknown; rows: number } | undefined
@@ -122,7 +145,7 @@ describe('DELETE /v1/account', () => {
       },
     }
     await del('sub_order')
-    expect(seen).toEqual({ deletedAt: undefined, rows: 4 })
+    expect(seen).toEqual({ deletedAt: NOW.toISOString(), rows: 0 })
   })
 
   it('deletes a large history in pages', async () => {
@@ -185,7 +208,7 @@ describe('DELETE /v1/account', () => {
     expect(item?.expiresAt).toBe(later.getTime() / 1000 + 30 * DAY)
   })
 
-  it('answers 500 and changes nothing when Clerk fails, then succeeds on a retry', async () => {
+  it('keeps the tombstone when Clerk fails, answers 410 to a sync, and a retry succeeds', async () => {
     reset()
     await seedPlayer('sub_fail', 'user-fail', 3)
     clerk = {
@@ -194,12 +217,35 @@ describe('DELETE /v1/account', () => {
       },
     }
     expect((await del('sub_fail')).statusCode).toBe(500)
-    expect((await identity('sub_fail'))?.deletedAt).toBeUndefined()
-    expect(await rows('user-fail')).toHaveLength(4)
     expect(logged.at(-1)?.errorName).toBe('ClerkError')
+    expect((await identity('sub_fail'))?.deletedAt).toBe(NOW.toISOString())
+    expect(await rows('user-fail')).toEqual([])
+    expect((await sync('sub_fail')).statusCode).toBe(410)
     reset()
     expect((await del('sub_fail')).statusCode).toBe(204)
-    expect(await rows('user-fail')).toEqual([])
+    expect(clerkCalls).toEqual(['sub_fail'])
+  })
+
+  it('writes nothing when the tombstone write fails, and a retry succeeds', async () => {
+    reset()
+    await seedPlayer('sub_tomb', 'user-tomb', 3)
+    sendWrap = (db) =>
+      new Proxy(db, {
+        get(target, prop) {
+          if (prop !== 'send') return Reflect.get(target, prop)
+          return async (command: unknown) => {
+            if (command instanceof UpdateCommand) throw new Error('boom')
+            return target.send(command as never)
+          }
+        },
+      })
+    expect((await del('sub_tomb')).statusCode).toBe(500)
+    expect(clerkCalls).toEqual([])
+    expect((await identity('sub_tomb'))?.deletedAt).toBeUndefined()
+    expect(await rows('user-tomb')).toHaveLength(4)
+    sendWrap = undefined
+    expect((await del('sub_tomb')).statusCode).toBe(204)
+    expect(await rows('user-tomb')).toEqual([])
   })
 
   it('keeps the tombstone when the row delete fails, and a retry finishes', async () => {
@@ -216,12 +262,13 @@ describe('DELETE /v1/account', () => {
         },
       })
     expect((await del('sub_rows')).statusCode).toBe(500)
-    expect(clerkCalls).toEqual(['sub_rows'])
+    expect(clerkCalls).toEqual([])
     expect((await identity('sub_rows'))?.userId).toBe('user-rows')
     expect((await identity('sub_rows'))?.deletedAt).toBeDefined()
     expect(await rows('user-rows')).toHaveLength(6)
     sendWrap = undefined
     expect((await del('sub_rows')).statusCode).toBe(204)
+    expect(clerkCalls).toEqual(['sub_rows'])
     expect(await rows('user-rows')).toEqual([])
   })
 
@@ -240,6 +287,48 @@ describe('DELETE /v1/account', () => {
       }),
     )
     expect(Items).toHaveLength(1)
+  })
+
+  it('writes no row when the tombstone lands between the identity read and the push', async () => {
+    reset()
+    await seedPlayer('sub_race', 'user-race', 0)
+    sendWrap = (db) => {
+      let tombstoned = false
+      return new Proxy(db, {
+        get(target, prop) {
+          if (prop !== 'send') return Reflect.get(target, prop)
+          return async (command: unknown) => {
+            if (command instanceof TransactWriteCommand && !tombstoned) {
+              tombstoned = true
+              await target.send(
+                new UpdateCommand({
+                  TableName: table.tableName,
+                  Key: identityKey('sub_race'),
+                  UpdateExpression: 'SET deletedAt = :now',
+                  ExpressionAttributeValues: { ':now': NOW.toISOString() },
+                }),
+              )
+            }
+            return target.send(command as never)
+          }
+        },
+      })
+    }
+    const response = await route(deps(), syncEvent({ entries: [entryWithId(1)], cursor: null }, { sub: 'sub_race' }))
+    expect(response.statusCode).toBe(410)
+    expect(JSON.parse(String(response.body)).code).toBe('account_deleted')
+    // Only the seeded count row stays: the push wrote no game row and did not raise the count.
+    expect((await rows('user-race')).map((row) => [row.sk, row.count])).toEqual([[countSk('2026-10-15'), 2]])
+  })
+
+  it('answers 500 with errorName ClerkError on a stage without a Clerk secret', async () => {
+    reset()
+    await seedPlayer('sub_noclerk', 'user-noclerk', 1)
+    clerk = lazyClerkClient(() => {
+      throw new Error('ClerkSecretKey is not linked.')
+    })
+    expect((await del('sub_noclerk')).statusCode).toBe(500)
+    expect(logged.at(-1)?.errorName).toBe('ClerkError')
   })
 
   it('leaves the rows of another player', async () => {

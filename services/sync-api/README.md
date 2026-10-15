@@ -13,8 +13,8 @@ the other devices of that player. The decisions are in
 | `src/handler.ts` | The Lambda entry. It builds the dependencies and calls `route()`. The only file that imports `sst` |
 | `src/route.ts` | The dispatch on the route key. One log line per request. A 500 on an unexpected error |
 | `src/sync.ts` | The steps of one sync, in the order of the table below |
-| `src/account.ts` | `DELETE /v1/account`: the Clerk user, the tombstone, then the rows in pages |
-| `src/clerk.ts` | The Clerk Backend API call that deletes a user. 200 and 404 mean deleted |
+| `src/account.ts` | `DELETE /v1/account`: the tombstone, the rows in pages, then the Clerk user |
+| `src/clerk.ts` | The Clerk Backend API call that deletes a user. 200, or 404 with `resource_not_found`, means deleted |
 | `src/identity.ts` | Find or create the identity row. A tombstone gives `AccountDeleted` |
 | `src/push.ts` | The write rule and the daily count: one transaction per history entry |
 | `src/pull.ts` | The query on `bySynced` and the next cursor |
@@ -50,11 +50,11 @@ The push runs before the pull, so the response holds the own changes of the call
 
 | Answer | When |
 | --- | --- |
-| 204, no body | The Clerk user, the tombstone and the rows are deleted. A second call also gives 204 |
+| 204, no body | The tombstone, the rows and the Clerk user are done. A second call also gives 204 |
 | 401 | The token has no `sub` |
-| 500 | Clerk failed, or a DynamoDB call failed. A retry of the whole call is safe |
+| 500 | Clerk failed, or a DynamoDB call failed. A retry of the whole call is safe. After a Clerk failure the player stays tombstoned: a sync answers 410 |
 
-The route reads the secret `ClerkSecretKey`. It never logs the `sub`, the token or the Clerk answer.
+The route needs Clerk on the stage: it reads the secret `ClerkSecretKey`, which `infra/api.ts` links wherever the API exists. Without the secret the call answers 500 with the log name `ClerkError`. It never logs the `sub`, the token or the Clerk answer.
 
 ## Logging
 
