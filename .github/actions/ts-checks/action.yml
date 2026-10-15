@@ -1,0 +1,16 @@
+name: ts-checks
+description: The TypeScript checks that ci-ts and the deploy workflows share. Run actions/checkout first.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-ts
+    - run: just typecheck
+      shell: bash
+    - run: just lint-ts
+      shell: bash
+    - run: just boundaries
+      shell: bash
+    - run: just test-ts
+      shell: bash
+    - run: pnpm typecheck:infra
+      shell: bash

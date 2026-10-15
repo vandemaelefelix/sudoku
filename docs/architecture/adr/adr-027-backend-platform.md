@@ -353,3 +353,26 @@ The build of the kill switch makes decision 9 concrete. The code is in
 10. **Reassessment triggers.** The account limit is 102 or more: reserve 2 for `sync-api`. A
     throttled request is billed: delete the stage in the kill switch, and `api-on` runs
     `sst deploy` to create it again.
+
+## Amendment 2026-10-15: CI deploys
+
+This amendment makes decision 8 concrete. The reasons for the workflow design are in
+[ADR-010](adr-010-testing-and-ci.md), amendment "CI also deploys the backend".
+
+1. **Two roles.** `sudoku-github-dev` deploys `dev`. `sudoku-github-production` deploys
+   `production`. Each trusts one workflow file on `develop`. A change to the dev workflow cannot
+   reach `production`. The ARNs are the repository variables `AWS_ROLE_ARN_DEV` and
+   `AWS_ROLE_ARN_PRODUCTION`.
+2. **Both roles have `AdministratorAccess`.** SST creates IAM roles, Lambda functions, API
+   Gateway, DynamoDB, SSM, SNS and budgets. Each new feature adds resources. A narrow policy
+   breaks with each feature. A role that can create roles can also reach admin. The trust policy
+   is the control. The account holds only this project (SUD-11). No access key exists. The
+   session lasts 1 hour at most.
+3. **`production` creates the OIDC provider and the two roles**, in `infra/github-oidc.ts`
+   (decision 5 of the account amendment). The roles must exist before CI can take them. So the
+   second `production` deploy runs from the laptop, like the first one.
+4. **The deploy workflows run three checks before any `sst` command.** The role is taken. The
+   account is compared with `AWS_ACCOUNT_ID` (layer 1 of the account guard, now also in CI). The
+   kill-switch flag of the stage is read (decision 9 of the kill switch amendment).
+5. **Reassessment triggers.** A second project uses the account. A collaborator gets write access.
+   Either one makes `AdministratorAccess` too wide. Then write a policy for the deploy roles.

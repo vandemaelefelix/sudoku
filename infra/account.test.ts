@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { accountProblem, isStage } from './account.ts'
+import { accountProblem, callerAccountArgs, isStage } from './account.ts'
 
 describe('accountProblem', () => {
   it('accepts the expected account', () => {
@@ -30,5 +30,15 @@ describe('isStage', () => {
   it('refuses other names', () => {
     assert.equal(isStage('prod'), false)
     assert.equal(isStage(''), false)
+  })
+})
+
+describe('callerAccountArgs', () => {
+  it('uses the profile sudoku on the laptop', () => {
+    assert.deepEqual(callerAccountArgs(false).slice(0, 4), ['sts', 'get-caller-identity', '--profile', 'sudoku'])
+  })
+
+  it('uses the ambient role credentials in CI', () => {
+    assert.ok(!callerAccountArgs(true).includes('--profile'))
   })
 })

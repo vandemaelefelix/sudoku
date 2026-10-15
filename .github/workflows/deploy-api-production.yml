@@ -1,0 +1,52 @@
+name: deploy-api-production
+# Deploys the stage production. Only a manual run starts it. Only the owner has write access, so starting
+# the run is the approval. The repository is private on the Free plan, which has no environments with
+# a required reviewer (ADR-010, amendment). Put "environment: production" on the deploy job when that changes.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: deploy-api-production
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    # The role trusts only this workflow file on develop. This check gives a clear failure before that.
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/ts-checks
+      - uses: ./.github/actions/aws-guard
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN_PRODUCTION }}
+          stage: production
+      - name: Show what the deploy changes
+        run: |
+          pnpm exec sst diff --stage production --print-logs 2>&1 | tee diff.txt
+          { echo '## sst diff, stage production'; echo '```'; cat diff.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: plan
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-ts
+      - uses: ./.github/actions/aws-guard
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN_PRODUCTION }}
+          stage: production
+      - run: pnpm exec sst deploy --stage production --print-logs

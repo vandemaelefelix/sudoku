@@ -19,6 +19,7 @@ on:
       - .dependency-cruiser.cjs
       - justfile
       - .github/workflows/ci-ts.yml
+      - .github/actions/**
   pull_request:
     paths: *paths
 
@@ -32,24 +33,11 @@ jobs:
         ports:
           - 8000:8000
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - uses: extractions/setup-just@v4
-      - run: pnpm install --frozen-lockfile
-      # boundaries reads the types that sst install writes to .sst/. It needs no AWS credentials. app() skips layer 2 of the account guard in CI (ADR-027).
-      - run: pnpm exec sst install --stage felix
-      - run: just typecheck
-      - run: just lint-ts
-      - run: just boundaries
-      - run: just test-ts
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/ts-checks
       - run: pnpm --filter @sudoku/sync-api test:db
         env:
           DYNAMODB_ENDPOINT: http://localhost:8000
-      - run: pnpm typecheck:infra
       # The model is not in git (ADR-007, amendment). Metro needs a file to bundle; its content does not matter here.
       - run: touch apps/mobile/assets/models/cell-classifier.tflite
       - run: just bundle

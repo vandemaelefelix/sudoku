@@ -10,7 +10,8 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `../sst.config.ts` | The app: the stages, the removal policy, the tags and the AWS provider. It imports one file per area |
 | `config.ts` | The account ID, the region, the stages and the Clerk issuer of each stage |
 | `account.ts` | The account guard checks |
-| `check-account.ts` | Layer 1 of the account guard. The `just` recipes run it before SST |
+| `check-account.ts` | Layer 1 of the account guard. The `just` recipes and the deploy workflows run it before SST |
+| `github-oidc-policy.ts`, `github-oidc.ts` | The GitHub OIDC provider, the two deploy roles and their trust policy. Only the account stage creates them |
 | `defaults.ts` | The function defaults: Node 24, arm64, 512 MB, 10 s, 1 month of log retention |
 | `budget-alerts.ts`, `budget.ts` | The monthly budget and its email alerts |
 | `clerk.ts` | The Clerk secret key of each stage with a Clerk instance |
@@ -23,7 +24,7 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `api-on.ts` | Turns a stopped stage on again. `just api-on` runs it |
 | `backend-settings.ts` | The throttle, the access log format, the audience and the issuer check of `api.ts`, and the point-in-time recovery of `storage.ts` |
 
-`config.ts`, `account.ts`, `budget-alerts.ts` and `backend-settings.ts` have no SST globals. `just test-ts` runs their
+`config.ts`, `account.ts`, `budget-alerts.ts`, `github-oidc-policy.ts` and `backend-settings.ts` have no SST globals. `just test-ts` runs their
 tests with `node --test`.
 
 ## One-time setup
@@ -88,16 +89,67 @@ depend on it.
 | `dev` | GitHub Actions, on each merge to `develop` | `remove` | No |
 | `production` | GitHub Actions, from a manual run | `retain`, and `protect` | Yes |
 
-The first `production` deploy runs once from the laptop, before the CI deploys exist. It holds
-only the budget. Every later `production` deploy comes from GitHub Actions (ADR-027).
+The first `production` deploy runs from the laptop. It holds only the budget. The second one
+runs from the laptop too. It creates the OIDC provider and the deploy roles. Every later
+`production` deploy comes from GitHub Actions (ADR-027).
 
 `sst.config.ts` refuses any other stage name. A typo cannot create a fourth copy.
 
-An account-wide resource exists once per account: the budget, and later the alert topic and the
+An account-wide resource exists once per account: the budget, the alert topic and the
 GitHub OIDC provider. Only `production` creates them. One budget per stage would send three emails
 per alert.
 
 Every resource that SST deploys gets the tags `project: sudoku` and `stage: <stage>`.
+
+## Deploys from GitHub Actions
+
+GitHub stores no AWS key. A workflow takes a role through OIDC (ADR-027, ADR-010).
+
+| Workflow | Starts | Stage | Role variable |
+| --- | --- | --- | --- |
+| `deploy-api-dev.yml` | A push to `develop` that changes a backend file | `dev` | `AWS_ROLE_ARN_DEV` |
+| `deploy-api-production.yml` | A manual run, from `develop` | `production` | `AWS_ROLE_ARN_PRODUCTION` |
+
+Each deploy runs these steps in this order:
+
+1. The TypeScript checks (`.github/actions/ts-checks`).
+2. The role, the account check and the kill-switch check (`.github/actions/aws-guard`).
+3. `sst diff`. The output is in the summary of the run.
+4. `sst deploy`.
+
+Read a failed run from the top:
+
+- "Could not assume role": the variable is missing or wrong, or the workflow file or the branch
+  does not match the trust policy in `github-oidc-policy.ts`.
+- "The AWS credentials belong to account ...": the role is in another account. Fix the variable.
+- "stopped by the kill switch": run `just api-on <stage>` on the laptop.
+- "Unexpected error occurred": the workflow passes `--print-logs`. Read the lines above it.
+
+The trust policy of each role needs these claims (`github-oidc-policy.ts`):
+
+| Claim | Value |
+| --- | --- |
+| `aud` | `sts.amazonaws.com` |
+| `sub` | `repo:vandemaelefelix@32290789/sudoku@1412094169:ref:refs/heads/develop` |
+| `repository_id` | `1412094169` |
+| `job_workflow_ref` | `vandemaelefelix/sudoku/.github/workflows/<file>@refs/heads/develop` |
+
+The repository uses immutable subject claims, so the `sub` holds the owner ID and the repository ID. The IDs
+are in `config.ts`. Read the setting with `gh api repos/vandemaelefelix/sudoku/actions/oidc/customization/sub`.
+
+GitHub documents `job_workflow_ref` for reusable workflows. It is believed to be present in a plain workflow too, but this is
+not verified. Check it on the first run of `deploy-api-dev.yml`. If "Could not assume role" appears and the IDs are right,
+the claim may be missing. Then take this fallback. It is a human-only repository setting. Do not let an agent run it.
+
+1. Call `PUT /repos/vandemaelefelix/sudoku/actions/oidc/customization/sub` with `include_claim_keys` that includes `job_workflow_ref`.
+2. Match on `sub` in the trust policy, and drop the `job_workflow_ref` condition.
+
+The repository is private on the Free plan, so the production workflow has no environment and no
+required reviewer. Starting the run is the approval. See ADR-010, amendment "CI also deploys the
+backend".
+
+An SST deploy that stops half way can leave a lock in the state. Remove it on the laptop with
+`AWS_PROFILE=sudoku pnpm exec sst unlock --stage <stage>`.
 
 ## The account guard
 
@@ -108,6 +160,9 @@ The guard stops a deploy to any account other than the personal one. It has thre
 | 1 | The `just` recipes: `env -u ...` and `check-account.ts` | `AWS_*` variables in the shell. A profile `sudoku` that points at the wrong account. It runs before SST writes its state bucket |
 | 2 | `app()` in `sst.config.ts` | A direct `sst` command with a different `AWS_PROFILE` or with access keys in the shell. It runs before the SST bootstrap |
 | 3 | `run()` in `sst.config.ts`: `assertPersonalAccount()` | Every other path, also CI. It runs before any resource |
+
+In CI, `check-account.ts` is layer 1. It reads the account of the role credentials. The action
+`aws-guard` runs it.
 
 SST shows a layer 2 failure only as "Unexpected error occurred". Add `--print-logs` to see the
 message.
