@@ -86,4 +86,16 @@ The time played is saved with each move. Time after the last move and before the
 
 [ADR-028](adr-028-history-sync.md) amends this ADR. Migration 5 adds `owner_id` and
 `pushed_at` to `game_history` and creates `sync_state`. `HistoryRepository` gets `pending`,
-`markPushed` and `upsertRemote`. The other points stay.
+`markPushed`, `upsertRemote` and `adoptUnowned`. These points change:
+
+- `list`, `bestTimes` and `clear` take the owner. They use only the history entries of that owner.
+- `clear` sets `updated_at` to the later of now and 1 ms after the old `updated_at`. So a history
+  entry from a clock ahead still gets a newer `updatedAt`, and the server stores the soft delete.
+- `adoptUnowned` takes only the live history entries. A soft-deleted entry without an owner never
+  reached the server, so it stays without an owner.
+- `sync_state` is an exception to point 3. It holds single values by key, such as the cursor, and
+  never syncs. So it has no UUID and no timestamps.
+- Point 5 of the first tables applies to every write. The history writes use the same queue as the
+  saves, because the Jest adapter and the phone have no busy timeout.
+
+The other points stay.

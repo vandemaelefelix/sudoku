@@ -49,6 +49,27 @@ differs from its `updated_at`. `pushed_at` holds the `updatedAt` that the server
 clock time. The server accepts an id when it stores the history entry, or when it already holds an
 equal or newer `updatedAt` for that id. So a lost response is harmless.
 
+**The sync contract.** The zod schemas in `packages/sync-contract/` define every body of
+`POST /v1/sync`. The app and the `sync-api` Lambda import them. The package depends only on zod.
+
+| Schema | Holds | Limits |
+| --- | --- | --- |
+| History entry | `schemaVersion`, `id`, `level`, `source`, `result`, `seed`, `playedMs`, `mistakes`, `hintsUsed`, `finishedAt`, `createdAt`, `updatedAt`, `deletedAt` | `schemaVersion` is `1`. `id` is a UUID. Numbers are integers, 0 or more. `seed` is null or at most 4294967295. Times are UTC ISO 8601 with 3 decimals |
+| Sync request | `entries`, `cursor` | At most 100 history entries. The cursor is null or 1 to 1024 characters |
+| Sync response | `acceptedIds`, `changes`, `cursor`, `more` | At most 100 accepted ids and 500 changes |
+| Error body | `code`, `message` | The message has 1 to 500 characters. It never repeats the request or personal data |
+
+The owner and `syncedAt` are not on the wire. The server takes the player from the token and
+stamps `syncedAt` itself. The error codes come from decision 8 of ADR-028:
+
+| Status | Code |
+| --- | --- |
+| 400 | `invalid_request` |
+| 400 | `invalid_cursor` |
+| 410 | `account_deleted` |
+
+API Gateway sends its own body for a 401 and a 429. So the app reads the status code first.
+
 **The daily count.** The server stores at most 200 history entries per player per day. At the cap
 it stores what fits and still runs the pull. The other history entries wait for the next day. A
 429 comes only from the API throttle or the kill switch.

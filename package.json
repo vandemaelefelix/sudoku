@@ -7,7 +7,7 @@
     "lint": "oxlint --deny-warnings",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "boundaries": "depcruise apps/mobile/index.ts apps/mobile/devChecks.ts apps/mobile/src packages/sudoku-core/src --config .dependency-cruiser.cjs",
+    "boundaries": "depcruise apps/mobile/index.ts apps/mobile/devChecks.ts apps/mobile/src packages/sudoku-core/src packages/sync-contract/src --config .dependency-cruiser.cjs",
     "typecheck:infra": "tsc -p tsconfig.infra.json"
   },
   "devDependencies": {

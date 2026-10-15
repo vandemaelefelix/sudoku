@@ -55,7 +55,7 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
 | ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints, later. v1: the level comes from the number of givens, a hint reveals a random cell, no pool (amendment 2026-10-12). A scanned puzzle takes the level of the nearest givens target (amendment 2026-10-12). The app draws seeds below 1 000 000. The seed is the puzzle number (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
-| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. The seed is stored. The best time counts only generated games (amendment 2026-10-12). Amended by ADR-023: the `abandoned` result and `StatsRepository`. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
+| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. The seed is stored. The best time counts only generated games (amendment 2026-10-12). Amended by ADR-023: the `abandoned` result and `StatsRepository`. Amended by ADR-028: owner, waiting list, clear rule, `adoptUnowned` scope, shared write queue. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
 
 ### Backend
 

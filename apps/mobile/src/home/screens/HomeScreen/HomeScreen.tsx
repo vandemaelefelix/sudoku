@@ -7,12 +7,14 @@ import { useConfirmReplace } from '@/home/hooks/useConfirmReplace'
 import { loadHomeStats, type HomeStats } from '@/home/utils/homeStats.utils'
 import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
+import { useOwner } from '@/storage/hooks/useOwner'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
 export function HomeScreen() {
   const router = useRouter()
   const { puzzles, stats } = useGameStorage()
   const { includeScanned } = useIncludeScanned()
+  const owner = useOwner()
   const confirmReplace = useConfirmReplace()
   // peek() knows the game when a screen before read or started it. Else the menu waits for the focus read.
   const [continueLevel, setContinueLevel] = useState<Level | null | undefined>(() => {
@@ -36,7 +38,7 @@ export function HomeScreen() {
           // The menu waits for an answer. Without one it shows without Continue: a new game still works.
           if (live) setContinueLevel(null)
         })
-      loadHomeStats(stats, includeScanned)
+      loadHomeStats(stats, { includeScanned, owner })
         .then((loaded) => {
           if (live) setHomeStats(loaded)
         })
@@ -48,7 +50,7 @@ export function HomeScreen() {
       return () => {
         live = false
       }
-    }, [puzzles, stats, includeScanned]),
+    }, [puzzles, stats, includeScanned, owner]),
   )
 
   const once = useCallback(async (task: () => Promise<void>) => {
@@ -71,7 +73,7 @@ export function HomeScreen() {
       if (current !== null && !(await confirmReplace())) return
       const { game, seed } = newGeneratedGame(level, Math.random)
       // The game screen opens on peek() while the write runs, so the push follows the tap at once.
-      const starting = puzzles.start({ level, source: 'generated', seed, game })
+      const starting = puzzles.start({ level, source: 'generated', seed, game, owner })
       router.push('/game')
       await starting
     })

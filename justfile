@@ -18,7 +18,7 @@ app:
 # Run every test
 test: test-ts test-ml
 
-# Vitest (core), Jest (app) and the lint plugin test
+# Vitest (core, sync contract), Jest (app) and the lint plugin test
 test-ts:
     pnpm -r test
     node --test 'scripts/oxlint/*.test.mjs'
@@ -44,7 +44,7 @@ format:
 format-check:
     pnpm format:check
 
-# SUD-03, SUD-04 and SUD-05
+# SUD-03, SUD-04, SUD-05 and the sync contract (ADR-028)
 boundaries:
     pnpm boundaries
 

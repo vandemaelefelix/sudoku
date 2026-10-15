@@ -28,6 +28,14 @@ export type HistoryEntry = {
   readonly finishedAt: string
 }
 
+/** A history entry with the timestamps that the sync compares (ADR-028). All times are ISO 8601, UTC. */
+export type HistoryRecord = HistoryEntry & {
+  readonly createdAt: string
+  readonly updatedAt: string
+  /** Null for a live entry. A deleted entry still syncs, so other devices delete it too. */
+  readonly deletedAt: string | null
+}
+
 /** Tests give fixed ids and times. The app gives UUIDs and the clock. */
 export type StorageDeps = {
   newId: () => string
