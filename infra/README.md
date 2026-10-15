@@ -87,7 +87,7 @@ An account-wide resource exists once per account: the budget, and later the aler
 GitHub OIDC provider. Only `production` creates them. One budget per stage would send three emails
 per alert.
 
-Every resource gets the tags `project: sudoku` and `stage: <stage>`.
+Every resource that SST deploys gets the tags `project: sudoku` and `stage: <stage>`.
 
 ## The account guard
 

@@ -1,4 +1,4 @@
-import { BUDGET_LIMIT_USD, budgetNotifications } from './budget-alerts.ts'
+import { BUDGET_COST_TYPES, BUDGET_LIMIT_USD, budgetNotifications } from './budget-alerts.ts'
 import { ACCOUNT_STAGE } from './config.ts'
 
 // The budget covers the whole account, with no cost filter: the account holds only this project (SUD-11).
@@ -12,6 +12,7 @@ if ($app.stage === ACCOUNT_STAGE) {
     limitAmount: String(BUDGET_LIMIT_USD),
     limitUnit: 'USD',
     timeUnit: 'MONTHLY',
+    costTypes: BUDGET_COST_TYPES,
     notifications: budgetNotifications(email.value),
   })
 }

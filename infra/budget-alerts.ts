@@ -3,6 +3,9 @@ export const BUDGET_LIMIT_USD = 10
 export const FORECAST_ALERT_USD = 3
 export const ACTUAL_ALERT_USD = 6
 
+// The alerts compare the spend before credits and refunds. A credit must not hide a cost spike (SUD-11).
+export const BUDGET_COST_TYPES = { includeCredit: false, includeRefund: false } as const
+
 export interface BudgetNotification<T> {
   comparisonOperator: 'GREATER_THAN'
   threshold: number

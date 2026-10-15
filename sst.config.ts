@@ -1,15 +1,13 @@
 // oxlint-disable-next-line typescript/triple-slash-reference -- SST forbids top-level imports here. The editor needs this file for the SST globals.
 /// <reference path="./.sst/platform/config.d.ts" />
 
-// SST forbids top-level imports in this file. These must equal STAGES and AWS_REGION in infra/config.ts.
-// run() checks the stage against infra/config.ts.
-const STAGES = ['felix', 'dev', 'production']
-const REGION = 'eu-west-1'
-
+// SST forbids top-level imports in this file, so app() and run() import dynamically.
 export default $config({
-  app(input) {
+  async app(input) {
+    const { AWS_REGION, STAGES } = await import('./infra/config.ts')
+    const { isStage } = await import('./infra/account.ts')
     const stage = input?.stage
-    if (!stage || !STAGES.includes(stage)) {
+    if (!stage || !isStage(stage)) {
       throw new Error(`Unknown stage "${stage}". Use one of: ${STAGES.join(', ')}.`)
     }
     const inCi = process.env.GITHUB_ACTIONS === 'true'
@@ -31,7 +29,7 @@ export default $config({
       protect: stage === 'production',
       providers: {
         aws: {
-          region: REGION,
+          region: AWS_REGION,
           ...(inCi ? {} : { profile: 'sudoku' }),
           defaultTags: { tags: { project: 'sudoku', stage } },
         },

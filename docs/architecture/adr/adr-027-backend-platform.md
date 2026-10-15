@@ -199,7 +199,7 @@ The backend has these limits:
 - A check is needed that the JWT authorizer cannot do, such as a blocked player.
 - AWS bills throttled requests. Then the kill switch deletes the stage instead.
 
-## Amendment 2026-10-15: the AWS account and the SST setup (#101)
+## Amendment 2026-10-15: the AWS account and the SST setup
 
 The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
 [`infra/README.md`](../../../infra/README.md).
@@ -227,10 +227,12 @@ The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
    comes from GitHub Actions, as decision 8 says.
 7. **The budget.** One `COST` budget `sudoku-monthly-cost` for the whole account: $10 a month,
    in USD. It emails at $3 forecast and at $6 actual. The kill switch adds the alert at $9. The
+   budget counts the spend without credits and refunds (`includeCredit` and `includeRefund` are
+   false). A credit then cannot hide a cost spike from the alerts or the kill switch. The
    address is the `sst.Secret` `BudgetEmail` on `production`, so it stays out of git.
 8. **Only three stage names.** `sst.config.ts` refuses any stage other than `felix`, `dev` and
    `production`. A typo cannot create a fourth copy. `felix` and `dev` use `removal: "remove"`.
-9. **Every resource gets the tags** `project: sudoku` and `stage: <stage>`, through the default
+9. **Every resource that SST deploys gets the tags** `project: sudoku` and `stage: <stage>`, through the default
    tags of the AWS provider.
 10. **`felix` deploys with `just deploy-api felix`**, not only with `sst dev`.
 

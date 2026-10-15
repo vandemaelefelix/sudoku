@@ -26,7 +26,7 @@ in [`infra/README.md`](../../infra/README.md).
 | Account guard | Three layers stop a deploy to any other account: the `just` recipes, `app()` and `run()` in `sst.config.ts` |
 | Stages | `felix` and `dev` use `removal: "remove"`. `production` uses `removal: "retain"` and `protect` |
 | Account-wide resources | Only `production` creates them: the budget, the alert topic and the GitHub OIDC provider |
-| Tags | Every resource has `project: sudoku` and `stage: <stage>` |
+| Tags | Every resource that SST deploys has `project: sudoku` and `stage: <stage>` |
 | Cost | The budget `sudoku-monthly-cost` emails at $3 forecast and at $6 actual. The kill switch stops every stage at $9 (SUD-11) |
 
 The SST state lives in the account, in the buckets `sst-state-*` and `sst-asset-*`. SST creates

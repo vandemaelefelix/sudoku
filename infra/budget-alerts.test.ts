@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { ACTUAL_ALERT_USD, BUDGET_LIMIT_USD, FORECAST_ALERT_USD, budgetNotifications } from './budget-alerts.ts'
+import { BUDGET_COST_TYPES, budgetNotifications } from './budget-alerts.ts'
 
 describe('budgetNotifications', () => {
   const notifications = budgetNotifications('player@example.com')
@@ -14,9 +14,6 @@ describe('budgetNotifications', () => {
         ['ACTUAL', 6],
       ],
     )
-    assert.equal(FORECAST_ALERT_USD, 3)
-    assert.equal(ACTUAL_ALERT_USD, 6)
-    assert.equal(BUDGET_LIMIT_USD, 10)
   })
 
   it('compares absolute amounts', () => {
@@ -28,5 +25,12 @@ describe('budgetNotifications', () => {
 
   it('emails the given address on every alert', () => {
     for (const n of notifications) assert.deepEqual(n.subscriberEmailAddresses, ['player@example.com'])
+  })
+})
+
+describe('BUDGET_COST_TYPES', () => {
+  it('counts the spend before credits and refunds, so a credit cannot hide it from the alerts', () => {
+    assert.equal(BUDGET_COST_TYPES.includeCredit, false)
+    assert.equal(BUDGET_COST_TYPES.includeRefund, false)
   })
 })

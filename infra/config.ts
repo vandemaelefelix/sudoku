@@ -4,7 +4,6 @@
 export const AWS_ACCOUNT_ID = '779846813799'
 export const AWS_REGION = 'eu-west-1'
 
-// sst.config.ts repeats this list, because SST forbids top-level imports there.
 export const STAGES = ['felix', 'dev', 'production'] as const
 export type Stage = (typeof STAGES)[number]
 
