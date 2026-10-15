@@ -186,6 +186,11 @@ status: DRAFT
 | Owner | The Clerk user ID of a history entry on the phone. Before Clerk loads, it is the cached Clerk user ID from the Keychain. Null for a game finished while signed out. The sync and the stats use only the entries of the signed-in owner (ADR-028) |
 | Sync | The call `POST /v1/sync`. It pushes the waiting list and pulls the changes since the cursor (ADR-028) |
 | Sync service | `SyncService` in `src/sync/`. It runs a sync on each trigger and stays silent on failure (ADR-028) |
+| Sync run | One pass of the sync service: push the waiting list in batches, pull every page, save the cursor after each page (ADR-028) |
+| Single-flight | The rule that one sync run goes at a time. A trigger during a run asks for one more run (ADR-028) |
+| Backoff | The wait before the next sync trigger acts after a failure. It starts at 30 seconds, doubles and stops at 15 minutes (ADR-028) |
+| Adopt prompt | The question "Add the games on this phone to your account?" at the first sign-in. It moves the entries without an owner to the account (ADR-028) |
+| Synced line | The muted line "Synced 5 min ago" at the bottom of the stats screen, only when signed in (ADR-028) |
 | Accepted | A pushed history entry is accepted when the server stored it, or already holds an equal or newer `updatedAt` for its id (ADR-028) |
 | Waiting list | The history entries of the signed-in owner that the server has not accepted yet: `pushed_at` is null or differs from `updated_at`. `pushed_at` holds the accepted `updatedAt`, never a clock time (ADR-028) |
 | Cursor | An opaque value from the server that marks how far a device has pulled: the watermark and, during paging, the `LastEvaluatedKey`. A null cursor pulls everything (ADR-028) |

@@ -205,4 +205,25 @@ describe('the owner before Clerk has loaded (ADR-028)', () => {
     rerender({})
     await waitFor(() => expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(OWNER_CACHE_KEY))
   })
+
+  it('asks Clerk to skip its token cache when the caller wants a fresh token', async () => {
+    const getToken = jest.fn(async () => 'jwt')
+    jest.mocked(useAuth).mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: 'user_alice',
+      getToken,
+      signOut: jest.fn(),
+    } as unknown as AuthResult)
+    jest.mocked(useUser).mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: { primaryEmailAddress: { emailAddress: 'a@example.com' } },
+    } as unknown as UserResult)
+    const { result } = await renderAccount()
+    await result.current.account.getApiToken({ fresh: true })
+    expect(getToken).toHaveBeenLastCalledWith({ template: 'sudoku-api', skipCache: true })
+    await result.current.account.getApiToken()
+    expect(getToken).toHaveBeenLastCalledWith({ template: 'sudoku-api' })
+  })
 })

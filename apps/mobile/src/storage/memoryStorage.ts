@@ -1,6 +1,8 @@
 import { fromSavedGame, hasMoves, toSavedGame, type SavedGame } from '@sudoku/core'
 import type { BestTimes, HistoryRepository } from './HistoryRepository'
 import { createMemoryStatsRepository } from './memoryStats'
+import { createMemorySyncStateRepository } from './SyncStateRepository'
+import { withChangeNotice } from './changeNotice'
 import { resultOf, type PuzzleRepository } from './PuzzleRepository'
 import type { GameStorage } from './gameStorage.types'
 import type { HistoryEntry, HistoryRecord, Level, PuzzleSource, StorageDeps } from './storage.types'
@@ -153,6 +155,14 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       for (const row of adopted) row.owner = owner
       return adopted.length
     },
+    async countUnowned() {
+      return rows.filter((row) => row.owner === null && row.record.deletedAt === null).length
+    },
+    async deleteOwner(owner) {
+      for (let index = rows.length - 1; index >= 0; index -= 1) {
+        if (rows[index]?.owner === owner) rows.splice(index, 1)
+      }
+    },
     async list(owner) {
       return visible(owner)
     },
@@ -169,5 +179,10 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
     },
   }
 
-  return { puzzles, history, stats: createMemoryStatsRepository(visible, deps) }
+  return withChangeNotice({
+    puzzles,
+    history,
+    stats: createMemoryStatsRepository(visible, deps),
+    sync: createMemorySyncStateRepository(),
+  })
 }

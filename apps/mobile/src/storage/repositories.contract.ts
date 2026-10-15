@@ -570,6 +570,167 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       })
     })
 
+    describe('countUnowned', () => {
+      it('counts the live entries without an owner', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)
+        await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+        await expect(storage.history.countUnowned()).resolves.toBe(2)
+      })
+
+      it('does not count a cleared entry and does not change anything', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await storage.history.clear(null)
+        await expect(storage.history.countUnowned()).resolves.toBe(0)
+        await expect(storage.history.countUnowned()).resolves.toBe(0)
+      })
+    })
+
+    describe('deleteOwner', () => {
+      it('removes every entry of the owner, live and deleted, for good', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+        await storage.history.clear(ALICE)
+        await finishGame(storage, 'hard', lostGame(20_000), 'generated', ALICE)
+        await storage.history.deleteOwner(ALICE)
+        await expect(storage.history.list(ALICE)).resolves.toEqual([])
+        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      })
+
+      it('leaves the entries of another owner and of no owner', async () => {
+        const bob = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
+        const nobody = await finishGame(storage, 'easy', wonGame(61_000), 'generated', null)
+        await finishGame(storage, 'easy', wonGame(62_000), 'generated', ALICE)
+        await storage.history.deleteOwner(ALICE)
+        await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id: bob }])
+        await expect(storage.history.list(null)).resolves.toMatchObject([{ id: nobody }])
+      })
+    })
+
+    describe('sync state', () => {
+      it('has no cursor, time or answer at first', async () => {
+        await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
+        await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()
+        await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(false)
+      })
+
+      it('keeps the cursor of its owner', async () => {
+        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-1')
+        await storage.sync.saveCursor(ALICE, 'cursor-2')
+        await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-2')
+      })
+
+      it('gives no cursor to another owner and forgets the old one', async () => {
+        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await expect(storage.sync.cursor(BOB)).resolves.toBeNull()
+        await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
+      })
+
+      it('clears the cursor alone', async () => {
+        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
+        await storage.sync.clearCursor()
+        await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
+        await expect(storage.sync.syncedAt(ALICE)).resolves.toBe('2026-10-15T10:00:00.000Z')
+      })
+
+      it('keeps the time of the last sync per owner', async () => {
+        await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
+        await expect(storage.sync.syncedAt(ALICE)).resolves.toBe('2026-10-15T10:00:00.000Z')
+        await expect(storage.sync.syncedAt(BOB)).resolves.toBeNull()
+      })
+
+      it('remembers the answer to the adopt prompt per owner', async () => {
+        await storage.sync.markAdoptAsked(ALICE)
+        await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(true)
+        await expect(storage.sync.adoptAsked(BOB)).resolves.toBe(false)
+      })
+
+      it('clears everything of one owner and nothing of another', async () => {
+        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
+        await storage.sync.markAdoptAsked(ALICE)
+        await storage.sync.markAdoptAsked(BOB)
+        await storage.sync.clear(ALICE)
+        await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
+        await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()
+        await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(false)
+        await expect(storage.sync.adoptAsked(BOB)).resolves.toBe(true)
+      })
+    })
+
+    describe('subscribe', () => {
+      it('fires after a won game and after a lost game', async () => {
+        const listener = jest.fn()
+        storage.subscribe(listener)
+        const won = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame(), owner: ALICE })
+        listener.mockClear()
+        await storage.puzzles.save(won.id, wonGame(60_000), ALICE)
+        expect(listener).toHaveBeenCalledTimes(1)
+        const lost = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame(), owner: ALICE })
+        listener.mockClear()
+        await storage.puzzles.save(lost.id, lostGame(20_000), ALICE)
+        expect(listener).toHaveBeenCalledTimes(1)
+      })
+
+      it('fires after a start that can abandon a game, and after a clear', async () => {
+        const listener = jest.fn()
+        storage.subscribe(listener)
+        await storage.puzzles.start({ level: 'easy', source: 'generated', game: movedGame(), owner: ALICE })
+        expect(listener).toHaveBeenCalledTimes(1)
+        await storage.history.clear(ALICE)
+        expect(listener).toHaveBeenCalledTimes(2)
+      })
+
+      it('does not fire for a move', async () => {
+        const { id } = await storage.puzzles.start({
+          level: 'easy',
+          source: 'generated',
+          game: newGame(),
+          owner: ALICE,
+        })
+        const listener = jest.fn()
+        storage.subscribe(listener)
+        await storage.puzzles.save(id, movedGame(), ALICE)
+        expect(listener).not.toHaveBeenCalled()
+      })
+
+      it('fires only after the write resolved, so the waiting list has the entry', async () => {
+        const { id } = await storage.puzzles.start({
+          level: 'easy',
+          source: 'generated',
+          game: newGame(),
+          owner: ALICE,
+        })
+        let seen = -1
+        storage.subscribe(() => {
+          void storage.history.pending(ALICE, 10).then((pending) => {
+            seen = pending.length
+          })
+        })
+        await storage.puzzles.save(id, wonGame(60_000), ALICE)
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(seen).toBe(1)
+      })
+
+      it('stops after the unsubscribe and survives a throwing listener', async () => {
+        const listener = jest.fn()
+        const off = storage.subscribe(listener)
+        storage.subscribe(() => {
+          throw new Error('listener bug')
+        })
+        off()
+        const { id } = await storage.puzzles.start({
+          level: 'easy',
+          source: 'generated',
+          game: newGame(),
+          owner: ALICE,
+        })
+        await expect(storage.puzzles.save(id, wonGame(60_000), ALICE)).resolves.toBeUndefined()
+        expect(listener).not.toHaveBeenCalled()
+      })
+    })
+
     it('refuses to start a won or a lost game', async () => {
       await expect(
         storage.puzzles.start({ level: 'easy', source: 'generated', game: wonGame(1_000), owner: null }),
