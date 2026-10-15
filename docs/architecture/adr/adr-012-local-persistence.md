@@ -95,6 +95,8 @@ The time played is saved with each move. Time after the last move and before the
   reached the server, so it stays without an owner.
 - `sync_state` is an exception to point 3. It holds single values by key, such as the cursor, and
   never syncs. So it has no UUID and no timestamps.
+- `sync_state` has a repository, `SyncStateRepository`, behind `GameStorage.sync`. `HistoryRepository.deleteOwner` hard-deletes
+  every row of one owner. It is the only hard delete of the history. The app uses it after a 410 `account_deleted`.
 - Point 5 of the first tables applies to every write. The history writes use the same queue as the
   saves, because the Jest adapter and the phone have no busy timeout.
 
