@@ -171,7 +171,13 @@ aws-login:
 # Deploy the backend to a stage: felix, dev or production. Run just aws-login first
 deploy-api stage:
     {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} node infra/kill-switch-check.ts "{{stage}}"
     {{sudoku_aws}} pnpm exec sst deploy --stage "{{stage}}"
+
+# Turn a stage on again after the kill switch stopped it (ADR-027). It shows the cost of the month and asks first. Option: --yes
+api-on stage *flags:
+    {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} node infra/api-on.ts "{{stage}}" {{flags}}
 
 # Show what a deploy would change on a stage, without a change
 diff-api stage:

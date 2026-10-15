@@ -20,4 +20,10 @@ describe('sst.config.ts', () => {
     assert.match(source, /const \{ api \} = await import\('\.\/infra\/api\.ts'\)/)
     assert.match(source, /return \{ apiUrl: api\.url \}/)
   })
+
+  it('refuses a stopped stage before it creates a resource', () => {
+    const guard = source.indexOf('assertNotStopped($app.stage)')
+    assert.ok(guard > source.indexOf('assertPersonalAccount()'))
+    assert.ok(guard < source.indexOf("import('./infra/defaults.ts')"))
+  })
 })
