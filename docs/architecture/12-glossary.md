@@ -173,3 +173,16 @@ status: DRAFT
 | Verify | The check of a full scanned grid. `verifyGrid` says solved, wrong or clash. The button says "Check the grid". "Check" in code means the per-cell check of an uncertain cell |
 | Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. It is white for every look, because the native layer cannot read the saved theme. The overlay then fades it to the page colour of the saved look (ADR-024, ADR-025, ADR-026) |
 | Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
+| Account | A Clerk account of a player. Optional: a player who is signed out plays as normal and nothing uploads (ADR-027) |
+| User ID | Our own UUID for a player. Every row of the player in DynamoDB uses it. An identity row maps a login to it (ADR-027) |
+| Identity row | The DynamoDB row `IDENTITY#<provider>#<subject>` that maps one login to a user ID. A new sign-in provider adds identity rows (ADR-027) |
+| Owner | The user ID of a history entry on the phone. Null for a game finished while signed out. The sync and the stats use only the entries of the signed-in owner (ADR-028) |
+| Sync | The call `POST /v1/sync`. It pushes the waiting list and pulls the changes since the cursor (ADR-028) |
+| Waiting list | The history entries of the signed-in owner that the server has not accepted yet: `pushed_at` is null or older than `updated_at` (ADR-028) |
+| Cursor | An opaque value from the server that marks how far a device has pulled: the watermark and, during paging, the `LastEvaluatedKey`. A null cursor pulls everything (ADR-028) |
+| Watermark | The highest `syncedAt` that a device has pulled. The server reads from 5 minutes before it (ADR-028) |
+| History entry | One finished game in the history, with a UUID. Only its soft delete changes it after the finish (ADR-012) |
+| Sync contract | The zod schemas of the sync API requests and responses in `packages/sync-contract/`. The app and the `sync-api` Lambda import it (ADR-027) |
+| Stage | One deployed copy of the backend: `felix`, `dev` or `production` (ADR-027) |
+| Spending cap | The limit of €10 a month on the AWS bill (SUD-11) |
+| Kill switch | The Lambda that turns the API off when the budget alert at $9 fires. `just api-on <stage>` turns it on again (ADR-027) |

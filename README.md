@@ -29,3 +29,4 @@ Prerequisites: Node 24, pnpm 12, uv, just. Xcode is needed from issue #2 on.
 - [Scan pipeline](docs/architecture/00-concepts/scan-pipeline.md)
 - [Model contract](docs/architecture/00-concepts/model-contract.md)
 - [Game screen](docs/architecture/00-concepts/game-screen.md)
+- [History sync](docs/architecture/00-concepts/history-sync.md)

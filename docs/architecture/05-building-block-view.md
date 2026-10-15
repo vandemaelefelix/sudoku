@@ -17,10 +17,16 @@ sudoku/
 │       ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
 │       ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
 │       ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)
+│       ├── src/account/         # sign-in, sign-out and delete account with Clerk (ADR-027)
+│       ├── src/sync/            # SyncService: pushes and pulls the history (ADR-028)
 │       ├── src/utils/           # code that more than one feature uses: geometry, homography, logs
 │       └── assets/models/       # promoted model files + manifest.json (committed)
 ├── packages/
-│   └── sudoku-core/             # @sudoku/core: board, rules, generator, solver, hints. Pure TS
+│   ├── sudoku-core/             # @sudoku/core: board, rules, generator, solver, hints. Pure TS
+│   └── sync-contract/           # zod schemas of the sync API, shared by the app and the Lambda
+├── services/
+│   └── sync-api/                # Lambda: POST /v1/sync, DELETE /v1/account (ADR-027)
+├── infra/                       # SST infrastructure, one file per area (ADR-027)
 ├── ml/                          # Python (uv): datasets, training, evaluation, export, promote
 │   ├── src/
 │   └── artifacts/               # one folder per training run, gitignored
@@ -36,6 +42,7 @@ sudoku/
 │   ├── scans/                   # public-safe photos + true grids + the app's cell images (ADR-007, ADR-013)
 │   └── preprocess/              # reference cell images for preprocessing parity (model contract)
 ├── docs/architecture/           # this documentation
+├── sst.config.ts                # SST app: stages, defaults, imports infra/
 ├── package.json                 # pnpm workspaces
 └── justfile                     # one command list for both toolchains
 ```
@@ -67,11 +74,15 @@ flowchart TB
 | Block | Responsibility | Depends on | Must not depend on |
 | --- | --- | --- | --- |
 | **@sudoku/core** | Board model, rule checks, a backtracking solver (uniqueness), a technique solver (grading and hints), the generator ([ADR-011](adr/adr-011-puzzle-generation-and-hints.md)) | nothing | React Native, Expo, any I/O (SUD-04) |
-| **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens | @sudoku/core, local storage | the scanner (SUD-03) |
+| **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens | @sudoku/core, local storage | the scanner (SUD-03), account, sync (ADR-028) |
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
 | **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |
 | **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)) | expo-sqlite | — |
+| **Account** (`src/account/`) | Sign-in, sign-out and delete account with Clerk. Gives a fresh token for each request ([ADR-027](adr/adr-027-backend-platform.md)) | `@clerk/expo` | the game UI |
+| **Sync** (`src/sync/`) | Pushes the waiting list and pulls the changes on each trigger. Silent on failure ([ADR-028](adr/adr-028-history-sync.md)) | local storage, account, sync contract | the game UI |
+| **Sync contract** (`packages/sync-contract/`) | The zod schemas of the requests and responses | zod | React Native, AWS SDK |
+| **sync-api** (`services/sync-api/`) | The Lambda: maps the token to our own user ID, stores and returns history entries, deletes an account, counts writes for SUD-11 | sync contract, AWS SDK | the app |
 | **Fixture runner** | Development builds only. Runs the real scanner on fixture photos, writes cell images, reports scores ([ADR-010](adr/adr-010-testing-and-ci.md)) | scanner module | — |
 | **ml/** | Dataset assembly, synthetic data, training, evaluation on fixtures, export, promote | contracts/, fixtures/ | anything in apps/ or packages/ |
 
