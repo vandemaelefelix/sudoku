@@ -91,12 +91,15 @@ module.exports = {
       to: { path: '^(infra/|sst\\.config\\.ts$)' },
     },
     {
-      name: 'adr-027-infra-reads-only-the-table-design',
+      name: 'adr-027-infra-reads-only-shared-lambda-files',
       comment:
-        'ADR-027: infra/storage.ts reads the table layout from tableDesign.ts, so the test table matches. The SST code reads no other Lambda file.',
+        'ADR-027: infra/storage.ts reads the table layout from tableDesign.ts, so the test table matches. infra/api-on.ts and the kill-switch check share the AWS code and the flag name of services/kill-switch/src. The SST code reads no other Lambda file.',
       severity: 'error',
       from: { path: '^(infra/|sst\\.config\\.ts$)' },
-      to: { path: '^services/', pathNot: '^services/sync-api/src/tableDesign\\.ts$' },
+      to: {
+        path: '^services/',
+        pathNot: ['^services/sync-api/src/tableDesign\\.ts$', '^services/kill-switch/src/'],
+      },
     },
     {
       name: 'adr-028-storage-does-not-use-sync-or-account',

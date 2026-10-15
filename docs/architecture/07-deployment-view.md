@@ -27,7 +27,8 @@ in [`infra/README.md`](../../infra/README.md).
 | Stages | `felix` and `dev` use `removal: "remove"`. `production` uses `removal: "retain"` and `protect` |
 | Account-wide resources | Only `production` creates them: the budget, the alert topic and the GitHub OIDC provider |
 | Tags | Every resource that SST deploys has `project: sudoku` and `stage: <stage>` |
-| Cost | The budget `sudoku-monthly-cost` emails at $3 forecast and at $6 actual. The kill switch stops every stage at $9 (SUD-11) |
+| Cost | The budget `sudoku-monthly-cost` emails at $3 forecast and at $6 actual. At $9 it publishes to an SNS topic, and the kill switch stops every stage (SUD-11) |
+| Kill switch | The Lambda `kill-switch` exists once, in `production`. It sets the SSM flag `/sudoku/kill-switch/<stage>`, the route throttle 0 and the concurrency 0. `just deploy-api` and `run()` refuse a flagged stage, but `sst remove` and `sst diff` pass. `just api-on <stage>` clears it (ADR-027) |
 
 The SST state lives in the account, in the buckets `sst-state-*` and `sst-asset-*`. SST creates
 them on the first deploy.

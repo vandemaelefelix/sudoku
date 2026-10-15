@@ -1,0 +1,22 @@
+{
+  "name": "@sudoku/kill-switch",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewayv2": "3.1150.0",
+    "@aws-sdk/client-lambda": "3.1150.0",
+    "@aws-sdk/client-sns": "3.1150.0",
+    "@aws-sdk/client-ssm": "3.1150.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.164",
+    "@types/node": "26.6.4",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.3"
+  }
+}
