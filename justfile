@@ -16,14 +16,32 @@ app:
     pnpm --filter mobile start
 
 # Run every test
-test: test-ts test-ml
+test: test-ts test-api test-ml
 
-# Vitest (core, sync contract), Jest (app) and the lint plugin test
+# Vitest (core, sync contract, the sync-api unit tests), Jest (app) and the lint plugin test
 test-ts:
     pnpm -r test
     node --test 'scripts/oxlint/*.test.mjs'
     node --test 'scripts/icons/*.test.mjs'
     node --test 'infra/*.test.ts'
+
+# The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
+dynamodb_image := "amazon/dynamodb-local:3.3.1"
+dynamodb_port := env("DYNAMODB_PORT", "8000")
+
+# Start DynamoDB Local for the sync-api tests. All worktrees share one container
+dynamodb-up:
+    docker info >/dev/null 2>&1 || { echo "Docker does not run. Start Docker Desktop or Colima." >&2; exit 1; }
+    docker start sudoku-dynamodb >/dev/null 2>&1 || docker run -d --name sudoku-dynamodb -p {{dynamodb_port}}:8000 {{dynamodb_image}} -jar DynamoDBLocal.jar -inMemory -sharedDb >/dev/null
+    for _ in $(seq 30); do curl -s -o /dev/null http://localhost:{{dynamodb_port}} && exit 0; sleep 0.5; done; echo "DynamoDB Local did not start on port {{dynamodb_port}}." >&2; exit 1
+
+# Stop and remove DynamoDB Local
+dynamodb-down:
+    docker rm -f sudoku-dynamodb
+
+# Vitest for sync-api against DynamoDB Local
+test-api: dynamodb-up
+    DYNAMODB_ENDPOINT=http://localhost:{{dynamodb_port}} pnpm --filter @sudoku/sync-api test:db
 
 # pytest (ml)
 test-ml:
@@ -44,7 +62,7 @@ format:
 format-check:
     pnpm format:check
 
-# SUD-03, SUD-04, SUD-05, the sync contract and the account boundary (ADR-027, ADR-028)
+# SUD-03, SUD-04, SUD-05, the sync contract and the account boundary (ADR-028) and the backend boundaries (ADR-027)
 boundaries:
     pnpm boundaries
 
@@ -78,7 +96,7 @@ ios-release device:
 
 # Check relative links in the docs
 docs-check:
-    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md infra
+    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md infra services
 
 # Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
 preprocess-fixtures:
@@ -164,6 +182,10 @@ diff-api stage:
 remove-api stage:
     {{sudoku_aws}} node infra/check-account.ts
     {{sudoku_aws}} pnpm exec sst remove --stage "{{stage}}"
+
+# Smoke-test the sync API on a deployed stage with a real Clerk token. Export CLERK_SECRET_KEY of the development instance first
+smoke-api stage user:
+    node services/sync-api/scripts/smoke.ts "{{stage}}" "{{user}}"
 
 # Typecheck sst.config.ts and infra/. It downloads the SST providers the first time
 typecheck-infra:

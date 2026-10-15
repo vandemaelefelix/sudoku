@@ -202,6 +202,9 @@ status: DRAFT
 | Kill switch | The Lambda that stops every stage when the budget alert at $9 fires. Deploys refuse a stopped stage. Only `just api-on <stage>` turns a stage on again (ADR-027) |
 | Account guard | The three checks that stop a deploy to any AWS account other than the personal one: the `just` recipes, `app()` and `run()` in `sst.config.ts` (ADR-027) |
 | Profile `sudoku` | The AWS profile of the backend. It takes its credentials from the `aws login` session of the profile `sudoku-login` through `credential_process` (ADR-027) |
+| Accepted id | The id of a history entry that the server stored, or for which it already holds an equal or newer `updatedAt`. The response of a sync lists it once, in request order (ADR-028) |
+| DynamoDB Local | The AWS emulator of DynamoDB in a container. `just test-api` and CI run the `sync-api` DB tests against it. It never reaches the AWS account |
+| Smoke test | `just smoke-api <stage> <user id>`: a short check of a deployed stage with real Clerk tokens. The developer runs it after a deploy |
 | Account stage | The stage that creates the account-wide resources, such as the budget: `production` (ADR-027) |
 | Budget alert | An AWS Budgets email at $3 forecast or at $6 actual. The kill switch adds the alert at $9 (SUD-11, ADR-027) |
 | Development instance | The Clerk instance that the `felix` and `dev` stages and the development variant use. Its keys start with `pk_test_` and `sk_test_` (ADR-027) |

@@ -209,3 +209,26 @@ The leaderboard compares players, so the cloud counts it. It is a later feature.
 - The player wants to continue a game on another device.
 - The settings should follow the player.
 - One player's history nears the 10 GB limit of a partition with a local index.
+
+## Amendment 2026-10-15: the sync API
+
+The build of `POST /v1/sync` makes decisions 5, 6 and 9 concrete. The code is in
+[`services/sync-api/`](../../../services/sync-api/README.md).
+
+1. **The TTL attribute is `expiresAt`, a number in epoch seconds.** A table has one TTL
+   attribute, so the tombstone and the daily count share it. The daily count expires at the start
+   of its UTC day plus 2 days.
+2. **One transaction per history entry.** It puts the game row with the `updatedAt` condition and
+   adds 1 to the daily count with the cap condition. The count stays exact under parallel
+   requests. The entries go in request order. After the cap the loop goes on, so a later no-op is
+   still accepted. A transaction conflict gets 2 retries. After that, the history entry stays on
+   the waiting list.
+3. **The game row has no `id` attribute.** The id lives in `sk`.
+4. **Every 200 response has a cursor string,** also for an empty full pull. The contract still
+   allows a null cursor in the request.
+5. **The pull is a consistent read.** A local index allows it, so the push of the same request
+   shows in the pull.
+6. **The empty last page.** DynamoDB returns a `LastEvaluatedKey` when a page stops at exactly
+   500 rows, also when no row follows. The next call reads no rows and takes `since` from the
+   `after` of its request (rule 2 of "the end of the read").
+

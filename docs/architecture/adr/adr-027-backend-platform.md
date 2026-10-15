@@ -281,3 +281,25 @@ The Clerk development instance makes decision 1 concrete. The steps are in the s
    with a custom domain, up to 50,000 monthly retained users. Its session lifetime is fixed at
    7 days. The Pro plan allows a custom session lifetime. The production release decides the
    plan.
+
+## Amendment 2026-10-15: the sync API
+
+The build of the sync API makes decisions 4, 6 and 9 concrete. The code is in
+[`infra/api.ts`](../../../infra/api.ts) and [`services/sync-api/`](../../../services/sync-api/README.md).
+
+1. **The throttle applies to each route.** An HTTP API sets `defaultRouteSettings` per route, not
+   per stage. With `DELETE /v1/account`, the worst case is 2 requests per second in total. This
+   still fits SUD-11. The kill switch sets each route to 0.
+2. **The access log has no IP and no user agent** (F-16). The SST default format holds both.
+   `infra/backend-settings.ts` holds the format without them.
+3. **Point-in-time recovery only in `production`.** SST turns it on for every table. `felix` and
+   `dev` hold no data to keep.
+4. **A stage without a Clerk issuer fails the deploy.** An API without a token check never exists.
+5. **The Lambda logs one line per request** from an allow-list of fields. It logs our user ID,
+   never the `sub`, a token, a claim or an email. On an error it logs only the error name.
+6. **The table design lives in `services/sync-api/src/tableDesign.ts`.** It has no imports.
+   `infra/storage.ts` and the DB tests both read it, so the test table matches. A boundary rule
+   allows only this one import from `infra/` into `services/`.
+7. **The reserved concurrency of 2 comes with the kill switch.** Its build also checks the account
+   quota.
+
