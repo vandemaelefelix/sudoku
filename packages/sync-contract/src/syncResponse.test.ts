@@ -27,6 +27,10 @@ describe('syncResponseSchema', () => {
     expect(accepts(response({ changes: changes(501) }))).toBe(false)
   })
 
+  it('accepts no accepted ids, as at the daily count', () => {
+    expect(accepts(response({ acceptedIds: [] }))).toBe(true)
+  })
+
   it('refuses 101 accepted ids', () => {
     expect(accepts(response({ acceptedIds: changes(101).map((entry) => entry.id) }))).toBe(false)
   })

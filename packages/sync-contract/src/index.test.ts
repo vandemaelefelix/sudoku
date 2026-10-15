@@ -23,12 +23,12 @@ describe('@sudoku/sync-contract', () => {
     expect(contract.syncRequestSchema).toBeDefined()
     expect(contract.syncResponseSchema).toBeDefined()
     expect(contract.errorBodySchema).toBeDefined()
-    expect(contract.errorCodeSchema.options).toEqual(['invalid_request', 'daily_limit', 'internal_error'])
+    expect(contract.errorCodeSchema.options).toEqual(['invalid_request', 'invalid_cursor', 'account_deleted'])
   })
 
   it('types the cursor as a string or null', () => {
     expectTypeOf<SyncRequest['cursor']>().toEqualTypeOf<string | null>()
     expectTypeOf<SyncResponse['cursor']>().toEqualTypeOf<string | null>()
-    expectTypeOf<ErrorCode>().toEqualTypeOf<'invalid_request' | 'daily_limit' | 'internal_error'>()
+    expectTypeOf<ErrorCode>().toEqualTypeOf<'invalid_request' | 'invalid_cursor' | 'account_deleted'>()
   })
 })
