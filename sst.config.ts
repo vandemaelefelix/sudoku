@@ -43,5 +43,6 @@ export default $config({
     await assertPersonalAccount()
     await import('./infra/defaults.ts')
     await import('./infra/budget.ts')
+    await import('./infra/clerk.ts')
   },
 })
