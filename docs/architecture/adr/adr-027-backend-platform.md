@@ -183,8 +183,8 @@ The backend has these limits:
   (ADR-028).
 - Before any TestFlight or App Store submission, the developer checks App Store guideline 4.8
   (Login Services). If it applies, the app adds Sign in with Apple. v1 keeps email and Google.
-- The Clerk settings live in the Clerk dashboard. The setup steps go in the README of
-  `services/sync-api/`.
+- The Clerk settings live in the Clerk dashboard. The setup steps are in
+  [`infra/README.md`](../../../infra/README.md) (amendment for #102).
 - The Lambda tests run with Vitest against a local DynamoDB in a container. The test table must
   match `infra/storage.ts`.
 - A budget alert can come hours late. The throttles bound the cost of those hours.
@@ -238,3 +238,35 @@ The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
 
 The kill switch and its flag per stage (decision 9) are not part of this setup. Until they exist,
 `just deploy-api` does not check a flag.
+
+## Amendment 2026-10-15: the Clerk development instance (#102)
+
+The Clerk development instance makes decision 1 concrete. The steps are in the section Clerk of
+[`infra/README.md`](../../../infra/README.md).
+
+1. **`felix` and `dev` share the development instance.** Its issuer is `CLERK_ISSUER` in
+   `infra/config.ts`. `production` has no issuer until the production instance exists.
+2. **Native Google sign-in needs our own Google OAuth clients, also in development.** Clerk's
+   shared Google credentials cover only the browser flow. The development instance uses a web
+   client for Clerk and an iOS client for the development variant.
+3. **Bot protection does not cover the app.** The Clerk SDK needs the Native API. While it is
+   on, Clerk does not challenge a sign-up from a native app. The email code, the stage throttle
+   and the daily count (decision 9) are the limits for the app. This gap is accepted for v1.
+   Reassess it if fake accounts appear.
+4. **The publishable key lives in the app config of each variant**, not in `.env`. The
+   development variant gets the key of the development instance in `apps/mobile/app.config.ts`.
+   The production variant gets no key until the production instance exists. A file that git
+   ignores would need a manual copy in every worktree. One `.env` would also give both variants
+   the same key.
+5. **The Clerk setup steps are in `infra/README.md`**, not in the README of `services/sync-api/`.
+   `infra/README.md` is the README of the backend. Consequences says this now.
+6. **`ClerkSecretKey` exists only on a stage with a Clerk instance.** `infra/clerk.ts` declares
+   the SST secret when the stage has an issuer. A declared secret without a value stops the
+   deploy, so `production` keeps deploying until it has its own instance.
+7. **The JWT template is made in the dashboard**, not through the Clerk API. The API call needs
+   the secret key, and an agent must never see it. `CLERK_AUDIENCE` in `infra/config.ts` holds
+   the `aud` of the template.
+8. **The Hobby plan stays enough for production.** It is free and allows a production instance
+   with a custom domain, up to 50,000 monthly retained users. Its session lifetime is fixed at
+   7 days. The Pro plan allows a custom session lifetime. The production release decides the
+   plan.
