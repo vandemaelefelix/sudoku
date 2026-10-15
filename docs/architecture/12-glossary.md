@@ -83,7 +83,7 @@ status: DRAFT
 | Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |
 | Semantic token | A token named by its meaning, such as `colors.text` or `type.given`. Most components read these (ADR-015) |
 | Component token | A token that belongs to one component, such as `components.cell.selected` (ADR-015) |
-| Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. The slots are `panelEdge`, `cardEdge`, `summaryEdge` and `sectionRule` (ADR-015, ADR-021) |
+| Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. The slots are `panelEdge`, `cardEdge`, `summaryEdge` and `sectionRule` (ADR-015, ADR-021, ADR-026) |
 | Type role | A semantic text style for one kind of text: the digits `type.given`, `type.entry` and `type.note`, and `display`, `question`, `status` and `eyebrow` (ADR-015, ADR-021) |
 | Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
 | Op-art | The one style of the app: one ink colour and wavy parallel lines, on a white page or on the accent (ADR-021, ADR-025, ADR-026) |

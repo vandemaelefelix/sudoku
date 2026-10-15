@@ -13,7 +13,7 @@ status: DRAFT
 | Supersedes | Decision 1, 2 and 3 of ADR-021 (the four themes), and the dark splash of ADR-024 |
 
 Amended by [ADR-026](adr-026-appearance.md): each colourway also has a Colour look, and the app can follow the iPhone setting.
-The three colourways stay. The rules on the white page, the splash and the theme switch change as ADR-026 says.
+The three colourways stay. The rules on the white page, the light-only app (decision 5), the splash and the theme switch change as ADR-026 says.
 
 Amends [ADR-015](adr-015-theming.md): point 2 (the themes and the system setting). Amends
 [ADR-021](adr-021-four-themes.md): the decoration table, the fonts and the finish card.

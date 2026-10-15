@@ -12,7 +12,7 @@ status: DRAFT
 | Contact | Felix |
 | Supersedes | Decision 1 of ADR-025 in part (three themes in total, light only, no dark mode, no System choice) and the white-only splash text of ADR-024 in part |
 
-Amends [ADR-025](adr-025-opart-colourways.md): decisions 2, 7 and 10 (the builder, the splash colours and the
+Amends [ADR-025](adr-025-opart-colourways.md): decisions 2, 5, 7 and 10 (the builder, the light-only app, the splash colours and the
 theme switch). The other points of ADR-025 stay.
 
 ## Context
@@ -130,7 +130,7 @@ So each colourway has two looks, and the player chooses how the app picks one.
   - The keyboard and the alerts of the system. The only alert is the reset of the stats. It is readable in both looks.
   - The default status bar. The app sets the status bar from the theme on every screen, so this does not show.
   - The scroll bars. The app sets them from the theme.
-  - The switches are drawn by the app, so they follow the look. Only the system alert and the keyboard follow the iPhone.
+- The switches are drawn by the app, so they follow the look. Only the system alert and the keyboard follow the iPhone.
 - The first native frame is white for every Colour look. The native layer cannot change that. With Auto on a dark iPhone, a dark native splash variant is possible. It cannot know the colourway, so it would be a neutral dark colour that differs from the page. The app does not use it.
 - The camera screen keeps its fixed colours. It does not change with the appearance.
 - The app icon stays as it is, because an icon cannot follow the preference.

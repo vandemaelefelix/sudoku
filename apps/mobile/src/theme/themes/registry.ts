@@ -1,4 +1,4 @@
-import type { Appearance, Theme, ThemeName } from '@/theme/theme.types'
+import type { Theme, ThemeName } from '@/theme/theme.types'
 import { bordeaux, bordeauxColour } from '@/theme/themes/bordeaux'
 import { cobalt, cobaltColour } from '@/theme/themes/cobalt'
 import { forest, forestColour } from '@/theme/themes/forest'
@@ -17,10 +17,3 @@ export const COLOUR_THEMES: Readonly<Record<ThemeName, Theme>> = {
 }
 
 export const THEME_NAMES = Object.keys(THEMES) as readonly ThemeName[]
-
-export const APPEARANCES: readonly Appearance[] = ['light', 'colour']
-
-/** The theme of a colourway in an appearance. */
-export function themeFor(name: ThemeName, appearance: Appearance): Theme {
-  return (appearance === 'light' ? THEMES : COLOUR_THEMES)[name]
-}

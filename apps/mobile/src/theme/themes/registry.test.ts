@@ -1,20 +1,20 @@
-import { APPEARANCES, COLOUR_THEMES, THEME_NAMES, THEMES, themeFor } from './registry'
+import { COLOUR_THEMES, THEME_NAMES, THEMES } from './registry'
 
 describe('the theme registry', () => {
   it('has three colourways, each in Light and in Colour', () => {
     expect(THEME_NAMES).toEqual(['cobalt', 'forest', 'bordeaux'])
-    expect(APPEARANCES).toEqual(['light', 'colour'])
+    expect(Object.keys(COLOUR_THEMES)).toEqual(THEME_NAMES)
     for (const name of THEME_NAMES) {
-      expect(themeFor(name, 'light')).toBe(THEMES[name])
-      expect(themeFor(name, 'colour')).toBe(COLOUR_THEMES[name])
+      expect(THEMES[name].appearance).toBe('light')
+      expect(COLOUR_THEMES[name].appearance).toBe('colour')
     }
   })
 
   it('gives each of the six themes its colourway name, its appearance and one label per colourway', () => {
-    const six = APPEARANCES.flatMap((appearance) => THEME_NAMES.map((name) => themeFor(name, appearance)))
+    const six = [...Object.values(THEMES), ...Object.values(COLOUR_THEMES)]
     expect(new Set(six.map((theme) => `${theme.name}/${theme.appearance}`)).size).toBe(6)
     for (const theme of six) {
-      expect(theme.label).toBe(themeFor(theme.name, 'light').label)
+      expect(theme.label).toBe(THEMES[theme.name].label)
     }
   })
 

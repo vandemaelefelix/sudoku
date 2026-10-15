@@ -1,7 +1,7 @@
 import { contrastRatio } from './contrast.utils'
 import { mixHex } from './opart/opart.colour.utils'
 import type { Theme } from './theme.types'
-import { APPEARANCES, COLOUR_THEMES, THEMES, THEME_NAMES, themeFor } from '@/theme/themes/registry'
+import { COLOUR_THEMES, THEMES, THEME_NAMES } from '@/theme/themes/registry'
 
 type Pair = [label: string, foreground: (t: Theme) => string, background: (t: Theme) => string]
 
@@ -59,7 +59,7 @@ const TEXT_PAIRS: Pair[] = [
   ],
 ]
 
-const ALL_THEMES = APPEARANCES.flatMap((appearance) => THEME_NAMES.map((name) => themeFor(name, appearance)))
+const ALL_THEMES = [...THEME_NAMES.map((name) => THEMES[name]), ...THEME_NAMES.map((name) => COLOUR_THEMES[name])]
 
 /** The colour of a stripe of the hatch over the conflict fill. The Light themes have no hatch: the fill alone. */
 function hatchStripe(t: Theme): string {
