@@ -14,7 +14,6 @@ export interface LogFields {
   more?: boolean
   durationMs?: number
   errorName?: string
-  errorCode?: string
 }
 
 export type Logger = (fields: LogFields) => void
@@ -33,7 +32,6 @@ const ALLOWED: readonly (keyof LogFields)[] = [
   'more',
   'durationMs',
   'errorName',
-  'errorCode',
 ]
 
 // Copies only the allowed fields, also when a caller passes a wider object at run time.
