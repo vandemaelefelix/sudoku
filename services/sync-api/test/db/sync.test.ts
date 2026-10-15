@@ -1,7 +1,9 @@
-import { GetCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { TransactionCanceledException } from '@aws-sdk/client-dynamodb'
+import { GetCommand, PutCommand, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { errorBodySchema, syncResponseSchema, type HistoryEntry } from '@sudoku/sync-contract'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { encodeCursor } from '../../src/cursor'
+import { findOrCreateUserId } from '../../src/identity'
 import type { SyncDeps } from '../../src/deps'
 import type { LogFields } from '../../src/log'
 import { logLine } from '../../src/log'
@@ -153,6 +155,21 @@ describe('refusals', () => {
     expect(await gameRowCount()).toBe(before)
   })
 
+  it('answers 400 invalid_cursor for an after before the start of the read and writes nothing', async () => {
+    const sub = newSub()
+    const userId = await findOrCreateUserId(deps(), sub)
+    const before = await gameRowCount()
+    const cursor = encodeCursor({
+      v: 1,
+      since: '2026-10-15T09:00:00.000Z',
+      after: { pk: userPk(userId), sk: 'GAME#x', syncedAt: '2026-10-15T08:00:00.000Z' },
+    })
+    const response = await call({ entries: [entryWithId(1)], cursor }, { sub })
+    expect(response.status).toBe(400)
+    expect(errorBodySchema.parse(response.body).code).toBe('invalid_cursor')
+    expect(await gameRowCount()).toBe(before)
+  })
+
   it('answers 410 account_deleted for a tombstone, with no new identity row and no game row', async () => {
     const sub = newSub()
     const tombstone = {
@@ -191,5 +208,32 @@ describe('logging', () => {
     for (const secret of [sub, 'secret-token', 'player@example.com', 'Bearer', 'uthorization']) {
       expect(text).not.toContain(secret)
     }
+  })
+
+  it('logs the count of transaction conflicts that a retry met', async () => {
+    lines = []
+    let conflicts = 1
+    const db = {
+      send: (command: unknown) => {
+        if (command instanceof TransactWriteCommand && conflicts-- > 0) {
+          throw new TransactionCanceledException({
+            message: 'conflict',
+            $metadata: {},
+            CancellationReasons: [{ Code: 'TransactionConflict' }, { Code: 'None' }],
+          })
+        }
+        return (table.db.send as (c: unknown) => unknown)(command)
+      },
+    } as unknown as SyncDeps['db']
+    const waits: number[] = []
+    const response = await route(
+      { ...deps(), db, sleep: async (ms) => void waits.push(ms) },
+      syncEvent({ entries: [entryWithId(1)], cursor: null }, { sub: newSub() }),
+    )
+    expect(response.statusCode).toBe(200)
+    expect(lines[0]).toMatchObject({ stored: 1, conflicts: 1 })
+    expect(waits).toHaveLength(1)
+    expect(waits[0]).toBeGreaterThanOrEqual(20)
+    expect(waits[0]).toBeLessThanOrEqual(80)
   })
 })

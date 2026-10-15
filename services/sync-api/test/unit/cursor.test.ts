@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
-import { InvalidCursor, assertCursorOwner, decodeCursor, encodeCursor, nextCursor, type Cursor } from '../../src/cursor'
+import {
+  InvalidCursor,
+  assertCursorOwner,
+  assertCursorRange,
+  decodeCursor,
+  encodeCursor,
+  nextCursor,
+  type Cursor,
+} from '../../src/cursor'
 
 const T1 = '2026-10-15T09:00:00.000Z'
 const T2 = '2026-10-15T09:05:00.000Z'
@@ -89,5 +97,21 @@ describe('assertCursorOwner', () => {
 
   it('refuses an after in another partition', () => {
     expect(() => assertCursorOwner({ v: 1, since: T1, after }, 'u-2')).toThrow(InvalidCursor)
+  })
+})
+
+describe('assertCursorRange', () => {
+  it('accepts a full pull, and an after at or after the start of the read', () => {
+    expect(() => assertCursorRange({ v: 1, since: null, after: null })).not.toThrow()
+    expect(() =>
+      assertCursorRange({ v: 1, since: null, after: { ...after, syncedAt: '2000-01-01T00:00:00.000Z' } }),
+    ).not.toThrow()
+    // The read starts 5 minutes before since (ADR-028 decision 6).
+    expect(() => assertCursorRange({ v: 1, since: T3, after })).not.toThrow()
+    expect(() => assertCursorRange({ v: 1, since: T3, after: { ...after, syncedAt: T2 } })).not.toThrow()
+  })
+
+  it('refuses an after before the start of the read', () => {
+    expect(() => assertCursorRange({ v: 1, since: T3, after: { ...after, syncedAt: T1 } })).toThrow(InvalidCursor)
   })
 })

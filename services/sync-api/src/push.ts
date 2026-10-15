@@ -12,26 +12,33 @@ export interface PushResult {
   stored: number
   noop: number
   capped: number
+  // Transaction attempts that met a TransactionConflict, retried or not.
+  conflicts: number
 }
 
 type Outcome = 'stored' | 'noop' | 'capped' | 'conflict'
 
 const CONFLICT_RETRIES = 2
+// The jitter keeps two parallel requests of one player from meeting the same conflict again.
+const CONFLICT_DELAY_MIN_MS = 20
+const CONFLICT_DELAY_MAX_MS = 80
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 // ADR-028 decision 6 and ADR-027 decision 9. One transaction per entry writes the game row and the daily count
 // together, so the count stays exact under parallel requests. The loop never stops at the cap: a no-op later in
 // the request is still accepted.
 export async function push(
-  deps: Pick<SyncDeps, 'db' | 'tableName'>,
+  deps: Pick<SyncDeps, 'db' | 'tableName' | 'sleep'>,
   userId: string,
   entries: readonly HistoryEntry[],
   now: Date,
 ): Promise<PushResult> {
-  const result: PushResult = { acceptedIds: [], stored: 0, noop: 0, capped: 0 }
+  const result: PushResult = { acceptedIds: [], stored: 0, noop: 0, capped: 0, conflicts: 0 }
   const accepted = new Set<string>()
   for (const entry of entries) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- The cap stores entries in request order, so the writes run one by one.
-    const outcome = await writeEntry(deps, userId, entry, now)
+    const outcome = await writeEntry(deps, userId, entry, now, result)
     if (outcome === 'stored') result.stored++
     if (outcome === 'noop') result.noop++
     if (outcome === 'capped') result.capped++
@@ -44,10 +51,11 @@ export async function push(
 }
 
 async function writeEntry(
-  deps: Pick<SyncDeps, 'db' | 'tableName'>,
+  deps: Pick<SyncDeps, 'db' | 'tableName' | 'sleep'>,
   userId: string,
   entry: HistoryEntry,
   now: Date,
+  result: PushResult,
 ): Promise<Outcome> {
   const command = new TransactWriteCommand({
     TransactItems: [
@@ -77,6 +85,13 @@ async function writeEntry(
     // oxlint-disable-next-line eslint/no-await-in-loop -- A retry must wait for the result of the attempt before it.
     const outcome = await tryTransaction(deps, command)
     if (outcome !== 'conflict') return outcome
+    result.conflicts++
+    if (attempt < CONFLICT_RETRIES) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- The delay comes before the next attempt.
+      await (deps.sleep ?? sleep)(
+        CONFLICT_DELAY_MIN_MS + Math.random() * (CONFLICT_DELAY_MAX_MS - CONFLICT_DELAY_MIN_MS),
+      )
+    }
   }
   // The entry stays on the waiting list of the phone. The next sync sends it again.
   return 'conflict'

@@ -9,6 +9,8 @@ export interface SyncDeps {
   now: () => Date
   newUserId: () => string
   log: Logger
+  // Waits before a retry of a conflicting write. The tests pass a stub. The default is setTimeout.
+  sleep?: (ms: number) => Promise<void>
   // Rows per pull. 500 in production (ADR-028 decision 6).
   pageSize?: number
 }

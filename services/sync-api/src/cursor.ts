@@ -21,6 +21,14 @@ export class InvalidCursor extends Error {
   override name = 'InvalidCursor'
 }
 
+// A slow write from another device can land with a syncedAt just below the watermark (ADR-028 decision 6).
+const OVERLAP_MS = 5 * 60 * 1000
+
+// The syncedAt where a pull of this cursor starts to read. Null reads the whole partition.
+export function readStart(since: string | null): string | null {
+  return since === null ? null : new Date(Date.parse(since) - OVERLAP_MS).toISOString()
+}
+
 const BASE64URL = /^[A-Za-z0-9_-]+$/
 
 export const FULL_PULL: Cursor = { v: 1, since: null, after: null }
@@ -63,4 +71,10 @@ export function nextCursor(
 // ADR-028 decision 6: an after outside the partition of the caller is an invalid cursor, not a read of other rows.
 export function assertCursorOwner(cursor: Cursor, userId: string): void {
   if (cursor.after && cursor.after.pk !== userPk(userId)) throw new InvalidCursor()
+}
+
+// DynamoDB throws a ValidationException for an after outside the query range, so the check comes before the read.
+export function assertCursorRange(cursor: Cursor): void {
+  const from = readStart(cursor.since)
+  if (cursor.after && from !== null && cursor.after.syncedAt < from) throw new InvalidCursor()
 }

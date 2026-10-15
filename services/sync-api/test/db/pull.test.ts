@@ -1,6 +1,6 @@
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { FULL_PULL, type Cursor } from '../../src/cursor'
+import { FULL_PULL, InvalidCursor, type Cursor } from '../../src/cursor'
 import { pull } from '../../src/pull'
 import { countSk, identityKey, userPk } from '../../src/tableDesign'
 import { createTestTable, type TestTable } from './table'
@@ -83,5 +83,16 @@ describe('pull', () => {
     const second = await pull(deps(), userId, first.cursor)
     expect([second.changes.length, second.more]).toEqual([0, false])
     expect(second.cursor).toEqual({ v: 1, since: synced.at(-1), after: null })
+  })
+
+  it('throws InvalidCursor when DynamoDB refuses an after outside the query range', async () => {
+    const userId = newUser()
+    await seedGames(table, userId, times(2))
+    const cursor: Cursor = {
+      v: 1,
+      since: '2026-10-15T10:00:00.000Z',
+      after: { pk: userPk(userId), sk: 'GAME#x', syncedAt: '2026-10-15T08:00:00.000Z' },
+    }
+    await expect(pull(deps(), userId, cursor)).rejects.toBeInstanceOf(InvalidCursor)
   })
 })

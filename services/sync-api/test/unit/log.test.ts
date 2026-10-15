@@ -15,4 +15,8 @@ describe('logLine', () => {
     const wider = { status: 401, sub: 'user_abc', email: 'a@b.c', authorization: 'Bearer x' } as LogFields
     expect(JSON.parse(logLine(wider))).toEqual({ status: 401 })
   })
+
+  it('keeps the conflicts count', () => {
+    expect(JSON.parse(logLine({ conflicts: 2 }))).toEqual({ conflicts: 2 })
+  })
 })

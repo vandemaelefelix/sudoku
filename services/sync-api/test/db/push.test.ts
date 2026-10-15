@@ -55,7 +55,7 @@ describe('the write rule (ADR-028 decision 6)', () => {
     const userId = newUser()
     const entry = entryWithId(1, { updatedAt: MID })
     const result = await push(deps(), userId, [entry], NOW)
-    expect(result).toEqual({ acceptedIds: [entry.id], stored: 1, noop: 0, capped: 0 })
+    expect(result).toEqual({ acceptedIds: [entry.id], stored: 1, noop: 0, capped: 0, conflicts: 0 })
     expect(await gameRow(userId, entry.id)).toMatchObject({ updatedAt: MID, syncedAt: NOW.toISOString() })
     expect(await gameRow(userId, entry.id)).not.toHaveProperty('id')
   })
@@ -69,7 +69,7 @@ describe('the write rule (ADR-028 decision 6)', () => {
       [entryWithId(1, { updatedAt: OLD, mistakes: 7 }), entryWithId(1, { updatedAt: MID, mistakes: 8 })],
       LATER,
     )
-    expect(result).toEqual({ acceptedIds: [entryWithId(1).id], stored: 0, noop: 2, capped: 0 })
+    expect(result).toEqual({ acceptedIds: [entryWithId(1).id], stored: 0, noop: 2, capped: 0, conflicts: 0 })
     expect(await gameRow(userId, entryWithId(1).id)).toMatchObject({ mistakes: 1, syncedAt: NOW.toISOString() })
     expect(await writes(userId)).toBe(1)
   })
@@ -110,7 +110,13 @@ describe('the daily count (ADR-027 decision 9)', () => {
     await setCount(userId, 198)
     const entries = [1, 2, 3, 4, 5].map((n) => entryWithId(n))
     const result = await push(deps(), userId, entries, NOW)
-    expect(result).toEqual({ acceptedIds: [entries[0]!.id, entries[1]!.id], stored: 2, noop: 0, capped: 3 })
+    expect(result).toEqual({
+      acceptedIds: [entries[0]!.id, entries[1]!.id],
+      stored: 2,
+      noop: 0,
+      capped: 3,
+      conflicts: 0,
+    })
     expect(await writes(userId)).toBe(200)
     expect(await gameRow(userId, entries[2]!.id)).toBeUndefined()
   })
@@ -120,7 +126,7 @@ describe('the daily count (ADR-027 decision 9)', () => {
     await push(deps(), userId, [entryWithId(1)], NOW)
     await setCount(userId, 200)
     const result = await push(deps(), userId, [entryWithId(2), entryWithId(1)], NOW)
-    expect(result).toEqual({ acceptedIds: [entryWithId(1).id], stored: 0, noop: 1, capped: 1 })
+    expect(result).toEqual({ acceptedIds: [entryWithId(1).id], stored: 0, noop: 1, capped: 1, conflicts: 0 })
   })
 
   it('starts a new UTC day at 0, with a TTL of the day start plus 2 days', async () => {

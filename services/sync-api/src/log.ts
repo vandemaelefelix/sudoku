@@ -10,6 +10,7 @@ export interface LogFields {
   stored?: number
   noop?: number
   capped?: number
+  conflicts?: number
   changes?: number
   more?: boolean
   durationMs?: number
@@ -28,6 +29,7 @@ const ALLOWED: readonly (keyof LogFields)[] = [
   'stored',
   'noop',
   'capped',
+  'conflicts',
   'changes',
   'more',
   'durationMs',

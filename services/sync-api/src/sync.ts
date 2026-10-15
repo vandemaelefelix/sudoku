@@ -1,6 +1,6 @@
 import { syncRequestSchema, type SyncRequest, type SyncResponse } from '@sudoku/sync-contract'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
-import { InvalidCursor, assertCursorOwner, decodeCursor, encodeCursor, type Cursor } from './cursor'
+import { InvalidCursor, assertCursorOwner, assertCursorRange, decodeCursor, encodeCursor, type Cursor } from './cursor'
 import type { SyncDeps } from './deps'
 import { errorResponse, json, unauthorized, type Response } from './http'
 import { AccountDeleted, findOrCreateUserId } from './identity'
@@ -42,6 +42,7 @@ export async function sync(
 
   try {
     assertCursorOwner(cursor, userId)
+    assertCursorRange(cursor)
   } catch (error) {
     if (error instanceof InvalidCursor) return refuse(fields, 'invalid_cursor')
     throw error
@@ -49,11 +50,19 @@ export async function sync(
 
   // Push before pull, so the response holds the own changes. One server time for the whole request.
   const pushed = await push(deps, userId, request.entries, deps.now())
-  const pulled = await pull(deps, userId, cursor)
+  let pulled: Awaited<ReturnType<typeof pull>>
+  try {
+    pulled = await pull(deps, userId, cursor)
+  } catch (error) {
+    // The push is idempotent, so the phone sends its entries again with a valid cursor.
+    if (error instanceof InvalidCursor) return refuse(fields, 'invalid_cursor')
+    throw error
+  }
   Object.assign(fields, {
     stored: pushed.stored,
     noop: pushed.noop,
     capped: pushed.capped,
+    conflicts: pushed.conflicts,
     changes: pulled.changes.length,
     more: pulled.more,
   })
