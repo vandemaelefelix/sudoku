@@ -81,3 +81,9 @@ The first repositories make these points of the decision concrete:
 7. **Best time without hints.** The best time of a level counts only won games with zero hints.
 
 The time played is saved with each move. Time after the last move and before the app is killed is lost.
+
+## Amendment 2026-10-15: the owner and the waiting list
+
+[ADR-028](adr-028-history-sync.md) amends this ADR. Migration 5 adds `owner_id` and
+`pushed_at` to `game_history` and creates `sync_state`. `HistoryRepository` gets `pending`,
+`markPushed` and `upsertRemote`. The other points stay.

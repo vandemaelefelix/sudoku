@@ -23,6 +23,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | Repository layout and boundaries | `docs/architecture/05-building-block-view.md` |
 | How a scan works | `docs/architecture/00-concepts/scan-pipeline.md` |
 | How the game screen works | `docs/architecture/00-concepts/game-screen.md` |
+| How the history sync works | `docs/architecture/00-concepts/history-sync.md` |
 | What the model must accept and return | `docs/architecture/00-concepts/model-contract.md` |
 | Words and their meaning | `docs/architecture/12-glossary.md` |
 | Commands (setup, test, lint) | `justfile`, or run `just --list` |

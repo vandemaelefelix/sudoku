@@ -6,8 +6,8 @@ status: DRAFT
 
 Sudoku is a personal project with two parts that grow into three. An iOS app to play sudoku every
 day, and a machine-learning pipeline that lets the app scan a paper sudoku from a newspaper or a
-puzzle book, load it, and solve it or give a hint. A backend for accounts, history and a
-leaderboard may follow later.
+puzzle book, load it, and solve it or give a hint. A backend for accounts and the history
+across devices follows, and a leaderboard after it (ADR-027).
 
 The project has two reasons to exist:
 
@@ -19,13 +19,13 @@ Shipping to the App Store is possible but not a goal. Decisions SHOULD NOT block
 
 ## 1.1 Requirements Overview
 
-The system has three parts. Only the first two are in scope now.
+The system has three parts. The backend starts with accounts and the history sync.
 
 | Part | What it is | Scope |
 | --- | --- | --- |
 | **Game** | The sudoku app: generated puzzles, difficulty levels, notes, timer, hints | Now |
 | **Scan** | Camera → live grid outline → digit recognition → correction → load into the game | Now |
-| **Backend** | Accounts, history across devices, leaderboard. Possibly on AWS | Later, not designed yet |
+| **Backend** | Accounts and the history across devices on AWS ([ADR-027](adr/adr-027-backend-platform.md), [ADR-028](adr/adr-028-history-sync.md)). A leaderboard later | Now: accounts and sync. Later: the leaderboard |
 
 ### Functional Requirements (MoSCoW)
 
@@ -44,7 +44,7 @@ The system has three parts. Only the first two are in scope now.
 | F-11 | Export a corrected scan as training data | Should |
 | F-12 | Correct strongly curved book pages beyond per-cell flattening | Could |
 | F-13 | Android build | Could |
-| F-14 | Accounts, cloud sync, leaderboard | Won't (now). Part 3, the backend |
+| F-14 | Accounts and a cloud sync of the history. A leaderboard later | Should (accounts and sync), Could (leaderboard). Part 3, the backend |
 | F-15 | Read the individual pencil notes inside a notes cell | Won't (now) |
 | F-16 | Ads, tracking or any monetisation | Won't |
 
