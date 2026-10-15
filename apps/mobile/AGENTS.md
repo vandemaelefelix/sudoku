@@ -101,14 +101,18 @@ The theme follows ADR-015. `src/theme/` holds every colour value.
 4. Use a semantic token in most components. Use a component token only in its own component.
 5. Do not import the `palette.ts` file of a theme. Only the folder of that theme reads it. `just lint`
    checks this rule.
-6. To add a theme (ADR-021):
+6. To add a colourway of the Op-art style (ADR-021, ADR-025, ADR-026):
    - Add its name to `ThemeName` in `src/theme/theme.types.ts`.
-   - Add a folder in `src/theme/themes/` with `palette.ts`, `<name>.ts` and `index.ts`.
-   - Add one line to `THEMES` in `src/theme/themes/registry.ts`. The picker, the saved preference,
-     the Unistyles registration and the contrast test read this list.
-   - Add one line to `DECORATIONS` in `src/theme/decorations/registry.ts`. Use `{}` for a theme
-     without decorations.
-   - Put a new font in `assets/fonts/` with its PostScript name as the file name, with its licence.
+   - Add a folder in `src/theme/themes/` with `palette.ts`, `<name>.ts` and `index.ts`. The palette is an
+     `OpartPalette`, with `colourEntry` for the Colour look. `<name>.ts` calls `buildOpartTheme` from
+     `src/theme/opart/` twice: once for Light and once for Colour. It exports both themes.
+   - Add one line to `THEMES` and one line to `COLOUR_THEMES` in `src/theme/themes/registry.ts`, and the two names to
+     `APP_THEMES` in `src/theme/unistyles.ts`. The picker, the saved preference, the Unistyles registration and the
+     contrast test read these lists.
+   - Do not write the Colour values by hand. `src/theme/opart/opart.colour.ts` derives them from the accent.
+   - The first frame of the splash overlay is white and equals the native splash. After it, the overlay uses the colours of the saved look.
+   - Add one line to `DECORATIONS` in `src/theme/decorations/registry.ts`.
+   - Put a new font, only when a colourway needs one, in `assets/fonts/` with its PostScript name as the file name, with its licence.
      List it in the `expo-font` plugin in `app.json`. A font needs a new development build.
 
 ### Worklets

@@ -79,22 +79,34 @@ status: DRAFT
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
 | Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
 | Unsure | The kind label for a cell that the developer cannot decide. Training ignores it |
-| Theme | One typed object with every token the app needs. The app ships four: Daylight, Midnight, Op-art and Progressive (ADR-015, ADR-021) |
+| Theme | One typed object with every token the app needs. The app ships six: three colourways in two appearances (ADR-015, ADR-025, ADR-026) |
 | Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |
 | Semantic token | A token named by its meaning, such as `colors.text` or `type.given`. Most components read these (ADR-015) |
 | Component token | A token that belongs to one component, such as `components.cell.selected` (ADR-015) |
-| Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. The slots are `panelEdge`, `titleMark` and `cardEdge` (ADR-015, ADR-021) |
+| Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. The slots are `panelEdge`, `cardEdge`, `summaryEdge` and `sectionRule` (ADR-015, ADR-021) |
 | Type role | A semantic text style for one kind of text: the digits `type.given`, `type.entry` and `type.note`, and `display`, `question`, `status` and `eyebrow` (ADR-015, ADR-021) |
 | Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
-| Daylight | The light theme (ADR-015) |
-| Midnight | The dark theme (ADR-015) |
-| Op-art | A light theme: a white page, one cobalt colour and wavy parallel lines (ADR-021) |
-| Progressive | A light theme: a beige page, black only, a black disc and vertical stripes (ADR-021) |
-| Theme registry | `src/theme/themes/registry.ts`: the list `THEMES` of every theme with its label. The theme type, the Settings picker, the theme preference, the Unistyles registration and the contrast test read it (ADR-021) |
+| Op-art | The one style of the app: one ink colour and wavy parallel lines, on a white page or on the accent (ADR-021, ADR-025, ADR-026) |
+| Colourway | One colour version of the Op-art style: Cobalt, Forest or Bordeaux. A colourway is a palette. One builder makes its theme (ADR-025) |
+| Appearance | The setting that picks the look of a colourway: Auto, Light or Colour. Auto is a preference. A theme has only Light or Colour (ADR-026) |
+| Light | The appearance with a white page and coloured content. The default (ADR-026) |
+| Colour | The appearance where the accent is the page and the content is white or light. Also called full colour (ADR-026) |
+| Conflict hatch | The white diagonal stripes of a conflict cell in the Colour look. `ConflictHatch` draws it. Also called the hatch (ADR-026) |
+| Toggle | The boxy on and off control with a square thumb. It replaces the native switch (ADR-026) |
+| Section rule | The `sectionRule` slot: a short wavy line under a section heading of Settings (ADR-026) |
+| Look | One colourway in one resolved appearance, Light or Colour. The app has six looks. `Theme.appearance` holds the appearance of a look (ADR-026) |
+| Accent | The main colour of a colourway, such as `#1f3fd1` for Cobalt. The palette derives from it. In the Colour look the accent is the page (ADR-025, ADR-026) |
+| Segmented control | `SegmentedControl`: a row of square grid cells with one selected cell that slides. The Theme picker, the Appearance picker and the stats tabs use it (ADR-026) |
+| Theme transition | The effect over a theme switch. `ThemeTransitionProvider` takes a picture of the old screen and switches the theme under it. A cell wave then reveals the new look. It takes 700 ms. Not with Reduce Motion (ADR-025, ADR-026) |
+| Cell wave | The wave of splash cells that rises over the picture of the old screen in a theme transition. `ThemeCellWave` draws it. Each cell erases the picture where it passes (ADR-025) |
+| Auto | The appearance preference that follows the iPhone setting: a light iPhone gives Light, a dark iPhone gives Colour (ADR-026) |
+| Cobalt | The blue colourway and the default theme (ADR-025) |
+| Forest | The dark green colourway (ADR-025) |
+| Bordeaux | The wine red colourway. A conflict is orange and the check ring is amber (ADR-025) |
+| Theme registry | `src/theme/themes/registry.ts`: the list `THEMES` of every Light theme with its label, and the list `COLOUR_THEMES` of every Colour theme (ADR-026). The theme type, the Settings picker, the theme preference, the Unistyles registration and the contrast test read it (ADR-021) |
 | Decoration registry | `src/theme/decorations/registry.ts`: the theme decoration of each theme for each slot, outside the Unistyles theme object (ADR-021) |
-| Panel edge | The `panelEdge` slot: a band on the top edge of the correction panel. Op-art draws 4 wavy cobalt lines. Progressive draws vertical stripes (ADR-021) |
+| Panel edge | The `panelEdge` slot: a band on the top edge of the correction panel. The theme draws 4 wavy lines in its accent colour (ADR-021, ADR-025) |
 | Card edge | The `cardEdge` slot: a band across the top of the finish card. Op-art draws 4 wavy white lines (ADR-021) |
-| Title mark | The `titleMark` slot: a mark next to the screen title. Progressive draws a black disc (ADR-021) |
 | Game | One puzzle in progress: the givens, the solution, the entries, the start entries, the notes, the mistakes, the hints used and the time played. `@sudoku/core` holds its rules |
 | Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
@@ -114,8 +126,7 @@ status: DRAFT
 | Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
 | Undo step | The entries and notes before one move. Undo restores the last undo step. It does not restore the mistake count |
 | Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
-| Theme preference | The player's choice in Settings: System, Daylight, Midnight, Op-art or Progressive. System follows the light or dark setting of the iPhone (ADR-021) |
-| Adaptive theme | The theme that follows the iPhone setting: Daylight in light mode, Midnight in dark mode |
+| Theme preference | The player's choice in Settings: Cobalt, Forest or Bordeaux. A saved value of an older version gives Cobalt (ADR-025). The appearance is a second preference (ADR-026) |
 | Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
 | Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
 | Solution | The full grid that the givens allow. A playable puzzle has exactly one |
@@ -160,5 +171,5 @@ status: DRAFT
 | Flawless win | A won game with zero mistakes and zero hints. See ADR-023 |
 | Day streak | The number of days in a row with at least one won game, in the time zone of the player. See ADR-023 |
 | Verify | The check of a full scanned grid. `verifyGrid` says solved, wrong or clash. The button says "Check the grid". "Check" in code means the per-cell check of an uncertain cell |
-| Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. White in light mode, near black in dark mode. It follows the system appearance, not the saved theme (ADR-024) |
+| Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. It is white for every look, because the native layer cannot read the saved theme. The overlay then fades it to the page colour of the saved look (ADR-024, ADR-025, ADR-026) |
 | Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
