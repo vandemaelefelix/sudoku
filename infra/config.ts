@@ -7,6 +7,9 @@ export const AWS_REGION = 'eu-west-1'
 export const STAGES = ['felix', 'dev', 'production'] as const
 export type Stage = (typeof STAGES)[number]
 
+// The only repository that may take a deploy role (ADR-027, decision 8). The trust policy matches it exactly.
+export const GITHUB_REPO = 'vandemaelefelix/sudoku'
+
 // A budget and other account-wide resources exist once per account, so only this stage creates them.
 export const ACCOUNT_STAGE: Stage = 'production'
 
