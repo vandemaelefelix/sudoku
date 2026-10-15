@@ -35,7 +35,7 @@ describe('sst.config.ts', () => {
   })
 
   it('plans the stage before it creates any resource, so a stage without an issuer throws first', () => {
-    const plan = source.indexOf('deployPlan($app.stage)')
+    const plan = source.indexOf('deployPlan(stage)')
     assert.ok(plan > source.indexOf('assertNotStopped($app.stage, $cli.command)'))
     assert.ok(plan < source.indexOf("import('./infra/defaults.ts')"))
     assert.ok(plan < source.indexOf("import('./infra/budget.ts')"))

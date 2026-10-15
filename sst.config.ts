@@ -39,14 +39,14 @@ export default $config({
   async run() {
     // Layer 3 of the account guard. It runs before any resource, also in CI.
     const { assertKnownStage, assertPersonalAccount } = await import('./infra/account.ts')
-    assertKnownStage($app.stage)
+    const stage = assertKnownStage($app.stage)
     await assertPersonalAccount()
     // Layer 4: a plain `sst deploy` or `sst dev` also refuses a stopped stage. `remove` and `diff` pass (ADR-027, decision 9).
     const { assertNotStopped } = await import('./infra/kill-switch-guard.ts')
     await assertNotStopped($app.stage, $cli.command)
     // Throws for felix and dev without an issuer, before any resource exists (their table has no deletion protection).
     const { deployPlan } = await import('./infra/config.ts')
-    const plan = deployPlan($app.stage)
+    const plan = deployPlan(stage)
     await import('./infra/defaults.ts')
     await import('./infra/budget.ts')
     const { deployRoles } = await import('./infra/github-oidc.ts')
