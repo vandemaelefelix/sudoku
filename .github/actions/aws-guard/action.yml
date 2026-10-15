@@ -1,0 +1,27 @@
+name: aws-guard
+description: Take the deploy role, then refuse a wrong account or a stopped stage before any sst command (ADR-027).
+inputs:
+  role-arn:
+    description: The ARN of the deploy role.
+    required: true
+  stage:
+    description: The stage to deploy.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+      with:
+        role-to-assume: ${{ inputs.role-arn }}
+        # Equal to AWS_REGION in infra/config.ts. infra/workflows.test.ts checks it.
+        aws-region: eu-west-1
+        role-session-name: sudoku-deploy-${{ inputs.stage }}
+        role-duration-seconds: 3600
+    # Layer 1 of the account guard. It runs before SST writes its state bucket.
+    - run: node infra/check-account.ts
+      shell: bash
+    # ADR-027, decision 9. The same script as just deploy-api.
+    - run: node infra/kill-switch-check.ts "$STAGE"
+      shell: bash
+      env:
+        STAGE: ${{ inputs.stage }}
