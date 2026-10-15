@@ -6,3 +6,13 @@ export {
   MAX_ERROR_MESSAGE_LENGTH,
   MAX_SEED,
 } from './limits'
+export {
+  gameResultSchema,
+  historyEntrySchema,
+  levelSchema,
+  puzzleSourceSchema,
+  type GameResult,
+  type HistoryEntry,
+  type Level,
+  type PuzzleSource,
+} from './historyEntry'

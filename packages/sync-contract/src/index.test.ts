@@ -10,4 +10,11 @@ describe('@sudoku/sync-contract', () => {
     expect(contract.MAX_SEED).toBe(4_294_967_295)
     expect(contract.MAX_ERROR_MESSAGE_LENGTH).toBe(500)
   })
+
+  it('exports the history entry schemas', () => {
+    expect(contract.historyEntrySchema).toBeDefined()
+    expect(contract.levelSchema.options).toEqual(['easy', 'medium', 'hard', 'expert'])
+    expect(contract.puzzleSourceSchema.options).toEqual(['generated', 'scanned'])
+    expect(contract.gameResultSchema.options).toEqual(['won', 'lost', 'abandoned'])
+  })
 })
