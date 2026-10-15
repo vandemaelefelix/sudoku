@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { GAME_PREFIX } from './tableDesign'
+import { GAME_PREFIX, userPk } from './tableDesign'
 
 // The form that the server stamps with Date.toISOString(), so a string compare orders it.
 const utcTime = z.iso.datetime({ precision: 3 })
@@ -58,4 +58,9 @@ export function nextCursor(
   // and without the after of the request, since would fall back and the next sync would read the range again.
   const since = lastRow?.syncedAt ?? request.after?.syncedAt ?? request.since
   return { cursor: { v: 1, since, after: null }, more: false }
+}
+
+// ADR-028 decision 6: an after outside the partition of the caller is an invalid cursor, not a read of other rows.
+export function assertCursorOwner(cursor: Cursor, userId: string): void {
+  if (cursor.after && cursor.after.pk !== userPk(userId)) throw new InvalidCursor()
 }

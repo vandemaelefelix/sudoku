@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
-import { InvalidCursor, decodeCursor, encodeCursor, nextCursor, type Cursor } from '../../src/cursor'
+import { InvalidCursor, assertCursorOwner, decodeCursor, encodeCursor, nextCursor, type Cursor } from '../../src/cursor'
 
 const T1 = '2026-10-15T09:00:00.000Z'
 const T2 = '2026-10-15T09:05:00.000Z'
@@ -78,5 +78,16 @@ describe('nextCursor (ADR-028 decision 6)', () => {
 
   it('refuses a LastEvaluatedKey that is not a game row of bySynced', () => {
     expect(() => nextCursor({ v: 1, since: null, after: null }, [], { pk: 'USER#u-1', sk: 'GAME#g' })).toThrow(ZodError)
+  })
+})
+
+describe('assertCursorOwner', () => {
+  it('accepts a cursor without after and an after in the partition of the caller', () => {
+    expect(() => assertCursorOwner({ v: 1, since: null, after: null }, 'u-1')).not.toThrow(InvalidCursor)
+    expect(() => assertCursorOwner({ v: 1, since: T1, after }, 'u-1')).not.toThrow(InvalidCursor)
+  })
+
+  it('refuses an after in another partition', () => {
+    expect(() => assertCursorOwner({ v: 1, since: T1, after }, 'u-2')).toThrow(InvalidCursor)
   })
 })
