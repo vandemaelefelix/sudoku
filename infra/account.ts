@@ -30,3 +30,16 @@ export async function assertPersonalAccount(): Promise<void> {
   const problem = accountProblem(identity.accountId, AWS_ACCOUNT_ID)
   if (problem) throw new Error(problem)
 }
+
+// In GitHub Actions the role credentials come from the environment, and no profile sudoku exists.
+export function callerAccountArgs(inCi: boolean): string[] {
+  return [
+    'sts',
+    'get-caller-identity',
+    ...(inCi ? [] : ['--profile', 'sudoku']),
+    '--query',
+    'Account',
+    '--output',
+    'text',
+  ]
+}
