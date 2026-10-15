@@ -1,7 +1,8 @@
 import { useSignIn } from '@clerk/expo'
 import { useState } from 'react'
 import { useAuthRequest } from '@/account/hooks/useAuthRequest'
-import type { AuthErrors } from '@/account/utils/authErrors.utils'
+import { signInStatusMessage, type AuthErrors } from '@/account/utils/authErrors.utils'
+import { devWarn } from '@/utils/log.utils'
 
 /**
  * credentials: the email and the password. code: Clerk does not trust this device yet and sent an email code.
@@ -30,7 +31,7 @@ export function useEmailSignIn(onDone: () => void): EmailSignIn {
     busy,
     errors,
     submit: (email, password) =>
-      run(async (fail) => {
+      run(async (fail, failWith) => {
         const result = await signIn.password({ identifier: email, password })
         if (result.error) return fail(result.error)
         if (signIn.status === 'needs_second_factor') return setStep('unsupported')
@@ -39,16 +40,22 @@ export function useEmailSignIn(onDone: () => void): EmailSignIn {
           if (sent.error) return fail(sent.error)
           return setStep('code')
         }
-        if (signIn.status !== 'complete') return fail(undefined)
+        if (signIn.status !== 'complete') {
+          devWarn('account', `Clerk sign-in status ${signIn.status}`)
+          return failWith(signInStatusMessage(signIn.status, signIn.supportedFirstFactors))
+        }
         const finished = await signIn.finalize()
         if (finished.error) return fail(finished.error)
         onDone()
       }),
     verifyCode: (code) =>
-      run(async (fail) => {
+      run(async (fail, failWith) => {
         const verified = await signIn.mfa.verifyEmailCode({ code })
         if (verified.error) return fail(verified.error)
-        if (signIn.status !== 'complete') return fail(undefined)
+        if (signIn.status !== 'complete') {
+          devWarn('account', `Clerk sign-in status ${signIn.status}`)
+          return failWith(signInStatusMessage(signIn.status, signIn.supportedFirstFactors))
+        }
         const finished = await signIn.finalize()
         if (finished.error) return fail(finished.error)
         onDone()

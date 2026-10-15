@@ -3,6 +3,12 @@ export type AuthField = 'email' | 'password' | 'code' | 'form'
 
 export const GENERIC_AUTH_ERROR = 'This did not work. Try again.'
 export const OFFLINE_AUTH_ERROR = 'No connection. Try again when you are online.'
+export const GOOGLE_ACCOUNT_ERROR = 'This account uses Google. Sign in with Google.'
+export const UNSUPPORTED_SIGN_IN_ERROR = 'This sign-in needs a step the app does not support yet.'
+export const NEW_PASSWORD_ERROR = 'This account needs a new password. The app cannot set one yet.'
+export const UNSUPPORTED_SIGN_UP_ERROR = 'This sign-up needs a step the app does not support yet.'
+export const MISSING_REQUIREMENTS_ERROR = 'This sign-up needs more details than the app asks for yet.'
+export const ABANDONED_SIGN_UP_ERROR = 'This sign-up expired. Go back and start again.'
 export const GOOGLE_AUTH_ERROR = 'Google sign-in did not work. Try again.'
 
 /** The short message for each Clerk error code. A code that is not here gets GENERIC_AUTH_ERROR. */

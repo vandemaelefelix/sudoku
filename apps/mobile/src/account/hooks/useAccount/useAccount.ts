@@ -7,7 +7,8 @@ export type Account = {
   status: AccountStatus
   /** The primary email of the signed-in player. Null in every other status. */
   email: string | null
-  signOut(): Promise<void>
+  /** Never rejects. It resolves false when Clerk could not sign the player out, and the player stays signed in. */
+  signOut(): Promise<boolean>
   /** A fresh `sudoku-api` token for one request. Null when signed out, or when Clerk cannot give one. Never throws. */
   getApiToken(): Promise<string | null>
 }
@@ -15,7 +16,7 @@ export type Account = {
 export const UNCONFIGURED_ACCOUNT: Account = {
   status: 'unconfigured',
   email: null,
-  signOut: async () => undefined,
+  signOut: async () => true,
   getApiToken: async () => null,
 }
 

@@ -22,7 +22,7 @@ type TextFieldProps = {
   inputRef?: Ref<TextInput>
 }
 
-/** A labelled text field. The error shows under it, VoiceOver reads it after the label, and a new error is announced. */
+/** A labelled text field. The error shows under it as the next element for VoiceOver, and a new error is announced. A hint would say it a third time. */
 export function TextField({
   label,
   kind,
@@ -44,7 +44,6 @@ export function TextField({
       <ThemedInput
         ref={inputRef}
         accessibilityLabel={label}
-        accessibilityHint={error}
         value={value}
         onChangeText={onChangeText}
         autoCapitalize="none"

@@ -90,6 +90,13 @@ jest.mock('expo-sqlite/kv-store', () => {
   }
 })
 
+// The Keychain is native. Each test sets what it needs. A new read gives no value.
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
+}))
+
 jest.mock('react-native-reanimated', () => {
   const { useRef } = jest.requireActual('react')
   return {

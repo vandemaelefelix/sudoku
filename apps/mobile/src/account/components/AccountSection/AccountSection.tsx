@@ -10,10 +10,13 @@ type AccountSectionProps = { onSignIn(): void }
 export function AccountSection({ onSignIn }: AccountSectionProps) {
   const { status, email, signOut } = useAccount()
   if (status === 'unconfigured') return null
+  const trySignOut = async () => {
+    if (!(await signOut())) Alert.alert('Could not sign out', 'Check your connection and try again.')
+  }
   const confirmSignOut = () =>
     Alert.alert('Sign out?', 'The games of this account stay on this iPhone.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
+      { text: 'Sign out', style: 'destructive', onPress: () => void trySignOut() },
     ])
   return (
     <>
@@ -40,7 +43,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
       ) : null}
       {status === 'signedIn' ? (
         <View style={styles.card}>
-          <View style={styles.row}>
+          <View style={styles.row} accessible accessibilityLabel={`Signed in as ${email}`}>
             <Text style={styles.email}>{email}</Text>
           </View>
           <Pressable

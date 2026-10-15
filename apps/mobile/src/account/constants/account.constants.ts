@@ -6,3 +6,6 @@ export const CODE_LENGTH = 6
 
 /** The sign-in screens show this when the app variant has no Clerk key. */
 export const UNCONFIGURED_MESSAGE = 'Accounts are not available in this version of the app.'
+
+/** The Keychain item that holds the last signed-in Clerk user ID, the owner until Clerk has loaded (ADR-028). */
+export const OWNER_CACHE_KEY = 'sudoku.owner'

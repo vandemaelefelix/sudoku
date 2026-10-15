@@ -193,8 +193,8 @@ The backend has these limits:
 - The app turns off the Sign in with Apple entitlement of the Clerk plugin
   (`appleSignIn: false`). v1 has no Apple sign-in, and a free Apple team cannot sign the
   entitlement.
-- The publishable key and the Google client IDs of the development instance are in
-  `app.config.ts`. They are public values. The production variant has no key until the
+- The Google client IDs of the development instance are in `app.config.ts` next to the
+  publishable key. They are public values. The production variant has no key until the
   production instance exists, so it shows no account section.
 - Native Google sign-in uses the free Apple team (Team ID and the `.dev` bundle ID in Clerk). The
   iPhone test checks it. If it fails, the app ships email only and Google waits for the Apple

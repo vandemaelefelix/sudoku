@@ -43,11 +43,12 @@ describe('signed in', () => {
       wrapper: withAccount({ status: 'signedIn', email: 'alice@example.com' }),
     })
     expect(screen.getByText('alice@example.com')).toBeTruthy()
+    expect(screen.getByLabelText('Signed in as alice@example.com')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy()
   })
 
   it('asks first, and signs out on the destructive answer', async () => {
-    const signOut = jest.fn(async () => undefined)
+    const signOut = jest.fn(async () => true)
     const alert = answerAlert('Sign out')
     render(<AccountSection onSignIn={jest.fn()} />, {
       wrapper: withAccount({ status: 'signedIn', email: 'alice@example.com', signOut }),
@@ -65,12 +66,31 @@ describe('signed in', () => {
   })
 
   it('stays signed in on Cancel', async () => {
-    const signOut = jest.fn(async () => undefined)
+    const signOut = jest.fn(async () => true)
     answerAlert('Cancel')
     render(<AccountSection onSignIn={jest.fn()} />, {
       wrapper: withAccount({ status: 'signedIn', email: 'alice@example.com', signOut }),
     })
     await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Sign out' })))
     expect(signOut).not.toHaveBeenCalled()
+  })
+
+  it('tells the player in plain words when the sign-out fails, and stays signed in', async () => {
+    const signOut = jest.fn(async () => false)
+    const alert = answerAlert('Sign out')
+    render(<AccountSection onSignIn={jest.fn()} />, {
+      wrapper: withAccount({ status: 'signedIn', email: 'alice@example.com', signOut }),
+    })
+    await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Sign out' })))
+    expect(alert).toHaveBeenLastCalledWith('Could not sign out', 'Check your connection and try again.')
+  })
+
+  it('does not warn about a sign-out that works', async () => {
+    const alert = answerAlert('Sign out')
+    render(<AccountSection onSignIn={jest.fn()} />, {
+      wrapper: withAccount({ status: 'signedIn', email: 'a@b.c', signOut: jest.fn(async () => true) }),
+    })
+    await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Sign out' })))
+    expect(alert).toHaveBeenCalledTimes(1)
   })
 })

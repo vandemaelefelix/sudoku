@@ -1,7 +1,8 @@
 import { useSignUp } from '@clerk/expo'
 import { useState } from 'react'
 import { useAuthRequest } from '@/account/hooks/useAuthRequest'
-import type { AuthErrors } from '@/account/utils/authErrors.utils'
+import { signUpStatusMessage, type AuthErrors } from '@/account/utils/authErrors.utils'
+import { devWarn } from '@/utils/log.utils'
 
 /** details: the email and the password. code: the 6-digit code that Clerk sent to the email. */
 export type SignUpStep = 'details' | 'code'
@@ -35,10 +36,13 @@ export function useEmailSignUp(onDone: () => void): EmailSignUp {
         setStep('code')
       }),
     verifyCode: (code) =>
-      run(async (fail) => {
+      run(async (fail, failWith) => {
         const verified = await signUp.verifications.verifyEmailCode({ code })
         if (verified.error) return fail(verified.error)
-        if (signUp.status !== 'complete') return fail(undefined)
+        if (signUp.status !== 'complete') {
+          devWarn('account', `Clerk sign-up status ${signUp.status}`)
+          return failWith(signUpStatusMessage(signUp.status))
+        }
         const finished = await signUp.finalize()
         if (finished.error) return fail(finished.error)
         onDone()

@@ -103,3 +103,43 @@ it('shows the offline message when Clerk throws', async () => {
   await act(() => result.current.submit('alice@example.com', 'a long password'))
   expect(result.current.errors).toEqual({ form: 'No connection. Try again when you are online.' })
 })
+
+async function verifyEndingIn(status: string) {
+  const signUp = fakeSignUp()
+  const onDone = jest.fn()
+  const { result } = renderHook(() => useEmailSignUp(onDone))
+  await act(() => result.current.submit('alice@example.com', 'a long password'))
+  signUp.verifications.verifyEmailCode.mockImplementation(async () => {
+    signUp.status = status
+    return { error: null }
+  })
+  await act(() => result.current.verifyCode('123456'))
+  expect(signUp.finalize).not.toHaveBeenCalled()
+  expect(onDone).not.toHaveBeenCalled()
+  return result.current.errors
+}
+
+describe('a status that the app cannot finish', () => {
+  let warn: jest.SpyInstance
+  beforeEach(() => {
+    warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+  })
+  afterEach(() => warn.mockRestore())
+
+  it('says that more details are needed when requirements are missing', async () => {
+    const errors = await verifyEndingIn('missing_requirements')
+    expect(errors).toEqual({ form: 'This sign-up needs more details than the app asks for yet.' })
+    expect(warn).toHaveBeenCalledWith('[account] Clerk sign-up status missing_requirements')
+  })
+
+  it('asks to start again when the sign-up is abandoned', async () => {
+    const errors = await verifyEndingIn('abandoned')
+    expect(errors).toEqual({ form: 'This sign-up expired. Go back and start again.' })
+    expect(warn).toHaveBeenCalledWith('[account] Clerk sign-up status abandoned')
+  })
+
+  it('gives the unsupported message for an unknown status', async () => {
+    const errors = await verifyEndingIn('needs_something_new')
+    expect(errors).toEqual({ form: 'This sign-up needs a step the app does not support yet.' })
+  })
+})

@@ -1,9 +1,15 @@
 import {
+  ABANDONED_SIGN_UP_ERROR,
   AUTH_ERROR_MESSAGES,
   AUTH_FIELD_OF_PARAM,
   GENERIC_AUTH_ERROR,
+  GOOGLE_ACCOUNT_ERROR,
+  MISSING_REQUIREMENTS_ERROR,
+  NEW_PASSWORD_ERROR,
   OFFLINE_AUTH_ERROR,
   OFFLINE_ERROR_CODE,
+  UNSUPPORTED_SIGN_IN_ERROR,
+  UNSUPPORTED_SIGN_UP_ERROR,
   type AuthField,
 } from '@/account/constants/authErrors.constants'
 
@@ -34,4 +40,20 @@ export function authErrorsOf(error: unknown): AuthErrors {
     result[field] ??= AUTH_ERROR_MESSAGES[code] ?? GENERIC_AUTH_ERROR
   }
   return result
+}
+
+/** The message for a sign-in that Clerk leaves in a status the app cannot finish. */
+export function signInStatusMessage(status: string, firstFactors: readonly { strategy: string }[] | undefined): string {
+  if (status === 'needs_new_password') return NEW_PASSWORD_ERROR
+  const strategies = (firstFactors ?? []).map((factor) => factor.strategy)
+  const onlyGoogle = strategies.length > 0 && strategies.every((strategy) => strategy === 'oauth_google')
+  if (status === 'needs_first_factor' && onlyGoogle) return GOOGLE_ACCOUNT_ERROR
+  return UNSUPPORTED_SIGN_IN_ERROR
+}
+
+/** The message for a sign-up that Clerk leaves in a status the app cannot finish. */
+export function signUpStatusMessage(status: string): string {
+  if (status === 'missing_requirements') return MISSING_REQUIREMENTS_ERROR
+  if (status === 'abandoned') return ABANDONED_SIGN_UP_ERROR
+  return UNSUPPORTED_SIGN_UP_ERROR
 }

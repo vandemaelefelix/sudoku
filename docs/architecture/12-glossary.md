@@ -183,7 +183,7 @@ status: DRAFT
 | Clerk user ID | The `sub` of a Clerk token, such as `user_2abc`. The app knows it at sign-in, also offline. It is the owner on the phone. The server maps it to a user ID (ADR-027, ADR-028) |
 | Identity row | The DynamoDB row `IDENTITY#<provider>#<subject>` that maps one login to a user ID. A new sign-in provider adds identity rows (ADR-027) |
 | Tombstone | The identity row of a deleted account: `deletedAt` and a TTL of 30 days. A sync with its `sub` gets 410 `account_deleted` and creates no new user ID (ADR-027) |
-| Owner | The Clerk user ID of a history entry on the phone. Null for a game finished while signed out. The sync and the stats use only the entries of the signed-in owner (ADR-028) |
+| Owner | The Clerk user ID of a history entry on the phone. Before Clerk loads, it is the cached Clerk user ID from the Keychain. Null for a game finished while signed out. The sync and the stats use only the entries of the signed-in owner (ADR-028) |
 | Sync | The call `POST /v1/sync`. It pushes the waiting list and pulls the changes since the cursor (ADR-028) |
 | Sync service | `SyncService` in `src/sync/`. It runs a sync on each trigger and stays silent on failure (ADR-028) |
 | Accepted | A pushed history entry is accepted when the server stored it, or already holds an equal or newer `updatedAt` for its id (ADR-028) |

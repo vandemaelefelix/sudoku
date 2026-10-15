@@ -42,11 +42,11 @@ it('passes the typed text up', () => {
   expect(onChangeText).toHaveBeenCalledWith('alice@example.com')
 })
 
-it('shows an error under the field in the danger colour, reads it after the label and announces it', () => {
+it('shows an error under the field in the danger colour and announces it once, with no hint that repeats it', () => {
   const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
   render(<TextField label="Password" kind="password" value="" onChangeText={jest.fn()} error="Wrong." />)
   expect(StyleSheet.flatten(screen.getByText('Wrong.').props.style).color).toBe(cobalt.colors.danger)
-  expect(screen.getByLabelText('Password').props.accessibilityHint).toBe('Wrong.')
+  expect(screen.getByLabelText('Password').props.accessibilityHint).toBeUndefined()
   expect(announce).toHaveBeenCalledWith('Wrong.')
   announce.mockRestore()
 })
