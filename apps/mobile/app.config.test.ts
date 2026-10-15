@@ -71,10 +71,10 @@ describe('the production backend', () => {
     googleWebClientId: '123-web.apps.googleusercontent.com',
   }
 
-  it('holds the production Clerk values and no sync URL until the production API is deployed', () => {
+  it('holds the production Clerk values and the production sync URL', () => {
     expect(PRODUCTION_BACKEND).toEqual({
       clerkPublishableKey: 'pk_live_Y2xlcmsuc3Vkb2t1LmZlbGl4dmFuZGVtYWVsZS5iZSQ',
-      syncApiUrl: null,
+      syncApiUrl: 'https://dfdhsxd374.execute-api.eu-west-1.amazonaws.com',
       googleIosClientId: '579798513006-3j8bts21f938o7pp100nv0tujpjfer7i.apps.googleusercontent.com',
       googleWebClientId: '579798513006-n4jlbj4c7tsa4987btou7ilp4jf7ro62.apps.googleusercontent.com',
     })
@@ -87,7 +87,7 @@ describe('the production backend', () => {
     expect(host).toBe('clerk.sudoku.felixvandemaele.be$')
   })
 
-  it('gives the production variant the key, both Google IDs and the reversed URL scheme, but no sync', () => {
+  it('gives the production variant the key, both Google IDs and the reversed URL scheme, and the production sync URL', () => {
     const extra = variantConfig(base, 'production', undefined, PRODUCTION_BACKEND).extra
     expect(extra).toMatchObject({
       clerkPublishableKey: PRODUCTION_BACKEND.clerkPublishableKey,
@@ -96,7 +96,7 @@ describe('the production backend', () => {
       EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME:
         'com.googleusercontent.apps.579798513006-3j8bts21f938o7pp100nv0tujpjfer7i',
     })
-    expect(extra?.syncApiUrl).toBeUndefined()
+    expect(extra?.syncApiUrl).toBe('https://dfdhsxd374.execute-api.eu-west-1.amazonaws.com')
   })
 
   it('production without a key has no clerk extra', () => {

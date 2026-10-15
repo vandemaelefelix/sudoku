@@ -443,8 +443,8 @@ The release of the backend to production makes these decisions.
    With an issuer, `deployPlan('production')` deploys the whole app.
 4. **The production Clerk and Google values are public.** They go in `PRODUCTION_BACKEND` in
    `apps/mobile/app.config.ts`: the publishable key, the API URL and the two Google client IDs. The key and the two IDs hold the production values.
-   The API URL is `null` until `just deploy-api production` prints it. A follow-up commit adds it. Until then the
-   production app signs in but does not sync. With a `null` key the production variant has no account section.
+   The API URL is the production stage URL that `just deploy-api production` printed. The production app syncs and deletes
+   the account in the app. With a `null` key the production variant has no account section.
 5. **Guideline 4.8: ship email and Google.** The app does not add Sign in with Apple now. It needs the paid Apple
    Developer Program. Add it at the first rejection under guideline 4.8, or before the first submission.
 6. **The privacy policy is Markdown in the repo.** The source is `docs/privacy/privacy-policy.md`. The public page lives
