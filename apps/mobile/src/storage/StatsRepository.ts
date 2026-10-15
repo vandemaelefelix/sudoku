@@ -2,8 +2,11 @@ import { computeStreak, LEVELS, type Streak } from '@sudoku/core'
 import type { SqlExecutor } from './sql.types'
 import type { Level, StorageDeps } from './storage.types'
 
-/** The stats that depend on which games count. Scanned games count only when `includeScanned` is true (ADR-023). */
-export type StatsFilter = { includeScanned: boolean }
+/**
+ * The stats that depend on which games count. Scanned games count only when `includeScanned` is true (ADR-023).
+ * Only the entries of `owner` count: an account id, or null for the games finished while signed out (ADR-028).
+ */
+export type StatsFilter = { includeScanned: boolean; owner: string | null }
 
 export type LevelSummary = {
   /** Won and lost games. An abandoned game is not played. */
@@ -58,20 +61,20 @@ const SUMMARY_SQL = `SELECT
     AVG(CASE WHEN result IN ('won', 'lost') THEN mistakes END) AS average_mistakes,
     AVG(CASE WHEN result IN ('won', 'lost') THEN hints_used END) AS average_hints
   FROM game_history
-  WHERE deleted_at IS NULL AND (? IS NULL OR level = ?) AND (? = 1 OR source = 'generated')`
+  WHERE deleted_at IS NULL AND owner_user_id IS ? AND (? IS NULL OR level = ?) AND (? = 1 OR source = 'generated')`
 
 const RECENT_SQL = `SELECT played_ms FROM (
     SELECT played_ms, finished_at, rowid AS row_id FROM game_history
-    WHERE result = 'won' AND level = ? AND deleted_at IS NULL AND (? = 1 OR source = 'generated')
+    WHERE result = 'won' AND level = ? AND deleted_at IS NULL AND owner_user_id IS ? AND (? = 1 OR source = 'generated')
     ORDER BY finished_at DESC, rowid DESC LIMIT ?
   ) ORDER BY finished_at ASC, row_id ASC`
 
 const WINS_SQL = `SELECT finished_at FROM game_history
-  WHERE result = 'won' AND deleted_at IS NULL AND (? = 1 OR source = 'generated')`
+  WHERE result = 'won' AND deleted_at IS NULL AND owner_user_id IS ? AND (? = 1 OR source = 'generated')`
 
 export function createSqliteStatsRepository(db: SqlExecutor, deps: StorageDeps): StatsRepository {
-  const summary: StatsRepository['summary'] = async (level, { includeScanned }) => {
-    const row = await db.getFirstAsync<SummaryRow>(SUMMARY_SQL, [level, level, includeScanned ? 1 : 0])
+  const summary: StatsRepository['summary'] = async (level, { includeScanned, owner }) => {
+    const row = await db.getFirstAsync<SummaryRow>(SUMMARY_SQL, [owner, level, level, includeScanned ? 1 : 0])
     // The query always gives a row.
     const counts = row ?? {
       won: 0,
@@ -104,12 +107,17 @@ export function createSqliteStatsRepository(db: SqlExecutor, deps: StorageDeps):
       const summaries = await Promise.all(LEVELS.map((level) => summary(level, filter)))
       return Object.fromEntries(LEVELS.map((level, index) => [level, summaries[index]])) as Record<Level, LevelSummary>
     },
-    recentTimes: async (level, count, { includeScanned }) => {
-      const rows = await db.getAllAsync<{ played_ms: number }>(RECENT_SQL, [level, includeScanned ? 1 : 0, count])
+    recentTimes: async (level, count, { includeScanned, owner }) => {
+      const rows = await db.getAllAsync<{ played_ms: number }>(RECENT_SQL, [
+        level,
+        owner,
+        includeScanned ? 1 : 0,
+        count,
+      ])
       return rows.map((row) => row.played_ms)
     },
-    async streak(timeZone, { includeScanned }) {
-      const rows = await db.getAllAsync<{ finished_at: string }>(WINS_SQL, [includeScanned ? 1 : 0])
+    async streak(timeZone, { includeScanned, owner }) {
+      const rows = await db.getAllAsync<{ finished_at: string }>(WINS_SQL, [owner, includeScanned ? 1 : 0])
       return computeStreak(
         rows.map((row) => row.finished_at),
         deps.now(),

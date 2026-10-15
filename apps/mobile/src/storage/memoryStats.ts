@@ -31,31 +31,32 @@ function summarize(entries: readonly HistoryEntry[], level: Level | null, filter
   }
 }
 
-/** The in-memory fake of StatsRepository. It counts by the same rules as the SQL, and the contract test keeps both honest. */
+/** The in-memory fake of StatsRepository. `entries` gives the live entries of one owner, newest first. It counts by the same rules as the SQL, and the contract test keeps both honest. */
 export function createMemoryStatsRepository(
-  entries: () => readonly HistoryEntry[],
+  entries: (owner: string | null) => readonly HistoryEntry[],
   deps: StorageDeps,
 ): StatsRepository {
   return {
     async summary(level, filter) {
-      return summarize(entries(), level, filter)
+      return summarize(entries(filter.owner), level, filter)
     },
     async byLevel(filter) {
-      return Object.fromEntries(LEVELS.map((level) => [level, summarize(entries(), level, filter)])) as Record<
-        Level,
-        LevelSummary
-      >
+      return Object.fromEntries(
+        LEVELS.map((level) => [level, summarize(entries(filter.owner), level, filter)]),
+      ) as Record<Level, LevelSummary>
     },
     async recentTimes(level, count, filter) {
       // The entries run newest first.
-      const wins = counted(entries(), filter).filter((entry) => entry.level === level && entry.result === 'won')
+      const wins = counted(entries(filter.owner), filter).filter(
+        (entry) => entry.level === level && entry.result === 'won',
+      )
       return wins
         .slice(0, count)
         .toReversed()
         .map((entry) => entry.playedMs)
     },
     async streak(timeZone, filter) {
-      const wins = counted(entries(), filter).filter((entry) => entry.result === 'won')
+      const wins = counted(entries(filter.owner), filter).filter((entry) => entry.result === 'won')
       return computeStreak(
         wins.map((entry) => entry.finishedAt),
         deps.now(),
