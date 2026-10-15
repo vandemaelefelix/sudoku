@@ -20,6 +20,8 @@ export type SyncService = {
   /** Null means signed out. A new owner stops a run that is going on. */
   setSession(session: SyncSession | null): void
   /** Never throws. 'partial' means the run reached the most rounds and the follow-up runs did not finish: the next trigger goes on. 'ignored' means no run: no session, a wait after a failure, or nothing waits after a game end. */
+  /** Ends the session like `setSession(null)`, then waits until the run that goes on has stopped writing. Never rejects. */
+  stop(): Promise<void>
   trigger(reason: SyncTrigger): Promise<RunResult | 'ignored'>
   subscribe(listener: () => void): () => void
   status(): SyncStatus
@@ -122,23 +124,34 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     }
   }
 
+  const setSession = (next: SyncSession | null) => {
+    abort?.abort()
+    generation += 1
+    session = next
+    rerun = false
+    failures = 0
+    notBefore = 0
+    if (next === null) return
+    const mine = generation
+    void state.syncedAt(next.owner).then(
+      (iso) => {
+        if (generation === mine && status.lastSyncedAt !== iso) setStatus({ ...status, lastSyncedAt: iso })
+      },
+      () => undefined,
+    )
+    if (status.lastSyncedAt !== null) setStatus({ ...status, lastSyncedAt: null })
+  }
+
   return {
-    setSession(next) {
-      abort?.abort()
-      generation += 1
-      session = next
-      rerun = false
-      failures = 0
-      notBefore = 0
-      if (next === null) return
-      const mine = generation
-      void state.syncedAt(next.owner).then(
-        (iso) => {
-          if (generation === mine && status.lastSyncedAt !== iso) setStatus({ ...status, lastSyncedAt: iso })
-        },
-        () => undefined,
-      )
-      if (status.lastSyncedAt !== null) setStatus({ ...status, lastSyncedAt: null })
+    setSession,
+    async stop() {
+      const last = running
+      setSession(null)
+      try {
+        await last
+      } catch {
+        // The run reports its own failure. Here only its end matters.
+      }
     },
     async trigger(reason) {
       const current = session

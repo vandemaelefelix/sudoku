@@ -355,3 +355,31 @@ describe('a deleted account', () => {
     await expect(service.trigger('network')).resolves.toBe('ignored')
   })
 })
+
+describe('stop', () => {
+  it('ends the session and waits for the run that goes on', async () => {
+    const { api, release } = gatedApi()
+    const { service } = serviceWith(api)
+    await finishGame(storage, ALICE)
+    service.setSession(sessionOf(ALICE))
+    const run = service.trigger('sign-in')
+    await flush()
+    let stopped = false
+    const stop = service.stop().then(() => {
+      stopped = true
+    })
+    await flush()
+    expect(stopped).toBe(false)
+    release()
+    await stop
+    await run
+    expect(stopped).toBe(true)
+    await expect(service.trigger('foreground')).resolves.toBe('ignored')
+  })
+
+  it('resolves at once when no run goes on', async () => {
+    const { api } = scriptedApi([OK])
+    const { service } = serviceWith(api)
+    await expect(service.stop()).resolves.toBeUndefined()
+  })
+})

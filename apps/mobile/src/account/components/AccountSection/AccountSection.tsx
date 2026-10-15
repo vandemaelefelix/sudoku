@@ -1,5 +1,16 @@
+import { useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
+import {
+  DELETE_CONFIRM_ACTION,
+  DELETE_CONFIRM_MESSAGE,
+  DELETE_CONFIRM_TITLE,
+  DELETE_FAILED_MESSAGE,
+  DELETE_FAILED_TITLE,
+  DELETE_OFFLINE_MESSAGE,
+  DELETE_PENDING_HINT,
+} from '@/account/constants/account.constants'
 import { useAccount } from '@/account/hooks/useAccount'
+import { useDeleteAccount } from '@/account/hooks/useDeleteAccount'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './AccountSection.styles'
@@ -9,6 +20,10 @@ type AccountSectionProps = { onSignIn(): void }
 /** The Account section of Settings. A build without a Clerk key has no account, so the section is not there. */
 export function AccountSection({ onSignIn }: AccountSectionProps) {
   const { status, email, signOut } = useAccount()
+  const deleteAccount = useDeleteAccount()
+  const [deleting, setDeleting] = useState(false)
+  // A state update is too late for a second tap in the same frame.
+  const busy = useRef(false)
   if (status === 'unconfigured') return null
   const trySignOut = async () => {
     if (!(await signOut())) Alert.alert('Could not sign out', 'Check your connection and try again.')
@@ -17,6 +32,24 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
     Alert.alert('Sign out?', 'The games of this account stay on this iPhone.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: () => void trySignOut() },
+    ])
+  const runDelete = async () => {
+    if (busy.current) return
+    busy.current = true
+    setDeleting(true)
+    try {
+      const outcome = await deleteAccount()
+      if (outcome === 'offline') Alert.alert(DELETE_FAILED_TITLE, DELETE_OFFLINE_MESSAGE)
+      else if (outcome === 'failed') Alert.alert(DELETE_FAILED_TITLE, DELETE_FAILED_MESSAGE)
+    } finally {
+      busy.current = false
+      setDeleting(false)
+    }
+  }
+  const confirmDelete = () =>
+    Alert.alert(DELETE_CONFIRM_TITLE, DELETE_CONFIRM_MESSAGE, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: DELETE_CONFIRM_ACTION, style: 'destructive', onPress: () => void runDelete() },
     ])
   return (
     <>
@@ -28,6 +61,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
           <ThemeDecoration slot="sectionRule" />
         </View>
         {status === 'loading' ? <Text style={styles.hint}>Checking the account…</Text> : null}
+        {status === 'signedIn' && deleting ? <Text style={styles.hint}>{DELETE_PENDING_HINT}</Text> : null}
         {status === 'signedOut' ? <Text style={styles.hint}>Back up your games across devices.</Text> : null}
       </View>
       {status === 'signedOut' ? (
@@ -48,10 +82,21 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
           </View>
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ disabled: deleting }}
+            disabled={deleting}
             onPress={confirmSignOut}
             style={({ pressed }) => [styles.row, styles.divider, pressed && pressedStyles.pressed]}
           >
             <Text style={styles.action}>Sign out</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: deleting }}
+            disabled={deleting}
+            onPress={confirmDelete}
+            style={({ pressed }) => [styles.row, styles.divider, pressed && pressedStyles.pressed]}
+          >
+            <Text style={styles.destructiveAction}>{DELETE_CONFIRM_ACTION}</Text>
           </Pressable>
         </View>
       ) : null}

@@ -28,5 +28,6 @@ export const styles = StyleSheet.create((theme) => ({
   },
   divider: { borderTopWidth: theme.components.summary.ruleWidth, borderTopColor: theme.components.summary.rule },
   action: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.text },
+  destructiveAction: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.danger },
   email: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
 }))

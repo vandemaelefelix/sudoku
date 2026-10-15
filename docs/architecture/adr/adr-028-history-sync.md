@@ -275,3 +275,13 @@ amendment "delete the account" of
    410 `account_deleted`.
 3. **The app flow is: the API call first, then the local cleanup, then the sign-out.** The app
    half follows in a later change.
+
+## Amendment: delete the account in the app
+
+1. **The server goes first.** The app takes one fresh `sudoku-api` token and calls `DELETE /v1/account`. After the
+   Clerk user is deleted, Clerk cannot give a new token. For this reason a retry after a network error or a 5xx
+   keeps the same token. The app retries 2 times, 1 second apart.
+2. **Only a 2xx changes the phone.** The app stops the sync service and waits for the run that goes on. Then it
+   deletes the history entries of the owner, clears the sync state and signs out. The Keychain owner cache is
+   cleared when the sign-out fails.
+3. **Offline or a failure changes nothing.** The app shows a message. The player can try again.

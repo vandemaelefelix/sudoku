@@ -1,12 +1,12 @@
 import { errorBodySchema, MAX_CHANGES_PER_SYNC, syncResponseSchema, type SyncRequest } from '@sudoku/sync-contract'
 import { devWarn } from '@/utils/log.utils'
 import { BACKOFF_MAX_MS, REQUEST_TIMEOUT_MS } from './constants/sync.constants'
-import type { SyncApiResult } from './sync.types'
+import type { DeleteAccountResult, SyncApiResult } from './sync.types'
 
 /** The part of `fetch` that the client uses. Tests give a fake. */
 export type FetchLike = (
   url: string,
-  init: { method: 'POST'; headers: Record<string, string>; body: string; signal: AbortSignal },
+  init: { method: 'POST' | 'DELETE'; headers: Record<string, string>; body?: string; signal: AbortSignal },
 ) => Promise<{ status: number; headers: { get(name: string): string | null }; json(): Promise<unknown> }>
 
 // The strict contract schema would reject a whole page for one bad change. The run checks each change alone.
@@ -14,6 +14,9 @@ const envelopeSchema = syncResponseSchema.omit({ changes: true })
 
 /** `signal` aborts the request: the run ends when the session ends. */
 export type SyncApi = { sync(request: SyncRequest, token: string, signal?: AbortSignal): Promise<SyncApiResult> }
+
+/** The client of `DELETE /v1/account`. It sends no body. `signal` is not needed: the request is short and the player waits. */
+export type AccountApi = { deleteAccount(token: string): Promise<DeleteAccountResult> }
 
 type SyncApiOptions = { baseUrl: string; fetch?: FetchLike; timeoutMs?: number }
 
@@ -39,8 +42,24 @@ export function createSyncApi({
   baseUrl,
   fetch = globalThis.fetch,
   timeoutMs = REQUEST_TIMEOUT_MS,
-}: SyncApiOptions): SyncApi {
+}: SyncApiOptions): SyncApi & AccountApi {
   return {
+    async deleteAccount(token) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      try {
+        const response = await fetch(`${baseUrl}/v1/account`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        })
+        return deleteResultOf(response.status)
+      } catch {
+        return { kind: 'offline' }
+      } finally {
+        clearTimeout(timer)
+      }
+    },
     async sync(request, token, signal) {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -86,5 +105,13 @@ async function resultOf(response: Awaited<ReturnType<FetchLike>>): Promise<SyncA
     return { kind: 'throttled', retryAfterMs: retryAfterMs(response.headers.get('Retry-After')) }
   }
   devWarn('sync', `The sync API answered ${status}`)
+  return { kind: 'server_error' }
+}
+
+function deleteResultOf(status: number): DeleteAccountResult {
+  if (status >= 200 && status < 300) return { kind: 'ok' }
+  if (status === 401) return { kind: 'unauthorized' }
+  if (status === 429) return { kind: 'throttled' }
+  devWarn('sync', `The delete account call answered ${status}`)
   return { kind: 'server_error' }
 }

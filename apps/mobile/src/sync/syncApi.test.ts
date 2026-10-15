@@ -36,7 +36,7 @@ it('posts the request with the token in the header', async () => {
   expect(url).toBe(`${URL_BASE}/v1/sync`)
   expect(init.method).toBe('POST')
   expect(init.headers).toEqual({ Authorization: 'Bearer secret-token', 'Content-Type': 'application/json' })
-  expect(JSON.parse(init.body)).toEqual({ entries: [], cursor: 'c0' })
+  expect(JSON.parse(init.body ?? '')).toEqual({ entries: [], cursor: 'c0' })
 })
 
 it.each([
@@ -122,4 +122,42 @@ it('aborts the request when the signal of the caller aborts', async () => {
   caller.abort()
   await expect(pending).resolves.toEqual({ kind: 'offline' })
   expect(seen).not.toBeNull()
+})
+
+const failingFetch: FetchLike = () => Promise.reject(new TypeError('Network request failed'))
+describe('deleteAccount', () => {
+  it('sends DELETE with the token and no body', async () => {
+    const fetch = jest.fn<ReturnType<FetchLike>, Parameters<FetchLike>>(() => reply(204, undefined))
+    await expect(apiWith(fetch).deleteAccount('secret-token')).resolves.toEqual({ kind: 'ok' })
+    const [url, init] = fetch.mock.calls[0]!
+    expect(url).toBe(`${URL_BASE}/v1/account`)
+    expect(init.method).toBe('DELETE')
+    expect(init.headers).toEqual({ Authorization: 'Bearer secret-token' })
+    expect(init.body).toBeUndefined()
+  })
+
+  it.each([
+    ['a 204', 204, { kind: 'ok' }],
+    ['a 200', 200, { kind: 'ok' }],
+    ['a 401', 401, { kind: 'unauthorized' }],
+    ['a 429', 429, { kind: 'throttled' }],
+    ['a 500', 500, { kind: 'server_error' }],
+    ['a 404', 404, { kind: 'server_error' }],
+  ])('maps %s', async (_name, status, expected) => {
+    await expect(apiWith(() => reply(status, undefined)).deleteAccount('t')).resolves.toEqual(expected)
+  })
+
+  it('maps a network error to offline', async () => {
+    await expect(apiWith(failingFetch).deleteAccount('t')).resolves.toEqual({ kind: 'offline' })
+  })
+
+  it('aborts a request that takes too long', async () => {
+    await expect(apiWith(hangingFetch, 10).deleteAccount('t')).resolves.toEqual({ kind: 'offline' })
+  })
+
+  it('never logs the token', async () => {
+    const warn = jest.spyOn(console, 'warn')
+    await apiWith(() => reply(500, undefined)).deleteAccount('secret-token')
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-token')
+  })
 })
