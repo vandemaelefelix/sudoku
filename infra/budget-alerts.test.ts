@@ -1,17 +1,25 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { BUDGET_COST_TYPES, budgetNotifications } from './budget-alerts.ts'
+import {
+  ACTUAL_ALERT_USD,
+  BUDGET_COST_TYPES,
+  BUDGET_LIMIT_USD,
+  FORECAST_ALERT_USD,
+  KILL_SWITCH_USD,
+  budgetNotifications,
+} from './budget-alerts.ts'
 
 describe('budgetNotifications', () => {
-  const notifications = budgetNotifications('player@example.com')
+  const notifications = budgetNotifications('player@example.com', 'arn:topic')
 
-  it('alerts at $3 forecast and at $6 actual, under the $10 limit (SUD-11)', () => {
+  it('alerts at $3 forecast, at $6 actual and at $9 actual for the kill switch, under the $10 limit (SUD-11)', () => {
     assert.deepEqual(
       notifications.map((n) => [n.notificationType, n.threshold]),
       [
         ['FORECASTED', 3],
         ['ACTUAL', 6],
+        ['ACTUAL', 9],
       ],
     )
   })
@@ -21,6 +29,19 @@ describe('budgetNotifications', () => {
       assert.equal(n.comparisonOperator, 'GREATER_THAN')
       assert.equal(n.thresholdType, 'ABSOLUTE_VALUE')
     }
+  })
+
+  it('sends only the $9 alert to the kill-switch topic', () => {
+    assert.deepEqual(
+      notifications.map((n) => n.subscriberSnsTopicArns),
+      [undefined, undefined, ['arn:topic']],
+    )
+  })
+
+  it('orders the thresholds below the limit', () => {
+    assert.ok(FORECAST_ALERT_USD < ACTUAL_ALERT_USD)
+    assert.ok(ACTUAL_ALERT_USD < KILL_SWITCH_USD)
+    assert.ok(KILL_SWITCH_USD < BUDGET_LIMIT_USD)
   })
 
   it('emails the given address on every alert', () => {

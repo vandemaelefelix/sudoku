@@ -12,6 +12,7 @@
     "apps/mobile/src",
     "packages/sudoku-core/src",
     "packages/sync-contract/src",
-    "services/sync-api/src"
+    "services/sync-api/src",
+    "services/kill-switch/src"
   ]
 }
