@@ -3,6 +3,7 @@ import { LEVELS, type Streak } from '@sudoku/core'
 import { TIMES_COUNT } from '@/stats/constants/stats.constants'
 import type { Level, LevelSummary } from '@/storage'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
+import { useOwner } from '@/storage/hooks/useOwner'
 import { deviceTimeZone } from '@/utils/timeZone.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
@@ -21,11 +22,12 @@ export type StatsState = { status: 'loading' } | { status: 'failed' } | { status
  */
 export function useStats(includeScanned: boolean, reloadKey = 0): StatsState {
   const { stats } = useGameStorage()
+  const owner = useOwner()
   const [state, setState] = useState<StatsState>({ status: 'loading' })
 
   useEffect(() => {
     let live = true
-    const filter = { includeScanned }
+    const filter = { includeScanned, owner }
     Promise.all([
       stats.summary(null, filter),
       stats.byLevel(filter),
@@ -49,7 +51,7 @@ export function useStats(includeScanned: boolean, reloadKey = 0): StatsState {
       live = false
     }
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reloadKey only triggers a new read.
-  }, [stats, includeScanned, reloadKey])
+  }, [stats, includeScanned, owner, reloadKey])
 
   return state
 }

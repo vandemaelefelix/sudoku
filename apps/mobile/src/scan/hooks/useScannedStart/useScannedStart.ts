@@ -4,12 +4,14 @@ import { createGame } from '@sudoku/core'
 import { useConfirmReplace } from '@/home/hooks/useConfirmReplace'
 import type { ScannedStart } from '@/scan/utils/play.utils'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
+import { useOwner } from '@/storage/hooks/useOwner'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
 /** Starts a scanned puzzle as the game in progress (source scanned), then shows the game in place of the scan. */
 export function useScannedStart(): (start: ScannedStart) => Promise<void> {
   const router = useRouter()
   const { puzzles } = useGameStorage()
+  const owner = useOwner()
   const confirmReplace = useConfirmReplace()
   // start() discards the game before it, so a second tap must not start a second game.
   const busy = useRef(false)
@@ -24,7 +26,7 @@ export function useScannedStart(): (start: ScannedStart) => Promise<void> {
         const current = known === undefined ? await puzzles.current() : known
         if (current !== null && !(await confirmReplace())) return
         // The game screen opens on peek() while the write runs, as on the home screen.
-        const starting = puzzles.start({ level, source: 'scanned', game: createGame(puzzle) })
+        const starting = puzzles.start({ level, source: 'scanned', game: createGame(puzzle), owner })
         // Replace, not push: Back on the game goes home, and the camera stops with the scan route.
         router.replace('/game')
         await starting
@@ -34,6 +36,6 @@ export function useScannedStart(): (start: ScannedStart) => Promise<void> {
         busy.current = false
       }
     },
-    [puzzles, confirmReplace, router],
+    [puzzles, owner, confirmReplace, router],
   )
 }

@@ -57,9 +57,9 @@ it('gives the in-memory fallback the real clock, so the streak counts from today
   )
   await screen.findByText('grabbed')
   const { puzzles, history } = fallback as unknown as GameStorage
-  const { id } = await puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
-  await puzzles.save(id, wonGame(1_000))
-  const [entry] = await history.list()
+  const { id } = await puzzles.start({ level: 'easy', source: 'generated', game: newGame(), owner: null })
+  await puzzles.save(id, wonGame(1_000), null)
+  const [entry] = await history.list(null)
   expect(entry?.finishedAt.slice(0, 10)).toBe(new Date().toISOString().slice(0, 10))
   warn.mockRestore()
 })
