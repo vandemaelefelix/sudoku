@@ -8,6 +8,7 @@ import {
   killSwitchFlagName,
   killSwitchVerdict,
   guardApplies,
+  LOG_DELIVERY_ACTIONS,
   stoppedMessage,
 } from './kill-switch-settings.ts'
 
@@ -104,5 +105,20 @@ describe('parseApiOnArgs', () => {
     assert.throws(() => parseApiOnArgs(['staging']), /Unknown stage/)
     assert.throws(() => parseApiOnArgs([]), /Unknown stage/)
     assert.throws(() => parseApiOnArgs(['felix', '--force']), /Unknown option/)
+  })
+})
+
+describe('LOG_DELIVERY_ACTIONS', () => {
+  it('holds the actions that API Gateway checks for a stage with access logging', () => {
+    assert.deepEqual(LOG_DELIVERY_ACTIONS.toSorted(), [
+      'logs:CreateLogDelivery',
+      'logs:DeleteLogDelivery',
+      'logs:DescribeLogGroups',
+      'logs:DescribeResourcePolicies',
+      'logs:GetLogDelivery',
+      'logs:ListLogDeliveries',
+      'logs:PutResourcePolicy',
+      'logs:UpdateLogDelivery',
+    ])
   })
 })
