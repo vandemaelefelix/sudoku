@@ -55,3 +55,23 @@ specifically.
 
 - The repository goes public. Re-check every file under `fixtures/` and `ml/fonts/` before the
   switch.
+
+## Amendment 2026-10-15: the privacy labels with an account
+
+ADR-027 adds an optional account. The label "Data Not Collected" is now true only for a player without an account.
+It no longer describes the app as a whole. Decision 5 stays valid for the camera text.
+
+1. **The App Store privacy labels declare the data of a signed-in player.** All data is linked to the player. None is
+   used for tracking.
+
+   | Data type | Purpose |
+   | --- | --- |
+   | Contact info: email address | App functionality (sign-in) |
+   | Identifiers: user ID | App functionality |
+   | Gaming: gameplay content (the finished game history) | App functionality (backup and sync) |
+   | Name, if Clerk stores the name from Google | App functionality |
+
+2. **These data types stay undeclared:** photos and videos, camera frames, location, advertising ID, diagnostics and
+   usage data (SUD-02).
+3. **A privacy policy page is required.** The source is [`docs/privacy/privacy-policy.md`](../../privacy/privacy-policy.md).
+   The App Store form and the Google consent screen link to the public page.

@@ -19,7 +19,7 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `api.ts` | The HTTP API `SyncApi` with the routes `POST /v1/sync` and `DELETE /v1/account`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` (30 s timeout, linked to the table and `ClerkSecretKey`) |
 | `kill-switch.ts` | The SNS topic of the budget, its policy, the `kill-switch` Lambda and the alert email. Only the account stage creates them |
 | `kill-switch-settings.ts` | The flag name, the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
-| `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The deploy workflow of #109 will call it |
+| `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The workflows `deploy-api-dev.yml` and `deploy-api-production.yml` call it |
 | `kill-switch-guard.ts` | The same check inside `run()`, for a plain `sst deploy` or `sst dev` |
 | `api-on.ts` | Turns a stopped stage on again. `just api-on` runs it |
 | `backend-settings.ts` | The throttle, the access log format, the audience and the issuer check of `api.ts`, and the point-in-time recovery of `storage.ts` |
@@ -89,9 +89,12 @@ depend on it.
 | `dev` | GitHub Actions, on each merge to `develop` | `remove` | No |
 | `production` | GitHub Actions, from a manual run | `retain`, and `protect` | Yes |
 
-The first `production` deploy runs from the laptop. It holds only the budget. The second one
-runs from the laptop too. It creates the OIDC provider and the deploy roles. Every later
-`production` deploy comes from GitHub Actions (ADR-027).
+The first `production` deploy runs once from the laptop, before the CI deploys exist. While
+`CLERK_ISSUER.production` is `null`, it creates only the account-wide resources: the budget, the
+kill switch, the OIDC provider and the deploy roles. It skips the table, the function and the API, and
+prints a note. A stage with an issuer deploys everything. `deployPlan()` in `config.ts` decides
+this. Every later `production` deploy comes from GitHub Actions (ADR-027).
+The deploy roles come from this first deploy too, so no second laptop deploy is needed.
 
 `sst.config.ts` refuses any other stage name. A typo cannot create a fourth copy.
 
@@ -200,7 +203,7 @@ instance.
 | --- | --- | --- |
 | `felix` | Development | `https://free-leopard-5298.clerk.accounts.dev` |
 | `dev` | Development | `https://free-leopard-5298.clerk.accounts.dev` |
-| `production` | None yet. It comes with the production release | None |
+| `production` | None yet. It comes with the production release. Until then the stage deploys no API | None |
 
 The issuer of each stage is `CLERK_ISSUER` in `config.ts`. The JWT authorizer needs an exact
 match with the `iss` of the token. The publishable key of the development instance is in
@@ -324,7 +327,7 @@ Budget at $9 --> SNS KillSwitchTopic --> Lambda kill-switch --> for each stage:
 - `just deploy-api` runs `infra/kill-switch-check.ts`. It refuses while the flag exists. It also
   refuses when it cannot read the flag. `run()` in `sst.config.ts` does the same check. The check
   skips `sst remove` and `sst diff`, so `just remove-api` works for a stopped stage.
-- The deploy workflow of #109 will call `node infra/kill-switch-check.ts <stage>` before `sst deploy`. Its
+- The workflows `deploy-api-dev.yml` and `deploy-api-production.yml` call `node infra/kill-switch-check.ts <stage>` before `sst deploy`. Its
   role needs `ssm:GetParameter` and `ssm:GetParametersByPath` on
   `arn:aws:ssm:eu-west-1:<account>:parameter/sudoku/kill-switch/*`.
 - `just api-on <stage>` shows the cost of the month, asks for `y` (skip with `--yes`), restores
@@ -382,3 +385,24 @@ Do these steps once, after the first `production` deploy. They change the real a
 - Do not run `aws configure`, `aws login` or `aws sso` without `--profile`. Without it, the
   command writes to the `default` profile, which belongs to another account.
 - Do not put AWS keys in `.env` or in the repository.
+
+## The production release
+
+The release needs these steps, in this order. Only the developer can do them.
+
+1. Set the secret `BudgetEmail`. Run `just deploy-api production`. This creates the budget, the
+   kill switch and the roles. It needs no Clerk instance.
+2. Make the Clerk production instance on `sudoku.felixvandemaele.be`. Add the five DNS records at
+   GoDaddy. Check the issuer with `curl`. Hobby is the recommended plan (ADR-027).
+3. Make the production Google OAuth clients. Publish the consent screen.
+4. Set the secret `ClerkSecretKey` for `production`. Send the issuer, the publishable key and the
+   Google client IDs to the agent. The agent puts them in `config.ts` and `app.config.ts`.
+5. Run `just deploy-api production` again. It creates the table, the function and the API.
+   Send the `apiUrl` to the agent.
+6. Publish the privacy policy only after the smoke test of step 7 passes on
+   production. Do not publish before. The source is
+   [`docs/privacy/privacy-policy.md`](../docs/privacy/privacy-policy.md). The repository is
+   private, so GitHub Pages cannot serve it from here. Options: a small public repository with
+   GitHub Pages, or another free host such as Cloudflare Pages, Vercel or Netlify. The developer
+   chooses the host.
+7. Run the smoke test: sign up, finish a game, see it in DynamoDB, delete the account.

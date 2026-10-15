@@ -6,7 +6,7 @@ export function publishableKeyOf(extra: Record<string, unknown> | undefined): st
   return typeof key === 'string' && key !== '' ? key : null
 }
 
-/** app.config.ts gives a key only to the development variant, so the production app has no account yet. */
+/** app.config.ts gives the production variant a key only when PRODUCTION_BACKEND holds one. Until then it has no account. */
 export function readPublishableKey(): string | null {
   return publishableKeyOf(Constants.expoConfig?.extra)
 }
