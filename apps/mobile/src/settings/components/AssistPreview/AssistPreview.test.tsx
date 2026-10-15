@@ -2,13 +2,13 @@ import { act, render, renderHook, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { AssistPreview } from './AssistPreview'
 
 // VoiceOver skips the preview, so every query must include hidden elements.
 const hidden = { includeHiddenElements: true }
 const styleOf = (cell: number) => StyleSheet.flatten(screen.getByTestId(`cell-${cell}-fill`, hidden).props.style)
-const colours = daylight.components.cell
+const colours = cobalt.components.cell
 
 // The store is one module value for the whole test file, so each test turns every assist on again.
 afterEach(async () => {

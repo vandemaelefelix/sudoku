@@ -4,6 +4,12 @@
 /** The plain ground before the first letter. */
 export const HOLD_MS = 250
 
+/**
+ * The ground fades from the white of the native splash to the page colour of the saved look. It fades inside HOLD_MS, before
+ * the first letter. In Light the page is white, so nothing shows (ADR-026).
+ */
+export const GROUND_FADE_MS = 150
+
 export const WORD = 'Sudoku'
 export const LETTER_COUNT = 6
 export const LETTER_STEP_MS = 45
@@ -45,6 +51,13 @@ export const WORD_FADE_MS = 600
  */
 export const REVEAL_BAND = 500
 export const REVEAL_LAG_MS = 246
+
+/**
+ * A theme switch (ADR-025) draws the wave over a picture of the old screen. A cell is solid at its peak, so it covers
+ * the picture there. The picture is erased in each cell from its peak on. Points that the erased rectangle of a cell
+ * grows on each side, so two cells leave no gap between them.
+ */
+export const ERASE_OVERLAP = 0.5
 
 /** The last frame of the exit. The last cell and the edge of the ground are gone by then, on every window size. */
 export const EXIT_END_MS = 1000

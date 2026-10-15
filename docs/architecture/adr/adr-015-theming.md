@@ -12,7 +12,7 @@ status: ACCEPTED
 | Contact | Felix      |
 
 Amended by [ADR-021](adr-021-four-themes.md): point 2 (four themes, not two) and point 9 (the
-first theme decorations).
+first theme decorations). Point 2 amended again by [ADR-025](adr-025-opart-colourways.md): three Op-art colourways, no System choice.
 
 ## Context
 

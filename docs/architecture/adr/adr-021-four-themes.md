@@ -14,6 +14,8 @@ status: DRAFT
 Amends [ADR-015](adr-015-theming.md): point 2 (four themes, not two) and point 9 (the first theme
 decorations). The other points of ADR-015 stay.
 
+Superseded in part by [ADR-025](adr-025-opart-colourways.md): the app now ships three Op-art colourways. Daylight, Midnight and Progressive are gone.
+
 ## Context
 
 ADR-015 ships two themes, Daylight and Midnight. It defines theme decorations as the mechanism for

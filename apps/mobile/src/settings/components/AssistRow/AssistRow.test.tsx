@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
-import { StyleSheet, Switch } from 'react-native'
-import { daylight } from '@/theme/themes/daylight'
+import { StyleSheet } from 'react-native'
 import { AssistRow } from './AssistRow'
 
 const props = { label: 'Box', description: 'Shade the 3×3 box of the selected cell.', value: true, divider: false }
@@ -25,26 +24,22 @@ it('gives the switch the description as the hint', () => {
   expect(screen.getByLabelText('Box').props.accessibilityHint).toBe(props.description)
 })
 
-it('gives the switch the label and the value, so VoiceOver reads both', () => {
+it('gives the switch the label and the checked state, so VoiceOver reads both', () => {
   render(<AssistRow {...props} onChange={jest.fn()} />)
-  expect(screen.getByLabelText('Box').props.value).toBe(true)
+  expect(screen.getByRole('switch', { name: 'Box' }).props.accessibilityState).toMatchObject({ checked: true })
 })
 
 it('reports the new value', () => {
   const onChange = jest.fn()
   render(<AssistRow {...props} onChange={onChange} />)
-  fireEvent(screen.getByLabelText('Box'), 'valueChange', false)
+  fireEvent.press(screen.getByLabelText('Box'))
   expect(onChange).toHaveBeenCalledWith(false)
 })
 
-it('colours the track from the theme and keeps the native thumb', () => {
+it('draws the boxy toggle of the theme, not the native switch', () => {
   render(<AssistRow {...props} onChange={jest.fn()} />)
-  const native = screen.UNSAFE_getByType(Switch)
-  expect(native.props).toMatchObject({
-    trackColor: { false: daylight.components.switch.off, true: daylight.components.switch.on },
-    ios_backgroundColor: daylight.components.switch.off,
-  })
-  expect(native.props.thumbColor).toBeUndefined()
+  expect(screen.getByTestId('toggle-track')).toBeTruthy()
+  expect(screen.getByTestId('toggle-thumb')).toBeTruthy()
 })
 
 it('is at least 44 pt high', () => {

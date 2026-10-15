@@ -7,9 +7,9 @@ import type { Quad } from '@/utils/geometry.utils'
 import { TRANSITION_END } from '@/scan/constants/transition.constants'
 import { DIM, STAR_SCALE } from './gathering-dots.constants'
 import { SPRITE_SIZE } from '@/scan/effects/common/common.constants'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 
-const INK = daylight.components.grid.boxLine
+const INK = cobalt.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 

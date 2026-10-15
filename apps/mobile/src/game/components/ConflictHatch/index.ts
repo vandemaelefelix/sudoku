@@ -1,0 +1,1 @@
+export { ConflictHatch } from './ConflictHatch'

@@ -55,7 +55,12 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
   return (
     <>
       <ThemeStatusBar />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        // The scroll bar follows the iOS appearance. The page follows the theme, so the two can differ (ADR-026).
+        indicatorStyle={theme.scrollIndicator}
+      >
         <View style={styles.header}>
           <Pressable
             accessibilityRole="button"

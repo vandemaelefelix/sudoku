@@ -1,8 +1,8 @@
-import { Modal, Pressable, Switch, Text, View, useWindowDimensions } from 'react-native'
+import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { withUnistyles } from 'react-native-unistyles'
 import type { RecogniseResult } from '@/scanner'
 import { Icon } from '@/game/components/Icon'
+import { Toggle } from '@/settings/components/Toggle'
 import { PanelButton } from '@/scan/components/PanelButton'
 import { ScanInspector, ScanTabs } from '@/scan/components/ScanInspector'
 import { ThresholdSlider } from '@/scan/components/ThresholdSlider'
@@ -10,12 +10,6 @@ import { THRESHOLD_RANGE } from '@/scan/constants/correction.constants'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 import { SAVE_TEXT, SHEET_PADDING, VIEWER_HEIGHT, type SaveState } from './DevMenu.constants'
 import { styles } from './DevMenu.styles'
-
-// No thumbColor: on iOS a thumb colour removes the shadow of the thumb.
-const ThemedSwitch = withUnistyles(Switch, (theme) => ({
-  trackColor: { false: theme.components.switch.off, true: theme.components.switch.on },
-  ios_backgroundColor: theme.components.switch.off,
-}))
 
 type OkResult = Extract<RecogniseResult, { ok: true }>
 
@@ -54,13 +48,7 @@ function SwitchRow({
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowSub}>{sub}</Text>
       </View>
-      <ThemedSwitch
-        testID={`switch-${label}`}
-        accessibilityLabel={label}
-        accessibilityHint={sub}
-        value={value}
-        onValueChange={onChange}
-      />
+      <Toggle testID={`switch-${label}`} label={label} hint={sub} value={value} onChange={onChange} />
     </View>
   )
 }

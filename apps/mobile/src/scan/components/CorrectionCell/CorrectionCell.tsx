@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { ConflictHatch } from '@/game/components/ConflictHatch'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import type { Pulse } from '@/game/hooks/usePulse'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
@@ -128,6 +129,7 @@ export const CorrectionCell = memo(function CorrectionCell({
             ]}
           />
         )}
+        {conflict && !selected && <ConflictHatch />}
         {pulse && (
           <Animated.View testID={`correction-wave-${n}`} pointerEvents="none" style={[styles.wave, waveStyle]} />
         )}

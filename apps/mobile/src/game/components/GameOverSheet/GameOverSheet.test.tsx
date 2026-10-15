@@ -4,7 +4,7 @@ import { useReducedMotion } from 'react-native-reanimated'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { LOST_HOLD_MS } from './GameOverSheet.constants'
 import { GameOverSheet } from './GameOverSheet'
 
@@ -67,7 +67,7 @@ it('sinks the sheet over the short duration before it calls Retry', () => {
   fireEvent.press(screen.getByText('Try this puzzle again'))
   expect(timing).toHaveBeenCalledWith(
     1,
-    expect.objectContaining({ duration: daylight.motion.short }),
+    expect.objectContaining({ duration: cobalt.motion.short }),
     expect.any(Function),
   )
   act(() => jest.runAllTicks())
@@ -124,7 +124,7 @@ it('covers the screen with the scrim and is modal for VoiceOver', () => {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    backgroundColor: daylight.colors.scrim,
+    backgroundColor: cobalt.colors.scrim,
   })
   expect(screen.getByRole('header', { name: 'Out of mistakes' })).toBeTruthy()
 })
@@ -200,7 +200,7 @@ it('rises over the medium duration', () => {
   lose()
   expect(timing).toHaveBeenCalledWith(
     0,
-    expect.objectContaining({ duration: daylight.motion.medium }),
+    expect.objectContaining({ duration: cobalt.motion.medium }),
     expect.any(Function),
   )
 })

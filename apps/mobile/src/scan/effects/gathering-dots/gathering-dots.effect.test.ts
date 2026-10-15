@@ -2,9 +2,9 @@ import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, stepScene } from '@/scan/effects/scene'
 import { gatheringDots } from './gathering-dots.effect'
 import type { Quad } from '@/utils/geometry.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 
-const INK = daylight.components.grid.boxLine
+const INK = cobalt.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import type { CellLook } from '@/scan/utils/correction.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { CorrectionPad } from './CorrectionPad'
 
 const GIVEN_5: CellLook = { digit: '5', style: 'given', uncertain: false }
@@ -34,8 +34,8 @@ it('empties the cell', () => {
 it('shows the digit of the cell as the current key, in the primary button colour', () => {
   renderPad()
   expect(screen.getByTestId('correction-key-5').props.accessibilityState).toMatchObject({ selected: true })
-  expect(style('correction-key-5')).toMatchObject({ backgroundColor: daylight.components.button.primary })
-  expect(style('correction-key-4')).toMatchObject({ backgroundColor: daylight.components.panel.key })
+  expect(style('correction-key-5')).toMatchObject({ backgroundColor: cobalt.components.button.primary })
+  expect(style('correction-key-4')).toMatchObject({ backgroundColor: cobalt.components.panel.key })
 })
 
 it('rings the second guess of the model', () => {

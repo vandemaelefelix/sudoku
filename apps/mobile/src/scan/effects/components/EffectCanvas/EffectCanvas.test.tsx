@@ -5,8 +5,8 @@ import { transitionAt, type CaptureFrame } from '@/scan/utils/transition.utils'
 import { EffectCanvas } from './EffectCanvas'
 import * as engine from '@/scan/effects/engine'
 import * as drawKit from '@/scan/effects/kit'
-import { daylight } from '@/theme/themes/daylight'
-import { midnight } from '@/theme/themes/midnight'
+import { cobalt } from '@/theme/themes/cobalt'
+import { forest } from '@/theme/themes/forest'
 import { DEFAULT_INDEX, effectIndex } from '@/scan/effects/registry'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 
@@ -137,7 +137,7 @@ describe('EffectCanvas', () => {
   it('makes the draw kit with the box-line ink of the theme', () => {
     const make = jest.spyOn(drawKit, 'makeDrawKit')
     renderCanvas(VIEW)
-    expect(make).toHaveBeenCalledWith(expect.any(Array), daylight.components.grid.boxLine)
+    expect(make).toHaveBeenCalledWith(expect.any(Array), cobalt.components.grid.boxLine)
     make.mockRestore()
   })
 
@@ -148,10 +148,10 @@ describe('EffectCanvas', () => {
     const theming = jest.spyOn(unistyles, 'useUnistyles')
     const props = renderCanvas(VIEW)
     expect(make).toHaveBeenCalledTimes(1)
-    theming.mockReturnValue({ theme: midnight, rt: unistyles.UnistylesRuntime } as never)
+    theming.mockReturnValue({ theme: forest, rt: unistyles.UnistylesRuntime } as never)
     screen.rerender(<EffectCanvas {...props} />)
     expect(make).toHaveBeenCalledTimes(2)
-    expect(make).toHaveBeenLastCalledWith(expect.any(Array), midnight.components.grid.boxLine)
+    expect(make).toHaveBeenLastCalledWith(expect.any(Array), forest.components.grid.boxLine)
     theming.mockRestore()
     make.mockRestore()
   })

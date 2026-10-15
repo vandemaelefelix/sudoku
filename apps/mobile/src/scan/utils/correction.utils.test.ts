@@ -4,13 +4,13 @@ import type { CellResult } from '@/scanner'
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
 import type { Homography } from '@/utils/homography.utils'
 import { PANEL_HEIGHT, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 
 // Three widths and three colours, so each line kind shows which token it reads.
 const STYLE = {
-  frame: daylight.components.grid.frame,
-  box: daylight.colors.accent,
-  cell: daylight.components.grid.cellLine,
+  frame: cobalt.components.grid.frame,
+  box: cobalt.colors.accent,
+  cell: cobalt.components.grid.cellLine,
   frameWidth: 3,
   boxWidth: 2,
   cellWidth: 1,
@@ -206,13 +206,13 @@ describe('drawGridLines', () => {
 
 describe('gridLineStyle', () => {
   it('takes the grid colours and the line widths from the theme', () => {
-    expect(gridLineStyle(daylight)).toEqual({
-      frame: daylight.components.grid.frame,
-      box: daylight.components.grid.boxLine,
-      cell: daylight.components.grid.cellLine,
-      frameWidth: daylight.shape.gridLine.outer,
-      boxWidth: daylight.shape.gridLine.box,
-      cellWidth: daylight.shape.gridLine.cell,
+    expect(gridLineStyle(cobalt)).toEqual({
+      frame: cobalt.components.grid.frame,
+      box: cobalt.components.grid.boxLine,
+      cell: cobalt.components.grid.cellLine,
+      frameWidth: cobalt.shape.gridLine.outer,
+      boxWidth: cobalt.shape.gridLine.box,
+      cellWidth: cobalt.shape.gridLine.cell,
     })
   })
 })

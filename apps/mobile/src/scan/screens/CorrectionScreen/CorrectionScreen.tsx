@@ -357,7 +357,6 @@ export function CorrectionScreen({
           <Text accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.display}>
             {solved ? SOLVED_TITLE : TITLE}
           </Text>
-          <ThemeDecoration slot="titleMark" />
         </Animated.View>
       )}
       {looks.map((look, n) => (

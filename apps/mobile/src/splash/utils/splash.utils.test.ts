@@ -1,6 +1,8 @@
 import {
   EXIT_END_MS,
   GLOW_MS,
+  GLOW_PEAK_AT,
+  GROUND_FADE_MS,
   HOLD_MS,
   INTRO_END_MS,
   LETTER_RISE_BY,
@@ -12,7 +14,17 @@ import {
   WORD_FADE_START_MS,
   WORD_RISE_BY,
 } from '@/splash/constants/splash.constants'
-import { cellJitter, glow, groundEdge, letterRise, splashDigit, splashGrid, wordFade } from './splash.utils'
+import {
+  cellJitter,
+  cellPassed,
+  glow,
+  groundEdge,
+  groundFade,
+  letterRise,
+  splashDigit,
+  splashGrid,
+  wordFade,
+} from './splash.utils'
 
 describe('timing', () => {
   it('ends the intro when the last letter is at rest', () => {
@@ -159,6 +171,38 @@ describe('groundEdge', () => {
       [430, 932],
     ] as const) {
       expect(groundEdge(EXIT_END_MS, height, width / 9) + REVEAL_BAND).toBeLessThanOrEqual(0)
+    }
+  })
+})
+
+describe('cellPassed', () => {
+  it('is false before the peak of the glow and true from it, when the cell is solid', () => {
+    expect(cellPassed(-1)).toBe(false)
+    expect(cellPassed(0)).toBe(false)
+    expect(cellPassed(GLOW_MS * GLOW_PEAK_AT - 0.001)).toBe(false)
+    expect(cellPassed(GLOW_MS * GLOW_PEAK_AT)).toBe(true)
+    expect(glow(GLOW_MS * GLOW_PEAK_AT)).toBeCloseTo(1, 12)
+    expect(cellPassed(GLOW_MS + 100)).toBe(true)
+  })
+})
+
+describe('groundFade', () => {
+  it('starts with none of the page colour, so the first frame is the white of the native splash', () => {
+    expect(groundFade(0)).toBe(0)
+  })
+
+  it('has covered the white by GROUND_FADE_MS, before the first letter', () => {
+    expect(groundFade(GROUND_FADE_MS)).toBe(1)
+    expect(groundFade(INTRO_END_MS)).toBe(1)
+    expect(GROUND_FADE_MS).toBeLessThanOrEqual(HOLD_MS)
+  })
+
+  it('eases out: more than half is done in a third of the time, and it only rises', () => {
+    expect(groundFade(GROUND_FADE_MS / 3)).toBeGreaterThan(0.5)
+    let last = 0
+    for (let ms = 0; ms <= GROUND_FADE_MS; ms += 10) {
+      expect(groundFade(ms)).toBeGreaterThanOrEqual(last)
+      last = groundFade(ms)
     }
   })
 })

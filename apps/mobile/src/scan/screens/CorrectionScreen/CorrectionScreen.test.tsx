@@ -8,10 +8,9 @@ import * as playUtils from '@/scan/utils/play.utils'
 import type { ScannedStart } from '@/scan/utils/play.utils'
 import { createPicture, Skia } from '@shopify/react-native-skia'
 import type { Theme } from '@/theme/theme.types'
-import { daylight } from '@/theme/themes/daylight'
-import { midnight } from '@/theme/themes/midnight'
-import { opart } from '@/theme/themes/opart'
-import { progressive } from '@/theme/themes/progressive'
+import { cobalt } from '@/theme/themes/cobalt'
+import { forest } from '@/theme/themes/forest'
+import { bordeaux } from '@/theme/themes/bordeaux'
 import { CorrectionScreen } from './CorrectionScreen'
 import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
@@ -50,15 +49,15 @@ describe('CorrectionScreen in review', () => {
     render(<CorrectionScreen result={okResult({ 0: given, 1: entry })} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('5')
     expect(style('correction-cell-0')).toMatchObject({
-      color: daylight.components.cell.given,
-      fontFamily: daylight.type.given.family,
-      fontWeight: daylight.type.given.weight,
+      color: cobalt.components.cell.given,
+      fontFamily: cobalt.type.given.family,
+      fontWeight: cobalt.type.given.weight,
     })
     expect(screen.getByTestId('correction-cell-1')).toHaveTextContent('7')
     expect(style('correction-cell-1')).toMatchObject({
-      color: daylight.components.cell.entry,
-      fontFamily: daylight.type.entry.family,
-      fontWeight: daylight.type.entry.weight,
+      color: cobalt.components.cell.entry,
+      fontFamily: cobalt.type.entry.family,
+      fontWeight: cobalt.type.entry.weight,
     })
     expect(screen.getByTestId('correction-cell-2')).toHaveTextContent('')
   })
@@ -77,10 +76,10 @@ describe('CorrectionScreen in review', () => {
     expect(style('correction-ring-0')).toMatchObject({
       borderStyle: 'dashed',
       borderWidth: 1.5,
-      borderColor: daylight.colors.warning,
-      borderRadius: 6,
+      borderColor: cobalt.colors.warning,
+      borderRadius: cobalt.shape.radius.pill,
     })
-    expect(daylight.components.checkRing.color).toBe(daylight.colors.warning)
+    expect(cobalt.components.checkRing.color).toBe(cobalt.colors.warning)
   })
 
   it('shows the count of cells to check', () => {
@@ -99,7 +98,7 @@ describe('CorrectionScreen in review', () => {
     expect(screen.getByText('Check the scan')).toBeTruthy()
     expect(screen.getByTestId('correction-level')).toHaveTextContent('Expert')
     expect(screen.getByTestId('play').props.accessibilityState).toMatchObject({ disabled: true })
-    expect(style('play-fade').opacity).toBe(daylight.opacity.disabled)
+    expect(style('play-fade').opacity).toBe(cobalt.opacity.disabled)
   })
 
   it('calls onRetake', () => {
@@ -114,9 +113,9 @@ describe('CorrectionScreen in review', () => {
     const own = screen.getByTestId('correction-panel').props.style.flat(Infinity)
     expect(own).toContainEqual(
       expect.objectContaining({
-        backgroundColor: daylight.components.panel.fill,
-        borderTopLeftRadius: daylight.components.panel.radius,
-        boxShadow: daylight.elevation.panel,
+        backgroundColor: cobalt.components.panel.fill,
+        borderTopLeftRadius: cobalt.components.panel.radius,
+        boxShadow: cobalt.elevation.panel,
       }),
     )
   })
@@ -124,8 +123,8 @@ describe('CorrectionScreen in review', () => {
   it('fills the board with the cell fill token, the same token as the transition canvas', () => {
     // A theme whose cell fill differs from its surface, so the test sees which token the board reads.
     const theme: Theme = {
-      ...daylight,
-      components: { ...daylight.components, cell: { ...daylight.components.cell, fill: midnight.colors.accent } },
+      ...cobalt,
+      components: { ...cobalt.components, cell: { ...cobalt.components.cell, fill: forest.colors.accent } },
     }
     const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
     const theming = jest
@@ -139,8 +138,8 @@ describe('CorrectionScreen in review', () => {
     const colours = paint.mock.results.flatMap((r) =>
       jest.mocked(r.value.setColor).mock.calls.map((c: unknown[]) => c[0]),
     )
-    expect(colours).toContain(midnight.colors.accent)
-    expect(colours).not.toContain(daylight.colors.surface)
+    expect(colours).toContain(forest.colors.accent)
+    expect(colours).not.toContain(cobalt.colors.surface)
     paint.mockRestore()
     theming.mockRestore()
   })
@@ -162,7 +161,7 @@ describe('CorrectionScreen in review', () => {
 
   it('draws the background and the board', () => {
     render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
-    expect(style('correction-screen').backgroundColor).toBe(daylight.colors.background)
+    expect(style('correction-screen').backgroundColor).toBe(cobalt.colors.background)
     expect(style('correction-board').opacity).toBe(1)
     expect(style('correction-lines').opacity).toBe(1)
   })
@@ -367,7 +366,7 @@ describe('CorrectionScreen check flow', () => {
     expect(screen.getByLabelText('0 of 3 cells checked')).toBeTruthy()
     expect(screen.getByTestId('correction-yes')).toHaveTextContent('Yes, 4')
     expect(screen.getByTestId('cell-crop')).toBeTruthy()
-    expect(style('correction-fill-3')).toMatchObject({ backgroundColor: daylight.colors.warningSurface })
+    expect(style('correction-fill-3')).toMatchObject({ backgroundColor: cobalt.colors.warningSurface })
   })
 
   it('ticks for Yes', () => {
@@ -424,7 +423,7 @@ describe('CorrectionScreen check flow', () => {
     press('correction-press-0')
     expect(screen.getByTestId('correction-question')).toHaveTextContent('Change this 5')
     expect(screen.queryByTestId('correction-progress')).toBeNull()
-    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.selected })
+    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: cobalt.components.cell.selected })
     press('correction-key-6')
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('6')
     expect(screen.getByTestId('correction-summary')).toBeTruthy()
@@ -462,7 +461,7 @@ describe('CorrectionScreen check flow', () => {
     render(ui(okResult()))
     press('correction-press-2')
     press('correction-key-4')
-    expect(style('correction-cell-2')).toMatchObject({ color: daylight.components.cell.given })
+    expect(style('correction-cell-2')).toMatchObject({ color: cobalt.components.cell.given })
   })
 
   it('closes the open cell with a second tap on it', () => {
@@ -481,8 +480,8 @@ describe('CorrectionScreen check flow', () => {
 
   it('marks two givens with the same digit, and the mark goes when one is fixed', () => {
     render(ui(okResult({ 0: given, 8: given })))
-    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
-    expect(style('correction-fill-8')).toMatchObject({ backgroundColor: daylight.components.cell.conflictFill })
+    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: cobalt.components.cell.conflictFill })
+    expect(style('correction-fill-8')).toMatchObject({ backgroundColor: cobalt.components.cell.conflictFill })
     expect(screen.getByText('2 givens clash')).toBeTruthy()
     press('correction-press-8')
     press('correction-key-4')
@@ -588,7 +587,7 @@ describe('CorrectionScreen play gate', () => {
     playUi(scanOf(givens))
     expect(playOn()).toBe(false)
     expect(screen.getByTestId('play-blocked')).toHaveTextContent('This puzzle has no solution. Check the marked cells.')
-    expect(style('play-blocked')).toMatchObject({ color: daylight.colors.danger })
+    expect(style('play-blocked')).toMatchObject({ color: cobalt.colors.danger })
   })
 
   it('blocks givens with several solutions and says so', () => {
@@ -737,18 +736,18 @@ describe('CorrectionScreen dev menu', () => {
 
   it('shows the kind and the confidence in each cell', () => {
     devUi()
-    fireEvent(screen.getByTestId('switch-Show confidence'), 'valueChange', true)
+    fireEvent.press(screen.getByTestId('switch-Show confidence'))
     expect(screen.getByTestId('correction-confidence-1')).toHaveTextContent('85')
     expect(screen.getByTestId('correction-confidence-0')).toHaveTextContent('100')
   })
 
   it('labels the kind of an open cell when Label kinds is on', () => {
     devUi()
-    fireEvent(screen.getByTestId('switch-Label kinds'), 'valueChange', true)
+    fireEvent.press(screen.getByTestId('switch-Label kinds'))
     press('dev-close')
     press('correction-press-0')
     press('correction-kind-entry')
-    expect(style('correction-cell-0')).toMatchObject({ color: daylight.components.cell.entry })
+    expect(style('correction-cell-0')).toMatchObject({ color: cobalt.components.cell.entry })
     press('correction-kind-notes')
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('')
     expect(screen.getByTestId('correction-check')).toBeTruthy()
@@ -767,11 +766,11 @@ function inTheme(theme: Theme) {
   return jest.spyOn(unistyles, 'useUnistyles').mockReturnValue({ theme, rt: unistyles.UnistylesRuntime } as never)
 }
 
-describe('CorrectionScreen in the new themes', () => {
+describe('CorrectionScreen in the colourways', () => {
   afterEach(() => jest.restoreAllMocks())
 
-  it('shows the large title and the panel edge of Op-art', () => {
-    inTheme(opart)
+  it('shows the large title and the panel edge of Bordeaux', () => {
+    inTheme(bordeaux)
     const big = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 34)
     render(<CorrectionScreen result={okResult()} layout={big} onRetake={jest.fn()} />)
     expect(screen.getByTestId('decoration-opart-waves')).toBeTruthy()
@@ -779,21 +778,11 @@ describe('CorrectionScreen in the new themes', () => {
   })
 
   it('sizes the digits from the type scale of the theme: the serif given larger than the sans entry', () => {
-    inTheme(opart)
+    inTheme(bordeaux)
     render(<CorrectionScreen result={okResult({ 0: given, 1: entry })} layout={layout} onRetake={jest.fn()} />)
     const givenSize = style('correction-cell-0').fontSize
     const entrySize = style('correction-cell-1').fontSize
-    expect(givenSize / entrySize).toBeCloseTo(opart.type.given.scale / opart.type.entry.scale, 6)
-  })
-
-  it('shows the stripes and the disc of Progressive, and hides the panel edge with the keypad', () => {
-    inTheme(progressive)
-    const big = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 30)
-    render(<CorrectionScreen result={okResult()} layout={big} onRetake={jest.fn()} />)
-    expect(screen.getByTestId('decoration-progressive-stripes')).toBeTruthy()
-    expect(screen.getByTestId('decoration-progressive-disc')).toBeTruthy()
-    press('correction-press-0')
-    expect(screen.queryByTestId('decoration-progressive-stripes')).toBeNull()
+    expect(givenSize / entrySize).toBeCloseTo(bordeaux.type.given.scale / bordeaux.type.entry.scale, 6)
   })
 })
 

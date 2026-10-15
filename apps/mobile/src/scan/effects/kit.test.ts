@@ -1,10 +1,10 @@
 import { PaintStyle, Skia, StrokeCap, StrokeJoin } from '@shopify/react-native-skia'
 import { makeDrawKit } from './kit'
 import type { AnyEffect } from './types'
-import { daylight } from '@/theme/themes/daylight'
-import { midnight } from '@/theme/themes/midnight'
+import { cobalt } from '@/theme/themes/cobalt'
+import { forest } from '@/theme/themes/forest'
 
-const INK = daylight.components.grid.boxLine
+const INK = cobalt.components.grid.boxLine
 
 const make = jest.mocked(Skia.RuntimeEffect.Make)
 
@@ -50,7 +50,7 @@ describe('makeDrawKit', () => {
     expect(stroke.setStrokeJoin).toHaveBeenCalledWith(StrokeJoin.Round)
   })
 
-  it.each([daylight, midnight])('gives the $name ink it is given as RGB from 0 to 1', (theme) => {
+  it.each([cobalt, forest])('gives the $name ink it is given as RGB from 0 to 1', (theme) => {
     const ink = theme.components.grid.boxLine
     const value = Number.parseInt(ink.slice(1), 16)
     expect(makeDrawKit([], ink).ink).toEqual([(value >> 16) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255])

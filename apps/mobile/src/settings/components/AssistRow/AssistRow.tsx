@@ -1,12 +1,6 @@
-import { Switch, Text, View } from 'react-native'
-import { withUnistyles } from 'react-native-unistyles'
+import { Text, View } from 'react-native'
+import { Toggle } from '@/settings/components/Toggle'
 import { styles } from './AssistRow.styles'
-
-// No thumbColor: on iOS a thumb colour removes the shadow of the thumb.
-const ThemedSwitch = withUnistyles(Switch, (theme) => ({
-  trackColor: { false: theme.components.switch.off, true: theme.components.switch.on },
-  ios_backgroundColor: theme.components.switch.off,
-}))
 
 type AssistRowProps = {
   label: string
@@ -24,7 +18,7 @@ export function AssistRow({ label, description, value, divider, onChange }: Assi
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.description}>{description}</Text>
       </View>
-      <ThemedSwitch accessibilityLabel={label} accessibilityHint={description} value={value} onValueChange={onChange} />
+      <Toggle label={label} hint={description} value={value} onChange={onChange} />
     </View>
   )
 }

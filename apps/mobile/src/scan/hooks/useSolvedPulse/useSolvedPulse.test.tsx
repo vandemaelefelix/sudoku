@@ -3,11 +3,11 @@ import { AccessibilityInfo } from 'react-native'
 import { useReducedMotion } from 'react-native-reanimated'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import { pulseLook } from '@/game/utils/pulse.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { solvedDelays } from '@/scan/utils/solvedPulse.utils'
 import { useSolvedPulse } from './useSolvedPulse'
 
-const STEP = pulseLook(daylight).stepMs
+const STEP = pulseLook(cobalt).stepMs
 
 beforeEach(() => {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockImplementation(async () => false)

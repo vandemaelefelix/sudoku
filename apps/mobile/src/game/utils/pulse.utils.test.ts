@@ -1,7 +1,7 @@
 import type { Digit } from '@sudoku/core'
 import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
-import { daylight } from '@/theme/themes/daylight'
-import { midnight } from '@/theme/themes/midnight'
+import { cobalt } from '@/theme/themes/cobalt'
+import { forest } from '@/theme/themes/forest'
 import { popScale, pulseDelays, pulseDuration, pulseLook, solvePulseDuration, waveOpacity } from './pulse.utils'
 import { sampleStart } from './sample.utils'
 import { reduceSession, startSession, type Session } from './session.utils'
@@ -9,8 +9,8 @@ import { reduceSession, startSession, type Session } from './session.utils'
 // Cell 2 (row 0, column 2) is empty in the canvas puzzle. Its solution is 4.
 const LAST = 2
 const sample = sampleStart()
-const look = pulseLook(daylight)
-const STEP = daylight.motion.pulseStep
+const look = pulseLook(cobalt)
+const STEP = cobalt.motion.pulseStep
 
 /** A session whose entries are the solution on the cells that keep(cell) accepts. */
 function startWith(keep: (cell: number) => boolean): Session {
@@ -26,12 +26,12 @@ const pulsed = (delays: readonly number[] | null) =>
   (delays ?? []).flatMap((delay, cell) => (delay === NO_PULSE ? [] : [cell]))
 
 it('reads the timings and the strengths of the pulse from the theme', () => {
-  expect(pulseLook(midnight)).toEqual({
-    stepMs: midnight.motion.pulseStep,
-    waveMs: midnight.motion.long,
-    popMs: midnight.motion.pop,
-    waveOpacity: midnight.components.pulse.waveOpacity,
-    popScale: midnight.components.pulse.popScale,
+  expect(pulseLook(forest)).toEqual({
+    stepMs: forest.motion.pulseStep,
+    waveMs: forest.motion.long,
+    popMs: forest.motion.pop,
+    waveOpacity: forest.components.pulse.waveOpacity,
+    popScale: forest.components.pulse.popScale,
   })
 })
 

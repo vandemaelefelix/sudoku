@@ -3,9 +3,9 @@ import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import { bracketPath, spotlightBrackets } from './spotlight-brackets.effect'
 import type { Quad } from '@/utils/geometry.utils'
 import { BRACKET_BASE, BRACKET_STEADY, BRACKET_WIDTH, DIM_BASE, DIM_STEADY } from './spotlight-brackets.constants'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 
-const INK = daylight.components.grid.boxLine
+const INK = cobalt.components.grid.boxLine
 
 const VIEW = { width: 402, height: 874 }
 

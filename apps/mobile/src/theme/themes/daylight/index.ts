@@ -1,1 +1,0 @@
-export { daylight } from './daylight'

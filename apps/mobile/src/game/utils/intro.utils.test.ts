@@ -1,9 +1,9 @@
 import { INTRO_FADE_MS, INTRO_STEP_MS, INTRO_SWEEP_DELAY_MS } from '@/game/constants/intro.constants'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { introCellAlpha, introDuration, introLook } from './intro.utils'
 
-const look = introLook(daylight, false)
-const reduced = introLook(daylight, true)
+const look = introLook(cobalt, false)
+const reduced = introLook(cobalt, true)
 
 test('the digits sweep in diagonal by diagonal from the top left', () => {
   const firstStart = INTRO_SWEEP_DELAY_MS
@@ -15,10 +15,10 @@ test('the digits sweep in diagonal by diagonal from the top left', () => {
 })
 
 test('with Reduce Motion, every digit fades in at once over the short motion', () => {
-  const half = daylight.motion.short / 2
+  const half = cobalt.motion.short / 2
   expect(introCellAlpha(half, 0, reduced)).toBe(introCellAlpha(half, 16, reduced))
   expect(introCellAlpha(half, 0, reduced)).toBeGreaterThan(0.5)
-  expect(introCellAlpha(daylight.motion.short, 16, reduced)).toBe(1)
+  expect(introCellAlpha(cobalt.motion.short, 16, reduced)).toBe(1)
 })
 
 test('the entrance ends when the last digit is in', () => {
