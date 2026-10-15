@@ -409,12 +409,11 @@ The release needs these steps, in this order. Only the developer can do them.
    key and the Google client IDs are in `app.config.ts`.
 5. Run `just deploy-api production` again. It creates the table, the function and the API.
    The `apiUrl` that this command prints is in `PRODUCTION_BACKEND.syncApiUrl` in `app.config.ts`.
-6. Publish the privacy policy only after the smoke test of step 7 passes on
-   production. Do not publish before. The source is
-   [`docs/privacy/privacy-policy.md`](../docs/privacy/privacy-policy.md). The repository is
-   private, so GitHub Pages cannot serve it from here. Options: a small public repository with
-   GitHub Pages, or another free host such as Cloudflare Pages, Vercel or Netlify. The developer
-   chooses the host.
+6. Host the home page and the privacy policy. Vercel serves the folder [`site/`](../site/README.md) at
+   `https://sudoku.felixvandemaele.be`. The build renders
+   [`docs/privacy/privacy-policy.md`](../docs/privacy/privacy-policy.md) as `/privacy`. Follow the steps in
+   `site/README.md`. Enter both URLs in the Google Branding page. Step 3 needs them. Check the policy again before the
+   App Store submission.
 7. Run the smoke test: sign up, finish a game, see it in DynamoDB, delete the account.
 
 Production sync and in-app account deletion work. Step 5 set the production sync URL.

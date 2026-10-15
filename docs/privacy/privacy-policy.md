@@ -1,20 +1,17 @@
 ---
-status: DRAFT
-publish: blocked until the production smoke test passes
+status: ACCEPTED
+publish: allowed for the Google consent screen. Check again before the App Store submission.
 ---
 
 # Privacy policy of Sudoku
 
-<!-- Do not publish this file yet. In-app deletion ships on develop. Publish only after the production smoke test passes. -->
+<!-- Source of the public page. `site/build.mjs` renders it at build time. See ../../site/README.md. Check this policy again before the App Store submission. -->
 
 Last changed: 2026-10-15
 
-This file is the source of the public privacy page. The developer copies it to the host of the page. See
-[`infra/README.md`](../../infra/README.md), "The production release".
-
 ## Who
 
-Felix Vandemaele runs the Sudoku app. Contact: `<contact email, added before the page is published>`.
+Felix Vandemaele runs the Sudoku app. Contact: <vandemaelefelix@gmail.com>.
 
 ## Without an account
 
