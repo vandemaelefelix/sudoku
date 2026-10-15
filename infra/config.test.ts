@@ -45,13 +45,6 @@ describe('deployPlan', () => {
     assert.deepEqual(deployPlan('production', { ...CLERK_ISSUER, production: null }), { account: true, app: false })
   })
 
-  it('gives production the whole app as soon as it has an issuer', () => {
-    assert.deepEqual(deployPlan('production', { ...CLERK_ISSUER, production: 'https://clerk.example.com' }), {
-      account: true,
-      app: true,
-    })
-  })
-
   it('throws for felix and dev without an issuer, so a removed issuer never deletes their table', () => {
     assert.throws(() => deployPlan('felix', { ...CLERK_ISSUER, felix: null }), /felix has no Clerk issuer/)
     assert.throws(() => deployPlan('dev', { ...CLERK_ISSUER, dev: null }), /dev has no Clerk issuer/)

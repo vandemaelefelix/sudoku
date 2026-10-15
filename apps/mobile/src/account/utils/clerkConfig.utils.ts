@@ -6,7 +6,7 @@ export function publishableKeyOf(extra: Record<string, unknown> | undefined): st
   return typeof key === 'string' && key !== '' ? key : null
 }
 
-/** app.config.ts gives the production variant a key only when PRODUCTION_BACKEND holds one. Until then it has no account. */
+/** app.config.ts gives the production variant a key only when PRODUCTION_BACKEND holds one. The production variant has the Clerk issuer `clerk.sudoku.felixvandemaele.be`. The sync URL arrives after the first production deploy. */
 export function readPublishableKey(): string | null {
   return publishableKeyOf(Constants.expoConfig?.extra)
 }

@@ -139,6 +139,7 @@ describe('variantConfig', () => {
     const dev = variantConfig(base, 'development')
     expect(dev.name).toBe('Sudoku Dev')
     expect(dev.scheme).toBe('sudoku-dev')
+    expect(variantConfig(base, 'production').scheme).not.toBe(dev.scheme)
     expect(dev.ios?.bundleIdentifier).toBe('com.vandemaelefelix.sudoku.dev')
     expect(dev.android?.package).toBe('com.vandemaelefelix.sudoku.dev')
   })
@@ -148,7 +149,7 @@ describe('variantConfig', () => {
     expect(variantConfig(base, 'production').extra?.appVariant).toBeUndefined()
   })
 
-  it('gives the development variant the publishable key of the Clerk development instance (ADR-027)', () => {
+  it('gives each variant the publishable key of its own Clerk instance (ADR-027)', () => {
     const key = variantConfig(base, 'development').extra?.clerkPublishableKey as string
     expect(key).toBe(DEVELOPMENT_CLERK_PUBLISHABLE_KEY)
     expect(key).toMatch(/^pk_test_/)

@@ -256,7 +256,7 @@ The Clerk development instance makes decision 1 concrete. The steps are in the s
 [`infra/README.md`](../../../infra/README.md).
 
 1. **`felix` and `dev` share the development instance.** Its issuer is `CLERK_ISSUER` in
-   `infra/config.ts`. `production` has no issuer until the production instance exists.
+   `infra/config.ts`. `production` has its own issuer, `https://clerk.sudoku.felixvandemaele.be`.
 2. **Native Google sign-in needs our own Google OAuth clients, also in development.** Clerk's
    shared Google credentials cover only the browser flow. The development instance uses a web
    client for Clerk and an iOS client for the development variant.

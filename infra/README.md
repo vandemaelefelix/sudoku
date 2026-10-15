@@ -419,3 +419,7 @@ The release needs these steps, in this order. Only the developer can do them.
    GitHub Pages, or another free host such as Cloudflare Pages, Vercel or Netlify. The developer
    chooses the host.
 7. Run the smoke test: sign up, finish a game, see it in DynamoDB, delete the account.
+
+Do not ship a production app build until step 5 sets the production sync URL. Without it the
+account section hides "Delete account", but sign-up still works. That breaches App Store
+guideline 5.1.1(v).
