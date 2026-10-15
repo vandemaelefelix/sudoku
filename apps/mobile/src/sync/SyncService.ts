@@ -22,6 +22,9 @@ export type SyncService = {
   /** Never throws. 'partial' means the run reached the most rounds and the follow-up runs did not finish: the next trigger goes on. 'ignored' means no run: no session, a wait after a failure, or nothing waits after a game end. */
   /** Ends the session like `setSession(null)`, then waits until the run that goes on has stopped writing. Never rejects. */
   stop(): Promise<void>
+  /** Aborts the run that goes on and waits until it has stopped. The session stays, but no trigger starts a run until `resume`. Never rejects. */
+  pause(): Promise<void>
+  resume(): void
   trigger(reason: SyncTrigger): Promise<RunResult | 'ignored'>
   subscribe(listener: () => void): () => void
   status(): SyncStatus
@@ -36,6 +39,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   let session: SyncSession | null = null
   let generation = 0
   let deletedOwner: string | null = null
+  let paused = false
   let running: Promise<RunResult> | null = null
   let rerun = false
   let failures = 0
@@ -128,6 +132,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     abort?.abort()
     generation += 1
     session = next
+    paused = false
     rerun = false
     failures = 0
     notBefore = 0
@@ -153,9 +158,24 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
         // The run reports its own failure. Here only its end matters.
       }
     },
+    async pause() {
+      const last = running
+      paused = true
+      abort?.abort()
+      generation += 1
+      rerun = false
+      try {
+        await last
+      } catch {
+        // The run reports its own failure. Here only its end matters.
+      }
+    },
+    resume() {
+      paused = false
+    },
     async trigger(reason) {
       const current = session
-      if (current === null || current.owner === deletedOwner) return 'ignored'
+      if (current === null || paused || current.owner === deletedOwner) return 'ignored'
       if (reason === 'game-end') {
         try {
           if ((await history.pending(current.owner, 1)).length === 0) return 'ignored'

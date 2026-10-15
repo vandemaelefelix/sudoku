@@ -1,3 +1,4 @@
+import { getNetworkStateAsync } from 'expo-network'
 import { useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
 import {
@@ -6,11 +7,14 @@ import {
   DELETE_CONFIRM_TITLE,
   DELETE_FAILED_MESSAGE,
   DELETE_FAILED_TITLE,
+  DELETE_HINT,
   DELETE_OFFLINE_MESSAGE,
   DELETE_PENDING_HINT,
+  DELETE_UNREACHABLE_MESSAGE,
 } from '@/account/constants/account.constants'
 import { useAccount } from '@/account/hooks/useAccount'
 import { useDeleteAccount } from '@/account/hooks/useDeleteAccount'
+import { useSyncControl } from '@/sync/hooks/useSyncControl'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './AccountSection.styles'
@@ -18,9 +22,20 @@ import { styles } from './AccountSection.styles'
 type AccountSectionProps = { onSignIn(): void }
 
 /** The Account section of Settings. A build without a Clerk key has no account, so the section is not there. */
+/** A token or a call can fail with the network up. Only a network that is down gets the words about the internet. */
+async function offlineMessage(): Promise<string> {
+  try {
+    return (await getNetworkStateAsync()).isConnected === false ? DELETE_OFFLINE_MESSAGE : DELETE_UNREACHABLE_MESSAGE
+  } catch {
+    return DELETE_UNREACHABLE_MESSAGE
+  }
+}
+
 export function AccountSection({ onSignIn }: AccountSectionProps) {
   const { status, email, signOut } = useAccount()
   const deleteAccount = useDeleteAccount()
+  // A build without an API URL has nothing to call, so it has no delete row.
+  const canDelete = useSyncControl() !== null
   const [deleting, setDeleting] = useState(false)
   // A state update is too late for a second tap in the same frame.
   const busy = useRef(false)
@@ -39,7 +54,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
     setDeleting(true)
     try {
       const outcome = await deleteAccount()
-      if (outcome === 'offline') Alert.alert(DELETE_FAILED_TITLE, DELETE_OFFLINE_MESSAGE)
+      if (outcome === 'offline') Alert.alert(DELETE_FAILED_TITLE, await offlineMessage())
       else if (outcome === 'failed') Alert.alert(DELETE_FAILED_TITLE, DELETE_FAILED_MESSAGE)
     } finally {
       busy.current = false
@@ -89,15 +104,18 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
           >
             <Text style={styles.action}>Sign out</Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: deleting }}
-            disabled={deleting}
-            onPress={confirmDelete}
-            style={({ pressed }) => [styles.row, styles.divider, pressed && pressedStyles.pressed]}
-          >
-            <Text style={styles.destructiveAction}>{DELETE_CONFIRM_ACTION}</Text>
-          </Pressable>
+          {canDelete ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint={DELETE_HINT}
+              accessibilityState={{ disabled: deleting }}
+              disabled={deleting}
+              onPress={confirmDelete}
+              style={({ pressed }) => [styles.row, styles.divider, pressed && pressedStyles.pressed]}
+            >
+              <Text style={styles.destructiveAction}>{DELETE_CONFIRM_ACTION}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </>

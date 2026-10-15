@@ -5,7 +5,12 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { API_TOKEN_TEMPLATE } from '@/account/constants/account.constants'
 import { AccountContext, UNCONFIGURED_ACCOUNT, type Account, type AccountStatus } from '@/account/hooks/useAccount'
 import { readPublishableKey } from '@/account/utils/clerkConfig.utils'
-import { readCachedOwner, writeCachedOwner } from '@/account/utils/ownerCache.utils'
+import {
+  readCachedOwner,
+  readPendingSignOut,
+  writeCachedOwner,
+  writePendingSignOut,
+} from '@/account/utils/ownerCache.utils'
 import { OwnerContext } from '@/storage/hooks/useOwner'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
@@ -35,7 +40,10 @@ export function AccountProvider({ publishableKey = readPublishableKey(), childre
 function ClerkBridge({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, userId, getToken, signOut } = useAuth()
   const { user } = useUser()
-  const status: AccountStatus = !isLoaded ? 'loading' : isSignedIn ? 'signedIn' : 'signedOut'
+  // After a confirmed deletion the session has no owner and no account, whatever Clerk still says (ADR-028).
+  const [deleted, setDeleted] = useState(false)
+  const clerkStatus: AccountStatus = !isLoaded ? 'loading' : isSignedIn ? 'signedIn' : 'signedOut'
+  const status: AccountStatus = deleted ? 'signedOut' : clerkStatus
   // ADR-028: this is the only writer of the owner. The game and the stats read it from storage.
   // Before Clerk loads, the owner is the cached Clerk user ID, so a game started offline keeps its owner.
   const [cachedOwner, setCachedOwner] = useState<string | null | undefined>(undefined)
@@ -50,6 +58,11 @@ function ClerkBridge({ children }: { children: ReactNode }) {
   const owner = status === 'loading' ? (cachedOwner ?? null) : signedInOwner
   // The Keychain read is local and fast. Clerk can be slow or offline, so the app does not wait for it.
   const ready = cachedOwner !== undefined || status !== 'loading'
+  const markDeleted = useCallback(({ signedOut }: { signedOut: boolean }) => {
+    setDeleted(true)
+    void writeCachedOwner(null)
+    if (!signedOut) void writePendingSignOut(true)
+  }, [])
   const email = status === 'signedIn' ? (user?.primaryEmailAddress?.emailAddress ?? null) : null
   const getApiToken = useCallback(
     async (options?: { fresh?: boolean }) => {
@@ -76,9 +89,18 @@ function ClerkBridge({ children }: { children: ReactNode }) {
       return false
     }
   }, [signOut])
+  // A start after a deleted account whose sign-out failed: sign out again, silently, then forget the flag.
+  useEffect(() => {
+    if (clerkStatus === 'loading') return
+    void readPendingSignOut().then(async (pending) => {
+      if (!pending) return
+      setDeleted(true)
+      if (clerkStatus === 'signedOut' || (await trySignOut())) await writePendingSignOut(false)
+    })
+  }, [clerkStatus, trySignOut])
   const account = useMemo<Account>(
-    () => ({ status, email, signOut: trySignOut, getApiToken }),
-    [status, email, trySignOut, getApiToken],
+    () => ({ status, email, signOut: trySignOut, getApiToken, markDeleted }),
+    [status, email, trySignOut, getApiToken, markDeleted],
   )
   return (
     <AccountContext value={account}>

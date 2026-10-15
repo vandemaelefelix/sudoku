@@ -10,6 +10,9 @@ export const UNCONFIGURED_MESSAGE = 'Accounts are not available in this version 
 /** The Keychain item that holds the last signed-in Clerk user ID, the owner until Clerk has loaded (ADR-028). */
 export const OWNER_CACHE_KEY = 'sudoku.owner'
 
+/** The Keychain flag of a deleted account whose Clerk sign-out failed. The next start signs out again (ADR-028). */
+export const PENDING_SIGN_OUT_KEY = 'sudoku.pendingSignOut'
+
 /** The delete call keeps one token. After the Clerk user is gone, Clerk cannot give a new one (ADR-027). */
 export const DELETE_RETRIES = 2
 export const DELETE_RETRY_DELAY_MS = 1_000
@@ -18,9 +21,11 @@ export const DELETE_CONFIRM_TITLE = 'Delete account?'
 export const DELETE_CONFIRM_MESSAGE =
   'This deletes your account and the games backed up to it. The games on this iPhone that belong to the account are deleted too. You cannot undo this.'
 export const DELETE_CONFIRM_ACTION = 'Delete account'
+export const DELETE_HINT = 'Deletes your account and its backed-up games'
 export const DELETE_PENDING_HINT = 'Deleting the account…'
 export const DELETE_FAILED_TITLE = 'Could not delete the account'
 export const DELETE_OFFLINE_MESSAGE = 'Deleting needs the internet. Check your connection and try again.'
+export const DELETE_UNREACHABLE_MESSAGE = 'Could not reach the server. Try again.'
 export const DELETE_FAILED_MESSAGE = 'Something went wrong. Your account is not deleted. Try again.'
 export const DELETED_TITLE = 'Account deleted'
 export const DELETED_MESSAGE = 'Your account and its backed-up games are deleted.'

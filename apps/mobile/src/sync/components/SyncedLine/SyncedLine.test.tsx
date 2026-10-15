@@ -4,7 +4,7 @@ import { SyncContext } from '@/sync/hooks/useSync'
 import { SyncedLine } from './SyncedLine'
 
 function accountOf(status: Account['status']): Account {
-  return { status, email: null, signOut: async () => true, getApiToken: async () => null }
+  return { status, email: null, signOut: async () => true, getApiToken: async () => null, markDeleted: () => undefined }
 }
 
 function line(status: Account['status'], lastSyncedAt: string | null) {

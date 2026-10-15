@@ -1,6 +1,6 @@
 import { errorBodySchema, MAX_CHANGES_PER_SYNC, syncResponseSchema, type SyncRequest } from '@sudoku/sync-contract'
 import { devWarn } from '@/utils/log.utils'
-import { BACKOFF_MAX_MS, REQUEST_TIMEOUT_MS } from './constants/sync.constants'
+import { BACKOFF_MAX_MS, DELETE_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from './constants/sync.constants'
 import type { DeleteAccountResult, SyncApiResult } from './sync.types'
 
 /** The part of `fetch` that the client uses. Tests give a fake. */
@@ -18,7 +18,7 @@ export type SyncApi = { sync(request: SyncRequest, token: string, signal?: Abort
 /** The client of `DELETE /v1/account`. It sends no body. `signal` is not needed: the request is short and the player waits. */
 export type AccountApi = { deleteAccount(token: string): Promise<DeleteAccountResult> }
 
-type SyncApiOptions = { baseUrl: string; fetch?: FetchLike; timeoutMs?: number }
+type SyncApiOptions = { baseUrl: string; fetch?: FetchLike; timeoutMs?: number; deleteTimeoutMs?: number }
 
 async function jsonOrNull(response: Awaited<ReturnType<FetchLike>>): Promise<unknown> {
   try {
@@ -42,11 +42,12 @@ export function createSyncApi({
   baseUrl,
   fetch = globalThis.fetch,
   timeoutMs = REQUEST_TIMEOUT_MS,
+  deleteTimeoutMs = DELETE_TIMEOUT_MS,
 }: SyncApiOptions): SyncApi & AccountApi {
   return {
     async deleteAccount(token) {
       const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      const timer = setTimeout(() => controller.abort(), deleteTimeoutMs)
       try {
         const response = await fetch(`${baseUrl}/v1/account`, {
           method: 'DELETE',

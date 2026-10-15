@@ -14,6 +14,11 @@ export type Account = {
    * Null when signed out, or when Clerk cannot give one. Never throws.
    */
   getApiToken(options?: { fresh?: boolean }): Promise<string | null>
+  /**
+   * The server deleted the account (ADR-028). For this session the owner is null and the status is signedOut, whatever
+   * Clerk says. `signedOut` false: the next start tries the Clerk sign-out again, without a message.
+   */
+  markDeleted(result: { signedOut: boolean }): void
 }
 
 export const UNCONFIGURED_ACCOUNT: Account = {
@@ -21,6 +26,7 @@ export const UNCONFIGURED_ACCOUNT: Account = {
   email: null,
   signOut: async () => true,
   getApiToken: async () => null,
+  markDeleted: () => undefined,
 }
 
 export const AccountContext = createContext<Account>(UNCONFIGURED_ACCOUNT)

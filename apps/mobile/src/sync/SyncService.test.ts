@@ -356,6 +356,28 @@ describe('a deleted account', () => {
   })
 })
 
+describe('pause and resume', () => {
+  it('aborts the run that goes on, keeps the session and ignores triggers until resume', async () => {
+    const { api, waiting } = gatedApi()
+    const { service, onAccountDeleted } = serviceWith(api)
+    service.setSession(sessionOf(ALICE))
+    const run = service.trigger('sign-in')
+    await flush()
+    const paused = service.pause()
+    waiting.shift()?.({ kind: 'account_deleted' })
+    await paused
+    await expect(run).resolves.not.toBe('deleted')
+    expect(onAccountDeleted).not.toHaveBeenCalled()
+    await expect(service.trigger('network')).resolves.toBe('ignored')
+    service.resume()
+    const next = service.trigger('network')
+    await flush()
+    expect(waiting).toHaveLength(1)
+    waiting.shift()?.(OK)
+    await expect(next).resolves.toBe('synced')
+  })
+})
+
 describe('stop', () => {
   it('ends the session and waits for the run that goes on', async () => {
     const { api, release } = gatedApi()

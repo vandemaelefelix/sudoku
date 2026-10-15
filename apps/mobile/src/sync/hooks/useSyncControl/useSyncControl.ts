@@ -5,6 +5,10 @@ import type { AccountApi } from '@/sync/syncApi'
 export type SyncControl = AccountApi & {
   /** Ends the session and waits for the run that goes on, so no run writes after the local data is deleted. */
   stop(): Promise<void>
+  /** Stops a run and blocks new runs while the delete call is out, so a 410 cannot start a second cleanup. */
+  pause(): Promise<void>
+  /** Lets the sync run again after a delete that did not happen. */
+  resume(): void
 }
 
 /** Null in a build without an API URL: the account cannot be deleted there. */

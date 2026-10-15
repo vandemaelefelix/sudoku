@@ -9,6 +9,7 @@ import { OwnerContext } from '@/storage/hooks/useOwner'
 import { SyncControlContext, type SyncControl } from '@/sync/hooks/useSyncControl'
 import type { DeleteAccountResult } from '@/sync/sync.types'
 import { ALICE, BOB, createTestStorage, finishGame } from '@/sync/syncTestKit'
+import { cleanUpDeletedAccount, forgetCleanedUpOwners } from '@/sync/accountDeleted'
 import { useDeleteAccount } from './useDeleteAccount'
 
 jest.mock('@/account/utils/ownerCache.utils', () => ({
@@ -20,6 +21,7 @@ let storage: GameStorage
 let calls: string[]
 
 beforeEach(async () => {
+  forgetCleanedUpOwners()
   calls = []
   jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
   storage = createTestStorage()
@@ -50,11 +52,18 @@ function setup(
     async stop() {
       calls.push('stop')
     },
+    async pause() {
+      calls.push('pause')
+    },
+    resume() {
+      calls.push('resume')
+    },
   }
   const account: Account = {
     ...UNCONFIGURED_ACCOUNT,
     status: 'signedIn',
     email: 'a@b.c',
+    markDeleted: jest.fn(),
     getApiToken: jest.fn(async () => tokens[Math.min(tokenCall++, tokens.length - 1)] ?? null),
     signOut: jest.fn(async () => {
       calls.push('signOut')
@@ -87,7 +96,7 @@ it('calls the server with one fresh token, then stops the sync, deletes the loca
   await expect(run()).resolves.toBe('deleted')
   expect(account.getApiToken).toHaveBeenCalledWith({ fresh: true })
   expect(used).toEqual(['t1'])
-  expect(calls).toEqual(['api', 'stop', 'signOut'])
+  expect(calls).toEqual(['pause', 'api', 'stop', 'signOut'])
   await expect(storage.history.list(ALICE)).resolves.toEqual([])
   await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
   await expect(storage.history.list(BOB)).resolves.toHaveLength(1)
@@ -101,14 +110,14 @@ it('stops a pending sync run before it deletes the local data', async () => {
     calls.push('deleteOwner')
   })
   await run()
-  expect(calls).toEqual(['api', 'stop', 'deleteOwner', 'signOut'])
+  expect(calls).toEqual(['pause', 'api', 'stop', 'deleteOwner', 'signOut'])
   spy.mockRestore()
 })
 
 it('changes nothing when the phone is offline', async () => {
   const { run, account } = setup([{ kind: 'offline' }])
   await expect(run()).resolves.toBe('offline')
-  expect(calls).toEqual(['api', 'api', 'api'])
+  expect(calls).toEqual(['pause', 'api', 'api', 'api', 'resume'])
   expect(account.signOut).not.toHaveBeenCalled()
   await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
   await expect(storage.sync.cursor(ALICE)).resolves.toBe('c')
@@ -117,7 +126,7 @@ it('changes nothing when the phone is offline', async () => {
 it('is offline when Clerk gives no token', async () => {
   const { run } = setup([{ kind: 'ok' }], { tokens: [null] })
   await expect(run()).resolves.toBe('offline')
-  expect(calls).toEqual([])
+  expect(calls).toEqual(['pause', 'resume'])
 })
 
 it('keeps everything on a server error, after two retries with the same token', async () => {
@@ -142,11 +151,61 @@ it('asks for a new token once after a 401', async () => {
   expect(used).toEqual(['t1', 't2'])
 })
 
-it('still deletes the local data and clears the cached owner when the sign-out fails', async () => {
-  const { run } = setup([{ kind: 'ok' }], { signOut: async () => false })
+it('still deletes the local data, clears the cached owner and forces no owner when the sign-out fails', async () => {
+  const { run, account } = setup([{ kind: 'ok' }], { signOut: async () => false })
   await expect(run()).resolves.toBe('deleted')
   await expect(storage.history.list(ALICE)).resolves.toEqual([])
   expect(writeCachedOwner).toHaveBeenCalledWith(null)
+  expect(account.markDeleted).toHaveBeenCalledWith({ signedOut: false })
+})
+
+it('forces no owner after a good sign-out too', async () => {
+  const { run, account } = setup([{ kind: 'ok' }])
+  await run()
+  expect(account.markDeleted).toHaveBeenCalledWith({ signedOut: true })
+})
+
+it('resumes the sync after a failure', async () => {
+  const { run } = setup([{ kind: 'server_error' }])
+  await run()
+  expect(calls.at(-1)).toBe('resume')
+})
+
+it('treats a 401 after a lost attempt as a deleted account', async () => {
+  const { run, account } = setup([{ kind: 'offline' }, { kind: 'unauthorized' }])
+  await expect(run()).resolves.toBe('deleted')
+  expect(calls).toEqual(['pause', 'api', 'api', 'stop', 'signOut'])
+  expect(account.getApiToken).toHaveBeenCalledTimes(1)
+  await expect(storage.history.list(ALICE)).resolves.toEqual([])
+  expect(Alert.alert).toHaveBeenCalledWith('Account deleted', 'Your account and its backed-up games are deleted.')
+})
+
+it('treats a missing token on a later try after a lost attempt as a deleted account', async () => {
+  const { run } = setup([{ kind: 'offline' }], { tokens: ['t1', null] })
+  await expect(run()).resolves.toBe('offline')
+  await expect(run()).resolves.toBe('deleted')
+  await expect(storage.history.list(ALICE)).resolves.toEqual([])
+})
+
+it('keeps a 401 on the very first attempt an error', async () => {
+  const { run, account } = setup([{ kind: 'unauthorized' }])
+  await expect(run()).resolves.toBe('failed')
+  expect(account.signOut).not.toHaveBeenCalled()
+  await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
+})
+
+it('cleans up once when a running sync got the 410 first: one alert, one sign-out', async () => {
+  const { run, account } = setup([{ kind: 'ok' }])
+  const deps = {
+    history: storage.history,
+    state: storage.sync,
+    signOut: account.signOut,
+    announce: () => Alert.alert('x'),
+  }
+  await cleanUpDeletedAccount(deps, ALICE)
+  await run()
+  expect(Alert.alert).toHaveBeenCalledTimes(1)
+  expect(account.signOut).toHaveBeenCalledTimes(1)
 })
 
 const signedOutWrapper = ({ children }: { children: ReactNode }) => (

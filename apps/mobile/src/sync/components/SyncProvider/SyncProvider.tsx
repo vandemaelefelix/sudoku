@@ -59,7 +59,12 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, accountApi, child
   const control = useMemo<SyncControl | null>(() => {
     const client = accountApi ?? (apiUrl === null ? null : createSyncApi({ baseUrl: apiUrl }))
     if (client === null || service === null) return null
-    return { deleteAccount: (token) => client.deleteAccount(token), stop: () => service.stop() }
+    return {
+      deleteAccount: (token) => client.deleteAccount(token),
+      stop: () => service.stop(),
+      pause: () => service.pause(),
+      resume: () => service.resume(),
+    }
   }, [accountApi, apiUrl, service])
 
   useSyncTriggers(service)

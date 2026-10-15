@@ -152,7 +152,28 @@ describe('deleteAccount', () => {
   })
 
   it('aborts a request that takes too long', async () => {
-    await expect(apiWith(hangingFetch, 10).deleteAccount('t')).resolves.toEqual({ kind: 'offline' })
+    await expect(
+      createSyncApi({ baseUrl: URL_BASE, fetch: hangingFetch, deleteTimeoutMs: 10 }).deleteAccount('t'),
+    ).resolves.toEqual({ kind: 'offline' })
+  })
+
+  it('waits 35 seconds, longer than the 30 seconds of the Lambda, before it gives up', async () => {
+    jest.useFakeTimers()
+    try {
+      let settled = false
+      const pending = apiWith(hangingFetch)
+        .deleteAccount('t')
+        .then((result) => {
+          settled = true
+          return result
+        })
+      await jest.advanceTimersByTimeAsync(34_999)
+      expect(settled).toBe(false)
+      await jest.advanceTimersByTimeAsync(1)
+      await expect(pending).resolves.toEqual({ kind: 'offline' })
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('never logs the token', async () => {
