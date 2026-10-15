@@ -125,6 +125,25 @@ Read a failed run from the top:
 - "stopped by the kill switch": run `just api-on <stage>` on the laptop.
 - "Unexpected error occurred": the workflow passes `--print-logs`. Read the lines above it.
 
+The trust policy of each role needs these claims (`github-oidc-policy.ts`):
+
+| Claim | Value |
+| --- | --- |
+| `aud` | `sts.amazonaws.com` |
+| `sub` | `repo:vandemaelefelix@32290789/sudoku@1412094169:ref:refs/heads/develop` |
+| `repository_id` | `1412094169` |
+| `job_workflow_ref` | `vandemaelefelix/sudoku/.github/workflows/<file>@refs/heads/develop` |
+
+The repository uses immutable subject claims, so the `sub` holds the owner ID and the repository ID. The IDs
+are in `config.ts`. Read the setting with `gh api repos/vandemaelefelix/sudoku/actions/oidc/customization/sub`.
+
+GitHub documents `job_workflow_ref` for reusable workflows. It is believed to be present in a plain workflow too, but this is
+not verified. Check it on the first run of `deploy-api-dev.yml`. If "Could not assume role" appears and the IDs are right,
+the claim may be missing. Then take this fallback. It is a human-only repository setting. Do not let an agent run it.
+
+1. Call `PUT /repos/vandemaelefelix/sudoku/actions/oidc/customization/sub` with `include_claim_keys` that includes `job_workflow_ref`.
+2. Match on `sub` in the trust policy, and drop the `job_workflow_ref` condition.
+
 The repository is private on the Free plan, so the production workflow has no environment and no
 required reviewer. Starting the run is the approval. See ADR-010, amendment "CI also deploys the
 backend".

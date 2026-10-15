@@ -104,8 +104,9 @@ CI no longer only checks. Two new workflows deploy the backend to AWS (ADR-027, 
    workflow uses no `environment:` key. Only the owner has write access, so starting the run is the approval.
    The deploy job does not wait for a second click.
 5. **The trust policy carries the guard that an environment would carry.** Without an
-   environment, the OIDC `sub` claim names the branch: `repo:vandemaelefelix/sudoku:ref:refs/heads/develop`.
-   Both roles share it. The claim `job_workflow_ref` tells them apart. The role `sudoku-github-dev`
+   environment, the OIDC `sub` claim names the branch. The repository uses immutable subject claims, so the
+   `sub` is `repo:vandemaelefelix@32290789/sudoku@1412094169:ref:refs/heads/develop`. The trust also
+   requires `repository_id` 1412094169. Both roles share both conditions. The claim `job_workflow_ref` tells them apart. The role `sudoku-github-dev`
    trusts only `deploy-api-dev.yml@refs/heads/develop`. The role `sudoku-github-production` trusts
    only `deploy-api-production.yml@refs/heads/develop`. A run of the production workflow from
    another branch fails at the role, and the jobs refuse it earlier with `if:`.
@@ -123,9 +124,11 @@ CI no longer only checks. Two new workflows deploy the backend to AWS (ADR-027, 
 
 - The account upgrades to GitHub Pro or Team, or the repository becomes public. Then add the
   `production` environment to the job `deploy`, with a required reviewer where the plan allows
-  it. Add `repo:vandemaelefelix/sudoku:environment:production` to the trust of the production
+  it. Add `repo:vandemaelefelix@32290789/sudoku@1412094169:environment:production` to the trust of the production
   role. Remove the `ref` subject from it. The split into `plan` and `deploy` already puts
   `sst diff` before the gate.
 - A collaborator gets write access. Then the manual run is no longer an approval by the owner.
-- `job_workflow_ref` is not accepted by AWS in the trust policy. Then use a separate branch rule
-  or an environment.
+- `job_workflow_ref` is not accepted by AWS in the trust policy, or the first run shows that a plain
+  workflow lacks the claim. Then use a separate branch rule or an environment, or the fallback in
+  `infra/README.md`.
+- The OIDC subject customization of the repository changes. The trust `sub` must then change with it.
