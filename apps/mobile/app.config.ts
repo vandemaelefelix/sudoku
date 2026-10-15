@@ -5,12 +5,12 @@ export type AppVariant = 'development' | 'production'
 const DEV_ICONS = './assets/icons/development'
 
 // The development instance of Clerk (ADR-027). A publishable key is not a secret.
-// The production variant gets the key of the production instance from PRODUCTION_BACKEND. Until then it has none.
+// The production variant gets the key of the production instance from PRODUCTION_BACKEND.
 export const DEVELOPMENT_CLERK_PUBLISHABLE_KEY = 'pk_test_ZnJlZS1sZW9wYXJkLTUyOTguY2xlcmsuYWNjb3VudHMuZGV2JA'
 
 // The sync API of the development variant: the felix stage (ADR-027, ADR-028). The URL is public and grants no access.
 // SYNC_API_URL overrides it at prebuild or start, to point a build at another stage. The production variant gets its URL from
-// PRODUCTION_BACKEND once the production stage exists. Until then the production app does not sync.
+// PRODUCTION_BACKEND. Its URL is null until the production stage is deployed, so the production app signs in but does not sync.
 export const DEVELOPMENT_SYNC_API_URL = 'https://hd381htgth.execute-api.eu-west-1.amazonaws.com'
 
 const GOOGLE_CLIENT_SUFFIX = '.apps.googleusercontent.com'
@@ -30,8 +30,8 @@ const CLERK_DEVELOPMENT = {
 
 /**
  * The public values of the production Clerk instance and the production API (ADR-027, amendment "the production
- * release"). They are null until the instance and the stage exist. With a null key the production variant has no
- * account section and no sync, as before.
+ * release"). The sync URL is null until the production stage is deployed. With a null key the production variant has no
+ * account section and no sync.
  */
 export type ProductionBackend = {
   clerkPublishableKey: string | null
@@ -41,10 +41,10 @@ export type ProductionBackend = {
 }
 
 export const PRODUCTION_BACKEND: ProductionBackend = {
-  clerkPublishableKey: null,
+  clerkPublishableKey: 'pk_live_Y2xlcmsuc3Vkb2t1LmZlbGl4dmFuZGVtYWVsZS5iZSQ',
   syncApiUrl: null,
-  googleIosClientId: null,
-  googleWebClientId: null,
+  googleIosClientId: `579798513006-3j8bts21f938o7pp100nv0tujpjfer7i${GOOGLE_CLIENT_SUFFIX}`,
+  googleWebClientId: `579798513006-n4jlbj4c7tsa4987btou7ilp4jf7ro62${GOOGLE_CLIENT_SUFFIX}`,
 }
 
 function clerkProduction(backend: ProductionBackend, syncApiUrl: string | undefined) {

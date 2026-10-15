@@ -89,8 +89,8 @@ depend on it.
 | `dev` | GitHub Actions, on each merge to `develop` | `remove` | No |
 | `production` | GitHub Actions, from a manual run | `retain`, and `protect` | Yes |
 
-The first `production` deploy runs once from the laptop, before the CI deploys exist. While
-`CLERK_ISSUER.production` is `null`, it creates only the account-wide resources: the budget, the
+The first `production` deploy runs once from the laptop, before the CI deploys exist.
+`CLERK_ISSUER.production` is set, so it deploys the whole app. Without an issuer, it would create only the account-wide resources: the budget, the
 kill switch, the OIDC provider and the deploy roles. It skips the table, the function and the API, and
 prints a note. A stage with an issuer deploys everything. `deployPlan()` in `config.ts` decides
 this. Every later `production` deploy comes from GitHub Actions (ADR-027).
@@ -203,11 +203,16 @@ instance.
 | --- | --- | --- |
 | `felix` | Development | `https://free-leopard-5298.clerk.accounts.dev` |
 | `dev` | Development | `https://free-leopard-5298.clerk.accounts.dev` |
-| `production` | None yet. It comes with the production release. Until then the stage deploys no API | None |
+| `production` | Production, on the domain `sudoku.felixvandemaele.be` | `https://clerk.sudoku.felixvandemaele.be` |
 
 The issuer of each stage is `CLERK_ISSUER` in `config.ts`. The JWT authorizer needs an exact
 match with the `iss` of the token. The publishable key of the development instance is in
-`apps/mobile/app.config.ts`, in the development variant only.
+`apps/mobile/app.config.ts`, in the development variant. The production variant gets the key of the
+production instance, the two Google client IDs and the reversed iOS URL scheme from
+`PRODUCTION_BACKEND` in the same file. All of them are public values. The production sync URL is
+`null` until the production API exists. Until then the production app signs in but does not sync.
+After the production deploy, a follow-up commit adds the URL that `just deploy-api production`
+prints.
 
 ### Cost
 
@@ -399,13 +404,14 @@ The release needs these steps, in this order. Only the developer can do them.
 
 1. Set the secret `BudgetEmail`. Run `just deploy-api production`. This creates the budget, the
    kill switch and the roles. It needs no Clerk instance.
-2. Make the Clerk production instance on `sudoku.felixvandemaele.be`. Add the five DNS records at
-   GoDaddy. Check the issuer with `curl`. Hobby is the recommended plan (ADR-027).
+2. Make the Clerk production instance on `sudoku.felixvandemaele.be`. The DNS of the domain is at
+   Vercel. Add the five CNAME records there. Check the issuer with `curl`. Hobby is the recommended plan (ADR-027).
 3. Make the production Google OAuth clients. Publish the consent screen.
-4. Set the secret `ClerkSecretKey` for `production`. Send the issuer, the publishable key and the
-   Google client IDs to the agent. The agent puts them in `config.ts` and `app.config.ts`.
+4. Set the secret `ClerkSecretKey` for `production`. The issuer is in `config.ts`. The publishable
+   key and the Google client IDs are in `app.config.ts`.
 5. Run `just deploy-api production` again. It creates the table, the function and the API.
-   Send the `apiUrl` to the agent.
+   A follow-up commit adds the `apiUrl` that this command prints to `PRODUCTION_BACKEND.syncApiUrl`
+   in `app.config.ts`.
 6. Publish the privacy policy only after the smoke test of step 7 passes on
    production. Do not publish before. The source is
    [`docs/privacy/privacy-policy.md`](../docs/privacy/privacy-policy.md). The repository is
@@ -413,3 +419,7 @@ The release needs these steps, in this order. Only the developer can do them.
    GitHub Pages, or another free host such as Cloudflare Pages, Vercel or Netlify. The developer
    chooses the host.
 7. Run the smoke test: sign up, finish a game, see it in DynamoDB, delete the account.
+
+Do not ship a production app build until step 5 sets the production sync URL. Without it the
+account section hides "Delete account", but sign-up still works. That breaches App Store
+guideline 5.1.1(v).

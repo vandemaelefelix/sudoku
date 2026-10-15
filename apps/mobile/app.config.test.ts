@@ -58,7 +58,8 @@ describe('the sync API URL', () => {
   })
 
   it('gives the production variant no URL while it has no key, also with the override', () => {
-    expect(variantConfig(base, 'production', 'https://other.example.com').extra?.syncApiUrl).toBeUndefined()
+    const none = { ...PRODUCTION_BACKEND, clerkPublishableKey: null }
+    expect(variantConfig(base, 'production', 'https://other.example.com', none).extra?.syncApiUrl).toBeUndefined()
   })
 })
 
@@ -70,12 +71,37 @@ describe('the production backend', () => {
     googleWebClientId: '123-web.apps.googleusercontent.com',
   }
 
-  it('holds only placeholders until the production instance exists', () => {
-    expect(Object.values(PRODUCTION_BACKEND)).toEqual([null, null, null, null])
+  it('holds the production Clerk values and no sync URL until the production API is deployed', () => {
+    expect(PRODUCTION_BACKEND).toEqual({
+      clerkPublishableKey: 'pk_live_Y2xlcmsuc3Vkb2t1LmZlbGl4dmFuZGVtYWVsZS5iZSQ',
+      syncApiUrl: null,
+      googleIosClientId: '579798513006-3j8bts21f938o7pp100nv0tujpjfer7i.apps.googleusercontent.com',
+      googleWebClientId: '579798513006-n4jlbj4c7tsa4987btou7ilp4jf7ro62.apps.googleusercontent.com',
+    })
+  })
+
+  it('gives the production key the live prefix and the host of the production issuer (infra/config.ts)', () => {
+    const key = PRODUCTION_BACKEND.clerkPublishableKey as string
+    expect(key).toMatch(/^pk_live_/)
+    const host = Buffer.from(key.slice('pk_live_'.length), 'base64').toString()
+    expect(host).toBe('clerk.sudoku.felixvandemaele.be$')
+  })
+
+  it('gives the production variant the key, both Google IDs and the reversed URL scheme, but no sync', () => {
+    const extra = variantConfig(base, 'production', undefined, PRODUCTION_BACKEND).extra
+    expect(extra).toMatchObject({
+      clerkPublishableKey: PRODUCTION_BACKEND.clerkPublishableKey,
+      EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID: PRODUCTION_BACKEND.googleIosClientId,
+      EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID: PRODUCTION_BACKEND.googleWebClientId,
+      EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME:
+        'com.googleusercontent.apps.579798513006-3j8bts21f938o7pp100nv0tujpjfer7i',
+    })
+    expect(extra?.syncApiUrl).toBeUndefined()
   })
 
   it('production without a key has no clerk extra', () => {
-    expect(variantConfig(base, 'production', undefined, PRODUCTION_BACKEND)).toBe(base)
+    const none = { ...PRODUCTION_BACKEND, clerkPublishableKey: null }
+    expect(variantConfig(base, 'production', undefined, none)).toBe(base)
   })
 
   it('production with a key has the key, the URL and the Google IDs', () => {
@@ -104,14 +130,16 @@ describe('the production backend', () => {
 })
 
 describe('variantConfig', () => {
-  it('keeps the production config unchanged', () => {
-    expect(variantConfig(base, 'production')).toBe(base)
+  it('keeps the production name, icons and identifiers', () => {
+    const prod = variantConfig(base, 'production')
+    expect({ ...prod, extra: undefined }).toEqual({ ...base, extra: undefined })
   })
 
   it('gives the development variant its own name, IDs and scheme', () => {
     const dev = variantConfig(base, 'development')
     expect(dev.name).toBe('Sudoku Dev')
     expect(dev.scheme).toBe('sudoku-dev')
+    expect(variantConfig(base, 'production').scheme).not.toBe(dev.scheme)
     expect(dev.ios?.bundleIdentifier).toBe('com.vandemaelefelix.sudoku.dev')
     expect(dev.android?.package).toBe('com.vandemaelefelix.sudoku.dev')
   })
@@ -121,14 +149,14 @@ describe('variantConfig', () => {
     expect(variantConfig(base, 'production').extra?.appVariant).toBeUndefined()
   })
 
-  it('gives only the development variant the publishable key of the Clerk development instance (ADR-027)', () => {
+  it('gives each variant the publishable key of its own Clerk instance (ADR-027)', () => {
     const key = variantConfig(base, 'development').extra?.clerkPublishableKey as string
     expect(key).toBe(DEVELOPMENT_CLERK_PUBLISHABLE_KEY)
     expect(key).toMatch(/^pk_test_/)
     // A publishable key is the base64 of the Frontend API host with a `$` at the end.
     const host = Buffer.from(key.slice('pk_test_'.length), 'base64').toString()
     expect(host).toMatch(/^[a-z0-9-]+\.clerk\.accounts\.dev\$$/)
-    expect(variantConfig(base, 'production').extra?.clerkPublishableKey).toBeUndefined()
+    expect(variantConfig(base, 'production').extra?.clerkPublishableKey).toBe(PRODUCTION_BACKEND.clerkPublishableKey)
   })
 
   it('uses the ribbon icons in development, except the shared Android background', () => {
@@ -161,11 +189,13 @@ describe('variantConfig', () => {
     expect(variantConfig(base, 'development').userInterfaceStyle).toBe('automatic')
   })
 
-  it('gives the development variant the public Google client IDs, and production none', () => {
+  it('gives the development variant the public Google client IDs, and production its own', () => {
     const extra = variantConfig(base, 'development').extra
     expect(extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID).toMatch(/\.apps\.googleusercontent\.com$/)
     expect(extra?.EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID).toMatch(/\.apps\.googleusercontent\.com$/)
-    expect(variantConfig(base, 'production').extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID).toBeUndefined()
+    expect(variantConfig(base, 'production').extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID).not.toBe(
+      extra?.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID,
+    )
   })
 
   it('registers the reversed iOS client ID as the URL scheme that the Google sheet returns to', () => {
