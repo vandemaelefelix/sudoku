@@ -18,7 +18,8 @@ export function stoppedMessage(stage: string, when: string): string {
 // Fails closed: only a missing flag allows a deploy. A denied or broken check must not deploy (SUD-11).
 export function killSwitchVerdict(stage: string, read: ParameterRead): Verdict {
   if (!read.ok) {
-    if (read.stderr.includes('ParameterNotFound')) return { allow: true }
+    // The CLI prints `An error occurred (ParameterNotFound) when calling ...`. The code in parentheses is the match.
+    if (/\(ParameterNotFound\)/.test(read.stderr)) return { allow: true }
     return {
       allow: false,
       message: `The kill-switch flag of stage ${stage} could not be checked: ${read.stderr.trim()}`,
@@ -30,6 +31,11 @@ export function killSwitchVerdict(stage: string, read: ParameterRead): Verdict {
   } catch {
     return { allow: false, message: stoppedMessage(stage, 'at an unknown time') }
   }
+}
+
+// `sst remove` and `sst diff` must work for a stopped stage: remove deletes the resources, and diff changes nothing.
+export function guardApplies(command: string): boolean {
+  return command !== 'remove' && command !== 'diff'
 }
 
 // sst.config.ts passes the names that `aws.ssm.getParametersByPath` returns.

@@ -15,6 +15,8 @@ interface StageReport {
   stage: string
   stopped: string[]
   failures: string[]
+  // Steps that failed but leave the stage stopped. The route throttle is the stop (ADR-027).
+  warnings: string[]
 }
 
 async function attempt(report: StageReport, label: string, step: () => Promise<void>): Promise<void> {
@@ -28,7 +30,7 @@ async function attempt(report: StageReport, label: string, step: () => Promise<v
 }
 
 async function stopStage(deps: KillSwitchDeps, stage: string): Promise<StageReport> {
-  const report: StageReport = { stage, stopped: [], failures: [] }
+  const report: StageReport = { stage, stopped: [], failures: [], warnings: [] }
   // The flag comes first. A stop that fails halfway must still block a deploy that resets the throttle.
   // A stage without resources gets the flag too, so a later deploy cannot start it.
   const value: FlagValue = { at: deps.now().toISOString(), reason: 'budget' }
@@ -41,23 +43,29 @@ async function stopStage(deps: KillSwitchDeps, stage: string): Promise<StageRepo
   } catch (error) {
     report.failures.push(`find the API: ${error instanceof Error ? error.message : String(error)}`)
   }
+  // The concurrency stop is best-effort when the throttle is in place. Without a throttle it is the only stop.
+  const throttled = report.stopped.some((label) => label.startsWith('api ')) && report.failures.length === 0
+  const functionReport: StageReport = { stage, stopped: [], failures: [], warnings: [] }
   try {
     for (const name of await deps.findFunctions(stage)) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- The calls run one by one, so the report keeps the order.
-      await attempt(report, `function ${name}`, () => deps.stopFunction(name))
+      await attempt(functionReport, `function ${name}`, () => deps.stopFunction(name))
     }
   } catch (error) {
-    report.failures.push(`find the function: ${error instanceof Error ? error.message : String(error)}`)
+    functionReport.failures.push(`find the function: ${error instanceof Error ? error.message : String(error)}`)
   }
+  report.stopped.push(...functionReport.stopped)
+  if (throttled) report.warnings.push(...functionReport.failures.map((f) => f.replace(': ', ': failed, ')))
+  else report.failures.push(...functionReport.failures)
   return report
 }
 
 function summary(reports: StageReport[]): string {
-  const lines = reports.map((r) =>
-    r.failures.length === 0
-      ? `${r.stage}: stopped (${r.stopped.join(', ')})`
-      : `${r.stage}: FAILED. ${r.failures.join('; ')}`,
-  )
+  const lines = reports.map((r) => {
+    if (r.failures.length > 0) return `${r.stage}: FAILED. ${r.failures.join('; ')}`
+    const warned = r.warnings.length > 0 ? `. Not stopped: ${r.warnings.join('; ')}` : ''
+    return `${r.stage}: stopped (${r.stopped.join(', ')})${warned}`
+  })
   return [
     'The budget passed the kill-switch threshold. The kill switch ran for every stage.',
     '',
@@ -74,7 +82,12 @@ export async function killSwitch(deps: KillSwitchDeps, stages: readonly string[]
   for (const stage of stages) reports.push(await stopStage(deps, stage))
   const failed = reports.filter((r) => r.failures.length > 0)
   const subject = failed.length === 0 ? 'Sudoku kill switch: stopped' : 'Sudoku kill switch: FAILED'
-  await deps.notify(subject, summary(reports))
+  // A broken notification must not hide a stage failure, and must not make SNS retry a finished stop.
+  try {
+    await deps.notify(subject, summary(reports))
+  } catch (error) {
+    if (failed.length === 0) console.error('The kill switch could not send its summary.', error)
+  }
   if (failed.length > 0) {
     throw new Error(`The kill switch failed for: ${failed.map((r) => r.stage).join(', ')}`)
   }

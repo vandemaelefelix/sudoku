@@ -18,7 +18,7 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `api.ts` | The HTTP API `SyncApi`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` |
 | `kill-switch.ts` | The SNS topic of the budget, its policy, the `kill-switch` Lambda and the alert email. Only the account stage creates them |
 | `kill-switch-settings.ts` | The flag name, the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
-| `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` and the deploy workflow run it |
+| `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The deploy workflow of #109 will call it |
 | `kill-switch-guard.ts` | The same check inside `run()`, for a plain `sst deploy` or `sst dev` |
 | `api-on.ts` | Turns a stopped stage on again. `just api-on` runs it |
 | `backend-settings.ts` | The throttle, the access log format, the audience and the issuer check of `api.ts`, and the point-in-time recovery of `storage.ts` |
@@ -267,12 +267,15 @@ Budget at $9 --> SNS KillSwitchTopic --> Lambda kill-switch --> for each stage:
 ```
 
 - `just deploy-api` runs `infra/kill-switch-check.ts`. It refuses while the flag exists. It also
-  refuses when it cannot read the flag. `run()` in `sst.config.ts` does the same check.
-- The deploy workflow calls `node infra/kill-switch-check.ts <stage>` before `sst deploy`. Its
+  refuses when it cannot read the flag. `run()` in `sst.config.ts` does the same check. The check
+  skips `sst remove` and `sst diff`, so `just remove-api` works for a stopped stage.
+- The deploy workflow of #109 will call `node infra/kill-switch-check.ts <stage>` before `sst deploy`. Its
   role needs `ssm:GetParameter` and `ssm:GetParametersByPath` on
   `arn:aws:ssm:eu-west-1:<account>:parameter/sudoku/kill-switch/*`.
 - `just api-on <stage>` shows the cost of the month, asks for `y` (skip with `--yes`), restores
-  the throttle, deletes the reserved concurrency and clears the flag last.
+  the throttle, deletes the reserved concurrency and clears the flag last. AWS Budgets alerts
+  when the cost crosses a threshold. After `api-on`, the $9 alert does not fire again while the
+  month stays above $9. Watch the bill by hand for the rest of the month.
 - The account allows 10 concurrent executions. `sync-api` has no reserved concurrency of 2,
   because AWS needs 100 unreserved. Reserve 2 when the account limit is 102 or more.
 - After the first `production` deploy, confirm the email subscription. AWS sends the mail

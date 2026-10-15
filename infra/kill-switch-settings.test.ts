@@ -7,6 +7,7 @@ import {
   parseApiOnArgs,
   killSwitchFlagName,
   killSwitchVerdict,
+  guardApplies,
   stoppedMessage,
 } from './kill-switch-settings.ts'
 
@@ -23,6 +24,28 @@ describe('killSwitchVerdict', () => {
       stderr: 'An error occurred (ParameterNotFound) when calling',
     })
     assert.deepEqual(verdict, { allow: true })
+  })
+
+  it('allows a deploy on the real CLI error of a missing parameter', () => {
+    const stderr =
+      '\nAn error occurred (ParameterNotFound) when calling the GetParameter operation: ' +
+      'Parameter /sudoku/kill-switch/felix not found.\n'
+    assert.deepEqual(killSwitchVerdict('felix', { ok: false, stderr }), { allow: true })
+  })
+
+  it('refuses a deploy when the error only mentions the words', () => {
+    const verdict = killSwitchVerdict('felix', {
+      ok: false,
+      stderr: 'AccessDeniedException: ParameterNotFound not shown',
+    })
+    assert.equal(verdict.allow, false)
+  })
+
+  it('guards deploy and dev, and lets remove and diff pass', () => {
+    assert.equal(guardApplies('deploy'), true)
+    assert.equal(guardApplies('dev'), true)
+    assert.equal(guardApplies('remove'), false)
+    assert.equal(guardApplies('diff'), false)
   })
 
   it('refuses a deploy when the flag exists, and names the time and the command', () => {

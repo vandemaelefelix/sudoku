@@ -79,12 +79,66 @@ describe('killSwitch', () => {
     expect(second.calls).toEqual([...first.calls, ...first.calls])
   })
 
-  it('reports a failed lookup as a failure', async () => {
+  it('reports a failed API lookup as a failure', async () => {
     const { deps } = makeDeps({
-      findFunctions: vi.fn<KillSwitchDeps['findFunctions']>(async () => {
+      findApis: vi.fn<KillSwitchDeps['findApis']>(async () => {
         throw new Error('list failed')
       }),
     })
     await expect(killSwitch(deps, ['felix'])).rejects.toThrow(/felix/)
+  })
+
+  it('treats the stage as stopped when only the function stop fails, and says so in the summary', async () => {
+    const { deps } = makeDeps({
+      stopFunction: vi.fn<KillSwitchDeps['stopFunction']>(async () => {
+        throw new Error('InvalidParameterValueException')
+      }),
+    })
+    await expect(killSwitch(deps, ['felix'])).resolves.toBeUndefined()
+    const [subject, body] = vi.mocked(deps.notify).mock.calls[0] ?? []
+    expect(subject).toBe('Sudoku kill switch: stopped')
+    expect(body).toContain('felix: stopped')
+    expect(body).toContain('function fn-felix: failed')
+  })
+
+  it('reports FAILED and throws when the throttle could not be set', async () => {
+    const { deps } = makeDeps({
+      stopApi: vi.fn<KillSwitchDeps['stopApi']>(async () => {
+        throw new Error('AccessDenied')
+      }),
+    })
+    await expect(killSwitch(deps, ['felix'])).rejects.toThrow('felix')
+    expect(vi.mocked(deps.notify).mock.calls[0]?.[1]).toContain('felix: FAILED')
+  })
+
+  it('reports FAILED when the function stop fails and no throttle was set', async () => {
+    const { deps } = makeDeps({
+      findApis: vi.fn<KillSwitchDeps['findApis']>(async () => []),
+      stopFunction: vi.fn<KillSwitchDeps['stopFunction']>(async () => {
+        throw new Error('boom')
+      }),
+    })
+    await expect(killSwitch(deps, ['felix'])).rejects.toThrow('felix')
+  })
+
+  it('does not throw when the notification fails and every stage is stopped', async () => {
+    const { deps } = makeDeps({
+      notify: vi.fn<KillSwitchDeps['notify']>(async () => {
+        throw new Error('sns down')
+      }),
+    })
+    await expect(killSwitch(deps, ['felix'])).resolves.toBeUndefined()
+  })
+
+  it('throws the stage failure, not the notification error, when both fail', async () => {
+    const { deps } = makeDeps({
+      stopApi: vi.fn<KillSwitchDeps['stopApi']>(async () => {
+        throw new Error('AccessDenied')
+      }),
+      notify: vi.fn<KillSwitchDeps['notify']>(async () => {
+        throw new Error('sns down')
+      }),
+    })
+    await expect(killSwitch(deps, ['felix'])).rejects.toThrow('The kill switch failed for: felix')
   })
 })

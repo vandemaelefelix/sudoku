@@ -325,8 +325,9 @@ The build of the kill switch makes decision 9 concrete. The code is in
    removes a tag that it does not know. A missing parameter means that the stage runs. The kill
    switch also sets the flag of a stage that does not exist yet, so a later deploy cannot start it.
 5. **Four layers refuse a deploy of a stopped stage.** `just deploy-api` runs
-   `node infra/kill-switch-check.ts <stage>`. The deploy workflow runs the same script. `run()`
-   in `sst.config.ts` reads the flag, so a plain `sst deploy` or `sst dev` also refuses. The
+   `node infra/kill-switch-check.ts <stage>`. The deploy workflow (ADR-010) calls it once it exists. `run()`
+   in `sst.config.ts` reads the flag, so a plain `sst deploy` or `sst dev` also refuses.
+   `sst remove` and `sst diff` pass the guard, so a stopped stage can still be removed. The
    check fails closed: a denied or broken read refuses the deploy.
 6. **Only `just api-on <stage>` turns a stage on.** It shows the cost of the month and asks for
    `y`. It restores the throttle from `STAGE_THROTTLE`, deletes the reserved concurrency and
@@ -344,8 +345,11 @@ The build of the kill switch makes decision 9 concrete. The code is in
    executions in total (`aws lambda get-account-settings`). AWS requires 100 unreserved
    executions after a reservation, so a reservation above 0 fails. `sync-api` has no reserved
    concurrency. The account limit of 10, the timeout of 10 s and the route throttle bound the
-   Lambda cost. The kill switch uses a reservation of 0. To confirm on `felix`, because the
-   100 rule might also refuse 0. Then the kill switch relies on the route throttle alone.
+   Lambda cost. The kill switch uses a reservation of 0. Verified on `felix` on 2026-10-15:
+   `put-function-concurrency` with 0 succeeds on this account, and `delete-function-concurrency`
+   restores it. The stop of the function is still best-effort. When it fails and the route
+   throttle is in place, the kill switch reports the function as failed and treats the stage as
+   stopped.
 10. **Reassessment triggers.** The account limit is 102 or more: reserve 2 for `sync-api`. A
     throttled request is billed: delete the stage in the kill switch, and `api-on` runs
     `sst deploy` to create it again.

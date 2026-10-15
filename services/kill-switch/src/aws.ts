@@ -34,6 +34,7 @@ export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: str
   const { apigw, lambda, ssm, sns } = clients
 
   async function setThrottle(apiId: string, rate: number, burst: number): Promise<void> {
+    // The `$default` stage of an HTTP API: SST creates no other stage (ADR-027).
     const stageName = '$default'
     const stage = await apigw.send(new GetStageCommand({ ApiId: apiId, StageName: stageName }))
     const apply = (settings: RouteSettings | undefined): RouteSettings => ({

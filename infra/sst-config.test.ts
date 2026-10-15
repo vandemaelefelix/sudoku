@@ -22,7 +22,7 @@ describe('sst.config.ts', () => {
   })
 
   it('refuses a stopped stage before it creates a resource', () => {
-    const guard = source.indexOf('assertNotStopped($app.stage)')
+    const guard = source.indexOf('assertNotStopped($app.stage, $cli.command)')
     assert.ok(guard > source.indexOf('assertPersonalAccount()'))
     assert.ok(guard < source.indexOf("import('./infra/defaults.ts')"))
   })

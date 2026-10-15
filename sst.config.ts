@@ -41,9 +41,9 @@ export default $config({
     const { assertKnownStage, assertPersonalAccount } = await import('./infra/account.ts')
     assertKnownStage($app.stage)
     await assertPersonalAccount()
-    // Layer 4: a plain `sst deploy` or `sst dev` also refuses a stopped stage (ADR-027, decision 9).
+    // Layer 4: a plain `sst deploy` or `sst dev` also refuses a stopped stage. `remove` and `diff` pass (ADR-027, decision 9).
     const { assertNotStopped } = await import('./infra/kill-switch-guard.ts')
-    await assertNotStopped($app.stage)
+    await assertNotStopped($app.stage, $cli.command)
     await import('./infra/defaults.ts')
     await import('./infra/budget.ts')
     await import('./infra/clerk.ts')
