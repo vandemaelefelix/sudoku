@@ -1,15 +1,14 @@
 import { render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { useSharedValue } from 'react-native-reanimated'
-import { SPLASH_COLORS } from '@/theme/splash.colors'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { WORD_SCALE } from '@/splash/constants/splash.constants'
 import { SplashWord } from './SplashWord'
 
 function Word() {
   const intro = useSharedValue(925)
   const exit = useSharedValue(0)
-  return <SplashWord intro={intro} exit={exit} color={SPLASH_COLORS.light.word} />
+  return <SplashWord intro={intro} exit={exit} color={cobalt.colors.text} />
 }
 
 it('draws the six letters of the word', () => {
@@ -22,7 +21,7 @@ it('sets each letter in the title font at twice the size, so scaling down keeps 
   render(<Word />)
   const style = StyleSheet.flatten(screen.getByText('S').props.style)
   expect(style).toMatchObject({
-    fontFamily: daylight.type.title.family,
-    fontSize: daylight.type.title.scale * WORD_SCALE,
+    fontFamily: cobalt.type.title.family,
+    fontSize: cobalt.type.title.scale * WORD_SCALE,
   })
 })

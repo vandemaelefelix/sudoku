@@ -13,8 +13,8 @@ Every rule lives in `@sudoku/core` (SUD-04), so Vitest tests the rules and the U
 run in parallel.
 
 The [design canvas](https://claude.ai/artifact/U23JHiGA1Pq3HJX6oMiBF4) holds the agreed
-screens, in the Daylight and the Midnight theme. It is the reference for layout, states and
-tokens. This concept says what the screen does. The canvas shows how it looks.
+screens, in the Daylight and the Midnight theme. The app has since moved to the three Op-art
+colourways (ADR-025). The canvas is still the reference for layout and states. Its colours are not. This concept says what the screen does. The canvas shows how it looks.
 
 ## What
 
@@ -126,11 +126,11 @@ The card shows after the solve pulse. With Reduce Motion on, it shows at once.
 
 ### Settings
 
-The Settings screen has three groups:
+The Settings screen has four groups:
 
 - **Assists:** a switch for each of the four assists, with a small live preview of the grid.
-- **Theme:** a choice of System or one of the themes. System follows the setting of the
-  iPhone (ADR-015).
+- **Theme:** a choice of the three colourways: Cobalt, Forest or Bordeaux (ADR-025).
+- **Appearance:** Auto, Light or Colour. Colour makes the accent the page and the selected cell white (ADR-026).
 - **Feedback:** the haptics switch.
 
 ### Rules that the screen shows, not owns

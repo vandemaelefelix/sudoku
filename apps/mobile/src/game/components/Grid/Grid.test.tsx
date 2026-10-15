@@ -5,7 +5,7 @@ import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { reduceSession, startSession } from '@/game/utils/session.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { Grid } from './Grid'
 
 const renderGrid = () =>
@@ -32,7 +32,7 @@ it('puts each cell in its box, row by row', () => {
 
 it('selects a cell on a tap', () => {
   renderGrid()
-  const selected = { backgroundColor: daylight.components.cell.selected }
+  const selected = { backgroundColor: cobalt.components.cell.selected }
   expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).not.toMatchObject(selected)
   fireEvent.press(screen.getByTestId('cell-40'))
   expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).toMatchObject(selected)

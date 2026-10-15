@@ -1,11 +1,6 @@
 /**
- * The colours of the splash, in light and dark mode. The native layer cannot read the saved theme,
- * so the splash follows the system appearance (ADR-024). The values come from the Op-art and Midnight palettes.
- * ground is also the native splash colour in app.json: a test keeps the two the same.
+ * The ground of the splash. The native layer cannot read the saved theme, so the native splash and the first frame
+ * of the animation are white in every look (ADR-024, ADR-025, ADR-026). app.json holds the same value: a test keeps the two the same.
+ * The overlay then fades the ground to the page colour of the saved theme. The word and the cells take their colours from that theme.
  */
-export const SPLASH_COLORS = {
-  light: { ground: '#ffffff', word: '#0f1d5c', tint: '#1f3fd1', line: '#d3d9f7' },
-  dark: { ground: '#0f1116', word: '#e7e9ef', tint: '#84a0ff', line: '#272b35' },
-} as const
-
-export type SplashScheme = keyof typeof SPLASH_COLORS
+export const SPLASH_GROUND = '#ffffff'

@@ -1,5 +1,5 @@
 // The icon design "Centred, in front of the waves", in a 100 × 100 design space.
-// Colours from the Op-art theme palette (ADR-021).
+// Colours from the Cobalt palette (ADR-021, ADR-025). The icon is a fixed image and does not follow the saved theme.
 
 /** [centre y, amplitude] of the 4 waves. Each lower wave swings more, like the Op-art panel edge. */
 export const WAVES = [

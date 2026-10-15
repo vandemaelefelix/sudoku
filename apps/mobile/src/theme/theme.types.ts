@@ -1,6 +1,10 @@
 import type { TextStyle } from 'react-native'
 
-export type ThemeName = 'daylight' | 'midnight' | 'opart' | 'progressive'
+/** A colourway (ADR-025). Each one has two appearances. */
+export type ThemeName = 'cobalt' | 'forest' | 'bordeaux'
+
+/** Light: a white page with coloured content. Colour: the accent is the page and the content is light (ADR-026). */
+export type Appearance = 'light' | 'colour'
 
 /** A text role. scale: the font size in points at the default Dynamic Type size. */
 export type TypeRole = {
@@ -16,10 +20,13 @@ export type TypeRole = {
 
 export type Theme = {
   name: ThemeName
+  appearance: Appearance
   /** The name the player sees in Settings. */
   label: string
   /** The style of the status bar text over colors.background. */
   statusBar: 'dark' | 'light'
+  /** The colour of the scroll bars on a scroll view. The iOS appearance would choose it, but the page follows the theme (ADR-026). */
+  scrollIndicator: 'black' | 'white'
   colors: {
     background: string
     surface: string
@@ -84,6 +91,8 @@ export type Theme = {
     noteInset: number
     /** The side of the assist preview grid. Cells of about 20 pt. */
     preview: number
+    /** The toggle: the track and its square thumb, in points (ADR-026). */
+    toggle: { width: number; height: number; thumb: number }
     /** The finish card width and the side of its grid, in points. */
     card: { width: number; grid: number }
     /** The height of the title block under the top bar. 0: the title sits in the top bar. */
@@ -148,11 +157,15 @@ export type Theme = {
       given: string
       entry: string
       conflict: string
+      /** Diagonal stripes over the conflict fill, 45°. Null: the fill alone marks the conflict. width and pitch in points, pitch along the x axis. */
+      conflictHatch: { color: string; opacity: number; width: number; pitch: number } | null
       note: string
+      /** The width of the ring that marks the selected cell. 0 for none: in Light the selected fill marks it. */
+      selectedRingWidth: number
     }
     key: { fill: string; digit: string; noteDigit: string }
-    switch: { on: string; off: string; knob: string }
-    segmented: { track: string; selected: string }
+    /** The toggle. on and off: the fill of the track. border: the border of the track when off. thumbOn and thumbOff: the square thumb. */
+    switch: { on: string; off: string; border: string; thumbOn: string; thumbOff: string }
     /** The main and the second button. second: the fill of the second button, outline: its border. Both use colors.text. */
     button: {
       primary: string
@@ -170,7 +183,5 @@ export type Theme = {
     pulse: { waveOpacity: number; popScale: number }
     /** The stats card and the empty state of a level (border, radius) and the strong rules of the stats screen (the table header and the chart base). Widths and radius in points. */
     summary: { border: string; borderWidth: number; radius: number; rule: string; ruleWidth: number }
-    /** The tab bar of the stats screen. */
-    tabs: { track: string; selected: string; selectedBorder: string; selectedBorderWidth: number }
   }
 }

@@ -6,10 +6,10 @@ import { NO_PULSE } from '@/game/constants/pulse.constants'
 import { pulseLook } from '@/game/utils/pulse.utils'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { reduceSession, startSession, type Session } from '@/game/utils/session.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { usePulse } from './usePulse'
 
-const look = pulseLook(daylight)
+const look = pulseLook(cobalt)
 const STEP = look.stepMs
 
 // Row 0 of the canvas puzzle lacks only cell 2. Its solution is 4.

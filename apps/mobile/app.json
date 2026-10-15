@@ -38,20 +38,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#0f1116"
-          }
+          "backgroundColor": "#ffffff"
         }
       ],
       [
         "expo-font",
         {
           "fonts": [
-            "./assets/fonts/CormorantGaramond-Bold.ttf",
-            "./assets/fonts/CormorantGaramond-SemiBoldItalic.ttf",
-            "./assets/fonts/DMMono-Medium.ttf",
-            "./assets/fonts/DMMono-Regular.ttf",
             "./assets/fonts/IBMPlexMono-Medium.ttf",
             "./assets/fonts/InstrumentSans-Medium.ttf",
             "./assets/fonts/InstrumentSans-Regular.ttf",

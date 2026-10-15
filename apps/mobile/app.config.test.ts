@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ExpoConfig } from 'expo/config'
 import appJson from './app.json'
-import { SPLASH_COLORS } from '@/theme/splash.colors'
+import { SPLASH_GROUND } from '@/theme/splash.colors'
 import { appVariant, variantConfig } from './app.config'
 
 const base = appJson.expo as ExpoConfig
@@ -73,18 +73,18 @@ describe('variantConfig', () => {
     }
   })
 
-  it('gives the native splash only a ground colour, the same as the splash overlay', () => {
-    type SplashOptions = {
-      backgroundColor?: string
-      image?: string
-      dark?: { backgroundColor?: string; image?: string }
-    }
+  it('gives the native splash only a white ground, the same in light and dark mode, like the splash overlay', () => {
+    type SplashOptions = { backgroundColor?: string; image?: string; dark?: unknown }
     const entry = (base.plugins ?? []).find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-splash-screen')
     const options = (entry as [string, SplashOptions] | undefined)?.[1]
-    expect(options?.backgroundColor).toBe(SPLASH_COLORS.light.ground)
-    expect(options?.dark?.backgroundColor).toBe(SPLASH_COLORS.dark.ground)
+    expect(options?.backgroundColor).toBe(SPLASH_GROUND)
     expect(options?.image).toBeUndefined()
-    expect(options?.dark?.image).toBeUndefined()
+    expect(options?.dark).toBeUndefined()
+  })
+
+  it('follows the iOS appearance, so the Auto appearance can read it (ADR-026)', () => {
+    expect(base.userInterfaceStyle).toBe('automatic')
+    expect(variantConfig(base, 'development').userInterfaceStyle).toBe('automatic')
   })
 
   it('stops when the base config has no bundle identifier', () => {

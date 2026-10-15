@@ -7,10 +7,3 @@ export function wavePoints(width: number, y: number, amp: number, period: number
     points.push({ x, y: y - amp * Math.sin((2 * Math.PI * x) / period) })
   return points
 }
-
-/** The left edges of vertical stripes of `stripe` points with `gap` points between them, inside width. */
-export function stripeLefts(width: number, stripe: number, gap: number): number[] {
-  const lefts: number[] = []
-  for (let x = 0; x < width; x += stripe + gap) lefts.push(x)
-  return lefts
-}

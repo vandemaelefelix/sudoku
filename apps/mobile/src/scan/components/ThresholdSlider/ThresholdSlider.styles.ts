@@ -18,7 +18,7 @@ export const styles = StyleSheet.create((theme) => ({
     height: KNOB,
     marginLeft: -KNOB / 2,
     borderRadius: KNOB / 2,
-    backgroundColor: theme.components.switch.knob,
+    backgroundColor: theme.colors.surface,
     borderWidth: theme.shape.stroke.thin,
     borderColor: theme.colors.lineStrong,
   },

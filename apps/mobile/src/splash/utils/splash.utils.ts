@@ -2,6 +2,7 @@ import {
   DIGIT_SHARE,
   GLOW_MS,
   GLOW_PEAK_AT,
+  GROUND_FADE_MS,
   GRID_COLUMNS,
   HOLD_MS,
   JITTER_MS,
@@ -76,6 +77,12 @@ export function glow(sinceMs: number): number {
   return Math.cos(((u - GLOW_PEAK_AT) / (1 - GLOW_PEAK_AT)) * (Math.PI / 2))
 }
 
+/** 0..1: how much of the page colour of the saved look covers the white of the native splash, introMs after the mount. */
+export function groundFade(introMs: number): number {
+  'worklet'
+  return easeOut(ramp(introMs, 0, GROUND_FADE_MS))
+}
+
 /** The opacity and the offset in points of one letter, introMs after the mount. index: 0 for the first letter. */
 export function letterRise(introMs: number, index: number): { opacity: number; translateY: number } {
   'worklet'
@@ -98,4 +105,14 @@ export function wordFade(exitMs: number): { opacity: number; translateY: number 
 export function groundEdge(exitMs: number, height: number, cellSize: number): number {
   'worklet'
   return height + REVEAL_BAND * 0.2 - Math.max(0, exitMs - REVEAL_LAG_MS) * (cellSize / ROW_STEP_MS)
+}
+
+/**
+ * True from the peak of the glow of a cell, sinceMs after its start. The cell is solid then. A theme switch erases the
+ * picture of the old screen in a cell from this time on. It does not erase it before, so a cell that the wave has not
+ * reached shows the old screen.
+ */
+export function cellPassed(sinceMs: number): boolean {
+  'worklet'
+  return sinceMs >= GLOW_MS * GLOW_PEAK_AT
 }

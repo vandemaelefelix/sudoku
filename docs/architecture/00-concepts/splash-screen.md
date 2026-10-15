@@ -13,10 +13,10 @@ animation in the style of the app. It ends on the home screen without a jump.
 
 ## What
 
-The native splash shows only the **splash ground**: white in light mode, near black in dark mode.
-The native layer cannot read the saved theme, so the splash ground follows the system appearance.
+The native splash shows only the **splash ground**: white for every look.
+The native layer cannot read the saved theme, so it cannot match the look of the player.
 
-A **splash overlay** above the app draws the same ground. Its first frame equals the native splash.
+A **splash overlay** above the app draws the same ground. After its first frame, the ground fades to the page colour of the saved look (ADR-026). Its first frame equals the native splash.
 The overlay then plays the animation "Soft wave, softer".
 
 | Part | Time | What the player sees |

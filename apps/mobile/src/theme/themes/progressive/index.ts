@@ -1,1 +1,0 @@
-export { progressive } from './progressive'

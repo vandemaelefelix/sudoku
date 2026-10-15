@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
+import { ConflictHatch } from '@/game/components/ConflictHatch'
 import { INTRO_RISE } from '@/game/constants/intro.constants'
 import {
   FILL_FADE_MS,
@@ -129,6 +130,7 @@ export const Cell = memo(function Cell({
   )
   const content = (
     <>
+      {fill === 'conflict' && <ConflictHatch />}
       {pulse && <Animated.View testID={`cell-${cell}-wave`} style={[styles.wave, waveStyle]} />}
       {(markKind === 'hint' || markKind === 'undo') && <CellFlash key={markId} kind={markKind} />}
       {markKind === 'mistake' && digitView ? <MistakeShake key={markId}>{digitView}</MistakeShake> : digitView}

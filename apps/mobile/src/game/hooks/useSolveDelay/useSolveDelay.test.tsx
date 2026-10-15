@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react-native'
 import { useReducedMotion } from 'react-native-reanimated'
 import { pulseLook, solvePulseDuration } from '@/game/utils/pulse.utils'
-import { daylight } from '@/theme/themes/daylight'
+import { cobalt } from '@/theme/themes/cobalt'
 import { useSolveDelay } from './useSolveDelay'
 
-const SOLVE_MS = solvePulseDuration(pulseLook(daylight))
+const SOLVE_MS = solvePulseDuration(pulseLook(cobalt))
 
 beforeEach(() => jest.useFakeTimers())
 
