@@ -191,6 +191,7 @@ status: DRAFT
 | Daily count | The DynamoDB row `COUNT#<yyyy-mm-dd>` per player. It counts the stored history entries of the day, at most 200 (ADR-027, ADR-028) |
 | History entry | One finished game in the history, with a UUID. Only its soft delete changes it after the finish (ADR-012) |
 | Sync contract | The zod schemas of the sync API requests and responses in `packages/sync-contract/`. The app and the `sync-api` Lambda import it (ADR-027) |
+| Schema version | `schemaVersion`: the format version of a history entry on the wire and in DynamoDB. It is `1` (ADR-028) |
 | Stage | One deployed copy of the backend: `felix`, `dev` or `production` (ADR-027) |
 | Spending cap | The limit of €10 a month on the AWS bill (SUD-11) |
 | Kill switch | The Lambda that stops every stage when the budget alert at $9 fires. Deploys refuse a stopped stage. Only `just api-on <stage>` turns a stage on again (ADR-027) |
