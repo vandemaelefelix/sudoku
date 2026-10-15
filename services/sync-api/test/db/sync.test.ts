@@ -29,6 +29,7 @@ function deps(): SyncDeps {
     now: () => NOW,
     newUserId: () => `id-${subs}-${++ids}`,
     log: (fields) => lines.push(fields),
+    clerk: { deleteUser: async () => undefined },
   }
 }
 
