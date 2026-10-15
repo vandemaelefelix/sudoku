@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // smoke.ts runs in Node without a bundler, so its imports name the .ts file.
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "test", "scripts", "vitest.config.ts"]
 }

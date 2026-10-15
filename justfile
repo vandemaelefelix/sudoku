@@ -183,6 +183,10 @@ remove-api stage:
     {{sudoku_aws}} node infra/check-account.ts
     {{sudoku_aws}} pnpm exec sst remove --stage "{{stage}}"
 
+# Smoke-test the sync API on a deployed stage with a real Clerk token. Export CLERK_SECRET_KEY of the development instance first
+smoke-api stage user:
+    node services/sync-api/scripts/smoke.ts "{{stage}}" "{{user}}"
+
 # Typecheck sst.config.ts and infra/. It downloads the SST providers the first time
 typecheck-infra:
     {{sudoku_aws}} pnpm exec sst install --stage felix
