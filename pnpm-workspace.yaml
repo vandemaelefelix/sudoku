@@ -4,3 +4,6 @@ packages:
 
 allowBuilds:
   '@shopify/react-native-skia': true
+  # Both scripts only print a message. Clerk pulls them in.
+  browser-tabs-lock: false
+  core-js: false

@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
+import { AccountSection } from '@/account/components/AccountSection'
 import { Icon } from '@/game/components/Icon'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { useAssists } from '@/game/hooks/useAssists'
@@ -14,10 +15,13 @@ import { pressedStyles } from '@/theme/pressed.styles'
 import { ASSIST_ROWS, HAPTICS_ROW } from './SettingsScreen.constants'
 import { styles } from './SettingsScreen.styles'
 
-type SettingsScreenProps = { onBack(): void }
+type SettingsScreenProps = { onBack(): void; onSignIn(): void }
 
-/** The assists, the haptics switch, the colourway and the appearance. Each change applies at once, ticks and is saved. */
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+/**
+ * The assists, the haptics switch, the colourway and the appearance. Each change applies at once, ticks and is saved.
+ * The account section comes last, in a build with a Clerk key.
+ */
+export function SettingsScreen({ onBack, onSignIn }: SettingsScreenProps) {
   const { assists, setAssist } = useAssists()
   const { preference, appearance, choose, chooseAppearance } = useThemePreference()
   const haptics = useHaptics()
@@ -121,6 +125,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             onChange={switchHaptics}
           />
         </View>
+        <AccountSection onSignIn={onSignIn} />
       </ScrollView>
     </>
   )

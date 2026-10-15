@@ -36,6 +36,15 @@
       "expo-router",
       "expo-sqlite",
       [
+        "@clerk/expo",
+        {
+          "appleSignIn": false
+        }
+      ],
+      "@clerk/expo-google-signin",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff"

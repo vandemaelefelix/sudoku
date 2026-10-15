@@ -62,6 +62,13 @@ module.exports = {
       to: { path: '^(infra/|sst\\.config\\.ts$)' },
     },
     {
+      name: 'adr-028-game-and-stats-do-not-use-account',
+      comment: 'ADR-028: the game and the stats read the owner from storage, never from the account or the sync.',
+      severity: 'error',
+      from: { path: '^apps/mobile/src/(game|stats)/' },
+      to: { path: '^apps/mobile/src/(account|sync)/' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',
