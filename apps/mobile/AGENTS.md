@@ -35,7 +35,9 @@ Run lint, typecheck and tests before you say a task is done.
   `src/settings/` (settings UI and `SettingsRepository`: screens, components, hooks, utils,
   constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/scan/` (scan UI), `src/scanner/` (scanner, entered only through
   `src/scanner/index.ts`), `src/storage/` (game storage), `src/splash/` (the animated splash) and `src/account/` (the
-  Clerk account: the provider, the sign-in screens and the Settings section).
+  Clerk account: the provider, the sign-in screens and the Settings section) and `src/sync/` (the history sync:
+  the service, the API client and the provider). `expo-network` is a native module, so a change to it needs a new
+  development build.
 - Navigation follows ADR-016: Expo Router 57. A route file in `src/app/` only renders one screen
   from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
   state, styles or tests in `src/app/`. A route param is a URL string. Load data from a
@@ -43,7 +45,7 @@ Run lint, typecheck and tests before you say a task is done.
 
 ## Layout inside a feature
 
-A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/stats/`, `src/scan/`, `src/storage/`, `src/splash/`, `src/account/`) has these folders. Create a folder only when it
+A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/stats/`, `src/scan/`, `src/storage/`, `src/splash/`, `src/account/`, `src/sync/`) has these folders. Create a folder only when it
 has a file.
 
 | Folder | Holds |

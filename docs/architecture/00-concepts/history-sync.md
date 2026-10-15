@@ -34,6 +34,11 @@ An account is optional. A player who is signed out plays as normal, and nothing 
 at the bottom, such as "Synced 5 min ago". It shows no banner, no spinner and no error. When the
 player is signed out, the line is not there.
 
+**The sync run.** The service runs one sync at a time. A trigger during a run asks for one more
+run. A run pushes batches of 100 and pulls every page. It saves the cursor after each stored
+page. After a failure, a trigger acts only after a wait of 30 seconds, doubled for each failure,
+at most 15 minutes. No timer retries.
+
 **The sync.** One call, `POST /v1/sync`, pushes the games on the waiting list and pulls the
 changes since the cursor. The app syncs when a game ends, when the app comes to the foreground,
 when the network comes back while the app is open, and after sign-in.
@@ -93,6 +98,16 @@ sequenceDiagram
   Note over Sync: more = true: call again. A failure: keep the list, retry at the next trigger
 ```
 
+**The adopt prompt.** At sign-in, the app counts the live games without an owner. If there are
+some, it asks "Add the games on this phone to your account?" once for each account. "Add games"
+gives them the owner. "Not now" leaves them without an owner, and the app does not ask again for
+that account. No request goes out before the answer. The adopt of the entries of an old owner
+after a provider switch is deferred ([ADR-028](../adr/adr-028-history-sync.md)).
+
+**The errors in the app.** A 400 `invalid_cursor` clears the cursor and makes one full pull. A 410
+`account_deleted` deletes the local entries of the owner, clears the state of that owner, signs
+out and shows one alert. Every other failure is silent.
+
 **Accounts on one phone.** Every history entry has an owner: the Clerk user ID of the player. The
 app knows it at sign-in, also offline. A game finished while signed out has no owner. The first sign-in asks to add those games to the account. A sign-out hides the
 games of the account and stops the sync. A second account never sees or uploads the games of
@@ -114,6 +129,20 @@ Only game rows have `syncedAt`, so the index `bySynced` holds only game rows. Th
 **The cloud side.** Clerk signs the player in. The API Gateway checks the Clerk token. The Lambda
 maps the Clerk user ID to our own user ID and reads and writes one DynamoDB table
 ([ADR-027](../adr/adr-027-backend-platform.md)).
+
+```mermaid
+flowchart TD
+  start["trigger"] --> push["push up to 100 waiting entries"]
+  push --> answer{"answer"}
+  answer -->|"200"| store["markPushed, upsertRemote, save cursor"]
+  store --> more{"more, or more waiting?"}
+  more -->|"yes"| push
+  more -->|"no"| done["save the sync time"]
+  answer -->|"400 invalid_cursor"| clear["clear cursor, full pull once"]
+  clear --> push
+  answer -->|"410 account_deleted"| gone["delete local entries, sign out"]
+  answer -->|"401, 429, 5xx, offline"| quiet["keep the list, wait for the next trigger"]
+```
 
 ```mermaid
 flowchart LR

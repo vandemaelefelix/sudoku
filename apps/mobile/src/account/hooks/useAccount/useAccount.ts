@@ -9,8 +9,11 @@ export type Account = {
   email: string | null
   /** Never rejects. It resolves false when Clerk could not sign the player out, and the player stays signed in. */
   signOut(): Promise<boolean>
-  /** A fresh `sudoku-api` token for one request. Null when signed out, or when Clerk cannot give one. Never throws. */
-  getApiToken(): Promise<string | null>
+  /**
+   * A `sudoku-api` token for one request. `fresh` skips the Clerk token cache, for a retry after a 401.
+   * Null when signed out, or when Clerk cannot give one. Never throws.
+   */
+  getApiToken(options?: { fresh?: boolean }): Promise<string | null>
 }
 
 export const UNCONFIGURED_ACCOUNT: Account = {

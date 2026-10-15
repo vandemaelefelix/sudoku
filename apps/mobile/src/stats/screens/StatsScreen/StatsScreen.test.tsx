@@ -1,4 +1,4 @@
-import { Alert, type AlertButton } from 'react-native'
+import { Alert, Text, type AlertButton } from 'react-native'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native'
 import type { Game } from '@sudoku/core'
 import { isDevelopmentVariant } from '@/utils/appVariant.utils'
@@ -141,4 +141,29 @@ it('resets the stats from the development variant, and shows the empty numbers',
   await act(async () => buttons.find((button) => button.text === 'Reset')?.onPress?.())
   await waitFor(() => expect(screen.getByLabelText('No games finished, 0 day streak')).toBeTruthy())
   expect(screen.getByLabelText('Medium, Played: 0')).toBeTruthy()
+})
+
+it('shows the footer that the route gives, at the bottom', async () => {
+  const storage = await storageWithGames()
+  render(
+    <GameStorageContext value={storage}>
+      <StatsScreen onBack={jest.fn()} footer={<Text>Synced just now</Text>} />
+    </GameStorageContext>,
+  )
+  await waitFor(() => expect(screen.getByLabelText('50% won, 1 day streak')).toBeTruthy())
+  expect(screen.getByText('Synced just now')).toBeTruthy()
+})
+
+it('reads the numbers again when the refresh key changes', async () => {
+  const storage = await storageWithGames()
+  const tree = (refreshKey: number) => (
+    <GameStorageContext value={storage}>
+      <StatsScreen onBack={jest.fn()} refreshKey={refreshKey} />
+    </GameStorageContext>
+  )
+  const { rerender } = render(tree(0))
+  await waitFor(() => expect(screen.getByLabelText('Medium, Played: 2')).toBeTruthy())
+  await finish(storage, wonGame(50_000))
+  rerender(tree(1))
+  await waitFor(() => expect(screen.getByLabelText('Medium, Played: 3')).toBeTruthy())
 })

@@ -78,9 +78,9 @@ flowchart TB
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
 | **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |
-| **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)) | expo-sqlite | — |
+| **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)). Holds the sync state and tells the sync about a finished game | expo-sqlite | — |
 | **Account** (`src/account/`) | Sign-in, sign-out and delete account with Clerk. Gives a fresh token for each request ([ADR-027](adr/adr-027-backend-platform.md)) | `@clerk/expo` | the game UI |
-| **Sync** (`src/sync/`) | Pushes the waiting list and pulls the changes on each trigger. Silent on failure ([ADR-028](adr/adr-028-history-sync.md)) | local storage, account, sync contract | the game UI |
+| **Sync** (`src/sync/`) | Pushes the waiting list and pulls the changes on each trigger. Silent on failure ([ADR-028](adr/adr-028-history-sync.md)) | local storage, account, sync contract, `expo-network` | the game UI, the stats UI |
 | **Sync contract** (`packages/sync-contract/`) | The zod schemas of the requests and responses | zod | React Native, AWS SDK |
 | **sync-api** (`services/sync-api/`) | The Lambda: maps the token to our own user ID, stores and returns history entries, deletes an account, counts writes for SUD-11 | sync contract, AWS SDK | the app, `infra/` |
 | **Fixture runner** | Development builds only. Runs the real scanner on fixture photos, writes cell images, reports scores ([ADR-010](adr/adr-010-testing-and-ci.md)) | scanner module | — |

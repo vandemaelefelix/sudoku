@@ -44,6 +44,13 @@ export type HistoryRepository = {
    * Deleted entries keep no owner, so they never sync.
    */
   adoptUnowned(owner: string): Promise<number>
+  /** The count of live entries without an owner. The adopt prompt asks it before it adopts (ADR-028). */
+  countUnowned(): Promise<number>
+  /**
+   * Deletes every row of the owner for good, live or deleted (ADR-028, decision 3). The server deleted the account,
+   * so nothing of it may stay. It is the only hard delete of the history.
+   */
+  deleteOwner(owner: string): Promise<void>
 }
 
 type HistoryRow = {
@@ -221,6 +228,17 @@ export function createSqliteHistoryRepository(
           [owner],
         )
         return changes
+      }),
+    async countUnowned() {
+      const row = await db.getFirstAsync<{ total: number }>(
+        'SELECT COUNT(*) AS total FROM game_history WHERE owner_id IS NULL AND deleted_at IS NULL',
+        [],
+      )
+      return row?.total ?? 0
+    },
+    deleteOwner: (owner) =>
+      inOrder(async () => {
+        await db.runAsync('DELETE FROM game_history WHERE owner_id = ?', [owner])
       }),
   }
 }

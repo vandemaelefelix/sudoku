@@ -203,6 +203,34 @@ The leaderboard compares players, so the cloud counts it. It is a later feature.
 - A new device downloads the full history once. Ten years of daily play is about 7 MB.
 - A daily count row costs one write per sync that stores a history entry. It limits a misuse
   (SUD-11).
+- The adoption of the history entries of an old owner after a switch of sign-in provider is deferred. The app never
+  moves the entries of another owner. It adopts only the entries without an owner.
+
+## Amendment 2026-10-15: the sync in the app
+
+The app code in `src/sync/` follows these rules. They do not change decisions 1 to 10.
+
+| Topic | Rule |
+| --- | --- |
+| The service | `SyncService` runs one sync at a time. A trigger during a run asks for one more run. A burst makes one extra run |
+| Triggers | A game end, the foreground, the network back and the sign-in. The storage tells the service about a game end through `GameStorage.subscribe`, so `game/` and `stats/` import nothing from `sync/` |
+| A start | The sync starts only when Clerk has loaded signed in. A cached owner has no token |
+| The run | It pushes batches of 100 and pulls every page. It saves the cursor after each stored page. It stops after 20 requests with the result `partial`, which is not a failure and has no backoff. The service then starts at most 5 follow-up runs at once. After that, the next trigger continues |
+| A 401 | The run retries once at once with a token that skips the Clerk cache. A second 401 in a row is a failure with the normal backoff |
+| A session change | A sign-out or an account switch aborts the request that is in flight. A run of an old session never changes the status or the backoff of the new one |
+| Accepted ids | The run marks only the accepted entries that it sent. An entry that the server leaves out stays on the waiting list. The run stops when the server accepts none |
+| A bad entry | An entry that breaks the contract, or a CHECK of the database, is dropped and logged. It never blocks the cursor |
+| The backoff | After a failure the wait before the next trigger is 30 seconds, doubled for each failure, at most 15 minutes. `Retry-After` of a 429 counts when it is longer. The network and the sign-in trigger skip the wait. No timer retries |
+| `sync_state` | The keys are `cursor`, `cursorOwner`, `syncedAt:<owner>` and `adoptAsked:<owner>`. The cursor of another owner reads as null |
+| The adopt prompt | At sign-in the app counts the live entries without an owner. If there are some, it asks once for each account. A "Not now" is remembered and the entries stay without an owner |
+| 410 | The app deletes every local entry of the owner with `HistoryRepository.deleteOwner`, clears the state of the owner and signs out. It shows one alert. The service stays stopped for that owner until the app starts again. `deleteOwner` is the only hard delete of the history |
+| The line | The stats screen shows "Synced 5 min ago" only when signed in and after a first sync |
+| The network | `expo-network` tells the app when the network comes back. The app reads the state once at the start, so the first reconnect after an offline start triggers. It is a native module, so it needs a new development build |
+| The API URL | `extra.syncApiUrl` in `app.config.ts`. The development variant has the `felix` stage. `SYNC_API_URL` overrides it. The production variant has none, so it does not sync until the production stage exists |
+
+The run reads up to 1000 rows of the waiting list to find one batch of valid entries. An entry that
+breaks the contract stays on the list, and the app never deletes it. More than 900 such entries at the
+head of the list block the valid entries behind them. This limit is accepted for version 1.
 
 ## Reassessment Triggers
 

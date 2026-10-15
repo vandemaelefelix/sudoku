@@ -13,3 +13,4 @@ export type {
   StorageDeps,
 } from './storage.types'
 export type { LevelSummary, StatsFilter, StatsRepository } from './StatsRepository'
+export type { SyncStateRepository } from './SyncStateRepository'
