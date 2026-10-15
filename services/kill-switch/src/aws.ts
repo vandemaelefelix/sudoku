@@ -28,6 +28,16 @@ export interface AwsClients {
 // the production stage too, so the name picks the sync-api function and never the kill switch itself.
 const syncFunctionPrefix = (stage: string): string => `sudoku-${stage}-SyncApiFunction`
 
+// The log and the summary name the failing call and the AWS error. A message alone can be empty.
+async function named<T>(call: string, step: () => Promise<T>): Promise<T> {
+  try {
+    return await step()
+  } catch (error) {
+    const reason = error instanceof Error ? `${error.name}${error.message ? `: ${error.message}` : ''}` : String(error)
+    throw new Error(`${call} failed (${reason})`, { cause: error })
+  }
+}
+
 export type AwsOps = Omit<KillSwitchDeps, 'now'> & TurnOnDeps
 
 export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: string | undefined } = {}): AwsOps {
@@ -36,7 +46,7 @@ export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: str
   async function setThrottle(apiId: string, rate: number, burst: number): Promise<void> {
     // The `$default` stage of an HTTP API: SST creates no other stage (ADR-027).
     const stageName = '$default'
-    const stage = await apigw.send(new GetStageCommand({ ApiId: apiId, StageName: stageName }))
+    const stage = await named('GetStage', () => apigw.send(new GetStageCommand({ ApiId: apiId, StageName: stageName })))
     const apply = (settings: RouteSettings | undefined): RouteSettings => ({
       ...settings,
       ThrottlingRateLimit: rate,
@@ -45,13 +55,16 @@ export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: str
     const routes = Object.fromEntries(
       Object.entries(stage.RouteSettings ?? {}).map(([key, settings]) => [key, apply(settings)]),
     )
-    await apigw.send(
-      new UpdateStageCommand({
-        ApiId: apiId,
-        StageName: stageName,
-        DefaultRouteSettings: apply(stage.DefaultRouteSettings),
-        RouteSettings: routes,
-      }),
+    // API Gateway answers BadRequestException to an empty RouteSettings map, so send the map only with routes.
+    await named('UpdateStage', () =>
+      apigw.send(
+        new UpdateStageCommand({
+          ApiId: apiId,
+          StageName: stageName,
+          DefaultRouteSettings: apply(stage.DefaultRouteSettings),
+          ...(Object.keys(routes).length > 0 ? { RouteSettings: routes } : {}),
+        }),
+      ),
     )
   }
 
@@ -61,7 +74,7 @@ export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: str
       let token: string | undefined
       do {
         // oxlint-disable-next-line eslint/no-await-in-loop -- Each page needs the token of the page before it.
-        const page = await apigw.send(new GetApisCommand({ NextToken: token }))
+        const page = await named('GetApis', () => apigw.send(new GetApisCommand({ NextToken: token })))
         for (const api of page.Items ?? []) {
           if (api.ApiId && api.Tags?.project === 'sudoku' && api.Tags.stage === stage) ids.push(api.ApiId)
         }

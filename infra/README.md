@@ -365,15 +365,19 @@ Do these steps once, after the first `production` deploy. They change the real a
    Or publish to the topic: `aws sns publish --topic-arn <KillSwitchTopic arn> --message '{"test":true}'`.
 6. Read the summary email. `felix` must show "stopped". `dev` and `production` show the flag only.
 7. Check the stop:
-   - `curl -i -X POST "<apiUrl>/v1/sync"` returns 429.
+   - `aws apigatewayv2 get-stage --api-id <apiId> --stage-name '$default'` shows
+     `ThrottlingRateLimit` 0 and `ThrottlingBurstLimit` 0. A `curl` without a token still returns
+     401, because the JWT authorizer answers before the throttle. Only a request with a valid
+     Clerk token shows 429.
    - `aws ssm get-parameter --name /sudoku/kill-switch/felix` shows the flag.
    - `aws lambda get-function-concurrency --function-name <SyncApiFunction name>` shows 0.
    - `just deploy-api felix` refuses and prints the kill-switch message.
-8. Run `just api-on felix`. Check that `curl` returns 401 again and that the flag is gone.
+8. Run `just api-on felix`. Check that `get-stage` shows the throttle 1 and 10 again, that the function concurrency is gone and that the flag is gone.
 9. In the app (development variant, signed in on `felix`), finish a game while the stage is
    stopped. No error shows, and the waiting list keeps the entry.
 10. Billing check, to answer whether AWS bills a throttled request: stop `felix` again (step 5).
-    Send 3000 requests (`for i in $(seq 3000); do curl -s -o /dev/null -X POST "<apiUrl>/v1/sync"; done`).
+    Send 3000 requests with a valid Clerk token, because a request without a token gets 401 before
+    the throttle (`for i in $(seq 3000); do curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" "<apiUrl>/v1/sync"; done`).
     After 1 to 2 days, read the usage of `Amazon API Gateway` in Cost Explorer, grouped by usage
     type. Compare the HTTP API request quantity with the number of requests that reached the API
     before. Run `just api-on felix`. Write the result in ADR-027.
