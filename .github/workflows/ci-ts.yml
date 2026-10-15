@@ -40,6 +40,8 @@ jobs:
           cache: pnpm
       - uses: extractions/setup-just@v4
       - run: pnpm install --frozen-lockfile
+      # boundaries reads the types that sst install writes to .sst/. It needs no AWS credentials. app() skips layer 2 of the account guard in CI (ADR-027).
+      - run: pnpm exec sst install --stage felix
       - run: just typecheck
       - run: just lint-ts
       - run: just boundaries
@@ -47,8 +49,6 @@ jobs:
       - run: pnpm --filter @sudoku/sync-api test:db
         env:
           DYNAMODB_ENDPOINT: http://localhost:8000
-      # sst install needs no AWS credentials. app() skips layer 2 of the account guard in CI (ADR-027).
-      - run: pnpm exec sst install --stage felix
       - run: pnpm typecheck:infra
       # The model is not in git (ADR-007, amendment). Metro needs a file to bundle; its content does not matter here.
       - run: touch apps/mobile/assets/models/cell-classifier.tflite
