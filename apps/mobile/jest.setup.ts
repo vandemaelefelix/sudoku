@@ -187,6 +187,26 @@ jest.mock('@shopify/react-native-skia', () => {
   }
 })
 
+// Clerk talks to the network and the Keychain. Each test sets the hook results that it needs.
+jest.mock('@clerk/expo', () => ({
+  ClerkProvider: jest.fn(({ children }: { children?: unknown }) => children),
+  useAuth: jest.fn(() => ({
+    isLoaded: true,
+    isSignedIn: false,
+    userId: null,
+    getToken: jest.fn(async () => null),
+    signOut: jest.fn(async () => undefined),
+  })),
+  useUser: jest.fn(() => ({ isLoaded: true, isSignedIn: false, user: null })),
+  useSignIn: jest.fn(),
+  useSignUp: jest.fn(),
+}))
+jest.mock('@clerk/expo/token-cache', () => ({ tokenCache: { getToken: jest.fn(), saveToken: jest.fn() } }))
+jest.mock('@clerk/expo/resource-cache', () => ({ resourceCache: jest.fn() }))
+jest.mock('@clerk/expo/google', () => ({
+  useSignInWithGoogle: jest.fn(() => ({ startGoogleAuthenticationFlow: jest.fn() })),
+}))
+
 // The Unistyles mock resolves every StyleSheet.create with the first registered theme, so configure must run before a styles file loads.
 // oxlint-disable-next-line import/no-unassigned-import -- the module registers the themes as its side effect.
 require('@/theme/unistyles')
