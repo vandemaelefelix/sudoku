@@ -16,7 +16,7 @@
       "version": "19.2"
     }
   },
-  "ignorePatterns": ["**/dist/**", "**/.expo/**", "ml/**", ".superpowers/**"],
+  "ignorePatterns": ["**/dist/**", "**/.expo/**", "ml/**", ".superpowers/**", ".sst/**"],
   "rules": {
     "no-unused-vars": [
       "error",
