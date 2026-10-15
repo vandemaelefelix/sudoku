@@ -44,5 +44,6 @@ export default $config({
     await import('./infra/defaults.ts')
     await import('./infra/budget.ts')
     await import('./infra/clerk.ts')
+    await import('./infra/storage.ts')
   },
 })
