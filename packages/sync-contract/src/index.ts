@@ -16,3 +16,6 @@ export {
   type Level,
   type PuzzleSource,
 } from './historyEntry'
+export { syncRequestSchema, type SyncRequest } from './syncRequest'
+export { syncResponseSchema, type SyncResponse } from './syncResponse'
+export { errorBodySchema, errorCodeSchema, type ErrorBody, type ErrorCode } from './errorBody'
