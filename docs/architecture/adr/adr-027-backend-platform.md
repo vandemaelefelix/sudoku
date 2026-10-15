@@ -353,6 +353,11 @@ The build of the kill switch makes decision 9 concrete. The code is in
 10. **Reassessment triggers.** The account limit is 102 or more: reserve 2 for `sync-api`. A
     throttled request is billed: delete the stage in the kill switch, and `api-on` runs
     `sst deploy` to create it again.
+11. **The kill switch needs the log delivery actions.** The stage has access logging. API Gateway
+    checks `logs:CreateLogDelivery` and seven related actions on every `UpdateStage`. The first
+    run on `felix` failed with `Insufficient permissions to enable logging`. The Lambda now holds
+    these actions on `*` (`LOG_DELIVERY_ACTIONS` in `infra/kill-switch-settings.ts`). `api-on` runs as the admin
+    user and needs nothing.
 
 ## Amendment 2026-10-15: CI deploys
 
