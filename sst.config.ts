@@ -45,5 +45,7 @@ export default $config({
     await import('./infra/budget.ts')
     await import('./infra/clerk.ts')
     await import('./infra/storage.ts')
+    const { api } = await import('./infra/api.ts')
+    return { apiUrl: api.url }
   },
 })
