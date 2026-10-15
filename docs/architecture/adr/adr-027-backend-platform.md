@@ -247,8 +247,8 @@ The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
    tags of the AWS provider.
 10. **`felix` deploys with `just deploy-api felix`**, not only with `sst dev`.
 
-The kill switch and its flag per stage (decision 9) are not part of this setup. Until they exist,
-`just deploy-api` does not check a flag.
+The kill switch and its flag per stage (decision 9) are not part of this setup. The amendment
+"the kill switch" adds them.
 
 ## Amendment 2026-10-15: the Clerk development instance
 
@@ -300,6 +300,52 @@ The build of the sync API makes decisions 4, 6 and 9 concrete. The code is in
 6. **The table design lives in `services/sync-api/src/tableDesign.ts`.** It has no imports.
    `infra/storage.ts` and the DB tests both read it, so the test table matches. A boundary rule
    allows only this one import from `infra/` into `services/`.
-7. **The reserved concurrency of 2 comes with the kill switch.** Its build also checks the account
-   quota.
+7. **The reserved concurrency of 2 is not possible on this account.** The amendment "the kill
+   switch" gives the reason.
 
+## Amendment 2026-10-15: the kill switch
+
+The build of the kill switch makes decision 9 concrete. The code is in
+[`infra/kill-switch.ts`](../../../infra/kill-switch.ts) and
+[`services/kill-switch/`](../../../services/kill-switch/src/killSwitch.ts).
+
+1. **The budget has a third alert.** At $9 actual, it publishes to the SNS topic `KillSwitchTopic`
+   and it emails the developer. The topic policy allows only `budgets.amazonaws.com` of this
+   account and the account itself to publish. The topic has no KMS key.
+2. **One account-wide Lambda stops every stage.** Only `production` creates it. It finds the
+   other stages at run time: the HTTP API by its tags `project` and `stage`, and the function
+   by the name prefix `sudoku-<stage>-SyncApiFunction`. The name keeps the kill switch from
+   stopping itself. Any message on the topic stops every stage, so a manual publish is the test.
+3. **The stop of a stage has three steps.** The Lambda sets the flag first. It sets the rate and
+   the burst of the default route settings and of every explicit route to 0. It sets the reserved
+   concurrency of `sync-api` to 0. One failure does not stop the other stages. The Lambda throws
+   at the end, so SNS retries it. Every call is idempotent.
+4. **The flag is an SSM parameter** `/sudoku/kill-switch/<stage>`, standard tier, free. SST does
+   not own it, so a deploy never removes it. A tag on the API would not last, because Pulumi
+   removes a tag that it does not know. A missing parameter means that the stage runs. The kill
+   switch also sets the flag of a stage that does not exist yet, so a later deploy cannot start it.
+5. **Four layers refuse a deploy of a stopped stage.** `just deploy-api` runs
+   `node infra/kill-switch-check.ts <stage>`. The deploy workflow runs the same script. `run()`
+   in `sst.config.ts` reads the flag, so a plain `sst deploy` or `sst dev` also refuses. The
+   check fails closed: a denied or broken read refuses the deploy.
+6. **Only `just api-on <stage>` turns a stage on.** It shows the cost of the month and asks for
+   `y`. It restores the throttle from `STAGE_THROTTLE`, deletes the reserved concurrency and
+   clears the flag last. When a step fails, the flag stays.
+7. **Two emails per alert.** The budget emails the raw alert. The Lambda emails a readable
+   summary through `KillSwitchAlertTopic`. The raw email still arrives when the Lambda crashes.
+   The developer confirms the email subscription of the second topic once.
+8. **Answer to the open question: are throttled requests billed?** AWS does not document it. The
+   pricing page says that the API owner pays for "the API calls you receive". It names no
+   exception for a 429. Until the billing test in `infra/README.md` gives a result, treat them as
+   billed. A throttled request costs $1 per million at most. The throttle stays the stop. When
+   the test shows a bill, the kill switch deletes the stage instead (see the reassessment
+   trigger). Result of the test: to confirm after the manual test.
+9. **Answer to the open question: reserved concurrency of 2.** The account allows 10 concurrent
+   executions in total (`aws lambda get-account-settings`). AWS requires 100 unreserved
+   executions after a reservation, so a reservation above 0 fails. `sync-api` has no reserved
+   concurrency. The account limit of 10, the timeout of 10 s and the route throttle bound the
+   Lambda cost. The kill switch uses a reservation of 0. To confirm on `felix`, because the
+   100 rule might also refuse 0. Then the kill switch relies on the route throttle alone.
+10. **Reassessment triggers.** The account limit is 102 or more: reserve 2 for `sync-api`. A
+    throttled request is billed: delete the stage in the kill switch, and `api-on` runs
+    `sst deploy` to create it again.

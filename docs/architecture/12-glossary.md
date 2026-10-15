@@ -200,6 +200,8 @@ status: DRAFT
 | Stage | One deployed copy of the backend: `felix`, `dev` or `production` (ADR-027) |
 | Spending cap | The limit of €10 a month on the AWS bill (SUD-11) |
 | Kill switch | The Lambda that stops every stage when the budget alert at $9 fires. Deploys refuse a stopped stage. Only `just api-on <stage>` turns a stage on again (ADR-027) |
+| Kill-switch flag | The SSM parameter `/sudoku/kill-switch/<stage>`. While it exists, every deploy of that stage refuses (ADR-027) |
+| Stopped stage | A stage that the kill switch stopped: the route throttle and the concurrency of `sync-api` are 0, and the flag exists (ADR-027) |
 | Account guard | The three checks that stop a deploy to any AWS account other than the personal one: the `just` recipes, `app()` and `run()` in `sst.config.ts` (ADR-027) |
 | Profile `sudoku` | The AWS profile of the backend. It takes its credentials from the `aws login` session of the profile `sudoku-login` through `credential_process` (ADR-027) |
 | Accepted id | The id of a history entry that the server stored, or for which it already holds an equal or newer `updatedAt`. The response of a sync lists it once, in request order (ADR-028) |
