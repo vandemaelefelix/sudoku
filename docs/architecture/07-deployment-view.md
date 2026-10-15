@@ -14,5 +14,23 @@ Placeholder. What is known:
 | AWS `eu-west-1` | API Gateway HTTP API, the `sync-api` Lambda, one DynamoDB table, AWS Budgets and the kill switch. One SST stage each: `felix`, `dev` and `production` | `dev` deploys on each merge to `develop`. `production` deploys from a manual run. SUD-11 caps the bill |
 | Clerk | A development instance and a production instance | Production on `sudoku.felixvandemaele.be`, DNS records at GoDaddy |
 
+## AWS account
+
+The backend has one personal AWS account, in `eu-west-1`. No other project uses it. The setup is
+in [`infra/README.md`](../../infra/README.md).
+
+| Topic | Rule |
+| --- | --- |
+| Access on the laptop | The profile `sudoku`. It reads the `aws login` session of `sudoku-login`. No IAM user has an access key |
+| Access in CI | An AWS role through OIDC, only for this repository (ADR-027 decision 8) |
+| Account guard | Three layers stop a deploy to any other account: the `just` recipes, `app()` and `run()` in `sst.config.ts` |
+| Stages | `felix` and `dev` use `removal: "remove"`. `production` uses `removal: "retain"` and `protect` |
+| Account-wide resources | Only `production` creates them: the budget, the alert topic and the GitHub OIDC provider |
+| Tags | Every resource has `project: sudoku` and `stage: <stage>` |
+| Cost | The budget `sudoku-monthly-cost` emails at $3 forecast and at $6 actual. The kill switch stops every stage at $9 (SUD-11) |
+
+The SST state lives in the account, in the buckets `sst-state-*` and `sst-asset-*`. SST creates
+them on the first deploy.
+
 Open: local Xcode builds or EAS Build, and how TestFlight builds are cut. Decided when the app
 first runs on the device.

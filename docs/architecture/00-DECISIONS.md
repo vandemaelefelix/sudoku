@@ -61,7 +61,7 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
-| ADR-027 | Clerk signs players in (email and Google in v1, Apple later). Our own user ID behind an identity row. An HTTP API with the JWT authorizer, one Lambda and one DynamoDB table in `eu-west-1`, built with SST. Stages `felix`, `dev` and `production`, deployed by GitHub Actions with OIDC. The spending cap (SUD-11). Supersedes TC-3 in part. | Systemic | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
+| ADR-027 | Clerk signs players in (email and Google in v1, Apple later). Our own user ID behind an identity row. An HTTP API with the JWT authorizer, one Lambda and one DynamoDB table in `eu-west-1`, built with SST. Stages `felix`, `dev` and `production`, deployed by GitHub Actions with OIDC. Account-wide resources in `production`. The spending cap (SUD-11). Supersedes TC-3 in part. | Systemic | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
 | ADR-028 | Only finished games sync. One `POST /v1/sync` pushes the waiting list and pulls the changes since a server cursor. Every history entry has an owner: the Clerk user ID. The stats stay on the device. Amends ADR-012 and ADR-023. | Cross-concept | 2026-10-15 | Felix | [ADR-028](adr/adr-028-history-sync.md) |
 
 ### Scanning and ML

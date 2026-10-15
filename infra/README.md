@@ -78,6 +78,9 @@ depend on it.
 | `dev` | GitHub Actions, on each merge to `develop` | `remove` | No |
 | `production` | GitHub Actions, from a manual run | `retain`, and `protect` | Yes |
 
+The first `production` deploy runs once from the laptop, before the CI deploys exist. It holds
+only the budget. Every later `production` deploy comes from GitHub Actions (ADR-027).
+
 `sst.config.ts` refuses any other stage name. A typo cannot create a fourth copy.
 
 An account-wide resource exists once per account: the budget, and later the alert topic and the
@@ -122,6 +125,15 @@ AWS_PROFILE=sudoku pnpm exec sst secret set BudgetEmail <your address> --stage p
 
 See the budget in the console: **Billing and Cost Management**, then **Budgets**, then
 `sudoku-monthly-cost`.
+
+## The kill switch
+
+At $9 actual, the kill switch stops every stage in the account (ADR-027, SUD-11). It sets a flag
+per stage. `just deploy-api` and the deploy workflow then refuse that stage. Only
+`just api-on <stage>` clears the flag.
+
+The kill switch, the $9 alert and the flag check in `just deploy-api` arrive with #108. Until
+then, `just deploy-api` checks only the account.
 
 ## Rules
 
