@@ -26,6 +26,7 @@ async function attempt(report: StageReport, label: string, step: () => Promise<v
   } catch (error) {
     const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
     report.failures.push(`${label}: ${reason}`)
+    console.error(`Kill switch step failed. stage=${report.stage} step=${label} reason=${reason}`)
   }
 }
 

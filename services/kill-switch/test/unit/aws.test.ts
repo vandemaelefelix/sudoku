@@ -101,7 +101,48 @@ describe('stopApi', () => {
   })
 })
 
+describe('a stage without explicit routes', () => {
+  it('sends no RouteSettings, because API Gateway rejects an empty map', async () => {
+    const apigw = client({
+      GetStageCommand: () => ({
+        DefaultRouteSettings: { ThrottlingRateLimit: 1, ThrottlingBurstLimit: 10 },
+        RouteSettings: {},
+      }),
+      UpdateStageCommand: () => ({}),
+    })
+    await ops({ apigw }).ops.stopApi('api-1')
+    const update = sent(apigw, UpdateStageCommand)[0]!.input
+    expect('RouteSettings' in update).toBe(false)
+    expect(update.DefaultRouteSettings).toMatchObject({ ThrottlingRateLimit: 0, ThrottlingBurstLimit: 0 })
+  })
+
+  it('names the failing call and the AWS error', async () => {
+    const apigw = client({
+      GetStageCommand: () => ({}),
+      UpdateStageCommand: () => {
+        throw Object.assign(new Error(''), { name: 'BadRequestException' })
+      },
+    })
+    await expect(ops({ apigw }).ops.stopApi('api-1')).rejects.toThrow('UpdateStage failed (BadRequestException)')
+  })
+})
+
 describe('startApi', () => {
+  it('restores a stage that is stopped on the default only', async () => {
+    const apigw = client({
+      GetStageCommand: () => ({
+        DefaultRouteSettings: { ThrottlingRateLimit: 0, ThrottlingBurstLimit: 0 },
+        RouteSettings: {},
+      }),
+      UpdateStageCommand: () => ({}),
+    })
+    await ops({ apigw }).ops.startApi('api-1', { throttlingRateLimit: 1, throttlingBurstLimit: 10 })
+    expect(sent(apigw, UpdateStageCommand)[0]!.input.DefaultRouteSettings).toMatchObject({
+      ThrottlingRateLimit: 1,
+      ThrottlingBurstLimit: 10,
+    })
+  })
+
   it('restores the given throttle on the default and on every explicit route', async () => {
     const apigw = client({
       GetStageCommand: () => ({
