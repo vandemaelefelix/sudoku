@@ -22,7 +22,7 @@ Ordered by impact. Hard cap 20. Currently 11.
 | SUD-06 | A model MUST reach the app only through `just promote-model`, which gates on fixture scores. Until M3, `just install-model` is the one exception (ADR-007, amendment). | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
 | SUD-09 | Promote and the test suite MUST refuse a model whose contract major version the scanner does not implement. | Cross-concept | 2026-10-09 | Felix | [model-contract](00-concepts/model-contract.md) |
 | SUD-10 | Fixture cells MUST NOT appear in any training dataset. | Cross-concept | 2026-10-09 | Felix | [model-contract](00-concepts/model-contract.md) |
-| SUD-11 | The AWS bill MUST stay below €10 a month. Throttles bound the worst case, and a kill switch stops the API at the budget. | Cross-concept | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
+| SUD-11 | The AWS bill MUST stay below €10 a month. Throttles bound the worst case, and a kill switch stops every stage at the budget. | Cross-concept | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
 | SUD-04 | `@sudoku/core` MUST NOT depend on React Native, Expo or any I/O. | Cross-concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | SUD-03 | The game MUST NOT depend on the scanner. Scanning is an optional way into a puzzle. | Concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | SUD-05 | The app MUST reach the scanner only through `src/scanner/index.ts`. | Concept | 2026-10-09 | Felix | [scan-pipeline](00-concepts/scan-pipeline.md) |
@@ -62,7 +62,7 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
 | ADR-027 | Clerk signs players in (email and Google in v1, Apple later). Our own user ID behind an identity row. An HTTP API with the JWT authorizer, one Lambda and one DynamoDB table in `eu-west-1`, built with SST. Stages `felix`, `dev` and `production`, deployed by GitHub Actions with OIDC. The spending cap (SUD-11). Supersedes TC-3 in part. | Systemic | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
-| ADR-028 | Only finished games sync. One `POST /v1/sync` pushes the waiting list and pulls the changes since a server cursor. Every history entry has an owner. The stats stay on the device. Amends ADR-012 and ADR-023. | Cross-concept | 2026-10-15 | Felix | [ADR-028](adr/adr-028-history-sync.md) |
+| ADR-028 | Only finished games sync. One `POST /v1/sync` pushes the waiting list and pulls the changes since a server cursor. Every history entry has an owner: the Clerk user ID. The stats stay on the device. Amends ADR-012 and ADR-023. | Cross-concept | 2026-10-15 | Felix | [ADR-028](adr/adr-028-history-sync.md) |
 
 ### Scanning and ML
 

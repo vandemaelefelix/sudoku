@@ -44,6 +44,15 @@ holds the watermark (the highest `syncedAt` pulled) and, while a pull pages, the
 500 rows. `more: true` means "call again". The full rules are decision 6 of
 [ADR-028](../adr/adr-028-history-sync.md).
 
+**The waiting list.** A history entry waits for the server while its `pushed_at` is null or
+differs from its `updated_at`. `pushed_at` holds the `updatedAt` that the server accepted, never a
+clock time. The server accepts an id when it stores the history entry, or when it already holds an
+equal or newer `updatedAt` for that id. So a lost response is harmless.
+
+**The daily count.** The server stores at most 200 history entries per player per day. At the cap
+it stores what fits and still runs the pull. The other history entries wait for the next day. A
+429 comes only from the API throttle or the kill switch.
+
 ```mermaid
 sequenceDiagram
   participant Game
@@ -51,24 +60,25 @@ sequenceDiagram
   participant Sync as SyncService
   participant API as sync-api
   participant DB as DynamoDB
-  Game->>Repo: finish: entry with owner, pushed_at null
+  Game->>Repo: finish: history entry with owner, pushed_at null
   Repo-->>Sync: trigger
   Sync->>Repo: pending(owner, 100)
-  Sync->>API: POST /v1/sync (entries, cursor), fresh Clerk token
-  API->>DB: put each entry if new or newer, stamp syncedAt
+  Sync->>API: POST /v1/sync (history entries, cursor), fresh Clerk token
+  API->>DB: put each history entry if new or newer, up to the daily count, stamp syncedAt
   API->>DB: query bySynced from the watermark minus 5 min, max 500 rows
   API-->>Sync: accepted ids, changes, cursor, more
-  Sync->>Repo: markPushed(accepted), upsertRemote(changes)
+  Sync->>Repo: markPushed(id and updatedAt of each accepted id), upsertRemote(changes)
   Note over Sync: more = true: call again. A failure: keep the list, retry at the next trigger
 ```
 
-**Accounts on one phone.** Every history entry has an owner. A game finished while signed out
-has no owner. The first sign-in asks to add those games to the account. A sign-out hides the
+**Accounts on one phone.** Every history entry has an owner: the Clerk user ID of the player. The
+app knows it at sign-in, also offline. A game finished while signed out has no owner. The first sign-in asks to add those games to the account. A sign-out hides the
 games of the account and stops the sync. A second account never sees or uploads the games of
-the first. The full rules are in [ADR-028](../adr/adr-028-history-sync.md).
+the first. When the server answers 410 `account_deleted`, the app signs out and keeps nothing of
+that account. The full rules are in [ADR-028](../adr/adr-028-history-sync.md).
 
 **The cloud side.** Clerk signs the player in. The API Gateway checks the Clerk token. The Lambda
-maps the Clerk login to our own user ID and reads and writes one DynamoDB table
+maps the Clerk user ID to our own user ID and reads and writes one DynamoDB table
 ([ADR-027](../adr/adr-027-backend-platform.md)).
 
 ```mermaid
@@ -109,7 +119,7 @@ flowchart LR
 | --- | --- |
 | SUD-01 | Play and the stats MUST NOT wait for the network or an account. |
 | SUD-02 | The sync MUST NOT carry camera frames, photos or cell images. |
-| SUD-11 | The AWS bill MUST stay below €10 a month. A kill switch stops the API at the budget. |
-| Owner | The sync and the stats MUST use only the entries of the signed-in owner, or of no owner when signed out. |
+| SUD-11 | The AWS bill MUST stay below €10 a month. A kill switch stops every stage at the budget. |
+| Owner | The sync and the stats MUST use only the history entries of the signed-in owner, or of no owner when signed out. |
 | Player from the token | The Lambda MUST take the player from the verified token, never from the path or the body. |
 | Boundaries | `game/` and `stats/` MUST NOT import `account/` or `sync/`. |

@@ -134,7 +134,7 @@ status: DRAFT
 | Time played | The time a game counted while its status was playing. The app tells the core how much time passed. The core never reads a clock |
 | Saved game | A game as a plain object with a version number, so the app can store it and load it again (ADR-012) |
 | Game in progress | The one game that the app saves after every move, so the player can resume it. Starting a new game discards it (ADR-012) |
-| History | The list of won and lost games: level, source, result, time played, mistakes, hints and date (ADR-012) |
+| History | The list of won, lost and abandoned games: level, source, result, time played, mistakes, hints and date (ADR-012) |
 | Best time | The shortest time played of a won generated game without hints, at one level (ADR-012) |
 | Home screen | The first screen of the app. It lists the levels, offers Continue for the game in progress, and links to Scan and Settings |
 | Continue | The home screen button that resumes the game in progress at its last move, with its time played |
@@ -174,15 +174,23 @@ status: DRAFT
 | Splash ground | The plain colour of the native splash and of the first frame of the splash overlay. It is white for every look, because the native layer cannot read the saved theme. The overlay then fades it to the page colour of the saved look (ADR-024, ADR-025, ADR-026) |
 | Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
 | Account | A Clerk account of a player. Optional: a player who is signed out plays as normal and nothing uploads (ADR-027) |
-| User ID | Our own UUID for a player. Every row of the player in DynamoDB uses it. An identity row maps a login to it (ADR-027) |
+| User ID | Our own UUID for a player, on the server only. Every row of the player in DynamoDB uses it. An identity row maps a login to it. The phone never holds it (ADR-027) |
+| Clerk user ID | The `sub` of a Clerk token, such as `user_2abc`. The app knows it at sign-in, also offline. It is the owner on the phone. The server maps it to a user ID (ADR-027, ADR-028) |
 | Identity row | The DynamoDB row `IDENTITY#<provider>#<subject>` that maps one login to a user ID. A new sign-in provider adds identity rows (ADR-027) |
-| Owner | The user ID of a history entry on the phone. Null for a game finished while signed out. The sync and the stats use only the entries of the signed-in owner (ADR-028) |
+| Tombstone | The identity row of a deleted account: `deletedAt` and a TTL of 30 days. A sync with its `sub` gets 410 `account_deleted` and creates no new user ID (ADR-027) |
+| Owner | The Clerk user ID of a history entry on the phone. Null for a game finished while signed out. The sync and the stats use only the entries of the signed-in owner (ADR-028) |
 | Sync | The call `POST /v1/sync`. It pushes the waiting list and pulls the changes since the cursor (ADR-028) |
-| Waiting list | The history entries of the signed-in owner that the server has not accepted yet: `pushed_at` is null or older than `updated_at` (ADR-028) |
+| Sync service | `SyncService` in `src/sync/`. It runs a sync on each trigger and stays silent on failure (ADR-028) |
+| Accepted | A pushed history entry is accepted when the server stored it, or already holds an equal or newer `updatedAt` for its id (ADR-028) |
+| Waiting list | The history entries of the signed-in owner that the server has not accepted yet: `pushed_at` is null or differs from `updated_at`. `pushed_at` holds the accepted `updatedAt`, never a clock time (ADR-028) |
 | Cursor | An opaque value from the server that marks how far a device has pulled: the watermark and, during paging, the `LastEvaluatedKey`. A null cursor pulls everything (ADR-028) |
 | Watermark | The highest `syncedAt` that a device has pulled. The server reads from 5 minutes before it (ADR-028) |
+| Synced at | `syncedAt`: the server time when the server stored a history entry. Only the server clock sets it (ADR-028) |
+| `bySynced` | The local index of the DynamoDB table with the sort key `syncedAt`. A pull reads it in ascending order (ADR-028) |
+| Full pull | A pull with a null cursor or a null watermark. It reads every row of the player: on a new device, after another account signs in, or after a 400 `invalid_cursor` (ADR-028) |
+| Daily count | The DynamoDB row `COUNT#<yyyy-mm-dd>` per player. It counts the stored history entries of the day, at most 200 (ADR-027, ADR-028) |
 | History entry | One finished game in the history, with a UUID. Only its soft delete changes it after the finish (ADR-012) |
 | Sync contract | The zod schemas of the sync API requests and responses in `packages/sync-contract/`. The app and the `sync-api` Lambda import it (ADR-027) |
 | Stage | One deployed copy of the backend: `felix`, `dev` or `production` (ADR-027) |
 | Spending cap | The limit of €10 a month on the AWS bill (SUD-11) |
-| Kill switch | The Lambda that turns the API off when the budget alert at $9 fires. `just api-on <stage>` turns it on again (ADR-027) |
+| Kill switch | The Lambda that stops every stage when the budget alert at $9 fires. Deploys refuse a stopped stage. Only `just api-on <stage>` turns a stage on again (ADR-027) |

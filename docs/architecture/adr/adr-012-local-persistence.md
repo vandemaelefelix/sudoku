@@ -84,6 +84,6 @@ The time played is saved with each move. Time after the last move and before the
 
 ## Amendment 2026-10-15: the owner and the waiting list
 
-[ADR-028](adr-028-history-sync.md) amends this ADR. Migration 5 adds `owner_user_id` and
+[ADR-028](adr-028-history-sync.md) amends this ADR. Migration 5 adds `owner_id` and
 `pushed_at` to `game_history` and creates `sync_state`. `HistoryRepository` gets `pending`,
 `markPushed` and `upsertRemote`. The other points stay.

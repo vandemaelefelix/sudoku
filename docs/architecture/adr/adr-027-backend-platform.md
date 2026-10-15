@@ -94,6 +94,10 @@ The backend has these limits:
    - The first request of a new player writes the identity row with a condition, so a race
      cannot create two.
    - Every other row uses `USER#<userId>`. No email and no name is stored on our side.
+   - The phone never holds this user ID. On the phone, the owner of a history entry is the Clerk
+     user ID (ADR-028).
+   - When the identity row is a tombstone (decision 10), a sync with that `sub` gets 410
+     `account_deleted`. The Lambda creates no new user ID for it.
 3. **AWS in `eu-west-1`, built with SST.**
    - `sst.config.ts` at the repository root imports one file per area from `infra/`.
    - The Lambda code is in `services/sync-api/`.
@@ -138,17 +142,34 @@ The backend has these limits:
    GitHub Actions takes an AWS role through OIDC. The pipeline runs the checks, then
    `sst diff`, then `sst deploy`. Every action is pinned to a commit SHA.
 9. **The spending cap (SUD-11).** The AWS bill must stay below €10 a month.
-   - The API stage allows 1 request per second, with a burst of 10.
-   - The Lambda accepts at most 200 game writes per player per day and 100 games per request.
+   - The API stage allows 1 request per second, with a burst of 10. A 429 comes only from this
+     throttle or from the kill switch.
+   - The Lambda accepts at most 100 history entries per request.
+   - The Lambda stores at most 200 history entries per player per day. Only a stored history
+     entry counts. A no-op write and a refused write do not count.
+   - At the cap, the Lambda stores the history entries that fit, in request order. It returns
+     those as accepted and still runs the pull. The other history entries stay on the waiting
+     list of the phone. The daily count never gives a 429.
    - The Lambda has a reserved concurrency of 2, if the account quota allows it.
    - AWS Budgets sends an email at $3 forecast and at $6 actual.
-   - At $9 actual, a `kill-switch` Lambda sets the stage throttle to 0 and the concurrency of
-     `sync-api` to 0. It sends an email.
-   - `just api-on <stage>` or a deploy turns the API on again.
+   - At $9 actual, a `kill-switch` Lambda stops every stage in the account, because the budget
+     is for the whole account. For each stage, it sets the stage throttle to 0 and the
+     concurrency of `sync-api` to 0. It sends an email.
+   - The kill switch sets a flag per stage. The deploy workflow and `just deploy-api` refuse to
+     deploy a stage while its flag is on. A deploy would set the throttles again.
+   - Only `just api-on <stage>` turns a stage on again. The developer runs it by hand. It clears
+     the flag of that stage.
    - Every later feature must fit under the cap.
 10. **A player can delete the account in the app.** Apple requires it (guideline 5.1.1(v)).
-    `DELETE /v1/account` deletes every row of the player, the identity row and the Clerk user.
-    When Apple sign-in exists, it also revokes the Apple token.
+    `DELETE /v1/account` does these steps in this order:
+    1. It deletes the Clerk user. A Clerk user that does not exist counts as deleted.
+    2. It replaces the identity row with a tombstone: `deletedAt` and a TTL of 30 days.
+    3. It deletes every other row of the player.
+
+    The tombstone outlives every token of that `sub`. A sync with a token of the deleted user
+    gets 410 `account_deleted` and never creates a new user ID. A second delete call finds the
+    tombstone. It repeats steps 1 and 3 and succeeds, so a lost response is harmless. When Apple
+    sign-in exists, the call also revokes the Apple token.
 
 ## Consequences
 
@@ -158,6 +179,10 @@ The backend has these limits:
 - Clerk holds the email addresses. The app needs a privacy policy and App Store privacy labels
   before a release. ADR-013 lists the privacy items.
 - A switch of sign-in provider needs a user import and new identity rows. The game data stays.
+  The Clerk user ID changes, so the app adopts the local history entries of the old owner once
+  (ADR-028).
+- Before any TestFlight or App Store submission, the developer checks App Store guideline 4.8
+  (Login Services). If it applies, the app adds Sign in with Apple. v1 keeps email and Google.
 - The Clerk settings live in the Clerk dashboard. The setup steps go in the README of
   `services/sync-api/`.
 - The Lambda tests run with Vitest against a local DynamoDB in a container. The test table must
@@ -170,5 +195,6 @@ The backend has these limits:
 - The leaderboard needs a query that one table cannot answer.
 - Clerk changes the Hobby plan, or the number of players nears 50,000.
 - The developer joins the Apple Developer Program. Then add Apple sign-in.
+- A TestFlight or App Store submission comes near. Then check guideline 4.8.
 - A check is needed that the JWT authorizer cannot do, such as a blocked player.
 - AWS bills throttled requests. Then the kill switch deletes the stage instead.

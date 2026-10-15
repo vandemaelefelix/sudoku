@@ -128,5 +128,5 @@ again. The game in progress stays. The stats screen shows a "Reset stats" button
 ## Amendment 2026-10-15: the owner in the filter
 
 [ADR-028](adr-028-history-sync.md) makes decision 6 concrete. `StatsFilter` gets
-`owner: string | null`. Every stat counts only the entries of that owner. The contract test covers
+`owner: string | null`, a Clerk user ID. Every stat counts only the history entries of that owner. The contract test covers
 the filter. The rules of decision 4 stay.
