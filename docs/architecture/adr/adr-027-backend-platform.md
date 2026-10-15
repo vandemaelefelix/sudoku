@@ -198,3 +198,43 @@ The backend has these limits:
 - A TestFlight or App Store submission comes near. Then check guideline 4.8.
 - A check is needed that the JWT authorizer cannot do, such as a blocked player.
 - AWS bills throttled requests. Then the kill switch deletes the stage instead.
+
+## Amendment 2026-10-15: the AWS account and the SST setup
+
+The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
+[`infra/README.md`](../../../infra/README.md).
+
+1. **Two AWS profiles.** `aws login --profile sudoku-login` signs the developer in. Every other
+   command uses the profile `sudoku`. It reads the credentials of `sudoku-login` through
+   `credential_process`. SST and Pulumi use the AWS SDK for Go v2, which cannot read an
+   `aws login` profile. `credential_process` works in every SDK. When SST can read an
+   `aws login` profile, merge the two profiles.
+2. **No access keys.** No IAM user has an access key. CI takes a role through OIDC (decision 8).
+3. **An account guard with three layers.** It stops a deploy to any account other than the
+   personal one:
+   - The `just` recipes remove the `AWS_*` keys from the shell. They compare the account of the
+     profile `sudoku` with `AWS_ACCOUNT_ID` before SST writes its state bucket.
+   - `app()` in `sst.config.ts` refuses access keys and every other `AWS_PROFILE` on the laptop.
+   - `run()` compares the account of the deploy with `AWS_ACCOUNT_ID` before any resource. This
+     layer also works in CI.
+4. **The account ID is a committed constant** in `infra/config.ts`. An account ID is not a secret.
+   An environment variable can be missing, and then the guard is gone.
+5. **Only `production` creates the account-wide resources.** These are the budget, the alert topic
+   of the kill switch and the GitHub OIDC provider. AWS allows one OIDC provider per issuer. One
+   budget per stage sends three emails per alert. `production` is protected and retained.
+6. **The first `production` deploy runs from the laptop**, before the CI deploys exist. It holds
+   only the budget, so the budget exists from day one (SUD-11). Every later `production` deploy
+   comes from GitHub Actions, as decision 8 says.
+7. **The budget.** One `COST` budget `sudoku-monthly-cost` for the whole account: $10 a month,
+   in USD. It emails at $3 forecast and at $6 actual. The kill switch adds the alert at $9. The
+   budget counts the spend without credits and refunds (`includeCredit` and `includeRefund` are
+   false). A credit then cannot hide a cost spike from the alerts or the kill switch. The
+   address is the `sst.Secret` `BudgetEmail` on `production`, so it stays out of git.
+8. **Only three stage names.** `sst.config.ts` refuses any stage other than `felix`, `dev` and
+   `production`. A typo cannot create a fourth copy. `felix` and `dev` use `removal: "remove"`.
+9. **Every resource that SST deploys gets the tags** `project: sudoku` and `stage: <stage>`, through the default
+   tags of the AWS provider.
+10. **`felix` deploys with `just deploy-api felix`**, not only with `sst dev`.
+
+The kill switch and its flag per stage (decision 9) are not part of this setup. Until they exist,
+`just deploy-api` does not check a flag.

@@ -15,6 +15,7 @@
     "fixtures/**",
     "ml/**",
     "pnpm-lock.yaml",
-    ".superpowers/**"
+    ".superpowers/**",
+    ".sst/**"
   ]
 }

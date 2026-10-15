@@ -11,6 +11,11 @@ node_modules/
 dist/
 *.log
 
+# SST state and generated types (ADR-027)
+.sst/
+sst-env.d.ts
+sst.pyi
+
 # iOS / Android build output
 ios/build/
 ios/Pods/
