@@ -5,6 +5,19 @@ import { killSwitchFlagName } from '../services/kill-switch/src/flag.ts'
 
 export { killSwitchFlagName }
 
+// API Gateway checks these on every UpdateStage of a stage with access logging. The actions take no resource ARN, so the
+// permission uses "*". Source: AWS docs, "Configure logging for HTTP APIs in API Gateway" (ADR-027).
+export const LOG_DELIVERY_ACTIONS = [
+  'logs:CreateLogDelivery',
+  'logs:GetLogDelivery',
+  'logs:UpdateLogDelivery',
+  'logs:DeleteLogDelivery',
+  'logs:ListLogDeliveries',
+  'logs:PutResourcePolicy',
+  'logs:DescribeResourcePolicies',
+  'logs:DescribeLogGroups',
+] as const
+
 export type ParameterRead = { ok: true; stdout: string } | { ok: false; stderr: string }
 export type Verdict = { allow: true } | { allow: false; message: string }
 

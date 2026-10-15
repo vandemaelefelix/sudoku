@@ -1,4 +1,5 @@
 import { STAGES } from './config.ts'
+import { LOG_DELIVERY_ACTIONS } from './kill-switch-settings.ts'
 
 // The account-wide kill switch (ADR-027, decision 9). The caller runs this only on ACCOUNT_STAGE.
 // The Lambda finds the other stages at run time, because it cannot hold their ARNs at deploy time.
@@ -54,6 +55,7 @@ export function createKillSwitch(email: $util.Input<string>): { topicArn: $util.
         actions: ['apigateway:GET', 'apigateway:PATCH'],
         resources: ['arn:aws:apigateway:*::/apis', 'arn:aws:apigateway:*::/apis/*'],
       },
+      { actions: [...LOG_DELIVERY_ACTIONS], resources: ['*'] },
       { actions: ['lambda:ListFunctions'], resources: ['*'] },
       {
         actions: ['lambda:PutFunctionConcurrency'],

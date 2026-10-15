@@ -330,6 +330,9 @@ Budget at $9 --> SNS KillSwitchTopic --> Lambda kill-switch --> for each stage:
 - The workflows `deploy-api-dev.yml` and `deploy-api-production.yml` call `node infra/kill-switch-check.ts <stage>` before `sst deploy`. Its
   role needs `ssm:GetParameter` and `ssm:GetParametersByPath` on
   `arn:aws:ssm:eu-west-1:<account>:parameter/sudoku/kill-switch/*`.
+- The Lambda also holds the `logs:` log delivery actions on `*`. The stage has access logging, and API
+  Gateway checks these actions on every `UpdateStage`. Without them the throttle call fails with
+  `Insufficient permissions to enable logging`. `api-on` runs as the admin user and needs no change.
 - `just api-on <stage>` shows the cost of the month, asks for `y` (skip with `--yes`), restores
   the throttle, deletes the reserved concurrency and clears the flag last. AWS Budgets alerts
   when the cost crosses a threshold. After `api-on`, the $9 alert does not fire again while the
