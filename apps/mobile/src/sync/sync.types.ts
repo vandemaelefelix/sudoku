@@ -5,7 +5,8 @@ export type SyncTrigger = 'game-end' | 'foreground' | 'network' | 'sign-in'
 /** The player who syncs now. `isCurrent` turns false when a sign-out or another account ends the session. */
 export type SyncSession = {
   owner: string
-  getToken(): Promise<string | null>
+  /** `fresh` asks for a token that skips the cache. The run uses it once after a 401. */
+  getToken(options?: { fresh?: boolean }): Promise<string | null>
   isCurrent(): boolean
 }
 
@@ -23,7 +24,8 @@ export type SyncApiResult =
   | { kind: 'server_error' }
   | { kind: 'rejected' }
 
-export type RunResult = 'synced' | 'failed' | 'skipped' | 'stopped' | 'deleted'
+/** `partial` means the run stopped at the most rounds with work left. It is not a failure: no backoff. */
+export type RunResult = 'synced' | 'partial' | 'failed' | 'skipped' | 'stopped' | 'deleted'
 
 /** `changed` is true when the run wrote entries from another device. `retryAfterMs` comes from a 429. */
 export type RunOutcome = { result: RunResult; changed: boolean; retryAfterMs: number | null }

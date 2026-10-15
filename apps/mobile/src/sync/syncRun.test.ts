@@ -1,6 +1,6 @@
 import type { SyncRequest } from '@sudoku/sync-contract'
 import type { GameStorage } from '@/storage'
-import { MAX_ROUNDS } from './constants/sync.constants'
+import { BATCH_SIZE, MAX_ROUNDS } from './constants/sync.constants'
 import { runSync } from './syncRun'
 import { ALICE, BOB, createTestStorage, fakeServer, finishGame, noSleep, scriptedApi, uuid } from './syncTestKit'
 import type { SyncApiResult, SyncSession } from './sync.types'
@@ -32,6 +32,8 @@ function run(api: SyncApi, session = sessionOf(ALICE), history = storage.history
     sleep: noSleep,
   })
 }
+
+const OK_API = () => scriptedApi([OK()]).api
 
 const OK = (
   body: Partial<{ acceptedIds: string[]; changes: unknown[]; cursor: string; more: boolean }> = {},
@@ -207,10 +209,75 @@ describe('pull', () => {
       now: () => '2026-10-15T12:00:00.000Z',
       sleep,
     })
-    expect(outcome.result).toBe('failed')
+    expect(outcome).toMatchObject({ result: 'partial', retryAfterMs: null })
     expect(requests).toHaveLength(MAX_ROUNDS)
     expect(sleep).toHaveBeenCalledTimes(MAX_ROUNDS - 8)
     await expect(storage.sync.cursor(ALICE)).resolves.toBe('again')
+  })
+})
+
+describe('a session that ends late', () => {
+  it('does not say synced when the session ends while the page is stored', async () => {
+    let current = true
+    const save = storage.sync.saveCursor.bind(storage.sync)
+    jest.spyOn(storage.sync, 'saveCursor').mockImplementation(async (owner, cursor) => {
+      await save(owner, cursor)
+      current = false
+    })
+    const session = sessionOf(ALICE, { isCurrent: () => current })
+    await expect(run(OK_API(), session)).resolves.toMatchObject({ result: 'stopped' })
+  })
+
+  it('gives the API the signal of the run', async () => {
+    const controller = new AbortController()
+    const seen: (AbortSignal | undefined)[] = []
+    const api: SyncApi = {
+      async sync(_request, _token, signal) {
+        seen.push(signal)
+        return OK()
+      },
+    }
+    await runSync({
+      history: storage.history,
+      state: storage.sync,
+      api,
+      session: sessionOf(ALICE),
+      now: () => '2026-10-15T12:00:00.000Z',
+      sleep: noSleep,
+      signal: controller.signal,
+    })
+    expect(seen).toEqual([controller.signal])
+  })
+})
+
+describe('a 401', () => {
+  it('retries once at once with a fresh token', async () => {
+    const getToken = jest.fn(async (_options?: { fresh?: boolean }) => 'token')
+    const { api, requests } = scriptedApi([{ kind: 'unauthorized' }, OK()])
+    await expect(run(api, sessionOf(ALICE, { getToken }))).resolves.toMatchObject({ result: 'synced' })
+    expect(requests).toHaveLength(2)
+    expect(getToken.mock.calls.map(([options]) => options?.fresh === true)).toEqual([false, true])
+  })
+
+  it('fails after a second 401', async () => {
+    const { api, requests } = scriptedApi([{ kind: 'unauthorized' }])
+    await expect(run(api)).resolves.toMatchObject({ result: 'failed' })
+    expect(requests).toHaveLength(2)
+  })
+})
+
+describe('invalid entries at the head of the waiting list', () => {
+  it('does not block the valid entries behind them', async () => {
+    await finishGame(storage, ALICE)
+    const [record] = await storage.history.pending(ALICE, 10)
+    const broken = Array.from({ length: BATCH_SIZE + 5 }, (_, n) => ({ ...record!, id: `bad-${n}` }))
+    const history = {
+      ...storage.history,
+      pending: async (_owner: string, limit: number) => [...broken, record!].slice(0, limit),
+    }
+    const server = fakeServer()
+    await run(server.api, sessionOf(ALICE), history)
+    expect(server.requests[0]?.entries.map((entry) => entry.id)).toEqual([record!.id])
   })
 })
 

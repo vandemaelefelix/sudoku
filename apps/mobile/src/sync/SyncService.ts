@@ -1,6 +1,6 @@
 import type { HistoryRepository, SyncStateRepository } from '@/storage'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import { BACKOFF_BASE_MS, BACKOFF_MAX_MS } from './constants/sync.constants'
+import { BACKOFF_BASE_MS, BACKOFF_MAX_MS, MAX_FOLLOW_UP_RUNS } from './constants/sync.constants'
 import type { SyncApi } from './syncApi'
 import { runSync } from './syncRun'
 import type { RunOutcome, RunResult, SyncSession, SyncStatus, SyncTrigger } from './sync.types'
@@ -19,7 +19,7 @@ export type SyncServiceDeps = {
 export type SyncService = {
   /** Null means signed out. A new owner stops a run that is going on. */
   setSession(session: SyncSession | null): void
-  /** Never throws. 'ignored' means no run: no session, a wait after a failure, or nothing waits after a game end. */
+  /** Never throws. 'partial' means the run reached the most rounds and the follow-up runs did not finish: the next trigger goes on. 'ignored' means no run: no session, a wait after a failure, or nothing waits after a game end. */
   trigger(reason: SyncTrigger): Promise<RunResult | 'ignored'>
   subscribe(listener: () => void): () => void
   status(): SyncStatus
@@ -27,7 +27,7 @@ export type SyncService = {
 
 /**
  * The single-flight sync (ADR-028). One run at a time. A trigger during a run asks for one more run, never one per trigger.
- * After a failure, the wait doubles from 30 seconds to 15 minutes. Only a trigger retries: no timer runs.
+ * A run that reaches the most rounds starts a bounded number of follow-up runs. After a failure, the wait doubles from 30 seconds to 15 minutes. Only a trigger retries: no timer runs.
  */
 export function createSyncService(deps: SyncServiceDeps): SyncService {
   const { history, state, api, now, sleep, onAccountDeleted } = deps
@@ -38,6 +38,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   let rerun = false
   let failures = 0
   let notBefore = 0
+  let abort: AbortController | null = null
   let status: SyncStatus = { lastSyncedAt: null, revision: 0 }
   const listeners = new Set<() => void>()
 
@@ -57,14 +58,17 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
 
   const runOnce = async (current: SyncSession): Promise<RunOutcome> => {
     try {
-      return await runSync({ history, state, api, session: guard(current.owner), now, sleep })
+      abort = new AbortController()
+      return await runSync({ history, state, api, session: guard(current.owner), now, sleep, signal: abort.signal })
     } catch (error) {
       devWarn('sync', `A sync run failed: ${errorMessage(error)}`)
       return { result: 'failed', changed: false, retryAfterMs: null }
     }
   }
 
-  const handle = async (owner: string, outcome: RunOutcome): Promise<void> => {
+  const handle = async (owner: string, outcome: RunOutcome, live: boolean): Promise<void> => {
+    // A run of an old session must not touch the state of the new one. Only a 410 still needs its cleanup.
+    if (!live && outcome.result !== 'deleted') return
     switch (outcome.result) {
       case 'synced':
         failures = 0
@@ -97,22 +101,30 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
 
   const loop = async (): Promise<RunResult> => {
     let last: RunResult = 'stopped'
+    let followUps = 0
     for (;;) {
       rerun = false
       const current = session
       if (current === null) return 'stopped'
+      const mine = generation
       // oxlint-disable-next-line no-await-in-loop -- runs never overlap.
       const outcome = await runOnce(current)
       last = outcome.result
       // oxlint-disable-next-line no-await-in-loop -- see above.
-      await handle(current.owner, outcome)
+      await handle(current.owner, outcome, generation === mine && session === current)
       if (outcome.result === 'failed' || outcome.result === 'deleted') rerun = false
+      // A run at the most rounds still has work. The follow-ups are bounded, so a server that never ends cannot loop.
+      if (outcome.result === 'partial' && generation === mine && followUps < MAX_FOLLOW_UP_RUNS) {
+        followUps += 1
+        rerun = true
+      }
       if (!rerun) return last
     }
   }
 
   return {
     setSession(next) {
+      abort?.abort()
       generation += 1
       session = next
       rerun = false

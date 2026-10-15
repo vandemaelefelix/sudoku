@@ -1,4 +1,4 @@
-import { addNetworkStateListener } from 'expo-network'
+import { addNetworkStateListener, getNetworkStateAsync } from 'expo-network'
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
@@ -23,13 +23,20 @@ export function useSyncTriggers(service: SyncService | null): void {
   }, [service])
   useEffect(() => {
     if (service === null) return undefined
-    // The first event only sets the start state. Only a change from not connected to connected triggers.
+    // The start state comes from one read on mount, because the listener sends no event until the state changes.
+    // Only a change from not connected to connected triggers.
     let wasConnected: boolean | null = null
     const subscription = addNetworkStateListener((state) => {
       const connected = state.isConnected === true
       if (wasConnected === false && connected) void service.trigger('network')
       wasConnected = connected
     })
+    void getNetworkStateAsync().then(
+      (state) => {
+        wasConnected ??= state.isConnected === true
+      },
+      () => undefined,
+    )
     return () => subscription.remove()
   }, [service])
 }

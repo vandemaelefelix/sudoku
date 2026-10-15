@@ -86,7 +86,7 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, children }: SyncP
       if (!live) return
       service.setSession({
         owner: signedInOwner,
-        getToken: () => getAccount().getApiToken(),
+        getToken: (options) => getAccount().getApiToken(options),
         isCurrent: () => live,
       })
       void service.trigger('sign-in')

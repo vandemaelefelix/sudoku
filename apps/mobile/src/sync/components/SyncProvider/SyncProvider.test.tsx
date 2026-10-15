@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react-native'
-import { addNetworkStateListener } from 'expo-network'
+import { addNetworkStateListener, getNetworkStateAsync } from 'expo-network'
 import type { ReactElement } from 'react'
 import { Alert, AppState, Text } from 'react-native'
 import { AccountContext, type Account } from '@/account/hooks/useAccount'
@@ -123,6 +123,17 @@ describe('the triggers', () => {
     await settle()
     expect(requests).toHaveLength(1)
     await act(async () => networkHandler?.({ isConnected: false }))
+    await act(async () => networkHandler?.({ isConnected: true }))
+    await settle()
+    expect(requests).toHaveLength(2)
+  })
+
+  it('syncs on the first reconnect after the app started offline', async () => {
+    jest.mocked(getNetworkStateAsync).mockResolvedValueOnce({ isConnected: false } as never)
+    const { api, requests } = scriptedApi([OK])
+    render(tree(accountOf('signedIn'), ALICE, api))
+    await settle()
+    expect(requests).toHaveLength(1)
     await act(async () => networkHandler?.({ isConnected: true }))
     await settle()
     expect(requests).toHaveLength(2)

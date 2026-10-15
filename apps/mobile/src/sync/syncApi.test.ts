@@ -110,3 +110,16 @@ it('never logs the token or the body', async () => {
   expect(logged).toContain('500')
   expect(logged).not.toContain('secret')
 })
+
+it('aborts the request when the signal of the caller aborts', async () => {
+  const caller = new AbortController()
+  let seen: AbortSignal | null = null
+  const fetch: FetchLike = (_url, init) => {
+    seen = init.signal
+    return new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted'))))
+  }
+  const pending = apiWith(fetch).sync(REQUEST, 'token', caller.signal)
+  caller.abort()
+  await expect(pending).resolves.toEqual({ kind: 'offline' })
+  expect(seen).not.toBeNull()
+})

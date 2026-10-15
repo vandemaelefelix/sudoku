@@ -1,4 +1,5 @@
 import type { GameStorage } from '@/storage'
+import { MAX_FOLLOW_UP_RUNS, MAX_ROUNDS } from './constants/sync.constants'
 import { createSyncService } from './SyncService'
 import type { SyncApi } from './syncApi'
 import { ALICE, BOB, createTestStorage, fakeServer, finishGame, noSleep, scriptedApi } from './syncTestKit'
@@ -177,6 +178,61 @@ describe('single-flight', () => {
     await expect(run).resolves.toBe('stopped')
     await flush()
     expect(gate.waiting).toHaveLength(0)
+  })
+})
+
+describe('a session that ends late', () => {
+  it('does not show the old run as synced for the new owner', async () => {
+    const { api } = scriptedApi([OK])
+    const { service } = serviceWith(api)
+    service.setSession(sessionOf(ALICE))
+    const save = storage.sync.saveCursor.bind(storage.sync)
+    jest.spyOn(storage.sync, 'saveCursor').mockImplementationOnce(async (owner, cursor) => {
+      await save(owner, cursor)
+      service.setSession(sessionOf(BOB))
+    })
+    await service.trigger('foreground')
+    await flush()
+    expect(service.status().lastSyncedAt).toBeNull()
+    await expect(service.trigger('foreground')).resolves.toBe('synced')
+  })
+
+  it('aborts the request of the old session', async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    const api: SyncApi = {
+      sync: (_request, _token, signal) => {
+        signals.push(signal)
+        return new Promise(() => undefined)
+      },
+    }
+    const { service } = serviceWith(api)
+    service.setSession(sessionOf(ALICE))
+    void service.trigger('foreground')
+    await flush()
+    expect(signals[0]?.aborted).toBe(false)
+    service.setSession(null)
+    expect(signals[0]?.aborted).toBe(true)
+  })
+})
+
+describe('a run that reaches the most rounds', () => {
+  const MORE: SyncApiResult = { kind: 'ok', body: { acceptedIds: [], changes: [], cursor: 'c', more: true } }
+
+  it('goes on at once, a bounded number of times, with no backoff', async () => {
+    const { api, requests } = scriptedApi([MORE])
+    const { service } = serviceWith(api)
+    service.setSession(sessionOf(ALICE))
+    await expect(service.trigger('foreground')).resolves.toBe('partial')
+    expect(requests).toHaveLength(MAX_ROUNDS * (1 + MAX_FOLLOW_UP_RUNS))
+    await expect(service.trigger('foreground')).resolves.toBe('partial')
+  })
+
+  it('ends as synced when a follow-up run finishes', async () => {
+    const { api, requests } = scriptedApi([...Array.from({ length: MAX_ROUNDS }, () => MORE), OK])
+    const { service } = serviceWith(api)
+    service.setSession(sessionOf(ALICE))
+    await expect(service.trigger('foreground')).resolves.toBe('synced')
+    expect(requests).toHaveLength(MAX_ROUNDS + 1)
   })
 })
 

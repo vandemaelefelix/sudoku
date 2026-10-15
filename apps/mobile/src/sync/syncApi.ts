@@ -12,7 +12,8 @@ export type FetchLike = (
 // The strict contract schema would reject a whole page for one bad change. The run checks each change alone.
 const envelopeSchema = syncResponseSchema.omit({ changes: true })
 
-export type SyncApi = { sync(request: SyncRequest, token: string): Promise<SyncApiResult> }
+/** `signal` aborts the request: the run ends when the session ends. */
+export type SyncApi = { sync(request: SyncRequest, token: string, signal?: AbortSignal): Promise<SyncApiResult> }
 
 type SyncApiOptions = { baseUrl: string; fetch?: FetchLike; timeoutMs?: number }
 
@@ -40,9 +41,12 @@ export function createSyncApi({
   timeoutMs = REQUEST_TIMEOUT_MS,
 }: SyncApiOptions): SyncApi {
   return {
-    async sync(request, token) {
+    async sync(request, token, signal) {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), timeoutMs)
+      const abort = () => controller.abort()
+      if (signal?.aborted === true) abort()
+      signal?.addEventListener('abort', abort, { once: true })
       try {
         const response = await fetch(`${baseUrl}/v1/sync`, {
           method: 'POST',
@@ -55,6 +59,7 @@ export function createSyncApi({
         return { kind: 'offline' }
       } finally {
         clearTimeout(timer)
+        signal?.removeEventListener('abort', abort)
       }
     },
   }
