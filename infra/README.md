@@ -16,6 +16,11 @@ decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backe
 | `clerk.ts` | The Clerk secret key of each stage with a Clerk instance |
 | `storage.ts` | The DynamoDB table `SyncTable`. Its layout comes from `services/sync-api/src/tableDesign.ts` |
 | `api.ts` | The HTTP API `SyncApi`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` |
+| `kill-switch.ts` | The SNS topic of the budget, its policy, the `kill-switch` Lambda and the alert email. Only the account stage creates them |
+| `kill-switch-settings.ts` | The flag name, the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
+| `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The deploy workflow of #109 will call it |
+| `kill-switch-guard.ts` | The same check inside `run()`, for a plain `sst deploy` or `sst dev` |
+| `api-on.ts` | Turns a stopped stage on again. `just api-on` runs it |
 | `backend-settings.ts` | The throttle, the access log format, the audience and the issuer check of `api.ts`, and the point-in-time recovery of `storage.ts` |
 
 `config.ts`, `account.ts`, `budget-alerts.ts` and `backend-settings.ts` have no SST globals. `just test-ts` runs their
@@ -61,6 +66,7 @@ there are two profiles:
 | Start a session (once every 12 hours) | `just aws-login` |
 | See what a deploy would change | `just diff-api felix` |
 | Deploy a stage | `just deploy-api felix` |
+| Turn a stopped stage on again | `just api-on felix` |
 | Remove a stage | `just remove-api felix` |
 | Typecheck `sst.config.ts` and `infra/` | `just typecheck-infra` |
 | End the session | `aws logout --profile sudoku-login` |
@@ -249,12 +255,70 @@ Do not run `sst secret list` in a session with an agent. It prints the values in
 
 ## The kill switch
 
-At $9 actual, the kill switch stops every stage in the account (ADR-027, SUD-11). It sets a flag
-per stage. `just deploy-api` and the deploy workflow then refuse that stage. Only
-`just api-on <stage>` clears the flag.
+At $9 actual, the kill switch stops every stage in the account (ADR-027, SUD-11, amendment "the
+kill switch"). Only `production` creates it, so it exists after the first `production` deploy.
 
-The kill switch, the $9 alert and the flag check in `just deploy-api` arrive with #108. Until
-then, `just deploy-api` checks only the account.
+```text
+Budget at $9 --> SNS KillSwitchTopic --> Lambda kill-switch --> for each stage:
+                      |                    1. SSM flag /sudoku/kill-switch/<stage>
+                      '--> email           2. route throttle 0 on the API
+                                           3. reserved concurrency 0 on sync-api
+                                           4. summary email (KillSwitchAlertTopic)
+```
+
+- `just deploy-api` runs `infra/kill-switch-check.ts`. It refuses while the flag exists. It also
+  refuses when it cannot read the flag. `run()` in `sst.config.ts` does the same check. The check
+  skips `sst remove` and `sst diff`, so `just remove-api` works for a stopped stage.
+- The deploy workflow of #109 will call `node infra/kill-switch-check.ts <stage>` before `sst deploy`. Its
+  role needs `ssm:GetParameter` and `ssm:GetParametersByPath` on
+  `arn:aws:ssm:eu-west-1:<account>:parameter/sudoku/kill-switch/*`.
+- `just api-on <stage>` shows the cost of the month, asks for `y` (skip with `--yes`), restores
+  the throttle, deletes the reserved concurrency and clears the flag last. AWS Budgets alerts
+  when the cost crosses a threshold. After `api-on`, the $9 alert does not fire again while the
+  month stays above $9. Watch the bill by hand for the rest of the month.
+- The account allows 10 concurrent executions. `sync-api` has no reserved concurrency of 2,
+  because AWS needs 100 unreserved. Reserve 2 when the account limit is 102 or more.
+- After the first `production` deploy, confirm the email subscription. AWS sends the mail
+  "AWS Notification - Subscription Confirmation" to the address of `BudgetEmail`. Click
+  "Confirm subscription".
+
+### Test the kill switch on `felix` (developer only)
+
+Do these steps once, after the first `production` deploy. They change the real account.
+
+1. Run `just aws-login`. Run `just deploy-api production`. This creates the budget, the topic and
+   the Lambda.
+2. Confirm the email subscription (see above). Check that no subscription is pending:
+
+   ```sh
+   AWS_PROFILE=sudoku aws sns list-subscriptions-by-topic --region eu-west-1 --topic-arn <KillSwitchAlertTopic arn>
+   ```
+
+3. Run `just deploy-api felix`. Check the quota: `AWS_PROFILE=sudoku aws lambda get-account-settings --region eu-west-1`.
+   Expect `ConcurrentExecutions: 10`.
+4. Check that the API answers: `curl -i -X POST "<apiUrl>/v1/sync"` returns 401.
+5. Start the kill switch by hand, as the budget would:
+
+   ```sh
+   AWS_PROFILE=sudoku aws lambda invoke --region eu-west-1 --function-name <kill-switch function name> --payload '{}' /dev/null
+   ```
+
+   Find the name with `aws lambda list-functions --query "Functions[?contains(FunctionName,'KillSwitch')].FunctionName"`.
+   Or publish to the topic: `aws sns publish --topic-arn <KillSwitchTopic arn> --message '{"test":true}'`.
+6. Read the summary email. `felix` must show "stopped". `dev` and `production` show the flag only.
+7. Check the stop:
+   - `curl -i -X POST "<apiUrl>/v1/sync"` returns 429.
+   - `aws ssm get-parameter --name /sudoku/kill-switch/felix` shows the flag.
+   - `aws lambda get-function-concurrency --function-name <SyncApiFunction name>` shows 0.
+   - `just deploy-api felix` refuses and prints the kill-switch message.
+8. Run `just api-on felix`. Check that `curl` returns 401 again and that the flag is gone.
+9. In the app (development variant, signed in on `felix`), finish a game while the stage is
+   stopped. No error shows, and the waiting list keeps the entry.
+10. Billing check, to answer whether AWS bills a throttled request: stop `felix` again (step 5).
+    Send 3000 requests (`for i in $(seq 3000); do curl -s -o /dev/null -X POST "<apiUrl>/v1/sync"; done`).
+    After 1 to 2 days, read the usage of `Amazon API Gateway` in Cost Explorer, grouped by usage
+    type. Compare the HTTP API request quantity with the number of requests that reached the API
+    before. Run `just api-on felix`. Write the result in ADR-027.
 
 ## Rules
 
