@@ -30,13 +30,13 @@ describe('migrate', () => {
     expect(await version()).toBe(MIGRATIONS.length)
   })
 
-  it('creates the game in progress and the history tables', async () => {
+  it('creates the game in progress, the history and the sync state tables', async () => {
     await migrate(db)
     const tables = await db.getAllAsync<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
       [],
     )
-    expect(tables.map((table) => table.name)).toEqual(['game_history', 'game_in_progress'])
+    expect(tables.map((table) => table.name)).toEqual(['game_history', 'game_in_progress', 'sync_state'])
   })
 
   it('gives every table an id, created_at, updated_at and deleted_at (ADR-012)', async () => {
@@ -90,7 +90,7 @@ describe('migrate', () => {
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
         [],
       )
-      expect(tables.map((table) => table.name)).toEqual(['game_history', 'game_in_progress'])
+      expect(tables.map((table) => table.name)).toEqual(['game_history', 'game_in_progress', 'sync_state'])
     } finally {
       first.close()
       second.close()
@@ -242,6 +242,96 @@ describe('migration 4: the abandoned result', () => {
     await db.runAsync(HISTORY_ROW, ['c', 'easy', 'abandoned', 1_000, at, at, at, null])
     await expect(db.runAsync(HISTORY_ROW, ['d', 'easy', 'paused', 1_000, at, at, at, null])).rejects.toThrow(
       'CHECK constraint failed',
+    )
+  })
+})
+
+describe('migration 5: the owner and the waiting list', () => {
+  const HISTORY_ROW = `INSERT INTO game_history
+    (id, level, source, result, played_ms, mistakes, hints_used, finished_at, created_at, updated_at, deleted_at, seed)
+    VALUES (?, 'easy', 'generated', ?, ?, 0, 0, ?, ?, ?, ?, ?)`
+
+  async function migrateFromVersion4() {
+    await migrate(db, MIGRATIONS.slice(0, 4))
+    await db.runAsync(HISTORY_ROW, ['a', 'won', 60_000, secondAt(1), secondAt(1), secondAt(1), null, 412_077])
+    await db.runAsync(HISTORY_ROW, ['b', 'lost', 30_000, secondAt(2), secondAt(2), secondAt(2), null, null])
+    await db.runAsync(HISTORY_ROW, ['c', 'abandoned', 5_000, secondAt(3), secondAt(3), secondAt(4), secondAt(4), null])
+    const saved = JSON.stringify(toSavedGame(place(select(newGame(), 2), 4).game))
+    await db.runAsync(
+      `INSERT INTO game_in_progress (id, level, source, seed, saved_game, created_at, updated_at)
+        VALUES ('playing', 'medium', 'generated', 7, ?, ?, ?)`,
+      [saved, secondAt(5), secondAt(5)],
+    )
+    await migrate(db)
+  }
+
+  it('keeps every history row and gives it no owner and no push', async () => {
+    await migrateFromVersion4()
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      `SELECT id, result, played_ms, seed, updated_at, deleted_at, owner_user_id, pushed_at
+        FROM game_history ORDER BY rowid`,
+      [],
+    )
+    expect(rows).toEqual([
+      {
+        id: 'a',
+        result: 'won',
+        played_ms: 60_000,
+        seed: 412_077,
+        updated_at: secondAt(1),
+        deleted_at: null,
+        owner_user_id: null,
+        pushed_at: null,
+      },
+      {
+        id: 'b',
+        result: 'lost',
+        played_ms: 30_000,
+        seed: null,
+        updated_at: secondAt(2),
+        deleted_at: null,
+        owner_user_id: null,
+        pushed_at: null,
+      },
+      {
+        id: 'c',
+        result: 'abandoned',
+        played_ms: 5_000,
+        seed: null,
+        updated_at: secondAt(4),
+        deleted_at: secondAt(4),
+        owner_user_id: null,
+        pushed_at: null,
+      },
+    ])
+  })
+
+  it('keeps the indexes of the history and adds the owner index', async () => {
+    await migrateFromVersion4()
+    const indexes = await db.getAllAsync<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'game_history' AND sql IS NOT NULL ORDER BY name",
+      [],
+    )
+    expect(indexes.map((index) => index.name)).toEqual(['game_history_best_time', 'game_history_owner'])
+  })
+
+  it('keeps the game in progress', async () => {
+    await migrateFromVersion4()
+    await expect(createSqliteStorage(db, testDeps()).puzzles.current()).resolves.toMatchObject({
+      id: 'playing',
+      level: 'medium',
+      seed: 7,
+    })
+  })
+
+  it('creates the sync state as one value per key', async () => {
+    await migrate(db)
+    await db.runAsync('INSERT INTO sync_state (key, value) VALUES (?, ?)', ['cursor', 'abc'])
+    await expect(db.runAsync('INSERT INTO sync_state (key, value) VALUES (?, ?)', ['cursor', 'def'])).rejects.toThrow(
+      'UNIQUE constraint failed',
+    )
+    await expect(db.runAsync('INSERT INTO sync_state (key, value) VALUES (?, ?)', [null, 'x'])).rejects.toThrow(
+      'NOT NULL constraint failed',
     )
   })
 })
