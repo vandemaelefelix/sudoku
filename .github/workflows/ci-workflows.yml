@@ -1,0 +1,20 @@
+name: ci-workflows
+on:
+  push:
+    branches: [main, develop]
+    paths: &paths
+      - .github/**
+  pull_request:
+    paths: *paths
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The script comes from the pinned commit of actionlint. The version argument pins the binary.
+      - run: bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12
+      - run: ./actionlint -color
