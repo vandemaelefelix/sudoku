@@ -399,7 +399,7 @@ The release needs these steps, in this order. Only the developer can do them.
    Google client IDs to the agent. The agent puts them in `config.ts` and `app.config.ts`.
 5. Run `just deploy-api production` again. It creates the table, the function and the API.
    Send the `apiUrl` to the agent.
-6. Publish the privacy policy only after in-app deletion ships in the app and the smoke test of step 7 passes on
+6. Publish the privacy policy only after the smoke test of step 7 passes on
    production. Do not publish before. The source is
    [`docs/privacy/privacy-policy.md`](../docs/privacy/privacy-policy.md). The repository is
    private, so GitHub Pages cannot serve it from here. Options: a small public repository with

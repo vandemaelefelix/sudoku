@@ -1,12 +1,11 @@
 ---
 status: DRAFT
-publish: blocked until in-app deletion ships and the production smoke test passes
+publish: blocked until the production smoke test passes
 ---
 
 # Privacy policy of Sudoku
 
-<!-- Do not publish this file yet. The server deletion exists. The in-app Delete account button ships with the app.
-Publish only after the button ships and the production smoke test passes. -->
+<!-- Do not publish this file yet. In-app deletion ships on develop. Publish only after the production smoke test passes. -->
 
 Last changed: 2026-10-15
 
