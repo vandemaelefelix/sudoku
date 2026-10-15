@@ -19,6 +19,27 @@ module.exports = {
       },
     },
     {
+      name: 'sync-contract-needs-only-zod',
+      comment:
+        'ADR-028: the app and the sync Lambda both import @sudoku/sync-contract, so it may depend on zod only. No React Native, no AWS SDK, no Node I/O.',
+      severity: 'error',
+      from: { path: '^packages/sync-contract/src', pathNot: '\\.test\\.ts$' },
+      to: {
+        dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
+        pathNot: '/node_modules/zod/',
+      },
+    },
+    {
+      name: 'sync-contract-stays-in-its-package',
+      comment: 'ADR-028: @sudoku/sync-contract must not reach outside its own folder with a relative import.',
+      severity: 'error',
+      from: { path: '^packages/sync-contract/src' },
+      to: {
+        pathNot: '^packages/sync-contract/',
+        dependencyTypesNot: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
+      },
+    },
+    {
       name: 'sud-03-game-does-not-use-scanner',
       comment: 'SUD-03: the game must not depend on the scanner.',
       severity: 'error',
