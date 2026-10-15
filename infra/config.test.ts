@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { CLERK_AUDIENCE, CLERK_ISSUER } from './config.ts'
+import { CLERK_ISSUER, hasClerk } from './config.ts'
 
 describe('CLERK_ISSUER', () => {
   it('gives felix and dev the same development instance', () => {
@@ -18,8 +18,13 @@ describe('CLERK_ISSUER', () => {
   })
 })
 
-describe('CLERK_AUDIENCE', () => {
-  it('equals the aud of the JWT template', () => {
-    assert.equal(CLERK_AUDIENCE, 'sudoku-api')
+describe('hasClerk', () => {
+  it('is true for the stages that share the development instance', () => {
+    assert.equal(hasClerk('felix'), true)
+    assert.equal(hasClerk('dev'), true)
+  })
+
+  it('is false for production until it has its own instance', () => {
+    assert.equal(hasClerk('production'), false)
   })
 })

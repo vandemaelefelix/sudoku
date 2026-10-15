@@ -184,7 +184,7 @@ The backend has these limits:
 - Before any TestFlight or App Store submission, the developer checks App Store guideline 4.8
   (Login Services). If it applies, the app adds Sign in with Apple. v1 keeps email and Google.
 - The Clerk settings live in the Clerk dashboard. The setup steps are in
-  [`infra/README.md`](../../../infra/README.md) (amendment for #102).
+  [`infra/README.md`](../../../infra/README.md).
 - The Lambda tests run with Vitest against a local DynamoDB in a container. The test table must
   match `infra/storage.ts`.
 - A budget alert can come hours late. The throttles bound the cost of those hours.
@@ -239,7 +239,7 @@ The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
 The kill switch and its flag per stage (decision 9) are not part of this setup. Until they exist,
 `just deploy-api` does not check a flag.
 
-## Amendment 2026-10-15: the Clerk development instance (#102)
+## Amendment 2026-10-15: the Clerk development instance
 
 The Clerk development instance makes decision 1 concrete. The steps are in the section Clerk of
 [`infra/README.md`](../../../infra/README.md).

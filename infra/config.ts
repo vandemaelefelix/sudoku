@@ -21,5 +21,7 @@ export const CLERK_ISSUER: Record<Stage, string | null> = {
   production: null,
 }
 
+export const hasClerk = (stage: Stage): boolean => CLERK_ISSUER[stage] !== null
+
 // The `aud` that the Clerk JWT template `sudoku-api` adds. The JWT authorizer requires it (ADR-027, decision 1).
 export const CLERK_AUDIENCE = 'sudoku-api'
