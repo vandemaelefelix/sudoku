@@ -294,7 +294,7 @@ The build of the sync API makes decisions 4, 6 and 9 concrete. The code is in
    `infra/backend-settings.ts` holds the format without them.
 3. **Point-in-time recovery only in `production`.** SST turns it on for every table. `felix` and
    `dev` hold no data to keep.
-4. **A stage without a Clerk issuer fails the deploy.** An API without a token check never exists.
+4. **A stage without a Clerk issuer deploys no API.** An API without a token check never exists. The amendment "the production release" changes this item for `production` only: it skips the API and does not fail. `felix` and `dev` still fail.
 5. **The Lambda logs one line per request** from an allow-list of fields. It logs our user ID,
    never the `sub`, a token, a claim or an email. On an error it logs only the error name.
 6. **The table design lives in `services/sync-api/src/tableDesign.ts`.** It has no imports.
@@ -412,3 +412,32 @@ The build of `DELETE /v1/account` makes decision 10 concrete. The code is in
    a Clerk issuer, so the secret is linked wherever the route exists. If the secret is missing,
    the call fails with 500 and the log name `ClerkError`.
 8. **No Apple token yet.** When Apple sign-in exists, the delete also revokes the Apple token.
+
+## Amendment 2026-10-15: the production release
+
+The release of the backend to production makes these decisions.
+
+1. **The account resources come first.** Before this amendment a stage without a Clerk issuer failed the deploy. `felix` and `dev` still fail: a removed issuer must not delete their table, because only `production` protects its resources.
+   So `production` could not create the budget, the kill switch and the GitHub OIDC roles before the Clerk production
+   instance existed. The deploy order is now:
+   1. Set the secret `BudgetEmail`. Run `just deploy-api production`. `production` without an issuer deploys only the
+      account-wide resources it owns. It skips the table, the sync function and the API. `deployPlan()` in
+      `infra/config.ts` decides this, and `run()` prints a note.
+   2. Make the Clerk production instance. Put its issuer in `CLERK_ISSUER` and set the secret `ClerkSecretKey`.
+   3. Deploy `production` again. It now creates the table, the function and the API.
+
+   A stage with an issuer deploys everything, as before. The kill switch needs no change. It finds the APIs by their
+   tags and the functions by their name prefix. On a `production` without an API it finds nothing to stop and still
+   sets the flag.
+2. **Clerk plan: Hobby is recommended.** The 7-day session is fixed. The app asks for a new token before each request,
+   so a player signs in again only after 7 days without the app. Move to Pro only if this hurts. The developer decides.
+3. **The domain is `sudoku.felixvandemaele.be`.** The issuer of `production` is
+   `https://clerk.sudoku.felixvandemaele.be`. `CLERK_ISSUER.production` stays `null` until the developer checks the
+   issuer with the `openid-configuration` URL and sets `ClerkSecretKey`.
+4. **The production Clerk and Google values are public.** They go in `PRODUCTION_BACKEND` in
+   `apps/mobile/app.config.ts`: the publishable key, the API URL and the two Google client IDs. All four are `null`
+   until they exist. With a `null` key the production variant has no account section.
+5. **Guideline 4.8: ship email and Google.** The app does not add Sign in with Apple now. It needs the paid Apple
+   Developer Program. Add it at the first rejection under guideline 4.8, or before the first submission.
+6. **The privacy policy is Markdown in the repo.** The source is `docs/privacy/privacy-policy.md`. The public page lives
+   outside this private repository. ADR-013 holds the App Store privacy labels.

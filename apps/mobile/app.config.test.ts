@@ -3,7 +3,13 @@ import { join } from 'node:path'
 import type { ExpoConfig } from 'expo/config'
 import appJson from './app.json'
 import { SPLASH_GROUND } from '@/theme/splash.colors'
-import { appVariant, DEVELOPMENT_CLERK_PUBLISHABLE_KEY, DEVELOPMENT_SYNC_API_URL, variantConfig } from './app.config'
+import {
+  appVariant,
+  DEVELOPMENT_CLERK_PUBLISHABLE_KEY,
+  DEVELOPMENT_SYNC_API_URL,
+  PRODUCTION_BACKEND,
+  variantConfig,
+} from './app.config'
 
 const base = appJson.expo as ExpoConfig
 
@@ -51,8 +57,49 @@ describe('the sync API URL', () => {
     )
   })
 
-  it('gives the production variant no URL, also with the override', () => {
+  it('gives the production variant no URL while it has no key, also with the override', () => {
     expect(variantConfig(base, 'production', 'https://other.example.com').extra?.syncApiUrl).toBeUndefined()
+  })
+})
+
+describe('the production backend', () => {
+  const live = {
+    clerkPublishableKey: 'pk_live_Y2xlcmsuc3Vkb2t1LmV4YW1wbGUuY29tJA',
+    syncApiUrl: 'https://prod.example.com',
+    googleIosClientId: '123-ios.apps.googleusercontent.com',
+    googleWebClientId: '123-web.apps.googleusercontent.com',
+  }
+
+  it('holds only placeholders until the production instance exists', () => {
+    expect(Object.values(PRODUCTION_BACKEND)).toEqual([null, null, null, null])
+  })
+
+  it('production without a key has no clerk extra', () => {
+    expect(variantConfig(base, 'production', undefined, PRODUCTION_BACKEND)).toBe(base)
+  })
+
+  it('production with a key has the key, the URL and the Google IDs', () => {
+    const extra = variantConfig(base, 'production', undefined, live).extra
+    expect(extra).toMatchObject({
+      clerkPublishableKey: live.clerkPublishableKey,
+      syncApiUrl: live.syncApiUrl,
+      EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID: live.googleIosClientId,
+      EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID: live.googleWebClientId,
+      EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME: 'com.googleusercontent.apps.123-ios',
+    })
+    expect(extra?.appVariant).toBeUndefined()
+  })
+
+  it('lets SYNC_API_URL override the production URL', () => {
+    expect(variantConfig(base, 'production', 'https://other.example.com', live).extra?.syncApiUrl).toBe(
+      'https://other.example.com',
+    )
+  })
+
+  it('keeps the production name and bundle identifier', () => {
+    const prod = variantConfig(base, 'production', undefined, live)
+    expect(prod.name).toBe('Sudoku')
+    expect(prod.ios?.bundleIdentifier).toBe('com.vandemaelefelix.sudoku')
   })
 })
 
