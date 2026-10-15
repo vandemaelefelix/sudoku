@@ -3,21 +3,31 @@ import { devWarn, errorMessage } from '@/utils/log.utils'
 import { insertHistoryEntry } from './HistoryRepository'
 import type { SqlDatabase, SqlExecutor } from './sql.types'
 import type { GameResult, Level, PuzzleSource, SavedProgress, StorageDeps } from './storage.types'
+import type { WriteQueue } from './writeQueue'
 
 /** The game in progress (ADR-012). Screens use this interface, never SQL. */
 export type PuzzleRepository = {
   /**
    * Starts a game in progress and discards the one before it. Rejects with a RangeError for a won or lost game.
    * peek() gives the new game as soon as start() returns, so a screen can open it while the write runs.
+   * `owner` is the Clerk user ID at this start, or null when signed out.
+   * The replaced game, when abandoned, gets it (ADR-028).
    */
-  start(input: { level: Level; source: PuzzleSource; seed?: number | null; game: Game }): Promise<SavedProgress>
+  start(input: {
+    level: Level
+    source: PuzzleSource
+    seed?: number | null
+    game: Game
+    owner: string | null
+  }): Promise<SavedProgress>
   /** The game in progress, or null. A saved game that does not load gives null and stays in storage. */
   current(): Promise<SavedProgress | null>
   /**
    * Saves the game after a move. A won or lost game moves to the history in the same transaction.
    * Does nothing when `id` is not the game in progress.
+   * `owner` is the Clerk user ID at this save, or null when signed out. A finished game gets it (ADR-028).
    */
-  save(id: string, game: Game): Promise<void>
+  save(id: string, game: Game, owner: string | null): Promise<void>
   discard(id: string): Promise<void>
   /**
    * The game in progress as far as this repository knows, without a read: a screen can draw it in its first frame.
@@ -30,7 +40,9 @@ export type PuzzleRepository = {
 type StartInput = Parameters<PuzzleRepository['start']>[0]
 
 /** The writes and reads of a repository that stores the games. insert writes a new game in progress with its id. */
-type StoredPuzzles = Omit<PuzzleRepository, 'start' | 'peek'> & { insert(progress: SavedProgress): Promise<void> }
+type StoredPuzzles = Omit<PuzzleRepository, 'start' | 'peek'> & {
+  insert(progress: SavedProgress, owner: string | null): Promise<void>
+}
 
 /**
  * Adds start() and peek() to a repository that stores the games. A current() that resolves after a later write
@@ -40,12 +52,12 @@ export function withPeek(stored: StoredPuzzles, newId: () => string): PuzzleRepo
   let latest: SavedProgress | null | undefined = undefined
   let writes = 0
   return {
-    start: ({ level, source, seed = null, game }: StartInput) => {
+    start: ({ level, source, seed = null, game, owner }: StartInput) => {
       if (resultOf(game) !== null) return Promise.reject(new RangeError(`A ${game.status} game cannot start`))
       const started: SavedProgress = { id: newId(), level, source, seed, game }
       writes += 1
       latest = started
-      return stored.insert(started).then(
+      return stored.insert(started, owner).then(
         () => started,
         (error: unknown) => {
           if (latest === started) latest = undefined
@@ -59,10 +71,10 @@ export function withPeek(stored: StoredPuzzles, newId: () => string): PuzzleRepo
       if (writes === writesBefore) latest = progress
       return progress
     },
-    save: (id, game) => {
+    save: (id, game, owner) => {
       if (latest?.id === id) latest = resultOf(game) === null ? { ...latest, game } : null
       writes += 1
-      return stored.save(id, game)
+      return stored.save(id, game, owner)
     },
     discard: (id) => {
       if (latest?.id === id) latest = null
@@ -79,21 +91,11 @@ export function resultOf(game: Game): GameResult | null {
 
 type ProgressRow = { id: string; level: Level; source: PuzzleSource; seed: number | null; saved_game: string }
 
-/** Runs each task after the one before. Two exclusive transactions on one connection must not overlap. */
-function createQueue() {
-  let last: Promise<unknown> = Promise.resolve()
-  return <T>(task: () => Promise<T>): Promise<T> => {
-    const next = last.then(task, task)
-    last = next.catch(() => undefined)
-    return next
-  }
-}
-
 /**
  * A game that a new game replaces is abandoned when the player made a move (ADR-023).
  * A saved game that does not load leaves no entry: its time and mistakes are unknown.
  */
-async function recordAbandoned(txn: SqlExecutor, row: ProgressRow, now: string): Promise<void> {
+async function recordAbandoned(txn: SqlExecutor, row: ProgressRow, now: string, owner: string | null): Promise<void> {
   let game: Game
   try {
     game = fromSavedGame(JSON.parse(row.saved_game))
@@ -102,25 +104,32 @@ async function recordAbandoned(txn: SqlExecutor, row: ProgressRow, now: string):
     return
   }
   if (!hasMoves(game)) return
-  await insertHistoryEntry(txn, {
-    id: row.id,
-    level: row.level,
-    source: row.source,
-    seed: row.seed,
-    result: 'abandoned',
-    playedMs: game.playedMs,
-    mistakes: game.mistakes,
-    hintsUsed: game.hintsUsed,
-    finishedAt: now,
-  })
+  await insertHistoryEntry(
+    txn,
+    {
+      id: row.id,
+      level: row.level,
+      source: row.source,
+      seed: row.seed,
+      result: 'abandoned',
+      playedMs: game.playedMs,
+      mistakes: game.mistakes,
+      hintsUsed: game.hintsUsed,
+      finishedAt: now,
+    },
+    owner,
+  )
 }
 
-export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps): PuzzleRepository {
-  const inOrder = createQueue()
-
+/** `inOrder` is the write queue of the connection, shared with the other repositories. */
+export function createSqlitePuzzleRepository(
+  db: SqlDatabase,
+  deps: StorageDeps,
+  inOrder: WriteQueue,
+): PuzzleRepository {
   return withPeek(
     {
-      insert: ({ id, level, source, seed, game }) =>
+      insert: ({ id, level, source, seed, game }, owner) =>
         inOrder(async () => {
           const now = deps.now()
           await db.withExclusiveTransactionAsync(async (txn) => {
@@ -129,7 +138,7 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
               WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
               [],
             )
-            if (replaced !== null) await recordAbandoned(txn, replaced, now)
+            if (replaced !== null) await recordAbandoned(txn, replaced, now, owner)
             await txn.runAsync('UPDATE game_in_progress SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL', [
               now,
               now,
@@ -160,7 +169,7 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
           }
         }),
 
-      save: (id, game) =>
+      save: (id, game, owner) =>
         inOrder(() =>
           db.withExclusiveTransactionAsync(async (txn) => {
             const row = await txn.getFirstAsync<Pick<ProgressRow, 'level' | 'source' | 'seed'>>(
@@ -175,17 +184,21 @@ export function createSqlitePuzzleRepository(db: SqlDatabase, deps: StorageDeps)
               [JSON.stringify(toSavedGame(game)), now, result === null ? null : now, id],
             )
             if (result !== null) {
-              await insertHistoryEntry(txn, {
-                id,
-                level: row.level,
-                source: row.source,
-                seed: row.seed,
-                result,
-                playedMs: game.playedMs,
-                mistakes: game.mistakes,
-                hintsUsed: game.hintsUsed,
-                finishedAt: now,
-              })
+              await insertHistoryEntry(
+                txn,
+                {
+                  id,
+                  level: row.level,
+                  source: row.source,
+                  seed: row.seed,
+                  result,
+                  playedMs: game.playedMs,
+                  mistakes: game.mistakes,
+                  hintsUsed: game.hintsUsed,
+                  finishedAt: now,
+                },
+                owner,
+              )
             }
           }),
         ),

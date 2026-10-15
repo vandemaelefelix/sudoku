@@ -15,6 +15,7 @@ import HomeRoute from '@/app/index'
 import ScanRoute from '@/app/scan'
 import SettingsRoute from '@/app/settings'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
+import { OwnerContext } from '@/storage/hooks/useOwner'
 
 // expo-router/testing-library adds this matcher at runtime, but it ships no type for it.
 declare global {
@@ -25,11 +26,13 @@ declare global {
   }
 }
 
-function renderApp(storage: GameStorage = createMemoryStorage()) {
+function renderApp(storage: GameStorage = createMemoryStorage(), owner: string | null = null) {
   renderRouter({
     _layout: () => (
       <GameStorageContext value={storage}>
-        <Stack screenOptions={{ headerShown: false }} />
+        <OwnerContext value={owner}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </OwnerContext>
       </GameStorageContext>
     ),
     index: HomeRoute,
@@ -87,7 +90,7 @@ function winGame(game: Game) {
 }
 
 async function waitForLostEntry(storage: GameStorage) {
-  await waitFor(async () => expect(await storage.history.list()).toMatchObject([{ result: 'lost' }]))
+  await waitFor(async () => expect(await storage.history.list(null)).toMatchObject([{ result: 'lost' }]))
 }
 
 // Jest runs as a development build, so PlayScreen logs every save. Only that log is silenced.
@@ -150,7 +153,12 @@ it('saves a move, and Continue resumes the move', async () => {
 it('a double tap on Continue opens one game screen', async () => {
   const storage = createMemoryStorage()
   const { givens, solution } = generate('easy', 5)
-  await storage.puzzles.start({ level: 'easy', source: 'generated', game: createGame({ givens, solution }) })
+  await storage.puzzles.start({
+    level: 'easy',
+    source: 'generated',
+    game: createGame({ givens, solution }),
+    owner: null,
+  })
   renderApp(storage)
   const resume = await screen.findByRole('button', { name: 'Continue, Easy' })
   fireEvent.press(resume)
@@ -176,6 +184,7 @@ it('Continue resumes the time played', async () => {
     level: 'medium',
     source: 'generated',
     game: { ...createGame({ givens, solution }), playedMs: 65_000 },
+    owner: null,
   })
   renderApp(storage)
   fireEvent.press(await screen.findByRole('button', { name: 'Continue, Medium' }))
@@ -223,7 +232,7 @@ it('asks before a new game replaces the game in progress, then discards it witho
   expect(alert).toHaveBeenCalledWith('Start a new game?', 'Your current game ends.', expect.any(Array))
   expect(second.id).not.toBe(first.id)
   expect(second.level).toBe('hard')
-  expect(await storage.history.list()).toEqual([])
+  expect(await storage.history.list(null)).toEqual([])
 })
 
 it('keeps the game in progress when the player cancels', async () => {
@@ -291,7 +300,7 @@ it('a double tap on Settings opens one Settings screen', async () => {
 it('New puzzle after a scanned game saves a generated game', async () => {
   const storage = createMemoryStorage()
   const { givens, solution } = generate('easy', 11)
-  await storage.puzzles.start({ level: 'easy', source: 'scanned', game: createGame({ givens, solution }) })
+  await storage.puzzles.start({ level: 'easy', source: 'scanned', game: createGame({ givens, solution }), owner: null })
   renderApp(storage)
   fireEvent.press(await screen.findByRole('button', { name: 'Continue, Easy' }))
   await waitFor(() => expect(screen).toHavePathname('/game'))
@@ -317,7 +326,7 @@ it('New puzzle starts a new game at the same level, and the lost game is in the 
   expect(next.id).not.toBe(lost.id)
   expect(next.level).toBe('medium')
   expect(next.seed).toEqual(expect.any(Number))
-  expect(await storage.history.list()).toMatchObject([{ id: lost.id, level: 'medium', result: 'lost' }])
+  expect(await storage.history.list(null)).toMatchObject([{ id: lost.id, level: 'medium', result: 'lost' }])
   await layOutBoard()
   expect(screen.getAllByTestId(/^cell-\d+$/)).toHaveLength(81)
 })
@@ -334,7 +343,7 @@ it('Try this puzzle again starts the same puzzle as a new saved game', async () 
   expect(retried.game.givens).toEqual(lost.game.givens)
   expect(retried.game.mistakes).toBe(0)
   expect(retried.seed).toBe(lost.seed)
-  expect(await storage.history.list()).toHaveLength(1)
+  expect(await storage.history.list(null)).toHaveLength(1)
 })
 
 it('Try this puzzle again keeps the start entries', async () => {
@@ -343,7 +352,12 @@ it('Try this puzzle again keeps the start entries', async () => {
   // loseGame plays the first empty cell, so the start entries go on the two empty cells after it.
   const scanned = givens.flatMap((digit, cell) => (digit === 0 ? [cell] : [])).slice(1, 3)
   const entries = givens.map((_, cell) => (scanned.includes(cell) ? (solution[cell] ?? 0) : 0))
-  await storage.puzzles.start({ level: 'easy', source: 'scanned', game: createGame({ givens, solution, entries }) })
+  await storage.puzzles.start({
+    level: 'easy',
+    source: 'scanned',
+    game: createGame({ givens, solution, entries }),
+    owner: null,
+  })
   renderApp(storage)
   fireEvent.press(await screen.findByRole('button', { name: 'Continue, Easy' }))
   await waitFor(() => expect(screen).toHavePathname('/game'))
@@ -386,7 +400,7 @@ it('a won game shows the finish card, and New puzzle starts a new game at the sa
   expect(screen.getByText('New best')).toBeTruthy()
   expect(screen.getByText(`Puzzle ${formatPuzzleNumber(won.seed ?? -1)}`)).toBeTruthy()
   await waitFor(async () =>
-    expect(await storage.history.list()).toMatchObject([{ id: won.id, result: 'won', seed: won.seed }]),
+    expect(await storage.history.list(null)).toMatchObject([{ id: won.id, result: 'won', seed: won.seed }]),
   )
   fireEvent.press(await screen.findByRole('button', { name: 'New puzzle' }))
   await waitFor(() => expect(screen.queryByTestId('finish')).toBeNull())
@@ -398,8 +412,8 @@ it('a won game shows the finish card, and New puzzle starts a new game at the sa
 it('the finish card shows no New best when the stored best time is not beaten', async () => {
   jest.mocked(useReducedMotion).mockReturnValue(true)
   const storage = createMemoryStorage()
-  const earlier = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame() })
-  await storage.puzzles.save(earlier.id, wonGame(0))
+  const earlier = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame(), owner: null })
+  await storage.puzzles.save(earlier.id, wonGame(0), null)
   renderApp(storage)
   const won = await startGame(storage)
   winGame(won.game)
@@ -433,4 +447,17 @@ it('Back to home on the finish card shows no Continue', async () => {
   await waitFor(() => expect(screen).toHavePathname('/'))
   expect(await screen.findByRole('button', { name: 'Easy' })).toBeTruthy()
   await waitFor(() => expect(screen.queryByRole('button', { name: /^Continue/ })).toBeNull())
+})
+
+it('starts and finishes a game for the signed-in owner', async () => {
+  const storage = createMemoryStorage()
+  const start = jest.spyOn(storage.puzzles, 'start')
+  renderApp(storage, 'user-alice')
+  const lost = await startGame(storage, 'Medium')
+  expect(start).toHaveBeenCalledWith(expect.objectContaining({ owner: 'user-alice' }))
+  loseGame(lost.game)
+  await waitFor(async () =>
+    expect(await storage.history.list('user-alice')).toMatchObject([{ id: lost.id, result: 'lost' }]),
+  )
+  expect(await storage.history.list(null)).toEqual([])
 })

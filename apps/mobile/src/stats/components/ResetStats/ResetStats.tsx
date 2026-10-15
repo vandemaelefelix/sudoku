@@ -1,18 +1,20 @@
 import { Alert, Pressable, Text } from 'react-native'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
+import { useOwner } from '@/storage/hooks/useOwner'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 import { styles } from './ResetStats.styles'
 
 type ResetStatsProps = { onReset(): void }
 
-/** Deletes the history of all games after a question. Only the development variant shows it. */
+/** Deletes the history of all games of the owner after a question. Only the development variant shows it. */
 export function ResetStats({ onReset }: ResetStatsProps) {
   const { history } = useGameStorage()
+  const owner = useOwner()
 
   const reset = () => {
     history
-      .clear()
+      .clear(owner)
       .then(onReset)
       .catch((error: unknown) => devWarn('storage', `The stats do not reset: ${errorMessage(error)}`))
   }

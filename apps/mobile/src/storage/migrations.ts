@@ -65,6 +65,15 @@ export const MIGRATIONS: readonly string[] = [
   DROP TABLE game_history;
   ALTER TABLE game_history_next RENAME TO game_history;
   CREATE INDEX game_history_best_time ON game_history (level, result, played_ms) WHERE deleted_at IS NULL;`,
+  // The owner and the waiting list of the history sync (ADR-028). An owner of null is a game finished while signed out.
+  // sync_state holds single values, such as the cursor, so it has no id or timestamps (ADR-028).
+  `ALTER TABLE game_history ADD COLUMN owner_id TEXT;
+  ALTER TABLE game_history ADD COLUMN pushed_at TEXT;
+  CREATE INDEX game_history_owner ON game_history (owner_id, updated_at);
+  CREATE TABLE sync_state (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT
+  );`,
 ]
 
 /**
