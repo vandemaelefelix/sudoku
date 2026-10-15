@@ -22,10 +22,7 @@ describe('trustPolicy', () => {
   })
 
   it('pins the repository and the develop branch exactly', () => {
-    assert.equal(
-      equals[`${HOST}:sub`],
-      'repo:vandemaelefelix@32290789/sudoku@1412094169:ref:refs/heads/develop',
-    )
+    assert.equal(equals[`${HOST}:sub`], 'repo:vandemaelefelix@32290789/sudoku@1412094169:ref:refs/heads/develop')
     assert.equal(equals[`${HOST}:repository_id`], '1412094169')
     assert.equal(GITHUB_REPOSITORY_ID, '1412094169')
   })
@@ -53,7 +50,7 @@ describe('DEPLOY_ROLES', () => {
 
   it('makes the dev and production trust differ only by job_workflow_ref', () => {
     const conditions = (workflowFile: string) =>
-      (trustPolicy('x', workflowFile).Statement[0]!.Condition.StringEquals) as Record<string, string>
+      trustPolicy('x', workflowFile).Statement[0]!.Condition.StringEquals as Record<string, string>
     const dev = conditions(DEPLOY_ROLES.dev.workflowFile)
     const production = conditions(DEPLOY_ROLES.production.workflowFile)
     const differing = Object.keys(dev).filter((key) => dev[key] !== production[key])
