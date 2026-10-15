@@ -370,7 +370,7 @@ This amendment makes decision 8 concrete. The reasons for the workflow design ar
    session lasts 1 hour at most.
 3. **`production` creates the OIDC provider and the two roles**, in `infra/github-oidc.ts`
    (decision 5 of the account amendment). The roles must exist before CI can take them. So the
-   second `production` deploy runs from the laptop, like the first one.
+   first `production` deploy runs from the laptop. The amendment "the production release" makes the roles part of it.
 4. **The deploy workflows run three checks before any `sst` command.** The role is taken. The
    account is compared with `AWS_ACCOUNT_ID` (layer 1 of the account guard, now also in CI). The
    kill-switch flag of the stage is read (decision 9 of the kill switch amendment).
