@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { createGame, toSavedGame, type Game } from '@sudoku/core'
 import { SLOW_SAVE_MS } from '@/game/constants/save.constants'
@@ -73,16 +73,27 @@ export function PlayScreen() {
     }
   }, [history, owner])
 
+  // A second queue for a new owner would let its older waiting game land after a newer move.
+  // So the queue stays, and each write reads the owner at the time of the write (ADR-028).
+  const ownerRef = useRef(owner)
+  useEffect(() => {
+    ownerRef.current = owner
+  }, [owner])
+
   const id = progress?.id
   const save = useMemo(
     () =>
       id === undefined
         ? null
-        : createSaveQueue((game) => puzzles.save(id, game, owner), {
-            saved: logSave,
-            failed: (error) => devWarn('storage', `The game does not save: ${errorMessage(error)}`),
-          }),
-    [puzzles, id, owner],
+        : createSaveQueue(
+            // oxlint-disable-next-line react/refs -- the queue reads the ref when it writes, not during render
+            (game) => puzzles.save(id, game, ownerRef.current),
+            {
+              saved: logSave,
+              failed: (error) => devWarn('storage', `The game does not save: ${errorMessage(error)}`),
+            },
+          ),
+    [puzzles, id],
   )
 
   // Each restart is a new game in progress with a new id: save() moved a lost game to the history,
