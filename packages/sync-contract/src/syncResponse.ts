@@ -8,7 +8,7 @@ export const syncResponseSchema = z.object({
   // At the daily count, the server leaves out the history entries that do not fit (ADR-028).
   acceptedIds: z.array(z.uuid()).max(MAX_ENTRIES_PER_SYNC),
   changes: z.array(historyEntrySchema).max(MAX_CHANGES_PER_SYNC),
-  cursor: z.string().min(1).max(MAX_CURSOR_LENGTH).nullable(),
+  cursor: z.string().min(1).max(MAX_CURSOR_LENGTH),
   more: z.boolean(),
 })
 

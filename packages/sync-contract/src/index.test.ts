@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import * as contract from './index'
+import { validEntry } from './testData'
 import type { ErrorCode, SyncRequest, SyncResponse } from './index'
 
 describe('@sudoku/sync-contract', () => {
@@ -13,22 +14,25 @@ describe('@sudoku/sync-contract', () => {
   })
 
   it('exports the history entry schemas', () => {
-    expect(contract.historyEntrySchema).toBeDefined()
+    expect(contract.historyEntrySchema.parse(validEntry())).toEqual(validEntry())
     expect(contract.levelSchema.options).toEqual(['easy', 'medium', 'hard', 'expert'])
     expect(contract.puzzleSourceSchema.options).toEqual(['generated', 'scanned'])
     expect(contract.gameResultSchema.options).toEqual(['won', 'lost', 'abandoned'])
   })
 
   it('exports the sync and error schemas', () => {
-    expect(contract.syncRequestSchema).toBeDefined()
-    expect(contract.syncResponseSchema).toBeDefined()
-    expect(contract.errorBodySchema).toBeDefined()
+    const request = { entries: [], cursor: null }
+    const response = { acceptedIds: [], changes: [], cursor: 'eyJ2IjoxfQ', more: false }
+    const error = { code: 'invalid_cursor', message: 'The cursor is not valid.' }
+    expect(contract.syncRequestSchema.parse(request)).toEqual(request)
+    expect(contract.syncResponseSchema.parse(response)).toEqual(response)
+    expect(contract.errorBodySchema.parse(error)).toEqual(error)
     expect(contract.errorCodeSchema.options).toEqual(['invalid_request', 'invalid_cursor', 'account_deleted'])
   })
 
-  it('types the cursor as a string or null', () => {
+  it('types the request cursor as a string or null and the response cursor as a string', () => {
     expectTypeOf<SyncRequest['cursor']>().toEqualTypeOf<string | null>()
-    expectTypeOf<SyncResponse['cursor']>().toEqualTypeOf<string | null>()
+    expectTypeOf<SyncResponse['cursor']>().toEqualTypeOf<string>()
     expectTypeOf<ErrorCode>().toEqualTypeOf<'invalid_request' | 'invalid_cursor' | 'account_deleted'>()
   })
 })

@@ -48,8 +48,8 @@ describe('syncResponseSchema', () => {
     expect(accepts(rest)).toBe(false)
   })
 
-  it('accepts a null cursor', () => {
-    expect(accepts(response({ cursor: null }))).toBe(true)
+  it('refuses a null cursor', () => {
+    expect(accepts(response({ cursor: null }))).toBe(false)
   })
 
   it('refuses a response with a bad change', () => {

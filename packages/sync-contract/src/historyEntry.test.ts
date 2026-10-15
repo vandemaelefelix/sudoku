@@ -56,6 +56,7 @@ describe('historyEntrySchema', () => {
     ['no decimals', '2026-10-15T09:12:34Z'],
     ['two decimals', '2026-10-15T09:12:34.56Z'],
     ['an offset', '2026-10-15T11:12:34.567+02:00'],
+    ['no zone', '2026-10-15T09:12:34.567'],
     ['text', 'yesterday'],
   ])('refuses a time with %s', (_name, time) => {
     for (const field of ['finishedAt', 'createdAt', 'updatedAt', 'deletedAt']) {
