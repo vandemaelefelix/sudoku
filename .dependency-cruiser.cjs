@@ -54,6 +54,14 @@ module.exports = {
       to: { path: '^apps/mobile/src/scanner/', pathNot: '^apps/mobile/src/scanner/index\\.ts$' },
     },
     {
+      name: 'adr-027-app-does-not-import-infra',
+      comment:
+        'ADR-027: the app and the packages never import the SST code. The API is their only link to the backend.',
+      severity: 'error',
+      from: { path: '^(apps|packages)/' },
+      to: { path: '^(infra/|sst\\.config\\.ts$)' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',

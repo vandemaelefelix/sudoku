@@ -11,6 +11,9 @@ on:
       - .npmrc
       - .nvmrc
       - tsconfig.base.json
+      - tsconfig.infra.json
+      - sst.config.ts
+      - infra/**
       - .oxlintrc.json
       - .dependency-cruiser.cjs
       - justfile
@@ -34,6 +37,9 @@ jobs:
       - run: just lint-ts
       - run: just boundaries
       - run: just test-ts
+      # sst install needs no AWS credentials. app() skips layer 2 of the account guard in CI (ADR-027).
+      - run: pnpm exec sst install --stage felix
+      - run: pnpm typecheck:infra
       # The model is not in git (ADR-007, amendment). Metro needs a file to bundle; its content does not matter here.
       - run: touch apps/mobile/assets/models/cell-classifier.tflite
       - run: just bundle

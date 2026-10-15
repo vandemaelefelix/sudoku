@@ -28,6 +28,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | Words and their meaning | `docs/architecture/12-glossary.md` |
 | Commands (setup, test, lint) | `justfile`, or run `just --list` |
 | Rules for the Expo app | `apps/mobile/AGENTS.md` |
+| How the backend deploys | `infra/README.md` |
 
 ## Rules that bind all work
 
