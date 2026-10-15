@@ -10,6 +10,7 @@ import { createSaveQueue } from '@/game/utils/save.utils'
 import { newGeneratedGame } from '@/game/utils/start.utils'
 import type { BestTimes, PuzzleSource, SavedProgress } from '@/storage'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
+import { useOwner } from '@/storage/hooks/useOwner'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
 import { styles } from './PlayScreen.styles'
 
@@ -30,6 +31,7 @@ function logSave(game: Game, ms: number) {
 export function PlayScreen() {
   const router = useRouter()
   const { puzzles, history } = useGameStorage()
+  const owner = useOwner()
   const [progress, setProgress] = useState<SavedProgress | null>(() => puzzles.peek() ?? null)
   const [best, setBest] = useState<BestTimes | null>(null)
 
@@ -59,7 +61,7 @@ export function PlayScreen() {
   useEffect(() => {
     let live = true
     history
-      .bestTimes()
+      .bestTimes(owner)
       .then((times) => live && setBest(times))
       .catch((error: unknown) => {
         devWarn('storage', `The best times do not load: ${errorMessage(error)}`)
@@ -69,18 +71,18 @@ export function PlayScreen() {
     return () => {
       live = false
     }
-  }, [history])
+  }, [history, owner])
 
   const id = progress?.id
   const save = useMemo(
     () =>
       id === undefined
         ? null
-        : createSaveQueue((game) => puzzles.save(id, game), {
+        : createSaveQueue((game) => puzzles.save(id, game, owner), {
             saved: logSave,
             failed: (error) => devWarn('storage', `The game does not save: ${errorMessage(error)}`),
           }),
-    [puzzles, id],
+    [puzzles, id, owner],
   )
 
   // Each restart is a new game in progress with a new id: save() moved a lost game to the history,
@@ -91,14 +93,14 @@ export function PlayScreen() {
       if (progress === null) return
       try {
         const { game, seed } = make(progress)
-        const started = await puzzles.start({ level: progress.level, source, seed, game })
+        const started = await puzzles.start({ level: progress.level, source, seed, game, owner })
         setProgress(started)
-        setBest(await history.bestTimes())
+        setBest(await history.bestTimes(owner))
       } catch (error) {
         devWarn('storage', `The game does not start: ${errorMessage(error)}`)
       }
     },
-    [puzzles, history, progress],
+    [puzzles, history, progress, owner],
   )
 
   // The promises let the sheet rise again when the start fails.

@@ -5,6 +5,7 @@ import { createGame, generate, isWrong } from '@sudoku/core'
 import type { ScannedStart } from '@/scan/utils/play.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
+import { OwnerContext } from '@/storage/hooks/useOwner'
 import { useScannedStart } from './useScannedStart'
 
 const { givens, solution } = generate('hard', 4)
@@ -21,12 +22,14 @@ function PlayProbe() {
   )
 }
 
-function renderScan(storage: GameStorage = createMemoryStorage()) {
+function renderScan(storage: GameStorage = createMemoryStorage(), owner: string | null = null) {
   renderRouter(
     {
       _layout: () => (
         <GameStorageContext value={storage}>
-          <Stack screenOptions={{ headerShown: false }} />
+          <OwnerContext value={owner}>
+            <Stack screenOptions={{ headerShown: false }} />
+          </OwnerContext>
         </GameStorageContext>
       ),
       index: () => <Text>home</Text>,
@@ -48,7 +51,7 @@ const pressPlay = async () => fireEvent.press(await screen.findByRole('button', 
 
 async function startGenerated(storage: GameStorage) {
   const other = generate('easy', 9)
-  await storage.puzzles.start({ level: 'easy', source: 'generated', game: createGame(other) })
+  await storage.puzzles.start({ level: 'easy', source: 'generated', game: createGame(other), owner: null })
 }
 
 afterEach(() => jest.restoreAllMocks())
@@ -95,4 +98,13 @@ it('a double tap on Play starts one game', async () => {
   fireEvent.press(play)
   await waitFor(() => expect(screen).toHavePathname('/game'))
   expect(start).toHaveBeenCalledTimes(1)
+})
+
+it('starts the scan for the signed-in owner', async () => {
+  const storage = createMemoryStorage()
+  const start = jest.spyOn(storage.puzzles, 'start')
+  renderScan(storage, 'user-alice')
+  await pressPlay()
+  await waitFor(() => expect(screen).toHavePathname('/game'))
+  expect(start).toHaveBeenCalledWith(expect.objectContaining({ source: 'scanned', owner: 'user-alice' }))
 })

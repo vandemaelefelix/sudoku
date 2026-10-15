@@ -27,8 +27,8 @@ afterEach(async () => {
 })
 
 async function finish(storage: GameStorage, game: Game) {
-  const { id } = await storage.puzzles.start({ level: 'medium', source: 'generated', game: newGame() })
-  await storage.puzzles.save(id, game)
+  const { id } = await storage.puzzles.start({ level: 'medium', source: 'generated', game: newGame(), owner: null })
+  await storage.puzzles.save(id, game, null)
 }
 
 async function storageWithGames() {
@@ -79,8 +79,8 @@ it('shows the empty numbers on a device without games', async () => {
 
 it('counts a scanned game after the switch turns on', async () => {
   const storage = createMemoryStorage()
-  const { id } = await storage.puzzles.start({ level: 'easy', source: 'scanned', game: newGame() })
-  await storage.puzzles.save(id, wonGame(30_000))
+  const { id } = await storage.puzzles.start({ level: 'easy', source: 'scanned', game: newGame(), owner: null })
+  await storage.puzzles.save(id, wonGame(30_000), null)
   renderScreen(storage)
   await waitFor(() => screen.getByLabelText('Easy, Played: 0'))
   await act(async () => fireEvent.press(screen.getByLabelText('Include scanned puzzles')))

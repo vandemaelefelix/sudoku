@@ -30,7 +30,12 @@ function renderPlay(storage: GameStorage) {
 
 async function withGame(): Promise<GameStorage> {
   const storage = createMemoryStorage()
-  await storage.puzzles.start({ level: 'easy', source: 'generated', game: createGame(generate('easy', 3)) })
+  await storage.puzzles.start({
+    level: 'easy',
+    source: 'generated',
+    game: createGame(generate('easy', 3)),
+    owner: null,
+  })
   return storage
 }
 
