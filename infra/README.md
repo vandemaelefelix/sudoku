@@ -2,6 +2,7 @@
 
 The backend runs on AWS in one personal account. SST v4 describes it in TypeScript. The
 decision and its reasons are in [ADR-027](../docs/architecture/adr/adr-027-backend-platform.md).
+The [operations runbook](../docs/operations/runbook.md) lists every part of the backend and the fix for each failure.
 
 ## What is here
 

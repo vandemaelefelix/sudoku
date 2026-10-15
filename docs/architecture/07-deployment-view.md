@@ -12,12 +12,12 @@ Placeholder. What is known:
 | Developer Mac | `ml/` training and export, app builds | Apple Silicon, MPS for training (TC-4) |
 | GitHub | The repository, CI on Linux runners ([ADR-010](adr/adr-010-testing-and-ci.md)). Deploys of the backend with an AWS role through OIDC ([ADR-027](adr/adr-027-backend-platform.md)) | Private until it goes into the portfolio. Check ADR-013 before making it public |
 | AWS `eu-west-1` | API Gateway HTTP API, the `sync-api` Lambda, one DynamoDB table, AWS Budgets and the kill switch. One SST stage each: `felix`, `dev` and `production` | `dev` deploys on each merge to `develop`. `production` deploys from a manual run. SUD-11 caps the bill |
-| Clerk | A development instance and a production instance | Production on `sudoku.felixvandemaele.be`, DNS records at GoDaddy |
+| Clerk | A development instance and a production instance | Production on `sudoku.felixvandemaele.be`. The DNS of the domain is at Vercel |
 
 ## AWS account
 
 The backend has one personal AWS account, in `eu-west-1`. No other project uses it. The setup is
-in [`infra/README.md`](../../infra/README.md).
+in [`infra/README.md`](../../infra/README.md). The [operations runbook](../operations/runbook.md) lists every provider and its fixes.
 
 | Topic | Rule |
 | --- | --- |

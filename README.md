@@ -31,3 +31,4 @@ The backend needs the AWS CLI 2.32 or newer. See [the backend README](infra/READ
 - [Model contract](docs/architecture/00-concepts/model-contract.md)
 - [Game screen](docs/architecture/00-concepts/game-screen.md)
 - [History sync](docs/architecture/00-concepts/history-sync.md)
+- [Operations runbook](docs/operations/runbook.md)
