@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Shape only. The validator in src/index.ts also checks that each probability list sums to 1 and that the corners form a convex quad (SUD-07).",
+  "title": "ScanRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scanId", "contributorId", "appVersion", "modelVersion", "corners", "cells"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "scanId": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "contributorId": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "appVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "modelVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "corners": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 81,
+      "maxItems": 81,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["digitProbs", "kindProbs", "finalDigit", "finalKind", "edited"],
+        "properties": {
+          "digitProbs": {
+            "type": "array",
+            "minItems": 10,
+            "maxItems": 10,
+            "items": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "kindProbs": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "finalDigit": { "type": "integer", "minimum": 0, "maximum": 9 },
+          "finalKind": { "type": "integer", "minimum": 0, "maximum": 3 },
+          "edited": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
