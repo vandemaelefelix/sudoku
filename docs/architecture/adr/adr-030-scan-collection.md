@@ -62,8 +62,11 @@ must also accept a signed-out player.
 9. **The data expires after 12 months.** A table TTL removes the item. A bucket lifecycle rule removes the photo.
 10. **The player deletes scans by email.** Account delete also removes the scans of a signed-in player. Deletion does
     not undo training that already used the scan.
+    A scan that the player uploaded while signed out stays under the contributor ID. Account delete does not remove
+    it. Deletion by email covers it.
+    A retry after a lost response can leave two rows for one scan.
 11. **Training takes `verified` and `app-edited` cells by default.** `app-unedited` cells need a flag. The label
-    provenance is a new column in `cells.csv`. Scan cells never become fixtures (SUD-10). Scan photos stay out of git
+    provenance is a new column in `cells.csv`. Scan cells never become fixtures. A fixture never enters a training dataset (SUD-10). Scan photos stay out of git
     (SUD-08).
 12. **App Store privacy labels (amends ADR-013).** The labels declare photos and the device ID as data linked to the
     player, for app functionality. "Data Not Collected" no longer holds. The exact label values are fixed before the
@@ -76,6 +79,8 @@ must also accept a signed-out player.
 - The backend has a second Lambda and a public route. SUD-11 bounds the cost with a throttle and the kill switch.
 - The developer gets labelled real photos with little hand-labelling.
 - The privacy policy gets a new section. The developer must answer deletion requests by email.
+- Account delete does not remove scans that the player uploaded while signed out. Only deletion by email removes them.
+- A retry after a lost response can leave two rows for one scan.
 - A repeat with a token reuses an existing CONTRIB row for the same scan. A scan never has both a CONTRIB row and a USER row.
 - A determined sender can send junk. The app key does not stop this. The validator limits the damage.
 
