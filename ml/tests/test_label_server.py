@@ -157,7 +157,7 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
     monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Interrupted())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], paths) == 0
-    assert paths.cells_csv.read_text().splitlines()[1].endswith(",handwritten,,,")
+    assert paths.cells_csv.read_text().splitlines()[1].endswith(",handwritten,,,,verified")
 
 
 FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]

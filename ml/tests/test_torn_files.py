@@ -23,7 +23,9 @@ def test_the_manifest_is_written_through_a_part_file(tmp_path: Path):
 @pytest.mark.parametrize("bad", ["a" * 30, "g" * 64, "", "A" * 64])
 def test_read_ids_refuses_an_id_that_is_not_64_hex(tmp_path: Path, bad: str):
     manifest = tmp_path / "cells.csv"
-    manifest.write_text(f"cell_id,digit,kind,photo_id,row,col\n{'a' * 64},7,,,,\n{bad},7,,,,\n")
+    manifest.write_text(
+        f"cell_id,digit,kind,photo_id,row,col,label_source\n{'a' * 64},7,,,,,\n{bad},7,,,,,\n"
+    )
     with pytest.raises(ValueError, match=r"cells.csv line 3"):
         read_ids(manifest)
 

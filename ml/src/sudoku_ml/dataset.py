@@ -51,24 +51,66 @@ def read_kinds(manifest: Path) -> dict[str, str]:
         raise ValueError(f"{manifest} cannot be read ({error}). {RESTORE}") from error
 
 
+# The labels that training trusts by default. An empty value is a cell from before the column.
+TRUSTED_LABEL_SOURCES = ("", "verified", "app-edited")
+APP_SCAN = "app-scan"
+
+
+def read_label_sources(manifest: Path) -> dict[str, str]:
+    """File stem → the label_source column of cells.csv. Raises ValueError if it does not parse."""
+    try:
+        with manifest.open(newline="") as handle:
+            return {
+                row["cell_id"][:16]: row.get("label_source") or ""
+                for row in csv.DictReader(handle, strict=True)
+            }
+    except (csv.Error, KeyError, TypeError) as error:
+        raise ValueError(f"{manifest} cannot be read ({error}). {RESTORE}") from error
+
+
+def _scan_photo_of_cells(manifest: Path) -> dict[str, str]:
+    """File stem → photo id, for the cells of scan photos only. Other cells keep their old
+    grouping, so this change does not move them to another side of the split."""
+    photos = manifest.with_name("sudoku-photos.csv")
+    if not photos.exists():
+        return {}
+    with photos.open(newline="") as handle:
+        scans = {r["photo_id"] for r in csv.DictReader(handle) if r.get("source") == APP_SCAN}
+    with manifest.open(newline="") as handle:
+        return {
+            r["cell_id"][:16]: r["photo_id"]
+            for r in csv.DictReader(handle)
+            if r.get("photo_id") in scans
+        }
+
+
 _DIGIT_KIND_TARGETS = {k: kind_index(k) for k in ("printed", "handwritten")}
 
 
-def load_cells(cells_dir: Path, manifest: Path | None = None) -> list[Sample]:
+def load_cells(
+    cells_dir: Path, manifest: Path | None = None, include_unedited: bool = False
+) -> list[Sample]:
     """The labelled real cells of `cells_dir` (`<images>/cells`). An empty cell gets `none`. A
     digit cell gets its kind from the manifest (`ml/dataset/cells.csv`), or UNKNOWN_KIND for
-    `unsure`,
-    blank or no manifest."""
-    kinds = read_kinds(manifest) if manifest is not None and manifest.exists() else {}
+    `unsure`, blank or no manifest.
+
+    A cell with the label source `app-unedited` is left out unless `include_unedited` is set: the
+    player only left the model's own answer."""
+    known = manifest is not None and manifest.exists()
+    kinds = read_kinds(manifest) if known else {}
+    sources = read_label_sources(manifest) if known else {}
+    photos = _scan_photo_of_cells(manifest) if known else {}
     samples = []
     for path in cell_paths(cells_dir):
         label = path.parent.name
+        if not include_unedited and sources.get(path.stem, "") not in TRUSTED_LABEL_SOURCES:
+            continue
         image = to_cell_image(np.asarray(Image.open(path).convert("RGB")))
         if label == "empty":
             kind = kind_index("none")
         else:
             kind = _DIGIT_KIND_TARGETS.get(kinds.get(path.stem, ""), UNKNOWN_KIND)
-        samples.append(Sample(image, digit_index(label), kind))
+        samples.append(Sample(image, digit_index(label), kind, photos.get(path.stem, "")))
     return samples
 
 
@@ -81,7 +123,8 @@ def dhash(image: np.ndarray) -> int:
 
 
 def group_ids(samples: list[Sample], max_distance: int = 4) -> np.ndarray:
-    """Group id per sample. Hashes within `max_distance` bits join one group (union-find)."""
+    """Group id per sample. Hashes within `max_distance` bits join one group (union-find). The
+    cells of one scan photo also join one group, so the split is by photo."""
     hashes = np.array([dhash(s.image) for s in samples], dtype=np.uint64)
     parent = np.arange(len(samples))
 
@@ -95,6 +138,10 @@ def group_ids(samples: list[Sample], max_distance: int = 4) -> np.ndarray:
         close = np.nonzero(np.bitwise_count(hashes[i + 1 :] ^ hashes[i]) <= max_distance)[0] + i + 1
         for j in close:
             parent[root(int(j))] = root(i)
+    first_of_photo: dict[str, int] = {}
+    for i, sample in enumerate(samples):
+        if sample.photo:
+            parent[root(i)] = root(first_of_photo.setdefault(sample.photo, i))
     return np.array([root(i) for i in range(len(samples))])
 
 

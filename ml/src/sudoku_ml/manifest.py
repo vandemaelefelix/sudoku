@@ -25,13 +25,16 @@ from sudoku_ml.journal import (
     current_sources,
     format_time,
     read_journal,
+    undone_actions,
 )
 
 # Training reads only DIGIT_CLASSES. `unlabeled` waits for a digit. `discarded` holds cells that
 # a person rejected in the digit pass: bad cuts, unreadable marks.
 CELL_FOLDERS = (*DIGIT_CLASSES, "unlabeled", "discarded")
 NO_KIND_FOLDERS = ("empty", "unlabeled", "discarded")
-CELL_FIELDS = ["cell_id", "digit", "kind", "photo_id", "row", "col"]
+CELL_FIELDS = ["cell_id", "digit", "kind", "photo_id", "row", "col", "label_source"]
+# Empty for a cell that predates the column: it counts as trusted, like `verified`.
+LABEL_SOURCES = ("app-edited", "app-unedited", "verified")
 UNCHANGED = "Check SUDOKU_IMAGES or restore the images. The table was not changed."
 
 
@@ -41,6 +44,7 @@ class CellRow:
     digit: str
     kind: str | None
     source: Source | None
+    label_source: str = ""
 
 
 def pixel_id(path: Path) -> str:
@@ -111,10 +115,16 @@ def read_cells_table(path: Path) -> dict[str, CellRow]:
                     if row["kind"] and row["kind"] not in KINDS:
                         raise ValueError(f"unknown kind {row['kind']!r}")
                     source = parse_cell_source(row["photo_id"], row["row"], row["col"])
+                    if row["label_source"] and row["label_source"] not in LABEL_SOURCES:
+                        raise ValueError(f"unknown label_source {row['label_source']!r}")
                 except (ValueError, TypeError) as error:
                     raise ValueError(f"line {reader.line_num}: {error}") from error
                 found[row["cell_id"]] = CellRow(
-                    row["cell_id"], row["digit"], row["kind"] or None, source
+                    row["cell_id"],
+                    row["digit"],
+                    row["kind"] or None,
+                    source,
+                    row["label_source"] or "",
                 )
     except (OSError, csv.Error, UnicodeDecodeError, ValueError) as error:
         raise ValueError(f"{path.name} cannot be read ({error}). {RESTORE}") from error
@@ -127,6 +137,19 @@ def base_kinds(table: dict[str, CellRow]) -> dict[str, str | None]:
 
 def base_sources(table: dict[str, CellRow]) -> dict[str, Source]:
     return {c: r.source for c, r in table.items() if r.source is not None}
+
+
+def confirmed_cells(lines: list[Line]) -> set[str]:
+    """Cells that a person labelled on the labelling page in the unfinished session. Undone
+    actions, source lines and repair lines do not count."""
+    undone = undone_actions(lines)
+    return {
+        x.cell
+        for x in lines
+        if x.field in ("digit", "kind")
+        and x.screen not in ("undo", "repair")
+        and x.action not in undone
+    }
 
 
 def _kind_column(cell_id: str, digit: str, kind: str | None) -> str:
@@ -172,6 +195,7 @@ def write_cells_manifest(paths: DataPaths, forget_missing: bool = False) -> int:
     lines = read_journal(paths.journal)
     kinds = current_kinds(lines, base_kinds(table))
     sources = current_sources(lines, base_sources(table))
+    confirmed = confirmed_cells(lines)
     if paths.cells.exists():
         for folder in paths.cells.iterdir():
             if folder.is_dir() and folder.name not in CELL_FOLDERS:
@@ -193,11 +217,16 @@ def write_cells_manifest(paths: DataPaths, forget_missing: bool = False) -> int:
                 digit,
                 _kind_column(cell_id, digit, kinds.get(cell_id)),
                 *(source if source else ("", "", "")),
+                _label_source(cell_id in confirmed, table.get(cell_id)),
             ]
         )
     rows.sort(key=lambda row: (row[1], row[0]))
     write_atomic(paths.cells_csv, csv_text(CELL_FIELDS, rows))
     return len(rows)
+
+
+def _label_source(confirmed: bool, row: CellRow | None) -> str:
+    return "verified" if confirmed else (row.label_source if row else "")
 
 
 def repair_lines(

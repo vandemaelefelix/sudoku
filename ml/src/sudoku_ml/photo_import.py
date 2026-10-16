@@ -14,7 +14,7 @@ from sudoku_ml.flatten import load_upright
 from sudoku_ml.grid_detect import find_grid
 from sudoku_ml.manifest import RESTORE, csv_text, pixel_id, warn_unreadable, write_atomic
 
-SOURCES = ("phone", "web", "wicht", "openverse", "commons", "lexski")
+SOURCES = ("phone", "web", "wicht", "openverse", "commons", "lexski", "app-scan")
 LICENCES = (
     "none",
     "own",
@@ -27,6 +27,7 @@ LICENCES = (
     "by-nc-sa",
     "by-nd",
     "by-nc-nd",
+    "player-contributed",
 )
 PHOTO_FIELDS = ["photo_id", "file", "source", "licence", "attribution", "status", "corners"]
 PHOTO_STATUSES = ("pending", "accepted", "rejected", "too-few-cells", "legacy")

@@ -1,11 +1,12 @@
 """Train the cell classifier from a TOML config. Writes one folder per run in artifacts/."""
 
+import argparse
 import hashlib
 import json
 import sys
 import time
 import tomllib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +40,7 @@ class Config:
     real_cells: bool
     split: list[float]
     augment: bool
+    app_unedited: bool = False  # also train on scan cells that the player left unedited
 
 
 def load_config(path: Path) -> Config:
@@ -160,7 +162,7 @@ def train(
         missing = [c for c in DIGIT_CLASSES if not (cells_dir / c).is_dir()]
         if missing:
             raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
-        real = load_cells(cells_dir, data.cells_csv)
+        real = load_cells(cells_dir, data.cells_csv, config.app_unedited)
         if not real:
             raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
@@ -279,5 +281,20 @@ def train(
     return run
 
 
+def main(argv: list[str]) -> Path:
+    parser = argparse.ArgumentParser(prog="just train")
+    parser.add_argument("config", type=Path)
+    parser.add_argument(
+        "--app-unedited",
+        action="store_true",
+        help="also train on scan cells that the player left as the model answered",
+    )
+    args = parser.parse_args(argv)
+    config = load_config(args.config)
+    if args.app_unedited:
+        config = replace(config, app_unedited=True)
+    return train(config)
+
+
 if __name__ == "__main__":
-    print(train(load_config(Path(sys.argv[1]))))
+    print(main(sys.argv[1:]))
