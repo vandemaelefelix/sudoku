@@ -15,7 +15,7 @@ One monorepo, two parts that share files only:
 ## Getting started
 
 Prerequisites: Node 24, pnpm 12, uv, just. Xcode is needed from issue #2 on.
-The backend needs the AWS CLI 2.32 or newer. See [the backend README](infra/README.md).
+The backend needs the AWS CLI 2.32 or newer. See [the backend README](backend/infra/README.md).
 
     just setup   # install TypeScript and Python dependencies
     just test    # all tests

@@ -241,7 +241,7 @@ head of the list block the valid entries behind them. This limit is accepted for
 ## Amendment 2026-10-15: the sync API
 
 The build of `POST /v1/sync` makes decisions 5, 6 and 9 concrete. The code is in
-[`services/sync-api/`](../../../services/sync-api/README.md).
+[`services/sync-api/`](../../../backend/api/README.md).
 
 1. **The TTL attribute is `expiresAt`, a number in epoch seconds.** A table has one TTL
    attribute, so the tombstone and the daily count share it. The daily count expires at the start

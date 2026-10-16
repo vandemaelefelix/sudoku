@@ -124,7 +124,7 @@ the one TTL attribute of the table, in epoch seconds.
 | Daily count | `USER#<userId>` | `COUNT#<yyyy-mm-dd>` | `writes`, `expiresAt` (the start of the UTC day plus 2 days) |
 
 Only game rows have `syncedAt`, so the index `bySynced` holds only game rows. The Lambda is in
-[`services/sync-api/`](../../../services/sync-api/README.md).
+[`backend/api/`](../../../backend/api/README.md).
 
 **Delete the account.** `DELETE /v1/account` runs three steps in this order: turn the identity row into a tombstone,
 delete every row of the partition `USER#<userId>`, delete the Clerk user. A failed step leaves the

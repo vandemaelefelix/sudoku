@@ -17,7 +17,7 @@ Placeholder. What is known:
 ## AWS account
 
 The backend has one personal AWS account, in `eu-west-1`. No other project uses it. The setup is
-in [`infra/README.md`](../../infra/README.md). The [operations runbook](../operations/runbook.md) lists every provider and its fixes.
+in [`backend/infra/README.md`](../../backend/infra/README.md). The [operations runbook](../operations/runbook.md) lists every provider and its fixes.
 
 | Topic | Rule |
 | --- | --- |
@@ -35,7 +35,7 @@ them on the first deploy.
 
 ## The sync API per stage
 
-Every stage has its own copy of these resources. `infra/storage.ts` and `infra/api.ts` create them.
+Every stage has its own copy of these resources. `backend/infra/storage.ts` and `backend/infra/api.ts` create them.
 
 | Resource | Settings |
 | --- | --- |
@@ -43,7 +43,7 @@ Every stage has its own copy of these resources. `infra/storage.ts` and `infra/a
 | Lambda `SyncApiFunction` | One function for every route. Node 24, arm64, 512 MB, 10 s. Linked to the table |
 | HTTP API `SyncApi` | `POST /v1/sync` behind the Clerk JWT authorizer (audience `sudoku-api`). 1 request per second with a burst of 10 on each route. No CORS. The access log has no IP and no user agent |
 
-A stage without a Clerk issuer in `infra/config.ts` fails the deploy.
+A stage without a Clerk issuer in `backend/infra/config.ts` fails the deploy.
 
 Open: local Xcode builds or EAS Build, and how TestFlight builds are cut. Decided when the app
 first runs on the device.

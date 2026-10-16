@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // backend/infra/api-on.ts runs these files in Node without a bundler, so the imports name the .ts file.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}
