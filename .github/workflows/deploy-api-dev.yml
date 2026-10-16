@@ -6,7 +6,7 @@ on:
     branches: [develop]
     paths:
       - backend/**
-      - packages/sync-contract/**
+      - shared/sync-contract/**
       - sst.config.ts
       - package.json
       - pnpm-lock.yaml

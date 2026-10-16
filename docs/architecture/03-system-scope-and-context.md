@@ -43,13 +43,13 @@ The repository holds two separate toolchains that never import each other. They 
 flowchart LR
     subgraph js["JS/TS world (pnpm)"]
         mobile["mobile"]
-        core["packages/sudoku-core"]
+        core["shared/core"]
     end
     subgraph py["Python world (uv)"]
         ml["ml/"]
     end
-    contracts[("contracts/<br>model contract")]
-    fixtures[("fixtures/scans<br>photos + true grids")]
+    contracts[("shared/model-contract/<br>model contract")]
+    fixtures[("shared/fixtures/scans<br>photos + true grids")]
     models[("mobile/assets/models<br>promoted model + manifest")]
 
     mobile --> core

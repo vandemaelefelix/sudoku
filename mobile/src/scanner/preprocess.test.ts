@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { PNG } from 'pngjs'
 import { CELL_SIZE, CELLS, INPUT_LENGTH, INPUT_SIZE, preprocessCells } from './preprocess'
 
-const FIXTURES = join(__dirname, '../../../fixtures/preprocess')
+const FIXTURES = join(__dirname, '../../../shared/fixtures/preprocess')
 
 function at<T>(items: ArrayLike<T>, index: number): T {
   const item = items[index]

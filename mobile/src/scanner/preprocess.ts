@@ -1,5 +1,5 @@
 // The input steps of the model contract (docs/architecture/00-concepts/model-contract.md).
-// ml/src/sudoku_ml/preprocess.py implements the same maths. fixtures/preprocess/ pins both.
+// ml/src/sudoku_ml/preprocess.py implements the same maths. shared/fixtures/preprocess/ pins both.
 
 export const CELL_SIZE = 64
 export const INPUT_SIZE = 32

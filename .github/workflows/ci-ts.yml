@@ -4,7 +4,8 @@ on:
     branches: [main]
     paths: &paths
       - mobile/**
-      - packages/**
+      - shared/**
+      - tools/**
       - backend/**
       - web/**
       - package.json

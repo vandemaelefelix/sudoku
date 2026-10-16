@@ -22,7 +22,7 @@ from sudoku_ml.model import CellClassifier, ExportModel
 from sudoku_ml.train import load_config, train
 
 ROOT = Path(__file__).parents[2]
-FIXTURES = ROOT / "fixtures" / "preprocess"
+FIXTURES = ROOT / "shared" / "fixtures" / "preprocess"
 TABLE = json.loads((ROOT / "ml/src/sudoku_ml/tflite_2_17_ops.json").read_text())
 
 

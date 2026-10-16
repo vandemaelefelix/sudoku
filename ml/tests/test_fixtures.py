@@ -9,7 +9,7 @@ from sudoku_ml.preprocess import preprocess_cell
 from sudoku_ml.synthetic import font_files
 
 ROOT = Path(__file__).parents[2]
-COMMITTED = ROOT / "fixtures" / "preprocess"
+COMMITTED = ROOT / "shared" / "fixtures" / "preprocess"
 FONTS = font_files(ROOT / "ml" / "fonts")
 
 

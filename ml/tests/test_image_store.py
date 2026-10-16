@@ -1,4 +1,4 @@
-"""A missing or wrong image store must never wipe data/cells.csv (ADR-018)."""
+"""A missing or wrong image store must never wipe ml/dataset/cells.csv (ADR-018)."""
 
 from pathlib import Path
 

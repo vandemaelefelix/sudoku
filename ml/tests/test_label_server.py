@@ -115,7 +115,7 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Z can no longer undo these changes. Git keeps the old tables.",
         "Finish closed the open Review items.",
         "open Review items.`",
-        "Commit the tables: git add data, then commit.",
+        "Commit the tables: git add ml/dataset, then commit.",
         "Finish sets it back to 0.",
         "No cells to confirm yet. Check photos first.",
         "All digits are confirmed. ✓ Next: Label kind.",

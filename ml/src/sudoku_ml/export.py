@@ -135,4 +135,5 @@ def export(run: Path, fixture_dir: Path) -> Path:
 
 
 if __name__ == "__main__":
-    print(export(Path(sys.argv[1]), Path(__file__).parents[3] / "fixtures" / "preprocess"))
+    fixtures = Path(__file__).parents[3] / "shared" / "fixtures" / "preprocess"
+    print(export(Path(sys.argv[1]), fixtures))

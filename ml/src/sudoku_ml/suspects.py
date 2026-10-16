@@ -85,7 +85,7 @@ def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:
 
 
 def find_suspects(data: DataPaths, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
-    """Rank digit and kind suspects with cross-validation. Writes data/work/suspects.csv."""
+    """Rank digit and kind suspects with cross-validation. Writes ml/dataset/work/suspects.csv."""
     paths = cell_paths(data.cells)
     samples = load_cells(data.cells, data.cells_csv)
     if len(paths) != len(samples):

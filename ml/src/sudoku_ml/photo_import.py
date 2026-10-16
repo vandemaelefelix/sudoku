@@ -1,6 +1,6 @@
 """Copy a folder of sudoku photos into `<images>/sudoku-photos/` and propose a grid outline for
-each (ADR-018). The import adds a `pending` row to `data/sudoku-photos.csv`. The Photos screen of
-the labelling page then checks each sudoku photo."""
+each (ADR-018). The import adds a `pending` row to `ml/dataset/sudoku-photos.csv`. The Photos screen
+of the labelling page then checks each sudoku photo."""
 
 import argparse
 import csv

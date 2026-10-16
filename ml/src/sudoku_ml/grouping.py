@@ -1,5 +1,5 @@
 """Groups of similar cells per digit folder, for the labelling page.
-Writes data/work/groups.json."""
+Writes ml/dataset/work/groups.json."""
 
 import json
 import sys

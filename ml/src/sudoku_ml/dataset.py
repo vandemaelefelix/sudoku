@@ -56,7 +56,8 @@ _DIGIT_KIND_TARGETS = {k: kind_index(k) for k in ("printed", "handwritten")}
 
 def load_cells(cells_dir: Path, manifest: Path | None = None) -> list[Sample]:
     """The labelled real cells of `cells_dir` (`<images>/cells`). An empty cell gets `none`. A
-    digit cell gets its kind from the manifest (`data/cells.csv`), or UNKNOWN_KIND for `unsure`,
+    digit cell gets its kind from the manifest (`ml/dataset/cells.csv`), or UNKNOWN_KIND for
+    `unsure`,
     blank or no manifest."""
     kinds = read_kinds(manifest) if manifest is not None and manifest.exists() else {}
     samples = []
