@@ -220,3 +220,5 @@ status: DRAFT
 | JWT template | The Clerk template `sudoku-api`. It adds `"aud": "sudoku-api"` to a token that lives 60 seconds. The app asks for it before every request (ADR-027) |
 | Production instance | The Clerk instance of the `production` stage and the production variant, on `sudoku.felixvandemaele.be`. Its keys start with `pk_live_` and `sk_live_` (ADR-027) |
 | Operations runbook | `docs/operations/runbook.md`. The one entry point for the backend: where each part lives, how the parts connect and what to do when one breaks |
+| Area | A top-level folder that holds one deliverable: `mobile`, `ml`, `backend` or `web` (ADR-029) |
+| Shared | The folder for code and files that more than one area uses (ADR-029) |
