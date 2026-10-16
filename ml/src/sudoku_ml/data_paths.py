@@ -1,5 +1,5 @@
-"""Every path of the real dataset (ADR-018). The tables live in `data/` at the repository root.
-The images live in `data/images/`, or in the folder that `SUDOKU_IMAGES` names."""
+"""Every path of the real dataset (ADR-018). The tables live in `ml/dataset/`.
+The images live in `ml/dataset/images/`, or in the folder that `SUDOKU_IMAGES` names."""
 
 import os
 from dataclasses import dataclass
@@ -7,7 +7,7 @@ from pathlib import Path
 
 ML_ROOT = Path(__file__).parents[2]
 REPO_ROOT = ML_ROOT.parent
-DATA_ROOT = REPO_ROOT / "data"
+DATA_ROOT = ML_ROOT / "dataset"
 ARTIFACTS = ML_ROOT / "artifacts"
 TRAIN_CONFIG = ML_ROOT / "configs" / "cell-classifier.toml"
 IMAGES_ENV = "SUDOKU_IMAGES"
@@ -25,7 +25,7 @@ def images_from_env(data_root: Path) -> Path:
 
 @dataclass(frozen=True)
 class DataPaths:
-    root: Path  # data/: the tracked tables and work/
+    root: Path  # ml/dataset/: the tracked tables and work/
     images: Path  # holds cells/ and sudoku-photos/
     config: Path = TRAIN_CONFIG  # its seed and split define the test split of the Check screen
 

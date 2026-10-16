@@ -21,6 +21,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | What we build and why | `docs/architecture/01-introduction-and-goals.md` |
 | Every binding rule and decision | `docs/architecture/00-DECISIONS.md` |
 | Repository layout and boundaries | `docs/architecture/05-building-block-view.md` |
+| Where each folder lives | `docs/architecture/adr/adr-029-repository-layout.md` |
 | How a scan works | `docs/architecture/00-concepts/scan-pipeline.md` |
 | How the game screen works | `docs/architecture/00-concepts/game-screen.md` |
 | How the history sync works | `docs/architecture/00-concepts/history-sync.md` |
@@ -37,7 +38,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 1. Obey every `SUD-xx` constraint in `00-DECISIONS.md`. If a change would break one, stop and
    say so. Do not work around it.
 2. Do not change an accepted decision in code alone. Write or amend an ADR first.
-3. `ml/` (Python) and the TypeScript side share files only: `contracts/`, `fixtures/` and the
+3. `ml/` (Python) and the TypeScript side share files only: `shared/model-contract/`, `shared/fixtures/` and the
    promoted model. Neither side imports the other (SUD-07).
 4. Do not commit training images or private fixtures (SUD-08).
 5. Do not let camera frames, photos or cell images leave the device without an explicit user
@@ -81,7 +82,7 @@ all follow them.
 8. **Plain words.** Write "use", not "utilise". Write "start", not "commence". Write "before", not
    "prior to".
 9. **Keep the articles.** Do not drop "the", "a" or "this" to save space.
-10. **Warnings come first.** Put the command first, then the risk: "Do not delete `ml/data/`.
+10. **Warnings come first.** Put the command first, then the risk: "Do not delete `ml/dataset/`.
     It holds the only copy of the labelled cells."
 
 Technical names (such as "frame processor" or "promote gate") are allowed. Define them in the

@@ -1,4 +1,4 @@
-"""The session journal `data/work/journal.jsonl`: one JSON line per change of the unfinished
+"""The session journal `ml/dataset/work/journal.jsonl`: one JSON line per change of the unfinished
 work, append-only (ADR-018). The labels at runtime are the kinds and sources of cells.csv with
 the journal lines applied on top, in order. Finish folds the journal into cells.csv and deletes
 it."""

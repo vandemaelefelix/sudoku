@@ -8,12 +8,16 @@ from pathlib import Path
 LINK = re.compile(r"\]\(([^)#\s]+)(#[^)]*)?\)")
 FENCE = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
 INLINE_CODE = re.compile(r"`[^`\n]*`")
+# Folders that tools generate and git ignores. The prebuild of the app writes ios/Pods/ with third-party Markdown.
+GENERATED = {"node_modules", "ios", "android"}
 
 
 def broken_links(paths: list[Path]) -> list[str]:
     files: list[Path] = []
     for path in paths:
-        files.extend(path.rglob("*.md") if path.is_dir() else [path])
+        files.extend(
+            [f for f in path.rglob("*.md") if not GENERATED.intersection(f.parts)] if path.is_dir() else [path]
+        )
     broken = []
     for file in files:
         text = INLINE_CODE.sub("", FENCE.sub("", file.read_text(encoding="utf-8")))

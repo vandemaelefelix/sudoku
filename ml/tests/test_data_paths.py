@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sudoku_ml.data_paths import DATA_ROOT, IMAGES_ENV, REPO_ROOT, DataPaths
+from sudoku_ml.data_paths import DATA_ROOT, IMAGES_ENV, ML_ROOT, REPO_ROOT, DataPaths
 
 
 def test_the_images_default_to_the_data_folder(tmp_path: Path):
@@ -26,6 +26,6 @@ def test_an_explicit_images_root_wins(tmp_path: Path, monkeypatch):
     assert DataPaths.under(tmp_path, tmp_path / "mine").images == tmp_path / "mine"
 
 
-def test_the_data_folder_is_at_the_repository_root():
-    assert DATA_ROOT == REPO_ROOT / "data"
+def test_the_dataset_folder_is_inside_ml():
+    assert DATA_ROOT == ML_ROOT / "dataset"
     assert (REPO_ROOT / "AGENTS.md").exists()

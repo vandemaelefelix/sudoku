@@ -7,7 +7,7 @@ One monorepo, two parts that share files only:
 
 | Part | Folder | Stack |
 | --- | --- | --- |
-| App (game + scanner) | `mobile`, `packages/sudoku-core` | React Native (Expo), VisionCamera, Skia, TypeScript |
+| App (game + scanner) | `mobile`, `shared/core` | React Native (Expo), VisionCamera, Skia, TypeScript |
 | ML (cell classifier) | `ml/` | Python (uv), PyTorch, exported to TFLite |
 
 **Status:** scaffold. Start with the architecture docs below.

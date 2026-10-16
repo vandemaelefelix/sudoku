@@ -1,4 +1,4 @@
-# data
+# ml/dataset
 
 The real dataset of the cell classifier (ADR-018). The labelling tool writes it. Training reads it.
 
@@ -26,7 +26,7 @@ Do not delete `images/`. Until it has a backup, it holds the only copy of the im
 - `photo_id`, `row`, `col`: the sudoku photo and the row and column (0-8) that the cell was cut
   from. All three are empty when the source is not known.
 - `source`: `phone`, `web`, `wicht`, `openverse`, `commons` or `lexski`. `licence` and
-  `attribution`: see [DATA_SOURCES.md](../ml/DATA_SOURCES.md).
+  `attribution`: see [DATA_SOURCES.md](../DATA_SOURCES.md).
 - `status`: `pending`, `accepted`, `rejected`, `too-few-cells` or `legacy` (cut before photo
   checks existed).
 - `corners`: for an `accepted` sudoku photo, the 4 corners `x1 y1 x2 y2 x3 y3 x4 y4` (top left,
@@ -42,13 +42,13 @@ SUDOKU_IMAGES=/path/to/the/image/store
 
 The folder holds `cells/` and `sudoku-photos/`. A relative path starts at the repository root.
 `just` reads `.env`, so every data command uses that store. Without it, the store is
-`data/images/`. If the store is missing or a listed cell has no file, the tool refuses and
+`ml/dataset/images/`. If the store is missing or a listed cell has no file, the tool refuses and
 changes no table.
 
 ## Commands
 
 - `just check-data`: check that the images and the tables agree.
-- `just label-cells`: open the labelling page. See [LABELLING.md](../ml/LABELLING.md).
+- `just label-cells`: open the labelling page. See [LABELLING.md](../LABELLING.md).
 - `just migrate-layout <old_ml_root> [--apply]`: copy the old `ml/datasets/` and `ml/data/`
   layout into this folder.
 

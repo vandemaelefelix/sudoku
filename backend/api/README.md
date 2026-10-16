@@ -26,7 +26,7 @@ the other devices of that player. The decisions are in
 | `src/log.ts` | The logger with an allow-list of fields |
 | `test/unit/` | Tests without DynamoDB |
 | `test/db/` | Tests against DynamoDB Local. Each file creates its own table from `tableDesign.ts` |
-| `scripts/smoke.ts` | The smoke test of a deployed stage |
+| `tools/smoke.ts` | The smoke test of a deployed stage |
 
 ## The steps of a sync
 

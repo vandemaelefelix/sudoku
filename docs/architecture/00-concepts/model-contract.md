@@ -40,7 +40,7 @@ image is `W · crop · Wᵀ`, with `W` a 32 × 64 matrix. Each output pixel is t
 after step 4), so it serves as a check. Neither side needs OpenCV for this step.
 
 `ml/` and the scanner module each implement these steps. Both are tested against the same
-reference pairs in `fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image) and
+reference pairs in `shared/fixtures/preprocess/`: `<n>.cell.png` (a 64 × 64 cell image) and
 `<n>.expected.json` (the 32 × 32 result). Every value must match within `1/255`. The scanner implements them in plain TypeScript on a
 `Float32Array`, so the result does not depend on an OpenCV build.
 
@@ -88,7 +88,7 @@ straight into a dataset.
 - A training dataset manifest MUST reject any entry with `source: fixture` (SUD-10). Fixtures are
   for evaluation only.
 - `photo` means a cell cut from a sudoku photo. Its kind is the `kind` column of
-  `data/cells.csv` (ADR-018), set on the labelling page. Cells in `cells/unlabeled/` get a label
+  `ml/dataset/cells.csv` (ADR-018), set on the labelling page. Cells in `cells/unlabeled/` get a label
   by hand: `empty`, a digit or `discarded`.
 
 ## Manifest

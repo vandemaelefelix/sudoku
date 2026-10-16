@@ -10,6 +10,8 @@ runs:
       shell: bash
     - run: just boundaries
       shell: bash
+    - run: just check-layout
+      shell: bash
     - run: just test-ts
       shell: bash
     - run: pnpm typecheck:infra

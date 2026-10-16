@@ -30,10 +30,10 @@ __pycache__/
 # ML: images and runs stay out of git (ADR-009, ADR-018). ml/data/ is the old image location.
 ml/data/
 ml/artifacts/
-data/images/
-data/work/
+ml/dataset/images/
+ml/dataset/work/
 # A write that stopped part-way leaves a .part file beside a table
-data/*.part
+ml/dataset/*.part
 
 # A model trained on real cells may not be published (ADR-013). just install-model copies it in.
 mobile/assets/models/*.tflite

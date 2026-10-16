@@ -1,9 +1,10 @@
 packages:
   - mobile
-  - packages/*
+  - web
   - backend/api
   - backend/kill-switch
-  - web
+  - shared/core
+  - shared/sync-contract
 
 allowBuilds:
   '@shopify/react-native-skia': true

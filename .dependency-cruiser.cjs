@@ -5,16 +5,16 @@ module.exports = {
       name: 'sud-04-core-has-no-dependencies',
       comment: 'SUD-04: @sudoku/core must not depend on React Native, Expo, npm packages or Node I/O.',
       severity: 'error',
-      from: { path: '^packages/sudoku-core/src', pathNot: '\\.test\\.ts$' },
+      from: { path: '^shared/core/src', pathNot: '\\.test\\.ts$' },
       to: { dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'] },
     },
     {
       name: 'sud-04-core-stays-in-its-package',
       comment: 'SUD-04: @sudoku/core must not reach outside its own folder with a relative import.',
       severity: 'error',
-      from: { path: '^packages/sudoku-core/src' },
+      from: { path: '^shared/core/src' },
       to: {
-        pathNot: '^packages/sudoku-core/',
+        pathNot: '^shared/core/',
         dependencyTypesNot: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
       },
     },
@@ -23,7 +23,7 @@ module.exports = {
       comment:
         'ADR-028: the app and the sync Lambda both import @sudoku/sync-contract, so it may depend on zod only. No React Native, no AWS SDK, no Node I/O.',
       severity: 'error',
-      from: { path: '^packages/sync-contract/src', pathNot: '\\.test\\.ts$' },
+      from: { path: '^shared/sync-contract/src', pathNot: '\\.test\\.ts$' },
       to: {
         dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
         pathNot: '/node_modules/zod/',
@@ -33,9 +33,9 @@ module.exports = {
       name: 'sync-contract-stays-in-its-package',
       comment: 'ADR-028: @sudoku/sync-contract must not reach outside its own folder with a relative import.',
       severity: 'error',
-      from: { path: '^packages/sync-contract/src' },
+      from: { path: '^shared/sync-contract/src' },
       to: {
-        pathNot: '^packages/sync-contract/',
+        pathNot: '^shared/sync-contract/',
         dependencyTypesNot: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
       },
     },
@@ -58,7 +58,7 @@ module.exports = {
       comment:
         'ADR-027: the app and the packages never import the SST code. The API is their only link to the backend.',
       severity: 'error',
-      from: { path: '^(mobile|packages)/' },
+      from: { path: '^(mobile|shared)/' },
       to: { path: '^(backend/infra/|sst\\.config\\.ts$)' },
     },
     {
@@ -73,7 +73,7 @@ module.exports = {
       comment:
         'ADR-027: the app and the packages never import the Lambda code. The API is their only link to the backend.',
       severity: 'error',
-      from: { path: '^(mobile|packages)/' },
+      from: { path: '^(mobile|shared)/' },
       to: { path: '^backend/(api|kill-switch)/' },
     },
     {

@@ -18,7 +18,7 @@ Ordered by impact. Hard cap 20. Currently 11.
 | --- | --- | --- | --- | --- | --- |
 | SUD-01 | The game and the scanner MUST work fully without a network connection. | Systemic | 2026-10-09 | Felix | [ADR-003](adr/adr-003-on-device-inference.md) |
 | SUD-02 | Camera frames, photos and cell images MUST NOT leave the device without an explicit user action for each export. | Systemic | 2026-10-09 | Felix | [ADR-003](adr/adr-003-on-device-inference.md) |
-| SUD-07 | `ml/` and the TypeScript side MUST share files only: `contracts/`, `fixtures/` and the promoted model. Neither imports the other. | Systemic | 2026-10-09 | Felix | [ADR-001](adr/adr-001-polyglot-monorepo.md) |
+| SUD-07 | `ml/` and the TypeScript side MUST share files only: `shared/model-contract/`, `shared/fixtures/` and the promoted model. Neither imports the other. | Systemic | 2026-10-09 | Felix | [ADR-001](adr/adr-001-polyglot-monorepo.md) |
 | SUD-06 | A model MUST reach the app only through `just promote-model`, which gates on fixture scores. Until M3, `just install-model` is the one exception (ADR-007, amendment). | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
 | SUD-09 | Promote and the test suite MUST refuse a model whose contract major version the scanner does not implement. | Cross-concept | 2026-10-09 | Felix | [model-contract](00-concepts/model-contract.md) |
 | SUD-10 | Fixture cells MUST NOT appear in any training dataset. | Cross-concept | 2026-10-09 | Felix | [model-contract](00-concepts/model-contract.md) |
@@ -27,7 +27,7 @@ Ordered by impact. Hard cap 20. Currently 11.
 | SUD-04 | `@sudoku/core` MUST NOT depend on React Native, Expo or any I/O. | Cross-concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | SUD-03 | The game MUST NOT depend on the scanner. Scanning is an optional way into a puzzle. | Concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | SUD-05 | The app MUST reach the scanner only through `src/scanner/index.ts`. | Concept | 2026-10-09 | Felix | [scan-pipeline](00-concepts/scan-pipeline.md) |
-| SUD-08 | Training images and private fixtures MUST NOT be committed. The public `fixtures/scans` set is the one exception. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md), [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
+| SUD-08 | Training images and private fixtures MUST NOT be committed. The public `shared/fixtures/scans` set is the one exception. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md), [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
 
 SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010-testing-and-ci.md)).
 
@@ -78,6 +78,6 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ADR-020 | The model reads the full 64 × 64 cell, with the grid lines. Model contract 2.0. Replaces the crop rule of contract 1. | Cross-concept | 2026-10-13 | Felix | [ADR-020](adr/adr-020-full-cell-input.md) |
 | ADR-007 | Gated promote step, scored on the app's own cell images per fixture, with a floor, a tolerance and a holdout split. Until M3, `just install-model` copies a run without the gate. A model trained on unpublishable data stays out of git. | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
 | ADR-009 | Images outside git, a dataset manifest inside. Photo import with a licence per photo. A work folder for derived files, a Finish step and a data check. DVC later. The layout, the kind log and the photo list are superseded by ADR-018. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md) |
-| ADR-018 | One `data/` folder at the repository root. Two tracked tables, `cells.csv` and `sudoku-photos.csv`, and the blind check answers. A session journal outside git for undo, folded in by Finish. `SUDOKU_IMAGES` for a shared image store. Supersedes ADR-009 in part. | Concept | 2026-10-12 | Felix | [ADR-018](adr/adr-018-one-data-folder-two-tables.md) |
+| ADR-018 | One `ml/dataset/` folder at the repository root. Two tracked tables, `cells.csv` and `sudoku-photos.csv`, and the blind check answers. A session journal outside git for undo, folded in by Finish. `SUDOKU_IMAGES` for a shared image store. Supersedes ADR-009 in part. | Concept | 2026-10-12 | Felix | [ADR-018](adr/adr-018-one-data-folder-two-tables.md) |
 | ADR-013 | Public-safe fixtures in git, real-world scans private, a licence on record for every data source. Amended 2026-10-15: the privacy labels with an account. | Concept | 2026-10-09 | Felix | [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
 | ADR-014 | Live overlay effects are modules on one engine and one scene. Development builds have an effect lab with a dev pill. Release builds run the default effect only. | Concept | 2026-10-11 | Felix | [ADR-014](adr/adr-014-overlay-effects.md) |

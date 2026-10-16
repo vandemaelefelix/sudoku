@@ -1,6 +1,6 @@
-"""The cells table `data/cells.csv` (ADR-018): one row per cell image, with its digit, its kind
-and its source. The folder of a cell is its digit. The kinds and the sources come from the table
-itself with the journal applied on top."""
+"""The cells table `ml/dataset/cells.csv` (ADR-018): one row per cell image, with its digit, its
+kind and its source. The folder of a cell is its digit. The kinds and the sources come from the
+table itself with the journal applied on top."""
 
 import argparse
 import csv
