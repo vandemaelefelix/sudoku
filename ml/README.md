@@ -30,7 +30,7 @@ stays private (ADR-013).
 
 Do not delete the image store. Until it has a backup, it holds the only copy of the images.
 
-The real dataset lives in `ml/dataset/` at the repository root (ADR-018). [ml/dataset/README.md](dataset/README.md)
+The real dataset lives in `ml/dataset/` (ADR-018). [ml/dataset/README.md](dataset/README.md)
 says what is where and what is in git. The images are not in git. The two tables are in git, so
 every dataset version is exact and reviewable. Where the images come from, and what they may be
 used for, is in [DATA_SOURCES.md](DATA_SOURCES.md).
@@ -63,7 +63,7 @@ Count the rows of `cells.csv` and `sudoku-photos.csv` to get the size of the dat
    writes `ml/dataset/STATUS.md` and deletes the journal and the derived files in `ml/dataset/work/`. It is
    safe to press twice. Your unlabelled cells and pending sudoku photos stay. After Finish, Z
    can no longer undo the finished changes. Git keeps the old tables.
-7. Commit the tables: `git add data` and commit. Git never adds the images or `ml/dataset/work/`.
+7. Commit the tables: `git add ml/dataset` and commit. Git never adds the images or `ml/dataset/work/`.
 
 The tool works on the real data in `ml/dataset/` and the image store. It has no scratch copy. You can
 stop at any time: Ctrl-C, a closed terminal or a crash. Every label you saved stays in the

@@ -82,7 +82,7 @@ all follow them.
 8. **Plain words.** Write "use", not "utilise". Write "start", not "commence". Write "before", not
    "prior to".
 9. **Keep the articles.** Do not drop "the", "a" or "this" to save space.
-10. **Warnings come first.** Put the command first, then the risk: "Do not delete `ml/data/`.
+10. **Warnings come first.** Put the command first, then the risk: "Do not delete `ml/dataset/`.
     It holds the only copy of the labelled cells."
 
 Technical names (such as "frame processor" or "promote gate") are allowed. Define them in the

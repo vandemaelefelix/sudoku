@@ -69,7 +69,7 @@ See [ml/dataset/README.md](dataset/README.md) for the details.
 
 ## Git
 
-Commit the tables after Finish: `git add data` and `git commit -m "chore(data): ..."`.
+Commit the tables after Finish: `git add ml/dataset` and `git commit -m "chore(data): ..."`.
 Git never adds the images or `ml/dataset/work/`.
 
 ## Other commands

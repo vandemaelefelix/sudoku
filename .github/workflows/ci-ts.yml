@@ -5,6 +5,7 @@ on:
     paths: &paths
       - mobile/**
       - shared/**
+      - tools/**
       - backend/**
       - web/**
       - package.json

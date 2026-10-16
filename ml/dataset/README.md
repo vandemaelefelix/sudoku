@@ -1,4 +1,4 @@
-# data
+# ml/dataset
 
 The real dataset of the cell classifier (ADR-018). The labelling tool writes it. Training reads it.
 
