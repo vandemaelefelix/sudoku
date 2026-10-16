@@ -172,5 +172,5 @@ After the first tap, each edit updates the result. An edit that empties a cell b
 
 | ID | Constraint |
 | --- | --- |
-| SUD-02 | Camera frames, photos and cell images MUST NOT leave the device without an explicit user action for each export. |
+| SUD-02 | Camera frames and cell images MUST NOT leave the device. A photo MUST leave only through the setting "Help improve the app". |
 | SUD-05 | The app MUST reach the scanner only through `src/scanner/index.ts`. |
