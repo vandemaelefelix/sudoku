@@ -450,3 +450,16 @@ The release of the backend to production makes these decisions.
 6. **The privacy policy is Markdown in the repo.** The source is `docs/privacy/privacy-policy.md`. Vercel hosts the home
    page and the privacy page at `sudoku.felixvandemaele.be`. `site/build.mjs` builds them from the repo. ADR-013 holds
    the App Store privacy labels.
+
+## Amendment 2026-10-16: the scans route
+
+[ADR-030](adr-030-scan-collection.md) amends decisions 4 and 5. The rest stays.
+
+1. **A second Lambda, `scans-api`, serves `POST /v1/scans`.** Decision 5 said "One Lambda". The sync Lambda and the
+   scans Lambda are now separate. Abuse of the scans route cannot starve the sync.
+2. **The scans route has no JWT authorizer.** A signed-out player must upload too. The handler checks a shared app key
+   header. When an `Authorization` header is present, the handler verifies the JWT itself and stores the user ID.
+3. **The scans route has its own throttle** (SUD-11). The kill switch applies to it.
+4. **A private, encrypted S3 bucket holds the photos.** A lifecycle rule expires them after 12 months. The scans
+   share the existing DynamoDB table.
+5. **Reassessment:** add App Attest when a sender abuses the route.

@@ -76,3 +76,24 @@ It no longer describes the app as a whole. Decision 5 stays valid for the camera
 3. **A privacy policy page is required.** The source is [`docs/privacy/privacy-policy.md`](../../privacy/privacy-policy.md).
    The App Store form and the Google consent screen link to the public page.
    Vercel hosts the page at `https://sudoku.felixvandemaele.be/privacy`. `site/build.mjs` renders it from the source.
+
+## Amendment 2026-10-16: the privacy labels with scan collection
+
+[ADR-030](adr-030-scan-collection.md) uploads scan photos and a device ID. This amends decision 5 and the first
+amendment.
+
+1. **The App Store privacy labels also declare these data types.** All data is linked to the player. None is used for
+   tracking.
+
+   | Data type | Purpose |
+   | --- | --- |
+   | Photos or videos: photos (the scan photo) | App functionality (improve the cell classifier) |
+   | Identifiers: device ID (the contributor ID) | App functionality |
+
+2. **"Data Not Collected" is no longer true** for any player. The exact label values are fixed before the first
+   submission.
+3. **Photos and videos leave the list of undeclared data types** in the first amendment. Camera frames, location,
+   advertising ID, diagnostics and usage data stay undeclared.
+4. **The camera text** says that the scan runs on the phone and that the app can upload the photo of a finished scan.
+   The player can turn this off in Settings.
+5. **Scan photos stay out of git** (SUD-08). Scan cells never become fixtures (SUD-10).
