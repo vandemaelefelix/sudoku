@@ -93,7 +93,7 @@ straight into a dataset.
 
 ## Manifest
 
-`apps/mobile/assets/models/manifest.json`. `just promote-model` writes it (ADR-007). Until M3,
+`mobile/assets/models/manifest.json`. `just promote-model` writes it (ADR-007). Until M3,
 `just install-model` writes it, with the fields model, version, contract, file, outputs, run,
 metrics and installedAt (ADR-007, amendment).
 

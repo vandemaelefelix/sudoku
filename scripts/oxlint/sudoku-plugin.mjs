@@ -1,4 +1,4 @@
-// ADR-015, point 7: only apps/mobile/src/theme/ holds raw colour values.
+// ADR-015, point 7: only mobile/src/theme/ holds raw colour values.
 // Anywhere in the string, so a boxShadow or border string with a colour also fails.
 const HEX = /(?:^|[\s(,])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])/i
 const FUNCTION = /\b(?:rgba?|hsla?)\(/i

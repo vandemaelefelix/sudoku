@@ -128,7 +128,7 @@ def write_groups(data: DataPaths, run: Path, k: int = 30, seed: int = 0) -> int:
 
 def default_run(ml_root: Path = ML_ROOT, artifacts: Path = ARTIFACTS) -> Path:
     """The run of the model that the app uses."""
-    manifest = ml_root.parent / "apps" / "mobile" / "assets" / "models" / "manifest.json"
+    manifest = ml_root.parent / "mobile" / "assets" / "models" / "manifest.json"
     return artifacts / json.loads(manifest.read_text())["run"]
 
 

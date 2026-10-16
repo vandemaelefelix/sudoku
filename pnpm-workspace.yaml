@@ -1,5 +1,5 @@
 packages:
-  - apps/*
+  - mobile
   - packages/*
   - backend/api
   - backend/kill-switch

@@ -208,7 +208,7 @@ instance.
 
 The issuer of each stage is `CLERK_ISSUER` in `config.ts`. The JWT authorizer needs an exact
 match with the `iss` of the token. The publishable key of the development instance is in
-`apps/mobile/app.config.ts`, in the development variant. The production variant gets the key of the
+`mobile/app.config.ts`, in the development variant. The production variant gets the key of the
 production instance, the two Google client IDs and the reversed iOS URL scheme from
 `PRODUCTION_BACKEND` in the same file. All of them are public values. The production sync URL is
 the URL that `just deploy-api production` printed. The production app syncs and deletes the account in the app.

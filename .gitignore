@@ -36,18 +36,18 @@ data/work/
 data/*.part
 
 # A model trained on real cells may not be published (ADR-013). just install-model copies it in.
-apps/mobile/assets/models/*.tflite
+mobile/assets/models/*.tflite
 
 # Secrets
 .env
 .env.*
 
 # Expo Continuous Native Generation (ADR-002)
-apps/mobile/ios/
-apps/mobile/android/
+mobile/ios/
+mobile/android/
 
 # Agent plan workspaces
 .superpowers/
 coverage/
-apps/mobile/dist/
+mobile/dist/
 .vitest/
