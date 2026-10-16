@@ -23,6 +23,7 @@ test-ts:
     pnpm -r test
     node --test 'tools/oxlint/*.test.mjs'
     node --test 'tools/icons/*.test.mjs'
+    node --test 'tools/layout/*.test.mjs'
     node --test 'backend/infra/*.test.ts'
 
 # The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
@@ -48,7 +49,7 @@ test-ml:
     uv run --directory ml pytest -q
 
 # Every lint, including the boundary rules
-lint: lint-ts boundaries lint-ml
+lint: lint-ts boundaries lint-ml check-layout
 
 # oxlint and the oxfmt check for all TypeScript
 lint-ts: format-check
@@ -65,6 +66,10 @@ format-check:
 # SUD-03, SUD-04, SUD-05, the sync contract and the account boundary (ADR-028) and the backend boundaries (ADR-027)
 boundaries:
     pnpm boundaries
+
+# SUD-12: the root holds only the folders and files of ADR-029
+check-layout:
+    node tools/layout/check-layout.mjs
 
 # ruff for ml/
 lint-ml:
