@@ -10,7 +10,7 @@ status: DRAFT
 |----|----------|--------|------|------|
 | ADR-001 | Polyglot monorepo: pnpm workspaces (TypeScript), uv (Python), root `justfile`. Turborepo deferred | Proposed | 2026-10-09 | [ADR-001](./adr/adr-001-polyglot-monorepo.md) |
 | ADR-002 | React Native (Expo, Continuous Native Generation) + VisionCamera 5. Scanner on fast-opencv and fast-tflite, a Swift plugin per step only where those fail | Proposed, pending the walking skeleton | 2026-10-09 | [ADR-002](./adr/adr-002-react-native-and-scanner-engine.md) |
-| ADR-003 | All inference on the device. Nothing leaves the phone without an explicit user action | Proposed | 2026-10-09 | [ADR-003](./adr/adr-003-on-device-inference.md) |
+| ADR-003 | All inference on the device. Camera frames and cell images stay on the phone. A photo leaves only through a setting that the player can turn off (amended by ADR-030) | Proposed | 2026-10-09 | [ADR-003](./adr/adr-003-on-device-inference.md) |
 | ADR-004 | Two-stage scan pipeline: live 4-corner lock-on, per-cell flatten from 100 intersections on capture | Proposed | 2026-10-09 | [ADR-004](./adr/adr-004-two-stage-scan-pipeline.md) |
 | ADR-005 | PyTorch on MPS, exported to TFLite with litert-torch, float32 weights only (TFLite 2.17 runtime on iOS) | Proposed, pending the walking skeleton | 2026-10-09 | [ADR-005](./adr/adr-005-pytorch-to-tflite.md) |
 | ADR-006 | One cell classifier with two heads: digit (`empty`, 1–9) and kind (`none`, `printed`, `handwritten`, `notes`); a global-average-pooling CNN of about 73k parameters | Proposed | 2026-10-09 | [ADR-006](./adr/adr-006-two-head-cell-classifier.md) |

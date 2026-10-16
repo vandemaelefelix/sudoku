@@ -54,7 +54,7 @@ The app does not send cell images, camera frames, your position or the result of
 We keep a scan for 12 months. Then the photo and the record expire.
 
 To delete your scans, send an email to the contact address with your contributor ID. If you delete a signed-in account,
-we also delete your scans. Deletion does not undo training. A digit reader that already learned from a scan stays as it is.
+we also delete the scans that you sent while signed in. Scans that you sent while signed out stay under your contributor ID. Deleting the account does not remove them. Send us an email, and we delete them. A retry after a lost response can leave two records for one scan. We delete both. Deletion does not undo training. A digit reader that already learned from a scan stays as it is.
 
 ## International transfers
 
@@ -97,7 +97,7 @@ The server log has one line per request. It holds our user ID and no email. It i
 ## Delete your account
 
 Open Settings, then Account, then Delete account. You can also send an email to the contact address. Deleting the
-account also deletes the scans that you sent while signed in.
+account also deletes the scans that you sent while signed in. It does not delete the scans that you sent while signed out. Send us an email for those.
 
 ## Your rights
 
