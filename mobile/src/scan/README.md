@@ -1,7 +1,7 @@
 # Scan UI
 
 Camera screen, outline, transition and correction screen. Imports the scanner only through
-`src/scanner/index.ts` (SUD-05). The folder layout follows `apps/mobile/AGENTS.md`.
+`src/scanner/index.ts` (SUD-05). The folder layout follows `mobile/AGENTS.md`.
 
 | Folder | Holds |
 | --- | --- |

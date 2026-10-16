@@ -17,7 +17,7 @@ export function stripInternalNotes(markdown) {
     .trim()
 }
 
-// Cobalt light colours from apps/mobile/src/theme/themes/cobalt/palette.ts. Contrast of ink and accent on the page is above 7:1.
+// Cobalt light colours from mobile/src/theme/themes/cobalt/palette.ts. Contrast of ink and accent on the page is above 7:1.
 const css = `
 :root{color-scheme:light;--ink:#0f1d5c;--muted:#4f5a9a;--accent:#1f3fd1;--bg:#f4f6ff;--tint:#e3e8ff;--line:#c3cbef}
 *{box-sizing:border-box}

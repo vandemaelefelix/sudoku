@@ -51,7 +51,7 @@ sudoku/
 
 ```mermaid
 flowchart TB
-    subgraph app["apps/mobile [Expo app]"]
+    subgraph app["mobile [Expo app]"]
         ui["Game UI<br>board, keyboard, timer, stats"]
         scanui["Scan UI<br>camera, outline, transition,<br>correction screen"]
         scanner["scanner module<br>src/scanner/index.ts"]
@@ -124,8 +124,8 @@ dependency-cruiser enforces these rules in `just boundaries` ([ADR-027](adr/adr-
 
 | Rule | Forbids |
 | --- | --- |
-| `adr-027-app-does-not-import-infra` | `apps/` and `packages/` import `backend/infra/` or `sst.config.ts` |
-| `adr-027-app-does-not-import-services` | `apps/` and `packages/` import `backend/api/` or `backend/kill-switch/` |
-| `adr-027-services-do-not-import-the-app` | `backend/api/` or `backend/kill-switch/` imports `apps/` |
+| `adr-027-app-does-not-import-infra` | `mobile/` and `packages/` import `backend/infra/` or `sst.config.ts` |
+| `adr-027-app-does-not-import-services` | `mobile/` and `packages/` import `backend/api/` or `backend/kill-switch/` |
+| `adr-027-services-do-not-import-the-app` | `backend/api/` or `backend/kill-switch/` imports `mobile/` |
 | `adr-027-services-do-not-import-infra` | `backend/api/` or `backend/kill-switch/` imports `backend/infra/` or `sst.config.ts` |
 | `adr-027-infra-reads-only-the-table-design` | `backend/infra/` and `sst.config.ts` import a file of `backend/api/` or `backend/kill-switch/` other than `backend/api/src/tableDesign.ts` |

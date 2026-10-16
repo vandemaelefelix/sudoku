@@ -27,7 +27,7 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | What the model must accept and return | `docs/architecture/00-concepts/model-contract.md` |
 | Words and their meaning | `docs/architecture/12-glossary.md` |
 | Commands (setup, test, lint) | `justfile`, or run `just --list` |
-| Rules for the Expo app | `apps/mobile/AGENTS.md` |
+| Rules for the Expo app | `mobile/AGENTS.md` |
 | How the backend deploys | `backend/infra/README.md` |
 | Where the backend parts live, and what to do when one breaks | `docs/operations/runbook.md` |
 | How the sync Lambda works and how to test it | `backend/api/README.md` |

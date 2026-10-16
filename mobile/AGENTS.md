@@ -1,6 +1,6 @@
 # AGENTS.md: the Expo app
 
-These instructions add to the root `AGENTS.md`. They apply to work in `apps/mobile/`.
+These instructions add to the root `AGENTS.md`. They apply to work in `mobile/`.
 
 ## Do not trust remembered Expo APIs
 

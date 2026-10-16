@@ -69,7 +69,7 @@ table. See [ADR-027](../architecture/adr/adr-027-backend-platform.md) and
 | The AWS setup, the guard, the budget, the kill switch | [`backend/infra/README.md`](../../backend/infra/README.md) |
 | The website | [`web/README.md`](../../web/README.md) |
 | The sync Lambda | [`backend/api/README.md`](../../backend/api/README.md) |
-| The app variants | [ADR-022](../architecture/adr/adr-022-app-variants.md), [`apps/mobile/AGENTS.md`](../../apps/mobile/AGENTS.md) |
+| The app variants | [ADR-022](../architecture/adr/adr-022-app-variants.md), [`mobile/AGENTS.md`](../../mobile/AGENTS.md) |
 
 ## 2. Inventory
 
@@ -136,7 +136,7 @@ One Google Cloud project holds the OAuth clients. Google sign-in in Clerk uses o
 | Sudoku Production iOS | iOS | `579798513006-3j8bts21f938o7pp100nv0tujpjfer7i` | Production variant |
 
 The client IDs end in `.apps.googleusercontent.com`. The iOS IDs are also in
-[`apps/mobile/app.config.ts`](../../apps/mobile/app.config.ts).
+[`mobile/app.config.ts`](../../mobile/app.config.ts).
 
 | Consent screen setting | Value |
 | --- | --- |

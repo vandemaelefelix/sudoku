@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { parse } from 'opentype.js'
 
-const FONT_DIR = new URL('../../apps/mobile/assets/fonts/', import.meta.url)
+const FONT_DIR = new URL('../../mobile/assets/fonts/', import.meta.url)
 
 // The fonts the app bundles (ADR-021). The icon uses the same 9 as a given digit of the Op-art theme.
 export const FONTS = {
