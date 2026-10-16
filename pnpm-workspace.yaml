@@ -1,8 +1,9 @@
 packages:
   - apps/*
   - packages/*
-  - services/*
-  - site
+  - backend/api
+  - backend/kill-switch
+  - web
 
 allowBuilds:
   '@shopify/react-native-skia': true

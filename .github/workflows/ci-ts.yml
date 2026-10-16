@@ -5,7 +5,8 @@ on:
     paths: &paths
       - apps/**
       - packages/**
-      - services/**
+      - backend/**
+      - web/**
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -14,7 +15,6 @@ on:
       - tsconfig.base.json
       - tsconfig.infra.json
       - sst.config.ts
-      - infra/**
       - .oxlintrc.json
       - .dependency-cruiser.cjs
       - justfile

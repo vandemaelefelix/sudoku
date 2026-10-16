@@ -23,7 +23,7 @@ test-ts:
     pnpm -r test
     node --test 'scripts/oxlint/*.test.mjs'
     node --test 'scripts/icons/*.test.mjs'
-    node --test 'infra/*.test.ts'
+    node --test 'backend/infra/*.test.ts'
 
 # The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
 dynamodb_image := "amazon/dynamodb-local:3.3.1"
@@ -100,7 +100,7 @@ lint-workflows:
 
 # Check relative links in the docs
 docs-check:
-    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md infra services site
+    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md backend web
 
 # Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
 preprocess-fixtures:
@@ -174,30 +174,30 @@ aws-login:
 
 # Deploy the backend to a stage: felix, dev or production. Run just aws-login first
 deploy-api stage:
-    {{sudoku_aws}} node infra/check-account.ts
-    {{sudoku_aws}} node infra/kill-switch-check.ts "{{stage}}"
+    {{sudoku_aws}} node backend/infra/check-account.ts
+    {{sudoku_aws}} node backend/infra/kill-switch-check.ts "{{stage}}"
     {{sudoku_aws}} pnpm exec sst deploy --stage "{{stage}}"
 
 # Turn a stage on again after the kill switch stopped it (ADR-027). It shows the cost of the month and asks first. Option: --yes
 api-on stage *flags:
-    {{sudoku_aws}} node infra/check-account.ts
-    {{sudoku_aws}} node infra/api-on.ts "{{stage}}" {{flags}}
+    {{sudoku_aws}} node backend/infra/check-account.ts
+    {{sudoku_aws}} node backend/infra/api-on.ts "{{stage}}" {{flags}}
 
 # Show what a deploy would change on a stage, without a change
 diff-api stage:
-    {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} node backend/infra/check-account.ts
     {{sudoku_aws}} pnpm exec sst diff --stage "{{stage}}"
 
 # Remove a stage of the backend. SST refuses production (protect)
 remove-api stage:
-    {{sudoku_aws}} node infra/check-account.ts
+    {{sudoku_aws}} node backend/infra/check-account.ts
     {{sudoku_aws}} pnpm exec sst remove --stage "{{stage}}"
 
 # Smoke-test the sync API on a deployed stage with a real Clerk token. Export CLERK_SECRET_KEY of the development instance first
 smoke-api stage user:
-    node services/sync-api/scripts/smoke.ts "{{stage}}" "{{user}}"
+    node backend/api/scripts/smoke.ts "{{stage}}" "{{user}}"
 
-# Typecheck sst.config.ts and infra/. It downloads the SST providers the first time
+# Typecheck sst.config.ts and backend/infra/. It downloads the SST providers the first time
 typecheck-infra:
     {{sudoku_aws}} pnpm exec sst install --stage felix
     pnpm typecheck:infra

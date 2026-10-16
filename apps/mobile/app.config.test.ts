@@ -80,7 +80,7 @@ describe('the production backend', () => {
     })
   })
 
-  it('gives the production key the live prefix and the host of the production issuer (infra/config.ts)', () => {
+  it('gives the production key the live prefix and the host of the production issuer (backend/infra/config.ts)', () => {
     const key = PRODUCTION_BACKEND.clerkPublishableKey as string
     expect(key).toMatch(/^pk_live_/)
     const host = Buffer.from(key.slice('pk_live_'.length), 'base64').toString()
