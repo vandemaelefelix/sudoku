@@ -152,7 +152,7 @@ The client IDs end in `.apps.googleusercontent.com`. The iOS IDs are also in
 | What | Value |
 | --- | --- |
 | Vercel team | Personal team `felix-vandemaeles-projects`. It owns the domain `felixvandemaele.be` |
-| Project | `sudoku-site`, repository `vandemaelefelix/sudoku`, Root Directory `site` |
+| Project | `sudoku-site`, repository `vandemaelefelix/sudoku`, Root Directory `web` |
 | Settings | Include files outside the root: on. Framework: `Other`. Install, build and output: see [`web/README.md`](../../web/README.md) and `web/vercel.json`. Variable `ENABLE_EXPERIMENTAL_COREPACK=1` |
 | Production branch | **Unverified.** `web/README.md` says `develop`. Check **Settings, Git** in Vercel |
 | URLs | `https://sudoku.felixvandemaele.be`, `https://sudoku.felixvandemaele.be/privacy`. Fallback: `sudoku-site-mauve.vercel.app` |

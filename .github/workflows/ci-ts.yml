@@ -6,6 +6,7 @@ on:
       - apps/**
       - packages/**
       - backend/**
+      - web/**
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml

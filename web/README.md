@@ -23,7 +23,7 @@ Nothing in `apps/` or `packages/` imports this folder.
 
    | Setting | Value |
    | --- | --- |
-   | Root Directory | `site` |
+   | Root Directory | `web` |
    | Include source files outside of the Root Directory | On. The build reads `docs/privacy/privacy-policy.md`. |
    | Framework Preset | `Other` |
    | Install Command | `pnpm install --frozen-lockfile --filter @sudoku/web...` |

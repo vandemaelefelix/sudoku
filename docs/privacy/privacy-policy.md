@@ -5,7 +5,7 @@ publish: allowed for the Google consent screen. Check again before the App Store
 
 # Privacy policy of Sudoku
 
-<!-- Source of the public page. `web/build.mjs` renders it at build time. See ../../site/README.md. Check this policy again before the App Store submission. -->
+<!-- Source of the public page. `web/build.mjs` renders it at build time. See ../../web/README.md. Check this policy again before the App Store submission. -->
 
 Last changed: 2026-10-15
 
