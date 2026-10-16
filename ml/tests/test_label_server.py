@@ -328,7 +328,7 @@ def test_a_missing_model_gets_a_400_with_the_message(tmp_path: Path):
 def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
     root = tmp_path / "ml"
     paths, _ = build(root, {"unlabeled": 1}, {})
-    manifest = tmp_path / "apps" / "mobile" / "assets" / "models" / "manifest.json"
+    manifest = tmp_path / "mobile" / "assets" / "models" / "manifest.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text(json.dumps({"run": "r1"}))
     run = root / "artifacts" / "r1"
