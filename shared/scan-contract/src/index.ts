@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const SCAN_SCHEMA_VERSION = 1
-/** Bytes. The presigned URL accepts no larger photo. */
+/** Bytes. The photo limit of ADR-030 decision 8. */
 export const MAX_JPEG_BYTES = 1_000_000
 
 const GRID_CELLS = 81
