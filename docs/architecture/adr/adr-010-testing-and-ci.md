@@ -79,3 +79,56 @@ No iOS build in CI in v1. App builds are made locally (07).
 - A scanner regression reaches daily use unnoticed. Add a simulator job that runs the fixture
   runner on photo files.
 - TestFlight builds become frequent. Add an EAS or macOS build job.
+
+## Amendment 2026-10-15: CI also deploys the backend
+
+CI no longer only checks. Two new workflows deploy the backend to AWS (ADR-027, decision 8).
+
+| Job | Trigger | Steps |
+| --- | --- | --- |
+| `deploy-api-dev` | Push to `develop` that changes `infra/`, `services/`, `packages/sync-contract/`, `sst.config.ts` or the root config | Checks, account and kill switch checks, `sst diff`, `sst deploy --stage dev` |
+| `deploy-api-production` | Manual run, from `develop` only | Job `plan`: checks, account and kill switch checks, `sst diff`. Job `deploy`: `sst deploy --stage production` |
+| `workflows` | `.github/` | actionlint |
+
+1. **The paths filter skips the deploy.** A merge that changes no backend file does not start
+   `deploy-api-dev`. A manual run always deploys, because the developer chose it.
+2. **The checks run twice.** They run on the pull request, then on the merge commit. A composite
+   action, `.github/actions/ts-checks`, holds the shared steps for `ci-ts` and both deploy
+   workflows.
+3. **Every action is pinned to a commit SHA**, in all workflows. `infra/workflows.test.ts` fails
+   on a floating tag.
+4. **The approval gate is the manual run.** The repository is private on a GitHub Free account.
+   GitHub offers environments in a private repository only on Pro, Team and Enterprise. It offers
+   a required reviewer for a private repository only on Enterprise, and for a public repository on
+   every plan (GitHub documentation, checked 2026-10-15). The account has the Free plan, so the
+   workflow uses no `environment:` key. Only the owner has write access, so starting the run is the approval.
+   The deploy job does not wait for a second click.
+5. **The trust policy carries the guard that an environment would carry.** Without an
+   environment, the OIDC `sub` claim names the branch. The repository uses immutable subject claims, so the
+   `sub` is `repo:vandemaelefelix@32290789/sudoku@1412094169:ref:refs/heads/develop`. The trust also
+   requires `repository_id` 1412094169. Both roles share both conditions. The claim `job_workflow_ref` tells them apart. The role `sudoku-github-dev`
+   trusts only `deploy-api-dev.yml@refs/heads/develop`. The role `sudoku-github-production` trusts
+   only `deploy-api-production.yml@refs/heads/develop`. A run of the production workflow from
+   another branch fails at the role, and the jobs refuse it earlier with `if:`.
+6. **GitHub stores no AWS secret.** The two role ARNs are repository variables. The `sst.Secret`
+   values live in the SST state in the AWS account, so no GitHub environment holds secrets.
+
+### Consequences of the amendment
+
+- CI holds a role with `AdministratorAccess`, reachable only from one repository, one branch and
+  one workflow file per role (ADR-027, amendment "CI deploys").
+- A mistake on `develop` can reach `dev` without a human click. `production` needs a manual run.
+- A push right can start a `dev` deploy. Only the owner has push rights.
+
+### Reassessment Triggers of the amendment
+
+- The account upgrades to GitHub Pro or Team, or the repository becomes public. Then add the
+  `production` environment to the job `deploy`, with a required reviewer where the plan allows
+  it. Add `repo:vandemaelefelix@32290789/sudoku@1412094169:environment:production` to the trust of the production
+  role. Remove the `ref` subject from it. The split into `plan` and `deploy` already puts
+  `sst diff` before the gate.
+- A collaborator gets write access. Then the manual run is no longer an approval by the owner.
+- `job_workflow_ref` is not accepted by AWS in the trust policy, or the first run shows that a plain
+  workflow lacks the claim. Then use a separate branch rule or an environment, or the fallback in
+  `infra/README.md`.
+- The OIDC subject customization of the repository changes. The trust `sub` must then change with it.

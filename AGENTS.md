@@ -21,18 +21,24 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 | What we build and why | `docs/architecture/01-introduction-and-goals.md` |
 | Every binding rule and decision | `docs/architecture/00-DECISIONS.md` |
 | Repository layout and boundaries | `docs/architecture/05-building-block-view.md` |
+| Where each folder lives | `docs/architecture/adr/adr-029-repository-layout.md` |
 | How a scan works | `docs/architecture/00-concepts/scan-pipeline.md` |
+| How the game screen works | `docs/architecture/00-concepts/game-screen.md` |
+| How the history sync works | `docs/architecture/00-concepts/history-sync.md` |
 | What the model must accept and return | `docs/architecture/00-concepts/model-contract.md` |
 | Words and their meaning | `docs/architecture/12-glossary.md` |
 | Commands (setup, test, lint) | `justfile`, or run `just --list` |
-| Rules for the Expo app | `apps/mobile/AGENTS.md` |
+| Rules for the Expo app | `mobile/AGENTS.md` |
+| How the backend deploys | `backend/infra/README.md` |
+| Where the backend parts live, and what to do when one breaks | `docs/operations/runbook.md` |
+| How the sync Lambda works and how to test it | `backend/api/README.md` |
 
 ## Rules that bind all work
 
 1. Obey every `SUD-xx` constraint in `00-DECISIONS.md`. If a change would break one, stop and
    say so. Do not work around it.
 2. Do not change an accepted decision in code alone. Write or amend an ADR first.
-3. `ml/` (Python) and the TypeScript side share files only: `contracts/`, `fixtures/` and the
+3. `ml/` (Python) and the TypeScript side share files only: `shared/model-contract/`, `shared/fixtures/` and the
    promoted model. Neither side imports the other (SUD-07).
 4. Do not commit training images or private fixtures (SUD-08).
 5. Do not let camera frames, photos or cell images leave the device without an explicit user
@@ -76,11 +82,39 @@ all follow them.
 8. **Plain words.** Write "use", not "utilise". Write "start", not "commence". Write "before", not
    "prior to".
 9. **Keep the articles.** Do not drop "the", "a" or "this" to save space.
-10. **Warnings come first.** Put the command first, then the risk: "Do not delete `ml/data/`.
+10. **Warnings come first.** Put the command first, then the risk: "Do not delete `ml/dataset/`.
     It holds the only copy of the labelled cells."
 
 Technical names (such as "frame processor" or "promote gate") are allowed. Define them in the
 glossary.
+
+## Code comments
+
+Write a comment only when it gives a fact that the code cannot show. A good name comes first. A
+comment is the last option.
+
+1. **Comment the reason, not the action.** The code says what it does. A comment says why, or
+   why the obvious way is wrong.
+2. **Write an interface comment only for facts.** Facts are units, shapes, ranges, invariants,
+   side effects and failure behaviour. Delete a comment that repeats the name or the types.
+3. **Point to durable sources.** Refer to `SUD-xx`, `ADR-NNN`, a concept or a record in
+   `docs/research/`. Do not refer to issues, pull requests or plan tasks. They belong in commits
+   and pull requests.
+4. **Do not write TODO, FIXME, XXX or HACK.** Propose an issue instead (see Work tracking).
+5. **Do not commit commented-out code.** Delete it. Git keeps the old version.
+6. **Name the rule in every lint suppression.** Give the reason in the same comment. Do not use a
+   blanket `eslint-disable` or a blanket `# noqa`.
+7. **Explain a test only when its setup is not obvious.** Do not repeat the assertion.
+8. **Keep comments true.** When you change code, change or delete its comment in the same commit.
+
+| Keep | Delete |
+| --- | --- |
+| `// The spy comes before render: the worklet captures countFrame when it is created.` | `/** The number of cells in a sudoku grid. */` above `GRID_CELLS` |
+| `# SUD-10: training must never draw synthetic cells with this seed.` | `"""Index of a digit class in the digit output."""` on `digit_index` |
+| `image: np.ndarray  # (64, 64, 3) uint8 RGB cell image` | `(issue #2)` at the end of a component comment |
+
+`just lint` enforces rules 4 and 6 with oxlint and ruff. Ruff also enforces rule 5. Comments
+follow the writing style above.
 
 ## Work tracking
 
@@ -90,14 +124,19 @@ Work is tracked in GitHub issues. Use the `gh` CLI.
    create it without approval.
 2. Each issue has one `type:` label, one `area:` label and a milestone (`M0` to `M3`).
 3. Use the templates in `.github/ISSUE_TEMPLATE/`. Acceptance criteria are a checklist.
-4. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
-5. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
-6. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.
-7. Tick an acceptance criterion in the issue when it is met.
-8. Before a pull request is merged, a second agent reviews it without this session's context.
-   Fix its findings, or answer them in the pull request.
-9. When work proves or changes a decision, update the ADR in the same pull request and link it
-   from the issue.
+4. An epic groups the issues of one player goal. It uses the `epic.md` template and the label
+   `type: epic`. Each issue of the epic is a GitHub sub-issue, with "blocked by" links for its
+   order.
+5. The pull request that meets the last open criterion of an epic says `Closes #<epic>`.
+   Every other pull request of the epic says `Part of #<epic>`.
+6. Name the branch `<type>/<issue>-<slug>`, for example `feature/12-technique-solver`.
+7. Reference the issue in commits, for example `feat(core): add naked singles (#12)`.
+8. Put `Closes #<issue>` in the pull request body. Do not close issues by hand.
+9. Tick an acceptance criterion in the issue when it is met.
+10. Before a pull request is merged, a second agent reviews it without this session's context.
+    Fix its findings, or answer them in the pull request.
+11. When work proves or changes a decision, update the ADR in the same pull request and link it
+    from the issue.
 
 ## Git
 

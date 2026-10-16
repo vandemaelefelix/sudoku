@@ -1,0 +1,76 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/expo": "4.10.1",
+    "@clerk/expo-google-signin": "1.0.4",
+    "@react-native/normalize-colors": "0.86.3",
+    "@shopify/react-native-skia": "2.6.2",
+    "@sudoku/core": "workspace:*",
+    "@sudoku/sync-contract": "workspace:*",
+    "expo": "~57.0.27",
+    "expo-auth-session": "~57.0.15",
+    "expo-constants": "~57.0.21",
+    "expo-crypto": "~57.0.4",
+    "expo-file-system": "~57.0.7",
+    "expo-font": "~57.0.4",
+    "expo-haptics": "~57.0.3",
+    "expo-linking": "~57.0.12",
+    "expo-network": "~57.0.2",
+    "expo-router": "~57.0.25",
+    "expo-secure-store": "~57.0.4",
+    "expo-splash-screen": "~57.0.9",
+    "expo-sqlite": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-fast-opencv": "1.0.1",
+    "react-native-fast-tflite": "3.0.1",
+    "react-native-nitro-image": "0.15.2",
+    "react-native-nitro-modules": "0.37.1",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.2",
+    "react-native-unistyles": "3.5.2",
+    "react-native-vision-camera": "5.2.3",
+    "react-native-vision-camera-resizer": "5.2.3",
+    "react-native-vision-camera-worklets": "5.2.3",
+    "react-native-worklets": "0.10.1"
+  },
+  "devDependencies": {
+    "@testing-library/react-native": "13.3.3",
+    "@types/jest": "29.5.14",
+    "@types/pngjs": "6.0.5",
+    "@types/react": "~19.2.2",
+    "babel-preset-expo": "~57.0.14",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.5",
+    "pngjs": "7.0.0",
+    "react-test-renderer": "19.2.3",
+    "typescript": "~6.0.3"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "\\.tflite$": "<rootDir>/test/tfliteStub.js",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@assets/(.*)$": "<rootDir>/assets/$1"
+    },
+    "preset": "jest-expo",
+    "setupFiles": [
+      "react-native-unistyles/mocks",
+      "<rootDir>/jest.setup.ts"
+    ]
+  }
+}

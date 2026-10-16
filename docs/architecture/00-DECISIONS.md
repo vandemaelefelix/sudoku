@@ -12,20 +12,22 @@ reasoning lives on the source named in each row. Accepted constraints from outsi
 
 ## Constraints
 
-Ordered by impact. Hard cap 20. Currently 10.
+Ordered by impact. Hard cap 20. Currently 11.
 
 | ID | Constraint | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
 | SUD-01 | The game and the scanner MUST work fully without a network connection. | Systemic | 2026-10-09 | Felix | [ADR-003](adr/adr-003-on-device-inference.md) |
 | SUD-02 | Camera frames, photos and cell images MUST NOT leave the device without an explicit user action for each export. | Systemic | 2026-10-09 | Felix | [ADR-003](adr/adr-003-on-device-inference.md) |
-| SUD-07 | `ml/` and the TypeScript side MUST share files only: `contracts/`, `fixtures/` and the promoted model. Neither imports the other. | Systemic | 2026-10-09 | Felix | [ADR-001](adr/adr-001-polyglot-monorepo.md) |
-| SUD-06 | A model MUST reach the app only through `just promote-model`, which gates on fixture scores. | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
+| SUD-07 | `ml/` and the TypeScript side MUST share files only: `shared/model-contract/`, `shared/fixtures/` and the promoted model. Neither imports the other. | Systemic | 2026-10-09 | Felix | [ADR-001](adr/adr-001-polyglot-monorepo.md) |
+| SUD-06 | A model MUST reach the app only through `just promote-model`, which gates on fixture scores. Until M3, `just install-model` is the one exception (ADR-007, amendment). | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
 | SUD-09 | Promote and the test suite MUST refuse a model whose contract major version the scanner does not implement. | Cross-concept | 2026-10-09 | Felix | [model-contract](00-concepts/model-contract.md) |
 | SUD-10 | Fixture cells MUST NOT appear in any training dataset. | Cross-concept | 2026-10-09 | Felix | [model-contract](00-concepts/model-contract.md) |
+| SUD-11 | The AWS bill MUST stay below €10 a month. Throttles bound the worst case, and a kill switch stops every stage at the budget. | Cross-concept | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
+| SUD-12 | The repository root MUST hold only the folders and files that ADR-029 lists. `just lint` checks it. | Cross-concept | 2026-10-16 | Felix | [ADR-029](adr/adr-029-repository-layout.md) |
 | SUD-04 | `@sudoku/core` MUST NOT depend on React Native, Expo or any I/O. | Cross-concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | SUD-03 | The game MUST NOT depend on the scanner. Scanning is an optional way into a puzzle. | Concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
 | SUD-05 | The app MUST reach the scanner only through `src/scanner/index.ts`. | Concept | 2026-10-09 | Felix | [scan-pipeline](00-concepts/scan-pipeline.md) |
-| SUD-08 | Training images and private fixtures MUST NOT be committed. The public `fixtures/scans` set is the one exception. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md), [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
+| SUD-08 | Training images and private fixtures MUST NOT be committed. The public `shared/fixtures/scans` set is the one exception. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md), [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
 
 SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010-testing-and-ci.md)).
 
@@ -36,16 +38,33 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
 | ADR-001 | One repo, pnpm workspaces for TypeScript, uv for Python, a root `justfile`. Turborepo only when it pays. | Systemic | 2026-10-09 | Felix | [ADR-001](adr/adr-001-polyglot-monorepo.md) |
-| ADR-002 | React Native (Expo, CNG) + VisionCamera. fast-opencv and fast-tflite by default, a Swift plugin per failing step. **Pending the walking skeleton (M0).** | Systemic | 2026-10-09 | Felix | [ADR-002](adr/adr-002-react-native-and-scanner-engine.md) |
+| ADR-002 | React Native (Expo, CNG) + VisionCamera 5. fast-opencv and fast-tflite by default, a Swift plugin per failing step. **Pending the walking skeleton (M0).** | Systemic | 2026-10-09 | Felix | [ADR-002](adr/adr-002-react-native-and-scanner-engine.md) |
 | ADR-008 | `@sudoku/core` is an internal package. The scanner is a module inside the app. Boundaries enforced by lint. | Cross-concept | 2026-10-09 | Felix | [ADR-008](adr/adr-008-package-boundaries.md) |
-| ADR-010 | Four test layers. The real scanner is tested on the phone by a fixture runner. CI on Linux, no iOS build. | Cross-concept | 2026-10-09 | Felix | [ADR-010](adr/adr-010-testing-and-ci.md) |
+| ADR-010 | Four test layers. The real scanner is tested on the phone by a fixture runner. CI on Linux, no iOS build. Amended 2026-10-15: CI also deploys the backend, the manual run is the production approval on the Free plan. | Cross-concept | 2026-10-09 | Felix | [ADR-010](adr/adr-010-testing-and-ci.md) |
+| ADR-015 | Unistyles 3 with three token tiers. Two themes first: Daylight and Midnight (now three Op-art colourways, ADR-025). Theme decorations for structure, none built in v1. Points 2 and 9 amended by ADR-021. Point 2 amended again by ADR-025. | Cross-concept | 2026-10-12 | Felix | [ADR-015](adr/adr-015-theming.md) |
+| ADR-021 | Four themes: Daylight, Midnight, Op-art and Progressive (superseded in part by ADR-025). One theme registry. The first theme decorations: `panelEdge`, `titleMark` and `cardEdge`. Fonts bundled at build time. Amends ADR-015. Amended 2026-10-14: the `summaryEdge` slot, `components.summary` and `components.tabs`. | Cross-concept | 2026-10-13 | Felix | [ADR-021](adr/adr-021-four-themes.md) |
+| ADR-025 | One style, three Op-art colourways: Cobalt, Forest and Bordeaux. One builder, one palette per colourway. Light only, no System choice (amended by ADR-026). The splash follows the colourway. Supersedes ADR-021 in part and amends ADR-015 point 2 and ADR-024. | Cross-concept | 2026-10-14 | Felix | [ADR-025](adr/adr-025-opart-colourways.md) |
+| ADR-026 | Appearance: Auto, Light and Colour. Six looks: three colourways in two appearances. The Colour look derives from the accent in the builder. Auto follows the iPhone setting. Default Light. The native splash is white. The overlay fades to the saved look. Supersedes ADR-025 decision 1 in part. Amends ADR-025 decisions 2, 5, 7 and 10. | Cross-concept | 2026-10-14 | Felix | [ADR-026](adr/adr-026-appearance.md) |
+| ADR-016 | Expo Router 57 with a native stack. Route files in `src/app/` only render a feature screen. Params are URL strings, data comes from the repositories. **Pending the iPhone check of #51.** | Cross-concept | 2026-10-12 | Felix | [ADR-016](adr/adr-016-navigation.md) |
+| ADR-017 | The finish card tilts with Reanimated's useAnimatedSensor. No new dependency. No tilt with Reduce Motion. | Concept | 2026-10-12 | Felix | [ADR-017](adr/adr-017-card-motion-sensor.md) |
+| ADR-022 | Two app variants from `APP_VARIANT`: development (`.dev` bundle ID, "Sudoku Dev", DEV ribbon, the default) and production. The app icon is generated from one SVG design by `just icons`. | Cross-concept | 2026-10-14 | Felix | [ADR-022](adr/adr-022-app-variants.md) |
+| ADR-023 | The history gets a third result, `abandoned`. A `StatsRepository` counts the stats in SQL. One contract test fixes the rules for every implementation. A sync layer wraps the local history. No move log. Amends ADR-012. | Cross-concept | 2026-10-14 | Felix | [ADR-023](adr/adr-023-player-stats.md) |
+| ADR-024 | An animated splash. The native splash is a plain white ground. A `SplashOverlay` plays "Soft wave, softer" and hands off to the home title. No overlay with Reduce Motion. Supersedes decision 5 of ADR-022. Amended by ADR-025 and ADR-026: the splash colours follow the saved look. | Concept | 2026-10-14 | Felix | [ADR-024](adr/adr-024-animated-splash.md) |
 
 ### Game
 
 | ID | Decision | Impact | Since | Owner | Source |
 | --- | --- | --- | --- | --- | --- |
-| ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints. A pool of 3 per level for instant start. | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
-| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
+| ADR-011 | Generate on the device. A technique solver grades difficulty and gives hints, later. v1: the level comes from the number of givens, a hint reveals a random cell, no pool (amendment 2026-10-12). A scanned puzzle takes the level of the nearest givens target (amendment 2026-10-12). The app draws seeds below 1 000 000. The seed is the puzzle number (amendment 2026-10-12). | Concept | 2026-10-09 | Felix | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
+| ADR-012 | expo-sqlite behind repository interfaces. UUIDs, timestamps and soft delete, so sync can come later. The seed is stored. The best time counts only generated games (amendment 2026-10-12). Amended by ADR-023: the `abandoned` result and `StatsRepository`. Amended by ADR-028: owner, waiting list, clear rule, `adoptUnowned` scope, shared write queue. | Concept | 2026-10-09 | Felix | [ADR-012](adr/adr-012-local-persistence.md) |
+
+### Backend
+
+| ID | Decision | Impact | Since | Owner | Source |
+| --- | --- | --- | --- | --- | --- |
+| ADR-027 | Clerk signs players in (email and Google in v1, Apple later). Our own user ID behind an identity row. An HTTP API with the JWT authorizer, one Lambda and one DynamoDB table in `eu-west-1`, built with SST. Stages `felix`, `dev` and `production`, deployed by GitHub Actions with OIDC. The spending cap (SUD-11). Supersedes TC-3 in part. Amended 2026-10-15: the AWS account setup, a three-layer account guard, account-wide resources in `production`, the budget without credits and refunds. Amended 2026-10-15: the Clerk development instance for `felix` and `dev`, our own Google OAuth clients, no bot challenge for native sign-ups. Amended 2026-10-15: the throttle per route, access logs without IP and user agent, point-in-time recovery only in `production`. Amended 2026-10-15: the kill switch with an SSM flag per stage, four deploy checks, `just api-on`, no reserved concurrency of 2 on a limit of 10, throttled requests treated as billed. Amended 2026-10-15: delete the account (tombstone first, paged row delete, Clerk user last, 30 s timeout). It needs Clerk on the stage. Amended 2026-10-15: CI deploys with two roles, administrator access limited by the trust policy, the OIDC provider in `production`. Amended 2026-10-15: the production release, with the account resources deployed first and `production` without a Clerk issuer deploying no API. | Systemic | 2026-10-15 | Felix | [ADR-027](adr/adr-027-backend-platform.md) |
+| ADR-028 | Only finished games sync. One `POST /v1/sync` pushes the waiting list and pulls the changes since a server cursor. Every history entry has an owner: the Clerk user ID. The stats stay on the device. Amends ADR-012 and ADR-023. Amended 2026-10-15: the TTL attribute `expiresAt`, one transaction per history entry, a cursor string in every response. Amended 2026-10-15: the sync rules in the app. Amended 2026-10-15: delete the account: the tombstone keeps `userId`, the server deletes the rows of both kinds and the Clerk user last, the app stops the sync before the call, a lost answer counts as a delete, the client waits 35 s. Adoption of the entries of an old owner after a provider switch is deferred. | Cross-concept | 2026-10-15 | Felix | [ADR-028](adr/adr-028-history-sync.md) |
+| ADR-029 | One folder per area: `mobile`, `ml`, `backend`, `web`, plus `shared`, `tools` and `docs`. `sst.config.ts` stays at the root. Supersedes the folder layout of ADR-001, ADR-008 and ADR-018. | Systemic | 2026-10-16 | Felix | [ADR-029](adr/adr-029-repository-layout.md) |
 
 ### Scanning and ML
 
@@ -53,8 +72,12 @@ SUD-03, SUD-04 and SUD-05 are checked in CI by lint rules ([ADR-010](adr/adr-010
 | --- | --- | --- | --- | --- | --- |
 | ADR-003 | All inference on the device. | Systemic | 2026-10-09 | Felix | [ADR-003](adr/adr-003-on-device-inference.md) |
 | ADR-004 | Two stages: 4 corners live, per-cell flatten from 100 intersections on capture. | Concept | 2026-10-09 | Felix | [ADR-004](adr/adr-004-two-stage-scan-pipeline.md) |
-| ADR-005 | PyTorch on MPS, exported to TFLite with ai-edge-torch, float weights. **Pending the walking skeleton (M0).** | Cross-concept | 2026-10-09 | Felix | [ADR-005](adr/adr-005-pytorch-to-tflite.md) |
-| ADR-006 | One cell classifier, two heads: digit and kind (printed, handwritten, notes). | Concept | 2026-10-09 | Felix | [ADR-006](adr/adr-006-two-head-cell-classifier.md) |
-| ADR-007 | Gated promote step, scored on the app's own cell images per fixture, with a floor, a tolerance and a holdout split. | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
-| ADR-009 | Images outside git, a dataset manifest inside. DVC later. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md) |
-| ADR-013 | Public-safe fixtures in git, real-world scans private, a licence on record for every data source. | Concept | 2026-10-09 | Felix | [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
+| ADR-019 | Lock-on needs the same grid in view for LOCK_DWELL and no clear move (drift over 0.3 s), not a still phone. Supersedes the lock-on condition of ADR-004. A Retake starts a fresh scan. | Concept | 2026-10-12 | Felix | [ADR-019](adr/adr-019-lock-on-tracked-grid.md) |
+| ADR-005 | PyTorch on MPS, exported to TFLite with litert-torch, float32 weights only. **Pending the walking skeleton (M0).** | Cross-concept | 2026-10-09 | Felix | [ADR-005](adr/adr-005-pytorch-to-tflite.md) |
+| ADR-006 | One cell classifier, two heads: digit and kind (printed, handwritten, notes). A global-average-pooling CNN of about 73k parameters. | Concept | 2026-10-09 | Felix | [ADR-006](adr/adr-006-two-head-cell-classifier.md) |
+| ADR-020 | The model reads the full 64 × 64 cell, with the grid lines. Model contract 2.0. Replaces the crop rule of contract 1. | Cross-concept | 2026-10-13 | Felix | [ADR-020](adr/adr-020-full-cell-input.md) |
+| ADR-007 | Gated promote step, scored on the app's own cell images per fixture, with a floor, a tolerance and a holdout split. Until M3, `just install-model` copies a run without the gate. A model trained on unpublishable data stays out of git. | Cross-concept | 2026-10-09 | Felix | [ADR-007](adr/adr-007-model-promotion.md) |
+| ADR-009 | Images outside git, a dataset manifest inside. Photo import with a licence per photo. A work folder for derived files, a Finish step and a data check. DVC later. The layout, the kind log and the photo list are superseded by ADR-018. | Concept | 2026-10-09 | Felix | [ADR-009](adr/adr-009-training-data-outside-git.md) |
+| ADR-018 | One `ml/dataset/` folder at the repository root. Two tracked tables, `cells.csv` and `sudoku-photos.csv`, and the blind check answers. A session journal outside git for undo, folded in by Finish. `SUDOKU_IMAGES` for a shared image store. Supersedes ADR-009 in part. | Concept | 2026-10-12 | Felix | [ADR-018](adr/adr-018-one-data-folder-two-tables.md) |
+| ADR-013 | Public-safe fixtures in git, real-world scans private, a licence on record for every data source. Amended 2026-10-15: the privacy labels with an account. | Concept | 2026-10-09 | Felix | [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
+| ADR-014 | Live overlay effects are modules on one engine and one scene. Development builds have an effect lab with a dev pill. Release builds run the default effect only. | Concept | 2026-10-11 | Felix | [ADR-014](adr/adr-014-overlay-effects.md) |

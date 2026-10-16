@@ -1,16 +1,11 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "unicorn",
-    "import",
-    "react",
-    "jest",
-    "vitest"
-  ],
+  "plugins": ["typescript", "unicorn", "import", "react", "jest", "vitest"],
+  "jsPlugins": ["./tools/oxlint/sudoku-plugin.mjs"],
   "categories": {
     "correctness": "error",
-    "suspicious": "warn"
+    "suspicious": "warn",
+    "perf": "warn"
   },
   "env": {
     "builtin": true,
@@ -21,12 +16,7 @@
       "version": "19.2"
     }
   },
-  "ignorePatterns": [
-    "**/dist/**",
-    "**/.expo/**",
-    "ml/**",
-    ".superpowers/**"
-  ],
+  "ignorePatterns": ["**/dist/**", "**/.expo/**", "ml/**", ".superpowers/**", ".sst/**"],
   "rules": {
     "no-unused-vars": [
       "error",
@@ -38,8 +28,42 @@
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
     "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "oxc/no-barrel-file": [
+      "error",
+      {
+        "threshold": 0
+      }
+    ],
+    "no-warning-comments": [
+      "error",
+      {
+        "terms": ["todo", "fixme", "xxx", "hack"]
+      }
+    ],
+    "unicorn/no-abusive-eslint-disable": "error",
     "react/react-in-jsx-scope": "off",
     "react/style-prop-object": "off",
     "unicorn/require-module-specifiers": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["mobile/**"],
+      "rules": {
+        "import/no-relative-parent-imports": "error"
+      }
+    },
+    {
+      "files": ["mobile/**/*.ts", "mobile/**/*.tsx", "mobile/**/*.js"],
+      "rules": {
+        "sudoku/no-colour-literal": "error"
+      }
+    },
+    {
+      "files": ["mobile/src/theme/**"],
+      "rules": {
+        "sudoku/no-colour-literal": "off"
+      }
+    }
+  ]
 }

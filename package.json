@@ -1,18 +1,27 @@
 {
   "name": "sudoku",
   "private": true,
-  "packageManager": "pnpm@12.10.1",
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "oxlint --deny-warnings",
-    "boundaries": "depcruise apps/mobile/App.tsx apps/mobile/src packages/sudoku-core/src --config .dependency-cruiser.cjs"
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "boundaries": "depcruise mobile/index.ts mobile/devChecks.ts mobile/src shared/core/src shared/sync-contract/src backend/api/src backend/kill-switch/src backend/infra sst.config.ts --config .dependency-cruiser.cjs",
+    "typecheck:infra": "tsc -p tsconfig.infra.json"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "@types/node": "26.6.4",
     "dependency-cruiser": "18.5.0",
-    "oxlint": "1.87.0"
-  }
+    "opentype.js": "1.3.4",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "sst": "4.17.2",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.10.1"
 }

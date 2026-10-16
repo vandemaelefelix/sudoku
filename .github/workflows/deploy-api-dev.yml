@@ -1,0 +1,48 @@
+name: deploy-api-dev
+# Deploys the stage dev on each merge to develop that changes a backend file (ADR-027, decision 8).
+# The paths filter is the "skip when no backend file changed" rule.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - backend/**
+      - shared/sync-contract/**
+      - sst.config.ts
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
+      - .nvmrc
+      - tsconfig.base.json
+      - tsconfig.infra.json
+      - .github/workflows/deploy-api-dev.yml
+      - .github/actions/**
+
+permissions: {}
+
+concurrency:
+  group: deploy-api-dev
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/ts-checks
+      - uses: ./.github/actions/aws-guard
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN_DEV }}
+          stage: dev
+      - name: Show what the deploy changes
+        run: |
+          pnpm exec sst diff --stage dev --print-logs 2>&1 | tee diff.txt
+          { echo '## sst diff, stage dev'; echo '```'; cat diff.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - run: pnpm exec sst deploy --stage dev --print-logs

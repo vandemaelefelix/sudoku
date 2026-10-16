@@ -7,7 +7,7 @@ One monorepo, two parts that share files only:
 
 | Part | Folder | Stack |
 | --- | --- | --- |
-| App (game + scanner) | `apps/mobile`, `packages/sudoku-core` | React Native (Expo), VisionCamera, Skia, TypeScript |
+| App (game + scanner) | `mobile`, `shared/core` | React Native (Expo), VisionCamera, Skia, TypeScript |
 | ML (cell classifier) | `ml/` | Python (uv), PyTorch, exported to TFLite |
 
 **Status:** scaffold. Start with the architecture docs below.
@@ -15,6 +15,7 @@ One monorepo, two parts that share files only:
 ## Getting started
 
 Prerequisites: Node 24, pnpm 12, uv, just. Xcode is needed from issue #2 on.
+The backend needs the AWS CLI 2.32 or newer. See [the backend README](backend/infra/README.md).
 
     just setup   # install TypeScript and Python dependencies
     just test    # all tests
@@ -28,3 +29,6 @@ Prerequisites: Node 24, pnpm 12, uv, just. Xcode is needed from issue #2 on.
 - [Decisions and constraints](docs/architecture/00-DECISIONS.md)
 - [Scan pipeline](docs/architecture/00-concepts/scan-pipeline.md)
 - [Model contract](docs/architecture/00-concepts/model-contract.md)
+- [Game screen](docs/architecture/00-concepts/game-screen.md)
+- [History sync](docs/architecture/00-concepts/history-sync.md)
+- [Operations runbook](docs/operations/runbook.md)

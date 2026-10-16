@@ -14,9 +14,9 @@ status: DRAFT
 ## Context
 
 Puzzles come from newspapers (flat) and puzzle books (curved near the spine). Curved pages
-should work "to some level" without the project going deep into page dewarping. The earlier
-Python project handled curvature after the fact on still photos, with Hough lines, splines and
-scipy solvers across about 4,000 lines. A live camera changes the problem: the user can adjust
+should work "to some level" without the project going deep into page dewarping. Correcting
+curvature after the fact on a still photo needs Hough lines, splines and solvers, and a lot of
+code. A live camera changes the problem: the user can adjust
 the phone until the outline locks on, so the input is already much better.
 
 ## Alternatives Evaluated
@@ -24,7 +24,7 @@ the phone until the outline locks on, so the input is already much better.
 | Option | For | Against |
 | --- | --- | --- |
 | Single 4-corner flatten | Simplest, cheapest | Cells near a book's spine come out off-centre and get misread |
-| Full page dewarping (splines, mesh fitting) | Handles strong curvature | The approach that grew to thousands of lines. Hard to port (scipy) |
+| Full page dewarping (splines, mesh fitting) | Handles strong curvature | A lot of code. Needs maths (scipy) that the phone does not have |
 | ML grid segmentation from the start | Robust | A second model to build before the first scan works |
 | **Two stages: 4 corners live, per-cell flatten on capture** | The live part stays cheap. Curvature handled piece by piece with simple maths. An ML step can replace one stage later | Strong curvature still imperfect |
 

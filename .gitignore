@@ -11,6 +11,11 @@ node_modules/
 dist/
 *.log
 
+# SST state and generated types (ADR-027)
+.sst/
+sst-env.d.ts
+sst.pyi
+
 # iOS / Android build output
 ios/build/
 ios/Pods/
@@ -22,20 +27,27 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
-# ML: images and runs stay out of git (ADR-009)
+# ML: images and runs stay out of git (ADR-009, ADR-018). ml/data/ is the old image location.
 ml/data/
 ml/artifacts/
+ml/dataset/images/
+ml/dataset/work/
+# A write that stopped part-way leaves a .part file beside a table
+ml/dataset/*.part
+
+# A model trained on real cells may not be published (ADR-013). just install-model copies it in.
+mobile/assets/models/*.tflite
 
 # Secrets
 .env
 .env.*
 
 # Expo Continuous Native Generation (ADR-002)
-apps/mobile/ios/
-apps/mobile/android/
+mobile/ios/
+mobile/android/
 
 # Agent plan workspaces
 .superpowers/
 coverage/
-apps/mobile/dist/
+mobile/dist/
 .vitest/

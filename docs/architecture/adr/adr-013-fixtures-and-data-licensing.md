@@ -18,8 +18,8 @@ are involved, and not all of them may be published:
 
 - Photos of newspaper and puzzle-book pages are copyrighted puzzles and layouts.
 - Synthetic training data is rendered with fonts, and each font has its own licence.
-- EMNIST is derived from NIST data, and the ~21k images from the 2020 repository have no
-  recorded source.
+- EMNIST is derived from NIST data. The real cells and photos in `ml/data/` include images
+  downloaded from the web, with no licence.
 
 The promote gate needs fixtures (ADR-007), and QR-01 / QR-02 talk about newspapers and books
 specifically.
@@ -39,7 +39,8 @@ specifically.
    Licence or similar). `ml/fonts/` holds the files together with each licence.
 4. **Every dataset source has a provenance line** in `ml/DATA_SOURCES.md`: origin, licence, and
    whether derived models may be published. EMNIST's terms are checked and recorded before it is
-   used. The 2020 images are **not used** unless their origin is established.
+   used. Data that may not be published may train models that stay private. It never goes into
+   `fixtures/`, and a model trained on it is not published.
 5. **App Store, if it ever ships:** a camera usage text that says scans stay on the phone, and the
    privacy label "Data Not Collected". Both follow from SUD-01 and SUD-02.
 
@@ -54,3 +55,24 @@ specifically.
 
 - The repository goes public. Re-check every file under `fixtures/` and `ml/fonts/` before the
   switch.
+
+## Amendment 2026-10-15: the privacy labels with an account
+
+ADR-027 adds an optional account. The label "Data Not Collected" is now true only for a player without an account.
+It no longer describes the app as a whole. Decision 5 stays valid for the camera text.
+
+1. **The App Store privacy labels declare the data of a signed-in player.** All data is linked to the player. None is
+   used for tracking.
+
+   | Data type | Purpose |
+   | --- | --- |
+   | Contact info: email address | App functionality (sign-in) |
+   | Identifiers: user ID | App functionality |
+   | Gaming: gameplay content (the finished game history) | App functionality (backup and sync) |
+   | Name, if Clerk stores the name from Google | App functionality |
+
+2. **These data types stay undeclared:** photos and videos, camera frames, location, advertising ID, diagnostics and
+   usage data (SUD-02).
+3. **A privacy policy page is required.** The source is [`docs/privacy/privacy-policy.md`](../../privacy/privacy-policy.md).
+   The App Store form and the Google consent screen link to the public page.
+   Vercel hosts the page at `https://sudoku.felixvandemaele.be/privacy`. `site/build.mjs` renders it from the source.

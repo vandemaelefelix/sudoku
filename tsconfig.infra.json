@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    // The SST platform ships .ts sources, so skipLibCheck does not cover them. They fail these two flags.
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["sst.config.ts", "backend/infra/**/*.ts", ".sst/platform/config.d.ts"]
+}

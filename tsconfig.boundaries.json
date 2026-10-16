@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./mobile/src/*"],
+      "@assets/*": ["./mobile/assets/*"]
+    }
+  },
+  "include": [
+    "mobile/App.tsx",
+    "mobile/src",
+    "shared/core/src",
+    "shared/sync-contract/src",
+    "backend/api/src",
+    "backend/kill-switch/src"
+  ]
+}

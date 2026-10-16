@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "ignorePatterns": [
+    "**/*.md",
+    "**/dist/**",
+    "**/.expo/**",
+    "mobile/ios/**",
+    "mobile/android/**",
+    "mobile/assets/models/**",
+    "shared/fixtures/**",
+    "ml/**",
+    "pnpm-lock.yaml",
+    ".superpowers/**",
+    ".sst/**"
+  ]
+}

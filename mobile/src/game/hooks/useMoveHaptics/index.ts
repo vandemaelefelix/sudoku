@@ -1,0 +1,1 @@
+export { useMoveHaptics } from './useMoveHaptics'
