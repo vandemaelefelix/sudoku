@@ -24,6 +24,7 @@ test-ts:
     node --test 'tools/oxlint/*.test.mjs'
     node --test 'tools/icons/*.test.mjs'
     node --test 'tools/layout/*.test.mjs'
+    node --test 'tools/delete-scans/*.test.mjs'
     node --test 'backend/infra/*.test.ts'
 
 # The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
@@ -139,6 +140,10 @@ pull-device-scans device destination="$HOME/scan-corrections" app="com.vandemael
 # Download the uploaded scans of a stage into ml/dataset/ (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage
 pull-scans table bucket:
     {{sudoku_aws}} uv run --directory ml python -m sudoku_ml.pull_scans --table "{{table}}" --bucket "{{bucket}}"
+
+# Delete the scans of one contributor ID or user ID, photo and row (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage
+delete-scans table bucket owner:
+    {{sudoku_aws}} node tools/delete-scans/cli.ts "{{table}}" "{{bucket}}" "{{owner}}"
 
 # Move cells to the digits in a relabel CSV (header file,new_label), then rewrite ml/dataset/cells.csv
 relabel file:
