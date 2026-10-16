@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native'
-import { Linking } from 'react-native'
+import { Linking, Modal } from 'react-native'
 import { POLICY_URL } from '@/scanShare/constants/scanShare.constants'
 import { ScanShareNotice } from './ScanShareNotice'
 
@@ -38,4 +38,11 @@ it('shows nothing when no notice is due', () => {
   mockDue = false
   const { queryByText } = render(<ScanShareNotice />)
   expect(queryByText('Help improve the app')).toBeNull()
+})
+
+it('does not count the back button as "Got it" or "Turn off"', () => {
+  const { UNSAFE_getByType } = render(<ScanShareNotice />)
+  UNSAFE_getByType(Modal).props.onRequestClose()
+  expect(mockAccept).not.toHaveBeenCalled()
+  expect(mockDecline).not.toHaveBeenCalled()
 })

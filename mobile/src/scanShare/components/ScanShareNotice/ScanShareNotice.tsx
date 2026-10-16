@@ -6,6 +6,8 @@ import { useScanShare } from '@/scanShare/useScanShare'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './ScanShareNotice.styles'
 
+function noop(): void {}
+
 /**
  * The first-upload notice (ADR-030). It opens once, after the first scan leaves the correction screen and before anything uploads.
  * It lives in the root layout, because the correction screen is gone by then. Both buttons close it for good.
@@ -14,7 +16,8 @@ export function ScanShareNotice() {
   const { noticeDue, acceptNotice, declineNotice } = useScanShare()
   const { bottom } = useSafeAreaInsets()
   return (
-    <Modal visible={noticeDue} transparent animationType="slide" onRequestClose={acceptNotice}>
+    // The Android back button does nothing: it must not count as "Got it". Only the two buttons answer the notice.
+    <Modal visible={noticeDue} transparent animationType="slide" onRequestClose={noop}>
       <View style={styles.backdrop}>
         <View
           testID="scan-share-notice"
