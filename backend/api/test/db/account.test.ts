@@ -28,6 +28,8 @@ describe('DELETE /v1/account', () => {
   let clerkCalls: string[]
   let clerk: SyncDeps['clerk']
   let logged: LogFields[]
+  let photoDeletes: string[]
+  let photoFailure: boolean
   let sendWrap: ((db: SyncDeps['db']) => SyncDeps['db']) | undefined
 
   const deps = (): SyncDeps => ({
@@ -38,6 +40,12 @@ describe('DELETE /v1/account', () => {
     log: (fields) => logged.push(fields),
     sleep: async () => undefined,
     clerk,
+    photos: {
+      delete: async (key) => {
+        if (photoFailure) throw new Error('S3 down')
+        photoDeletes.push(key)
+      },
+    },
   })
   const del = (sub: string) => route(deps(), syncEvent(null, { sub, routeKey: DELETE }))
   const sync = (sub: string) => route(deps(), syncEvent({ entries: [], cursor: null }, { sub }))
@@ -103,6 +111,8 @@ describe('DELETE /v1/account', () => {
   const reset = () => {
     clerkCalls = []
     logged = []
+    photoDeletes = []
+    photoFailure = false
     sendWrap = undefined
     clerk = { deleteUser: async (sub) => void clerkCalls.push(sub) }
   }
@@ -329,6 +339,38 @@ describe('DELETE /v1/account', () => {
     })
     expect((await del('sub_noclerk')).statusCode).toBe(500)
     expect(logged.at(-1)?.errorName).toBe('ClerkError')
+  })
+
+  it('deletes the photo of each SCAN row before the row', async () => {
+    reset()
+    await seedPlayer('sub_scan', 'user-scan', 1)
+    const items = ['s-1', 's-2'].map((id) => ({
+      pk: userPk('user-scan'),
+      sk: `SCAN#${id}`,
+      gsiPending: 'PENDING',
+      createdAt: NOW.toISOString(),
+    }))
+    await Promise.all(items.map((Item) => table.db.send(new PutCommand({ TableName: table.tableName, Item }))))
+    expect((await del('sub_scan')).statusCode).toBe(204)
+    // oxlint-disable-next-line unicorn/no-array-sort -- The copy is sorted, and lib has no toSorted.
+    expect([...photoDeletes].sort()).toEqual(['scans/s-1.jpg', 'scans/s-2.jpg'])
+    expect(await rows('user-scan')).toEqual([])
+  })
+
+  it('keeps the SCAN row when the photo delete fails, so a retry finds it', async () => {
+    reset()
+    await seedPlayer('sub_scanfail', 'user-scanfail', 0)
+    await table.db.send(
+      new PutCommand({ TableName: table.tableName, Item: { pk: userPk('user-scanfail'), sk: 'SCAN#s-9' } }),
+    )
+    photoFailure = true
+    expect((await del('sub_scanfail')).statusCode).toBe(500)
+    expect((await rows('user-scanfail')).map((row) => row.sk)).toContain('SCAN#s-9')
+    expect(clerkCalls).toEqual([])
+    photoFailure = false
+    expect((await del('sub_scanfail')).statusCode).toBe(204)
+    expect(photoDeletes).toEqual(['scans/s-9.jpg'])
+    expect(await rows('user-scanfail')).toEqual([])
   })
 
   it('leaves the rows of another player', async () => {

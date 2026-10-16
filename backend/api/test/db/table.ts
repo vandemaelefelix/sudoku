@@ -32,6 +32,14 @@ export function createTableInput(tableName: string): CreateTableCommandInput {
       ],
       Projection: { ProjectionType: 'ALL' },
     })),
+    GlobalSecondaryIndexes: Object.entries(TABLE.globalIndexes).map(([name, index]) => ({
+      IndexName: name,
+      KeySchema: [
+        { AttributeName: index.hashKey, KeyType: 'HASH' },
+        { AttributeName: index.rangeKey, KeyType: 'RANGE' },
+      ],
+      Projection: { ProjectionType: 'ALL' },
+    })),
   }
 }
 

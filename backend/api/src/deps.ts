@@ -1,6 +1,7 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { ClerkClient } from './clerk'
 import type { Logger } from './log'
+import type { PhotoStore } from './scans/presign'
 
 // handler.ts builds these from the Lambda environment. The tests pass DynamoDB Local and a fixed clock.
 export interface SyncDeps {
@@ -16,4 +17,6 @@ export interface SyncDeps {
   pageSize?: number
   // The Clerk Backend API. The tests pass a fake.
   clerk: ClerkClient
+  // The scan photos (ADR-030). Account delete removes the photo of each SCAN row. A stage without a bucket passes none.
+  photos?: Pick<PhotoStore, 'delete'>
 }

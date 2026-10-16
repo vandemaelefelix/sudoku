@@ -6,6 +6,7 @@ export const table = new sst.aws.Dynamo('SyncTable', {
   fields: TABLE.fields,
   primaryIndex: TABLE.primaryIndex,
   localIndexes: TABLE.localIndexes,
+  globalIndexes: TABLE.globalIndexes,
   ttl: TABLE.ttl,
   deletionProtection: $app.stage === 'production',
   transform: {
