@@ -24,6 +24,7 @@ import { CorrectionSummary, type FullGridPanel } from '@/scan/components/Correct
 import { DevMenu, type SaveState } from '@/scan/components/DevMenu'
 import { PanelButton } from '@/scan/components/PanelButton'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
+import { useScanExit } from '@/scan/hooks/useScanExit'
 import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
 import { useVerify } from '@/scan/hooks/useVerify'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
@@ -66,6 +67,8 @@ export type CorrectionProps = {
   onPlay?: (start: ScannedStart, looks: readonly CellLook[]) => void
   /** Save the scan with the corrections (development builds). With it, the dev menu shows Save. */
   onSave?: (looks: readonly CellLook[]) => Promise<boolean>
+  /** Called when the screen unmounts after the player could edit it, by any route except the Retake button. The scan is final. */
+  onExit?: (looks: readonly CellLook[]) => void
   /** Home, on the solved panel. */
   onHome?: (() => void) | undefined
   /** The transition clock. Without it, everything shows (the review phase). */
@@ -87,6 +90,7 @@ export function CorrectionScreen({
   onRetake,
   onPlay,
   onSave,
+  onExit,
   onHome,
   clock,
   reduceMotion = false,
@@ -149,6 +153,7 @@ export function CorrectionScreen({
   )
   // The player edits only the finished screen. During the transition the cells are not pressable and show no edit marks.
   const editable = clock == null && ok !== null
+  const markRetake = useScanExit(looks, editable, onExit)
   const open = editable && selected !== null ? selected : null
   const openLook = open === null ? undefined : looks[open]
   const conflictCount = conflicts.filter(Boolean).length
@@ -319,7 +324,10 @@ export function CorrectionScreen({
           testID="retake"
           accessibilityRole="button"
           accessibilityLabel="Retake the photo"
-          onPress={() => onRetake(looks)}
+          onPress={() => {
+            markRetake()
+            onRetake(looks)
+          }}
           hitSlop={8}
           style={({ pressed }) => [styles.retake, pressed && pressedStyles.pressed]}
         >

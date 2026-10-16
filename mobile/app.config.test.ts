@@ -219,3 +219,26 @@ describe('variantConfig', () => {
     expect(() => variantConfig(withoutIos, 'development')).toThrow('bundleIdentifier')
   })
 })
+
+describe('scan sharing (ADR-030)', () => {
+  const production = {
+    ...PRODUCTION_BACKEND,
+    syncApiUrl: 'https://production.example',
+    clerkPublishableKey: 'pk_live_x',
+  }
+
+  it('puts the shared app key in the extra of both variants', () => {
+    expect(variantConfig(base, 'development', undefined, production, 'key').extra?.scanAppKey).toBe('key')
+    expect(variantConfig(base, 'production', undefined, production, 'key').extra?.scanAppKey).toBe('key')
+  })
+
+  it('leaves the key out when none is set, so the build uploads no scans', () => {
+    expect(variantConfig(base, 'development', undefined, production, '').extra?.scanAppKey).toBeUndefined()
+  })
+
+  it('sends a development build to the development stage only, whatever the production backend holds', () => {
+    const extra = variantConfig(base, 'development', undefined, production, 'key').extra
+    expect(extra?.syncApiUrl).toBe(DEVELOPMENT_SYNC_API_URL)
+    expect(extra?.syncApiUrl).not.toBe(production.syncApiUrl)
+  })
+})

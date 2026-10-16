@@ -52,7 +52,7 @@ export function CameraScreen({
   layout: CorrectionLayout
   onDone: (result: RecogniseResult) => void
   onRetake: () => void
-  review?: Pick<CorrectionProps, 'onPlay' | 'onSave' | 'onHome'>
+  review?: Pick<CorrectionProps, 'onPlay' | 'onSave' | 'onExit' | 'onHome'>
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')

@@ -2,12 +2,14 @@ import { act, fireEvent, render, renderHook, screen } from '@testing-library/rea
 import * as Haptics from 'expo-haptics'
 import Storage from 'expo-sqlite/kv-store'
 import type { ReactNode } from 'react'
-import { ScrollView, StyleSheet } from 'react-native'
+import { Linking, ScrollView, StyleSheet } from 'react-native'
 import { AccountContext, UNCONFIGURED_ACCOUNT } from '@/account/hooks/useAccount'
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
 import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
 import { useHaptics } from '@/settings/hooks/useHaptics'
+import { POLICY_URL, SHARE_SCANS_KEY } from '@/scanShare/constants/scanShare.constants'
+import { shareStore } from '@/scanShare/shareStore'
 import { APPEARANCE_PREFERENCE_KEY, THEME_PREFERENCE_KEY } from '@/theme/preference'
 import { resetThemeSession } from '@/theme/session'
 import { cobalt, cobaltColour } from '@/theme/themes/cobalt'
@@ -129,9 +131,9 @@ it('draws the scroll bars in the colour of the theme, so they show on a dark Col
 })
 
 describe('the Op-art look of the page (ADR-026)', () => {
-  it('puts a short wavy rule under each of the four headings', () => {
+  it('puts a short wavy rule under each of the five headings', () => {
     render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
-    expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(4)
+    expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(5)
   })
 
   it('draws the assists in one framed block with square corners and the border of the stats card', () => {
@@ -165,12 +167,45 @@ describe('the account section', () => {
     expect(screen.queryByText('Account')).toBeNull()
   })
 
-  it('comes after Feedback and opens the sign-in screen', () => {
+  it('comes after Scanning and opens the sign-in screen', () => {
     const onSignIn = jest.fn()
     render(<SettingsScreen onBack={jest.fn()} onSignIn={onSignIn} />, { wrapper: SignedOut })
     const headings = screen.getAllByRole('header').map((heading) => heading.props.children)
-    expect(headings.slice(-2)).toEqual(['Feedback', 'Account'])
+    expect(headings.slice(-2)).toEqual(['Scanning', 'Account'])
     fireEvent.press(screen.getByRole('button', { name: 'Sign in' }))
     expect(onSignIn).toHaveBeenCalled()
+  })
+})
+
+describe('the Scanning section (ADR-030)', () => {
+  afterEach(async () => {
+    await Storage.setItemAsync(SHARE_SCANS_KEY, 'on')
+    await act(async () => shareStore.set(true))
+  })
+
+  it('shows "Help improve the app", on by default, above the account section', () => {
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
+    expect(screen.getByText('Scanning')).toBeTruthy()
+    expect(screen.getByLabelText('Help improve the app').props.accessibilityState).toMatchObject({ checked: true })
+  })
+
+  it('saves the switch when the player turns it off', async () => {
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
+    await act(async () => fireEvent.press(screen.getByLabelText('Help improve the app')))
+    expect(screen.getByLabelText('Help improve the app').props.accessibilityState).toMatchObject({ checked: false })
+    expect(Storage.setItemAsync).toHaveBeenCalledWith(SHARE_SCANS_KEY, 'off')
+  })
+
+  it('opens the privacy policy', () => {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
+    fireEvent.press(screen.getByRole('link', { name: 'Privacy policy' }))
+    expect(open).toHaveBeenCalledWith(POLICY_URL)
+  })
+
+  it('shows the version and, once it is read, the short contributor ID in the footer', async () => {
+    render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} />)
+    expect(screen.getByText(/^Version /)).toBeTruthy()
+    expect(await screen.findByText(/^ID [0-9a-f]{8}$/)).toBeTruthy()
   })
 })

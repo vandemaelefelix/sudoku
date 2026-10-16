@@ -9,6 +9,7 @@ import { useScannedStart } from '@/scan/hooks/useScannedStart'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
 import { correctionLayout, type CellLook } from '@/scan/utils/correction.utils'
 import { saveScanCorrection } from '@/scan/utils/correctionStore'
+import { useScanShare } from '@/scanShare/useScanShare'
 import { easeOut } from '@/utils/motion.utils'
 import { styles } from './ScanFlow.styles'
 
@@ -25,6 +26,7 @@ export function ScanFlow() {
     [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge],
   )
   const play = useScannedStart()
+  const { enqueueScan } = useScanShare()
   const router = useRouter()
   const home = useCallback(() => router.dismissTo('/'), [router])
   const [phase, setPhase] = useState<Phase>({ phase: 'live' })
@@ -40,9 +42,18 @@ export function ScanFlow() {
   const review = phase.phase === 'review' ? phase.result : null
   const save = useCallback((looks: readonly CellLook[]) => saveScanCorrection(review, looks), [review])
 
+  // The player leaves the correction screen by any route except Retake. The scan is final then, so it joins the upload queue.
+  const exit = useCallback(
+    (looks: readonly CellLook[]) => {
+      if (review?.ok) void enqueueScan(review.photoPath, review, looks)
+    },
+    [review, enqueueScan],
+  )
+
   const reviewProps = useMemo(
-    () => (review === null ? undefined : { onPlay: play, onHome: home, ...(__DEV__ ? { onSave: save } : {}) }),
-    [review, play, home, save],
+    () =>
+      review === null ? undefined : { onPlay: play, onHome: home, onExit: exit, ...(__DEV__ ? { onSave: save } : {}) },
+    [review, play, home, exit, save],
   )
 
   // The camera screen keeps its correction screen after the transition: the review shows the same screen, not a new one.
