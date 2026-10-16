@@ -115,6 +115,56 @@ it('does nothing for a failed scan or a scan without a photo', async () => {
   expect(await queue.next(1_000)).toBeNull()
 })
 
+describe('the original photo', () => {
+  it('is deleted after the scan is queued, and the queued copy stays', async () => {
+    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    expect(deleted).toEqual(['/tmp/photo.jpg'])
+  })
+
+  it('is deleted when the crop fails', async () => {
+    await createScanShare({ ...deps, crop: failingCrop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    expect(deleted).toEqual(['/tmp/photo.jpg'])
+  })
+
+  it('is deleted when sharing is off', async () => {
+    on = false
+    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    expect(deleted).toEqual(['/tmp/photo.jpg'])
+  })
+
+  it('is deleted when the player turns sharing off during the crop', async () => {
+    await createScanShare({ ...deps, crop: turnOffThenCrop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    expect(deleted).toEqual(['/tmp/photo.jpg'])
+  })
+
+  it('is deleted when the record breaks the contract', async () => {
+    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', { ...OK, cells: [] } as unknown as RecogniseResult, LOOKS)
+    expect(deleted).toEqual(['/tmp/photo.jpg'])
+  })
+
+  it('does not stop the enqueue when the delete throws', async () => {
+    const throwing = {
+      ...deps,
+      deletePhoto: () => {
+        throw new Error('no file')
+      },
+    }
+    await expect(createScanShare(throwing).enqueueScan('/tmp/photo.jpg', OK, LOOKS)).resolves.toBeUndefined()
+  })
+
+  it('is deleted by discardPhoto, which never throws', () => {
+    createScanShare(deps).discardPhoto('/tmp/photo.jpg')
+    expect(deleted).toEqual(['/tmp/photo.jpg'])
+    const throwing = {
+      ...deps,
+      deletePhoto: () => {
+        throw new Error('no file')
+      },
+    }
+    expect(() => createScanShare(throwing).discardPhoto('/tmp/photo.jpg')).not.toThrow()
+  })
+})
+
 const failingCrop = async () => {
   throw new Error('no surface')
 }
@@ -142,7 +192,7 @@ it('clears the queue and deletes the photos when the player turns sharing off', 
   await share.setShareScans(false)
   expect(on).toBe(false)
   expect(await queue.next(1_000)).toBeNull()
-  expect(deleted).toEqual([`/q/${UUID_SCAN}.jpg`])
+  expect(deleted).toEqual(['/tmp/photo.jpg', `/q/${UUID_SCAN}.jpg`])
 })
 
 it('keeps the queue when the player turns sharing on', async () => {
@@ -167,6 +217,6 @@ describe('first-upload notice', () => {
     expect(on).toBe(false)
     expect(noticeSeen).toBe(true)
     expect(await queue.next(1_000)).toBeNull()
-    expect(deleted).toEqual([`/q/${UUID_SCAN}.jpg`])
+    expect(deleted).toEqual(['/tmp/photo.jpg', `/q/${UUID_SCAN}.jpg`])
   })
 })
