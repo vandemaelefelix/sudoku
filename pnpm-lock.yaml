@@ -191,7 +191,66 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
-  apps/mobile:
+  backend/api:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.1150.0
+        version: 3.1150.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.1150.0
+        version: 3.1150.0(@aws-sdk/client-dynamodb@3.1150.0)
+      '@sudoku/sync-contract':
+        specifier: workspace:*
+        version: link:../../packages/sync-contract
+      sst:
+        specifier: 4.17.2
+        version: 4.17.2
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@types/aws-lambda':
+        specifier: 8.10.164
+        version: 8.10.164
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@26.6.4)(jsdom@20.0.3(supports-color@8.1.1))(vite@8.3.3(@types/node@26.6.4)(terser@5.51.2)(yaml@2.9.1))
+
+  backend/kill-switch:
+    dependencies:
+      '@aws-sdk/client-apigatewayv2':
+        specifier: 3.1150.0
+        version: 3.1150.0
+      '@aws-sdk/client-lambda':
+        specifier: 3.1150.0
+        version: 3.1150.0
+      '@aws-sdk/client-sns':
+        specifier: 3.1150.0
+        version: 3.1150.0
+      '@aws-sdk/client-ssm':
+        specifier: 3.1150.0
+        version: 3.1150.0
+    devDependencies:
+      '@types/aws-lambda':
+        specifier: 8.10.164
+        version: 8.10.164
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@26.6.4)(jsdom@20.0.3(supports-color@8.1.1))(vite@8.3.3(@types/node@26.6.4)(terser@5.51.2)(yaml@2.9.1))
+
+  mobile:
     dependencies:
       '@clerk/expo':
         specifier: 4.10.1
@@ -207,10 +266,10 @@ importers:
         version: 2.6.2(3fea8135867a605774b88f2077ace559)
       '@sudoku/core':
         specifier: workspace:*
-        version: link:../../packages/sudoku-core
+        version: link:../packages/sudoku-core
       '@sudoku/sync-contract':
         specifier: workspace:*
-        version: link:../../packages/sync-contract
+        version: link:../packages/sync-contract
       expo:
         specifier: ~57.0.27
         version: 57.0.27(912de03111cf468cbaee6255399c2b41)
@@ -332,65 +391,6 @@ importers:
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
-
-  backend/api:
-    dependencies:
-      '@aws-sdk/client-dynamodb':
-        specifier: 3.1150.0
-        version: 3.1150.0
-      '@aws-sdk/lib-dynamodb':
-        specifier: 3.1150.0
-        version: 3.1150.0(@aws-sdk/client-dynamodb@3.1150.0)
-      '@sudoku/sync-contract':
-        specifier: workspace:*
-        version: link:../../packages/sync-contract
-      sst:
-        specifier: 4.17.2
-        version: 4.17.2
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
-    devDependencies:
-      '@types/aws-lambda':
-        specifier: 8.10.164
-        version: 8.10.164
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      typescript:
-        specifier: ~6.0.3
-        version: 6.0.3
-      vitest:
-        specifier: 5.0.3
-        version: 5.0.3(@types/node@26.6.4)(jsdom@20.0.3(supports-color@8.1.1))(vite@8.3.3(@types/node@26.6.4)(terser@5.51.2)(yaml@2.9.1))
-
-  backend/kill-switch:
-    dependencies:
-      '@aws-sdk/client-apigatewayv2':
-        specifier: 3.1150.0
-        version: 3.1150.0
-      '@aws-sdk/client-lambda':
-        specifier: 3.1150.0
-        version: 3.1150.0
-      '@aws-sdk/client-sns':
-        specifier: 3.1150.0
-        version: 3.1150.0
-      '@aws-sdk/client-ssm':
-        specifier: 3.1150.0
-        version: 3.1150.0
-    devDependencies:
-      '@types/aws-lambda':
-        specifier: 8.10.164
-        version: 8.10.164
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      typescript:
-        specifier: ~6.0.3
-        version: 6.0.3
-      vitest:
-        specifier: 5.0.3
-        version: 5.0.3(@types/node@26.6.4)(jsdom@20.0.3(supports-color@8.1.1))(vite@8.3.3(@types/node@26.6.4)(terser@5.51.2)(yaml@2.9.1))
 
   packages/sudoku-core:
     devDependencies:

@@ -43,37 +43,37 @@ module.exports = {
       name: 'sud-03-game-does-not-use-scanner',
       comment: 'SUD-03: the game must not depend on the scanner.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/game/' },
-      to: { path: '^apps/mobile/src/scanner/' },
+      from: { path: '^mobile/src/game/' },
+      to: { path: '^mobile/src/scanner/' },
     },
     {
       name: 'sud-05-scanner-has-one-entry-point',
       comment: 'SUD-05: outside the scanner, import it only through src/scanner/index.ts.',
       severity: 'error',
-      from: { pathNot: '^apps/mobile/src/scanner/' },
-      to: { path: '^apps/mobile/src/scanner/', pathNot: '^apps/mobile/src/scanner/index\\.ts$' },
+      from: { pathNot: '^mobile/src/scanner/' },
+      to: { path: '^mobile/src/scanner/', pathNot: '^mobile/src/scanner/index\\.ts$' },
     },
     {
       name: 'adr-027-app-does-not-import-infra',
       comment:
         'ADR-027: the app and the packages never import the SST code. The API is their only link to the backend.',
       severity: 'error',
-      from: { path: '^(apps|packages)/' },
+      from: { path: '^(mobile|packages)/' },
       to: { path: '^(backend/infra/|sst\\.config\\.ts$)' },
     },
     {
       name: 'adr-028-game-and-stats-do-not-use-account',
       comment: 'ADR-028: the game and the stats read the owner from storage, never from the account or the sync.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/(game|stats)/' },
-      to: { path: '^apps/mobile/src/(account|sync)/' },
+      from: { path: '^mobile/src/(game|stats)/' },
+      to: { path: '^mobile/src/(account|sync)/' },
     },
     {
       name: 'adr-027-app-does-not-import-services',
       comment:
         'ADR-027: the app and the packages never import the Lambda code. The API is their only link to the backend.',
       severity: 'error',
-      from: { path: '^(apps|packages)/' },
+      from: { path: '^(mobile|packages)/' },
       to: { path: '^backend/(api|kill-switch)/' },
     },
     {
@@ -81,7 +81,7 @@ module.exports = {
       comment: 'ADR-027: the Lambda shares only @sudoku/sync-contract with the app.',
       severity: 'error',
       from: { path: '^backend/(api|kill-switch)/' },
-      to: { path: '^apps/' },
+      to: { path: '^mobile/' },
     },
     {
       name: 'adr-027-services-do-not-import-infra',
@@ -106,8 +106,8 @@ module.exports = {
       comment:
         'ADR-028: the storage tells the sync about a change through subscribe. It never imports the sync or the account.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/storage/' },
-      to: { path: '^apps/mobile/src/(account|sync)/' },
+      from: { path: '^mobile/src/storage/' },
+      to: { path: '^mobile/src/(account|sync)/' },
     },
     {
       name: 'no-circular',
@@ -120,22 +120,22 @@ module.exports = {
       name: 'index-reexports-its-own-folder',
       comment: 'An index.ts is the entry of one folder, not a barrel that collects other folders.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/(.+)/index\\.ts$', pathNot: '^apps/mobile/src/scanner/index\\.ts$' },
-      to: { pathNot: '^apps/mobile/src/$1/[^/]+$', dependencyTypesNot: ['npm', 'npm-dev', 'npm-peer', 'core'] },
+      from: { path: '^mobile/src/(.+)/index\\.ts$', pathNot: '^mobile/src/scanner/index\\.ts$' },
+      to: { pathNot: '^mobile/src/$1/[^/]+$', dependencyTypesNot: ['npm', 'npm-dev', 'npm-peer', 'core'] },
     },
     {
       name: 'utils-and-constants-have-no-ui',
       comment:
         'A utils or constants file holds plain logic and values. It does not import React, React Native or UI modules.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/.+\\.(utils|constants)\\.ts$' },
-      to: { path: ['/node_modules/(react|react-native)/', '^apps/mobile/src/.*/(components|screens|hooks)/'] },
+      from: { path: '^mobile/src/.+\\.(utils|constants)\\.ts$' },
+      to: { path: ['/node_modules/(react|react-native)/', '^mobile/src/.*/(components|screens|hooks)/'] },
     },
     {
       name: 'constants-import-only-constants-and-types',
       comment: 'A constants file holds values. It may build on other constants and import types, nothing else.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/.+\\.constants\\.ts$' },
+      from: { path: '^mobile/src/.+\\.constants\\.ts$' },
       to: { pathNot: '\\.constants\\.ts$', dependencyTypesNot: ['type-only'] },
     },
     {
@@ -143,40 +143,40 @@ module.exports = {
       comment:
         'A styles file holds StyleSheet.create from react-native-unistyles. It may read React Native and the fixed colours of src/theme/, nothing else (ADR-015).',
       severity: 'error',
-      from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
+      from: { path: '^mobile/src/.+\\.styles\\.ts$' },
       to: {
-        pathNot: ['/node_modules/react-native/', '/node_modules/react-native-unistyles/', '^apps/mobile/src/theme/'],
+        pathNot: ['/node_modules/react-native/', '/node_modules/react-native-unistyles/', '^mobile/src/theme/'],
       },
     },
     {
       name: 'palette-stays-in-its-theme',
       comment: 'Only the folder of a theme reads its primitive tokens (ADR-015, points 3 and 7).',
       severity: 'error',
-      from: { pathNot: '^apps/mobile/src/theme/themes/[^/]+/[^/]+$' },
-      to: { path: '^apps/mobile/src/theme/themes/[^/]+/palette\\.ts$' },
+      from: { pathNot: '^mobile/src/theme/themes/[^/]+/[^/]+$' },
+      to: { path: '^mobile/src/theme/themes/[^/]+/palette\\.ts$' },
     },
     {
       name: 'a-theme-does-not-import-another-theme',
       comment:
         'Each theme is one folder with its own tokens (ADR-015, point 11). Shared values live in src/theme/shared.tokens.ts.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/theme/themes/([^/]+)/' },
-      to: { path: '^apps/mobile/src/theme/themes/', pathNot: '^apps/mobile/src/theme/themes/$1/' },
+      from: { path: '^mobile/src/theme/themes/([^/]+)/' },
+      to: { path: '^mobile/src/theme/themes/', pathNot: '^mobile/src/theme/themes/$1/' },
     },
     {
       name: 'styles-read-the-theme-argument',
       comment:
         'A styles file reads the theme through StyleSheet.create(theme => ...). An imported theme object does not change on a theme switch (ADR-015).',
       severity: 'error',
-      from: { path: '^apps/mobile/src/.+\\.styles\\.ts$' },
-      to: { path: '^apps/mobile/src/theme/themes/' },
+      from: { path: '^mobile/src/.+\\.styles\\.ts$' },
+      to: { path: '^mobile/src/theme/themes/' },
     },
     {
       name: 'components-and-hooks-do-not-import-screens',
       comment: 'A screen composes components and hooks, not the other way round.',
       severity: 'error',
-      from: { path: '^apps/mobile/src/.*/(components|hooks)/' },
-      to: { path: '^apps/mobile/src/.*/screens/' },
+      from: { path: '^mobile/src/.*/(components|hooks)/' },
+      to: { path: '^mobile/src/.*/screens/' },
     },
     {
       name: 'no-unresolvable',
@@ -190,9 +190,9 @@ module.exports = {
   options: {
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
-    // The app aliases (@/, @assets/) are copied from apps/mobile/tsconfig.json. The Expo base config cannot be read from the root.
+    // The app aliases (@/, @assets/) are copied from mobile/tsconfig.json. The Expo base config cannot be read from the root.
     tsConfig: { fileName: 'tsconfig.boundaries.json' },
-    exclude: { path: '^apps/[^/]+/(dist|\\.expo)/' },
+    exclude: { path: '^mobile/(dist|\\.expo)/' },
     enhancedResolveOptions: {
       exportsFields: ['exports'],
       conditionNames: ['import', 'require', 'node', 'default', 'types'],

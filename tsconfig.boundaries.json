@@ -3,13 +3,13 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "paths": {
-      "@/*": ["./apps/mobile/src/*"],
-      "@assets/*": ["./apps/mobile/assets/*"]
+      "@/*": ["./mobile/src/*"],
+      "@assets/*": ["./mobile/assets/*"]
     }
   },
   "include": [
-    "apps/mobile/App.tsx",
-    "apps/mobile/src",
+    "mobile/App.tsx",
+    "mobile/src",
     "packages/sudoku-core/src",
     "packages/sync-contract/src",
     "backend/api/src",

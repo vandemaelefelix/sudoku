@@ -42,7 +42,7 @@ The repository holds two separate toolchains that never import each other. They 
 ```mermaid
 flowchart LR
     subgraph js["JS/TS world (pnpm)"]
-        mobile["apps/mobile"]
+        mobile["mobile"]
         core["packages/sudoku-core"]
     end
     subgraph py["Python world (uv)"]
@@ -50,7 +50,7 @@ flowchart LR
     end
     contracts[("contracts/<br>model contract")]
     fixtures[("fixtures/scans<br>photos + true grids")]
-    models[("apps/mobile/assets/models<br>promoted model + manifest")]
+    models[("mobile/assets/models<br>promoted model + manifest")]
 
     mobile --> core
     ml -->|promote| models

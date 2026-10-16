@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths: &paths
-      - apps/**
+      - mobile/**
       - packages/**
       - backend/**
       - web/**
@@ -39,5 +39,5 @@ jobs:
         env:
           DYNAMODB_ENDPOINT: http://localhost:8000
       # The model is not in git (ADR-007, amendment). Metro needs a file to bundle; its content does not matter here.
-      - run: touch apps/mobile/assets/models/cell-classifier.tflite
+      - run: touch mobile/assets/models/cell-classifier.tflite
       - run: just bundle

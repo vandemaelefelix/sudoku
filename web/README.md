@@ -14,7 +14,7 @@ pnpm --filter @sudoku/web test
 
 The site has no JavaScript, no cookies and no analytics (SUD-02). Pages load no third-party resource.
 Vercel hosts the site. Vercel processes the IP address of a visitor to serve the pages. The policy says so.
-Nothing in `apps/` or `packages/` imports this folder.
+Nothing in `mobile/` or `packages/` imports this folder.
 
 ## Vercel setup (the developer only)
 

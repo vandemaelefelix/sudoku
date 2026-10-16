@@ -1,6 +1,6 @@
 """The flatten of the app's scanner, in Python: 4 corners, a 576 × 576 grid, 81 cell images.
 
-The numbers copy apps/mobile/src/scanner/warp.ts and pixels.ts (SUD-07: files only, no imports).
+The numbers copy mobile/src/scanner/warp.ts and pixels.ts (SUD-07: files only, no imports).
 """
 
 import math

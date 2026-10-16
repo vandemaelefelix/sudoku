@@ -48,19 +48,19 @@
   },
   "overrides": [
     {
-      "files": ["apps/mobile/**"],
+      "files": ["mobile/**"],
       "rules": {
         "import/no-relative-parent-imports": "error"
       }
     },
     {
-      "files": ["apps/mobile/**/*.ts", "apps/mobile/**/*.tsx", "apps/mobile/**/*.js"],
+      "files": ["mobile/**/*.ts", "mobile/**/*.tsx", "mobile/**/*.js"],
       "rules": {
         "sudoku/no-colour-literal": "error"
       }
     },
     {
-      "files": ["apps/mobile/src/theme/**"],
+      "files": ["mobile/src/theme/**"],
       "rules": {
         "sudoku/no-colour-literal": "off"
       }
