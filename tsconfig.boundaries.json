@@ -10,8 +10,8 @@
   "include": [
     "mobile/App.tsx",
     "mobile/src",
-    "packages/sudoku-core/src",
-    "packages/sync-contract/src",
+    "shared/core/src",
+    "shared/sync-contract/src",
     "backend/api/src",
     "backend/kill-switch/src"
   ]

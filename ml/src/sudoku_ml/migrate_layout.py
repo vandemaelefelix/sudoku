@@ -3,9 +3,9 @@ layout into the ADR-018 layout. A dry run by default. It never moves, changes or
 of the old tree.
 
 Old: `<old>/datasets/{cells.csv,photos.csv,photo-checks.jsonl,cell-origins.csv,kind-log.jsonl,
-kind-check.jsonl}` and `<old>/data/{cells,photos}`. New: `data/cells.csv`,
-`data/sudoku-photos.csv`, `data/kind-checks.jsonl` and the image store. The kind log is replayed
-to check the kind column of the old cells.csv. It is not copied: git keeps its history."""
+kind-check.jsonl}` and `<old>/data/{cells,photos}`. New: `ml/dataset/cells.csv`,
+`ml/dataset/sudoku-photos.csv`, `ml/dataset/kind-checks.jsonl` and the image store. The kind log is
+replayed to check the kind column of the old cells.csv. It is not copied: git keeps its history."""
 
 import argparse
 import csv
@@ -195,7 +195,7 @@ def build_plan(old: Path, prefer_log: bool = False) -> Plan:
     _cells(datasets, plan, prefer_log)
     _photos(datasets, plan)
     if (datasets / "kind-check.jsonl").exists():
-        plan.notes.append("datasets/kind-check.jsonl becomes data/kind-checks.jsonl.")
+        plan.notes.append("datasets/kind-check.jsonl becomes ml/dataset/kind-checks.jsonl.")
     plan.notes.append(REVIEW_NOTE)
     return plan
 

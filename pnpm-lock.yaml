@@ -201,7 +201,7 @@ importers:
         version: 3.1150.0(@aws-sdk/client-dynamodb@3.1150.0)
       '@sudoku/sync-contract':
         specifier: workspace:*
-        version: link:../../packages/sync-contract
+        version: link:../../shared/sync-contract
       sst:
         specifier: 4.17.2
         version: 4.17.2
@@ -266,10 +266,10 @@ importers:
         version: 2.6.2(3fea8135867a605774b88f2077ace559)
       '@sudoku/core':
         specifier: workspace:*
-        version: link:../packages/sudoku-core
+        version: link:../shared/core
       '@sudoku/sync-contract':
         specifier: workspace:*
-        version: link:../packages/sync-contract
+        version: link:../shared/sync-contract
       expo:
         specifier: ~57.0.27
         version: 57.0.27(912de03111cf468cbaee6255399c2b41)
@@ -392,7 +392,7 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
-  packages/sudoku-core:
+  shared/core:
     devDependencies:
       typescript:
         specifier: ~6.0.3
@@ -401,7 +401,7 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@types/node@26.6.4)(jsdom@20.0.3(supports-color@8.1.1))(vite@8.3.3(@types/node@26.6.4)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/sync-contract:
+  shared/sync-contract:
     dependencies:
       zod:
         specifier: 4.6.7

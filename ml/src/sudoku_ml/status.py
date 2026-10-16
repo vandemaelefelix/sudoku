@@ -1,5 +1,5 @@
-"""`data/STATUS.md`: a short summary of the dataset that only Finish writes (ADR-018). The line
-`Last finish:` is the one fact that the tool reads back: Review evidence older than it is
+"""`ml/dataset/STATUS.md`: a short summary of the dataset that only Finish writes (ADR-018).
+The line `Last finish:` is the one fact that the tool reads back: Review evidence older than it is
 closed."""
 
 import re

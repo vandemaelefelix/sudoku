@@ -151,7 +151,7 @@ def train(
     artifacts_dir: Path = ARTIFACTS,
     ml_root: Path = ML_ROOT,
 ) -> Path:
-    """`data` holds the real cells (default: the repository's data/). `ml_root` holds fonts/."""
+    """`data` holds the real cells (default: `ml/dataset/`). `ml_root` holds fonts/."""
     started = time.time()
     data = data or DataPaths.under()
     real = []

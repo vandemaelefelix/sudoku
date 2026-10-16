@@ -55,7 +55,7 @@ differs from its `updated_at`. `pushed_at` holds the `updatedAt` that the server
 clock time. The server accepts an id when it stores the history entry, or when it already holds an
 equal or newer `updatedAt` for that id. So a lost response is harmless.
 
-**The sync contract.** The zod schemas in `packages/sync-contract/` define every body of
+**The sync contract.** The zod schemas in `shared/sync-contract/` define every body of
 `POST /v1/sync`. The app and the `sync-api` Lambda import them. The package depends only on zod.
 
 | Schema | Holds | Limits |

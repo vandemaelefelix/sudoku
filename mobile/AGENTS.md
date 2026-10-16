@@ -19,7 +19,7 @@ React Native API:
 | Start the dev server | `just app` |
 | Build the development variant on a device | `just ios-dev <UDID>`. The app is "Sudoku Dev" with a DEV ribbon (ADR-022) |
 | Build the production variant on a device | `just ios-release <UDID>`. The app is "Sudoku", a Release build (ADR-022) |
-| Render the app icons | `just icons`. Change the design in `scripts/icons/geometry.mjs`, not in the PNGs |
+| Render the app icons | `just icons`. Change the design in `tools/icons/geometry.mjs`, not in the PNGs |
 | Check the Expo setup | `pnpm dlx expo-doctor` |
 | Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |
 

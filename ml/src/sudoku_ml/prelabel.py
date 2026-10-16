@@ -1,5 +1,5 @@
 """The model's digit and kind for each cell in cells/unlabeled/ and in the digit folders, for
-the Digits and Label kind screens. Writes data/work/prelabels.json. A pre-label is a proposal:
+the Digits and Label kind screens. Writes ml/dataset/work/prelabels.json. A pre-label is a proposal:
 only a person's confirmation is a label."""
 
 import json

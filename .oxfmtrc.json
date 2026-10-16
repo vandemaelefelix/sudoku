@@ -12,7 +12,7 @@
     "mobile/ios/**",
     "mobile/android/**",
     "mobile/assets/models/**",
-    "fixtures/**",
+    "shared/fixtures/**",
     "ml/**",
     "pnpm-lock.yaml",
     ".superpowers/**",

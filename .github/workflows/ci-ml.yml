@@ -4,8 +4,8 @@ on:
     branches: [main]
     paths: &paths
       - ml/**
-      - contracts/**
-      - fixtures/**
+      - shared/model-contract/**
+      - shared/fixtures/**
       - justfile
       - .github/workflows/ci-ml.yml
   pull_request:

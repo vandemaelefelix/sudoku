@@ -33,8 +33,8 @@ where you stopped.
 - Press **Z** to undo your last change in this session. `just label-rollback <session>` reverses
   a whole session.
 - Undo and rollback work only on the journal: the changes since the last Finish.
-- **Finish folds the journal** into `data/cells.csv`, runs the data check, writes
-  `data/STATUS.md`, and deletes the journal and the derived files.
+- **Finish folds the journal** into `ml/dataset/cells.csv`, runs the data check, writes
+  `ml/dataset/STATUS.md`, and deletes the journal and the derived files.
 - After Finish, Z can no longer undo these changes. Git keeps the old tables. A rollback of a
   finished session says: "This session is finished. Use git to go back."
 - Finish closes every open Review item. Only new evidence opens one again.
@@ -44,14 +44,14 @@ where you stopped.
 
 | Place | In git | What |
 | --- | --- | --- |
-| `data/cells.csv` | Yes | One row per cell: `cell_id`, `digit`, `kind`, and its source `photo_id`, `row`, `col`. |
-| `data/sudoku-photos.csv` | Yes | One row per sudoku photo: `source`, `licence`, `attribution`, `status`, `corners`. |
-| `data/kind-checks.jsonl` | Yes | The answers of the blind Check. |
-| `data/STATUS.md` | Yes | The counts of the last Finish. |
-| `data/images/cells/<digit>/`, `data/images/sudoku-photos/` | No | The images. Do not delete them. `SUDOKU_IMAGES` can name another image store. |
-| `data/work/` | No | The journal (your unfinished work) and disposable files. Finish removes them. |
+| `ml/dataset/cells.csv` | Yes | One row per cell: `cell_id`, `digit`, `kind`, and its source `photo_id`, `row`, `col`. |
+| `ml/dataset/sudoku-photos.csv` | Yes | One row per sudoku photo: `source`, `licence`, `attribution`, `status`, `corners`. |
+| `ml/dataset/kind-checks.jsonl` | Yes | The answers of the blind Check. |
+| `ml/dataset/STATUS.md` | Yes | The counts of the last Finish. |
+| `ml/dataset/images/cells/<digit>/`, `ml/dataset/images/sudoku-photos/` | No | The images. Do not delete them. `SUDOKU_IMAGES` can name another image store. |
+| `ml/dataset/work/` | No | The journal (your unfinished work) and disposable files. Finish removes them. |
 
-See [data/README.md](../data/README.md) for the details.
+See [ml/dataset/README.md](dataset/README.md) for the details.
 
 ## Safety
 
@@ -62,7 +62,7 @@ See [data/README.md](../data/README.md) for the details.
 - A stop in the middle of a cut can leave some new cells without a link to their sudoku photo.
   The data check counts the cells without a link.
 
-## After the migration to data/
+## After the migration to ml/dataset/
 
 - `just migrate-layout` closes every open Review item. Run `just suspects` to find new ones.
 - The groups are not migrated. Run `just group-cells` again.
@@ -70,7 +70,7 @@ See [data/README.md](../data/README.md) for the details.
 ## Git
 
 Commit the tables after Finish: `git add data` and `git commit -m "chore(data): ..."`.
-Git never adds the images or `data/work/`.
+Git never adds the images or `ml/dataset/work/`.
 
 ## Other commands
 

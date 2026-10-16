@@ -8,43 +8,45 @@ status: DRAFT
 
 ```
 sudoku/
-├── apps/
-│   └── mobile/                  # Expo / React Native app: game UI, scan UI, local storage
-│       ├── src/app/             # routes (Expo Router, ADR-016): each file renders one screen
-│       ├── src/home/            # home UI: the levels, Continue, Scan and Settings
-│       ├── src/game/            # game UI: screens/, components/, hooks/, utils/, constants/
-│       ├── src/settings/        # settings UI and SettingsRepository: assists, theme
-│       ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
-│       ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
-│       ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)
-│       ├── src/account/         # sign-in, sign-out and delete account with Clerk (ADR-027)
-│       ├── src/sync/            # SyncService: pushes and pulls the history (ADR-028)
-│       ├── src/utils/           # code that more than one feature uses: geometry, homography, logs
-│       └── assets/models/       # promoted model files + manifest.json (committed)
-├── packages/
-│   ├── sudoku-core/             # @sudoku/core: board, rules, generator, solver, hints. Pure TS
-│   └── sync-contract/           # zod schemas of the sync API, shared by the app and the Lambda
-├── services/
-│   └── sync-api/                # Lambda: POST /v1/sync, DELETE /v1/account (ADR-027). test/: unit and DynamoDB Local
-├── backend/infra/                       # SST infrastructure, one file per area (ADR-027)
-├── ml/                          # Python (uv): datasets, training, evaluation, export, promote
+├── mobile/                  # Expo / React Native app: game UI, scan UI, local storage
+│   ├── src/app/             # routes (Expo Router, ADR-016): each file renders one screen
+│   ├── src/home/            # home UI: the levels, Continue, Scan and Settings
+│   ├── src/game/            # game UI: screens/, components/, hooks/, utils/, constants/
+│   ├── src/settings/        # settings UI and SettingsRepository: assists, theme
+│   ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
+│   ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
+│   ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)
+│   ├── src/account/         # sign-in, sign-out and delete account with Clerk (ADR-027)
+│   ├── src/sync/            # SyncService: pushes and pulls the history (ADR-028)
+│   ├── src/utils/           # code that more than one feature uses: geometry, homography, logs
+│   └── assets/models/       # promoted model files + manifest.json (committed)
+├── ml/                      # Python (uv): training, evaluation, export, promote
 │   ├── src/
-│   └── artifacts/               # one folder per training run, gitignored
-├── data/                        # the real dataset (ADR-018)
-│   ├── cells.csv                # one row per cell: digit, kind, source (in git)
-│   ├── sudoku-photos.csv        # one row per sudoku photo: source, licence, status, corners (in git)
-│   ├── kind-checks.jsonl        # blind check answers (in git)
-│   ├── STATUS.md                # summary that Finish writes (in git)
-│   ├── images/                  # cells/ and sudoku-photos/, NOT in git, or SUDOKU_IMAGES
-│   └── work/                    # journal and derived files of the labelling tool, NOT in git
-├── contracts/                   # model contract and data formats shared by ml/ and the app
-├── fixtures/
-│   ├── scans/                   # public-safe photos + true grids + the app's cell images (ADR-007, ADR-013)
-│   └── preprocess/              # reference cell images for preprocessing parity (model contract)
-├── docs/architecture/           # this documentation
-├── sst.config.ts                # SST app: stages, defaults, imports backend/infra/
-├── package.json                 # pnpm workspaces
-└── justfile                     # one command list for both toolchains
+│   ├── dataset/             # the real dataset (ADR-018)
+│   │   ├── cells.csv            # one row per cell: digit, kind, source (in git)
+│   │   ├── sudoku-photos.csv    # one row per sudoku photo: source, licence, status, corners (in git)
+│   │   ├── kind-checks.jsonl    # blind check answers (in git)
+│   │   ├── STATUS.md            # summary that Finish writes (in git)
+│   │   ├── images/              # cells/ and sudoku-photos/, NOT in git, or SUDOKU_IMAGES
+│   │   └── work/                # journal and derived files of the labelling tool, NOT in git
+│   └── artifacts/           # one folder per training run, gitignored
+├── backend/
+│   ├── api/                 # Lambda: POST /v1/sync, DELETE /v1/account (ADR-027). test/: unit and DynamoDB Local
+│   ├── kill-switch/         # Lambda that stops a stage at the budget (ADR-027)
+│   └── infra/               # SST infrastructure, one file per area (ADR-027)
+├── web/                     # static site on Vercel: home page, privacy policy
+├── shared/
+│   ├── core/                # @sudoku/core: board, rules, generator, solver, hints. Pure TS
+│   ├── sync-contract/       # zod schemas of the sync API, shared by the app and the Lambda
+│   ├── model-contract/      # model contract and data formats shared by ml/ and the app (plain files)
+│   └── fixtures/            # plain files that Python and TypeScript both read
+│       ├── scans/           # public-safe photos + true grids + the app's cell images (ADR-007, ADR-013)
+│       └── preprocess/      # reference cell images for preprocessing parity (model contract)
+├── tools/                   # oxlint plugin, icon renderer, link check, layout check
+├── docs/                    # this documentation
+├── sst.config.ts            # SST app: stages, defaults, imports backend/infra/
+├── package.json             # pnpm workspaces
+└── justfile                 # one command list for both toolchains
 ```
 
 ## 5.2 Level 1
@@ -81,10 +83,10 @@ flowchart TB
 | **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)). Holds the sync state and tells the sync about a finished game | expo-sqlite | — |
 | **Account** (`src/account/`) | Sign-in, sign-out and delete account with Clerk. Gives a fresh token for each request ([ADR-027](adr/adr-027-backend-platform.md)) | `@clerk/expo` | the game UI |
 | **Sync** (`src/sync/`) | Pushes the waiting list and pulls the changes on each trigger. Silent on failure ([ADR-028](adr/adr-028-history-sync.md)) | local storage, account, sync contract, `expo-network` | the game UI, the stats UI |
-| **Sync contract** (`packages/sync-contract/`) | The zod schemas of the requests and responses | zod | React Native, AWS SDK |
+| **Sync contract** (`shared/sync-contract/`) | The zod schemas of the requests and responses | zod | React Native, AWS SDK |
 | **sync-api** (`backend/api/`) | The Lambda: maps the token to our own user ID, stores and returns history entries, deletes an account, counts writes for SUD-11 | sync contract, AWS SDK | the app, `backend/infra/` |
 | **Fixture runner** | Development builds only. Runs the real scanner on fixture photos, writes cell images, reports scores ([ADR-010](adr/adr-010-testing-and-ci.md)) | scanner module | — |
-| **ml/** | Dataset assembly, synthetic data, training, evaluation on fixtures, export, promote | contracts/, fixtures/ | anything in mobile/ or packages/ |
+| **ml/** | Dataset assembly, synthetic data, training, evaluation on fixtures, export, promote | shared/model-contract/, shared/fixtures/ | anything in mobile/ or shared/core/ |
 
 ## 5.4 The scanner interface
 
@@ -124,8 +126,8 @@ dependency-cruiser enforces these rules in `just boundaries` ([ADR-027](adr/adr-
 
 | Rule | Forbids |
 | --- | --- |
-| `adr-027-app-does-not-import-infra` | `mobile/` and `packages/` import `backend/infra/` or `sst.config.ts` |
-| `adr-027-app-does-not-import-services` | `mobile/` and `packages/` import `backend/api/` or `backend/kill-switch/` |
+| `adr-027-app-does-not-import-infra` | `mobile/` and `shared/` import `backend/infra/` or `sst.config.ts` |
+| `adr-027-app-does-not-import-services` | `mobile/` and `shared/` import `backend/api/` or `backend/kill-switch/` |
 | `adr-027-services-do-not-import-the-app` | `backend/api/` or `backend/kill-switch/` imports `mobile/` |
 | `adr-027-services-do-not-import-infra` | `backend/api/` or `backend/kill-switch/` imports `backend/infra/` or `sst.config.ts` |
 | `adr-027-infra-reads-only-the-table-design` | `backend/infra/` and `sst.config.ts` import a file of `backend/api/` or `backend/kill-switch/` other than `backend/api/src/tableDesign.ts` |

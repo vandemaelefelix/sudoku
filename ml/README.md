@@ -1,7 +1,7 @@
 # ml
 
 Training, evaluation and export of the cell classifier. A standalone uv project. It shares only
-files with the app: `contracts/`, `fixtures/` and the promoted model (SUD-07).
+files with the app: `shared/model-contract/`, `shared/fixtures/` and the promoted model (SUD-07).
 
 The labelling tool has its own short guide: [LABELLING.md](LABELLING.md).
 
@@ -11,8 +11,8 @@ Run these from the repository root. Run `just --list` for all commands.
 
 - `just train [config]`: train the two-head classifier. A run writes to `ml/artifacts/`.
 - `just export <run>`: export a run to TFLite. The run path is relative to `ml/`, for example `just export artifacts/<run>`.
-- `just preprocess-fixtures`: regenerate the synthetic reference pairs in `fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
-- `just dataset-manifest [--forget-missing]`: rewrite `data/cells.csv` from the cell folders and the journal. It refuses a missing or wrong image store. `--forget-missing` drops the rows of cells whose file is gone.
+- `just preprocess-fixtures`: regenerate the synthetic reference pairs in `shared/fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
+- `just dataset-manifest [--forget-missing]`: rewrite `ml/dataset/cells.csv` from the cell folders and the journal. It refuses a missing or wrong image store. `--forget-missing` drops the rows of cells whose file is gone.
 - `just suspects`: rank the cells whose digit or kind label the model doubts most. The Review screen shows them.
 - `just group-cells [run]`: group similar cells per digit folder for the labelling page.
 - `just import-photos <folder> [--source S] [--licence L]`: copy new sudoku photos into the image store and find the grid in each.
@@ -21,7 +21,7 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just label-rollback <session>`: reverse every change of one unfinished labelling session. A finished session needs git.
 - `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
 - `just check-data`: check that the images and the tables agree. Exit code 1 on a problem.
-- `just migrate-layout <old_ml_root> [--apply] [--force] [--prefer-log]`: copy the old `ml/datasets/` and `ml/data/` layout into `data/` (ADR-018). A dry run without `--apply`.
+- `just migrate-layout <old_ml_root> [--apply] [--force] [--prefer-log]`: copy the old `ml/datasets/` and `ml/data/` layout into `ml/dataset/` (ADR-018). A dry run without `--apply`.
 
 Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
 stays private (ADR-013).
@@ -30,7 +30,7 @@ stays private (ADR-013).
 
 Do not delete the image store. Until it has a backup, it holds the only copy of the images.
 
-The real dataset lives in `data/` at the repository root (ADR-018). [data/README.md](../data/README.md)
+The real dataset lives in `ml/dataset/` at the repository root (ADR-018). [ml/dataset/README.md](dataset/README.md)
 says what is where and what is in git. The images are not in git. The two tables are in git, so
 every dataset version is exact and reviewable. Where the images come from, and what they may be
 used for, is in [DATA_SOURCES.md](DATA_SOURCES.md).
@@ -46,7 +46,7 @@ used for, is in [DATA_SOURCES.md](DATA_SOURCES.md).
 - The model runs stay in `ml/artifacts/`, outside git.
 
 Count the rows of `cells.csv` and `sudoku-photos.csv` to get the size of the dataset.
-`data/STATUS.md` holds the counts of the last Finish.
+`ml/dataset/STATUS.md` holds the counts of the last Finish.
 
 ## Import photos and label their digits
 
@@ -60,15 +60,15 @@ Count the rows of `cells.csv` and `sudoku-photos.csv` to get the size of the dat
 5. Label the kind of the new cells on the Groups screen, as below.
 
 6. Press **Finish** in the header. Finish folds the journal into `cells.csv`, checks the data,
-   writes `data/STATUS.md` and deletes the journal and the derived files in `data/work/`. It is
+   writes `ml/dataset/STATUS.md` and deletes the journal and the derived files in `ml/dataset/work/`. It is
    safe to press twice. Your unlabelled cells and pending sudoku photos stay. After Finish, Z
    can no longer undo the finished changes. Git keeps the old tables.
-7. Commit the tables: `git add data` and commit. Git never adds the images or `data/work/`.
+7. Commit the tables: `git add data` and commit. Git never adds the images or `ml/dataset/work/`.
 
-The tool works on the real data in `data/` and the image store. It has no scratch copy. You can
+The tool works on the real data in `ml/dataset/` and the image store. It has no scratch copy. You can
 stop at any time: Ctrl-C, a closed terminal or a crash. Every label you saved stays in the
 journal. Unlabelled cells stay in `cells/unlabeled/`. Pending sudoku photos stay pending. The next
-start repairs what the stop left, deletes leftover files in `data/work/tmp/` and prints how many
+start repairs what the stop left, deletes leftover files in `ml/dataset/work/tmp/` and prints how many
 cells and sudoku photos wait.
 
 Every cell and sudoku photo has a SHA-256 pixel id, and no id appears twice. Run
@@ -90,5 +90,5 @@ link.
    A kind from `cells.csv` (finished) counts as old enough.
 
 Stop the server with Ctrl-C. The server then rewrites `cells.csv`, so training sees the new labels.
-Press Finish at the end of a session. Then commit `data/`: `cells.csv`, `sudoku-photos.csv`,
+Press Finish at the end of a session. Then commit `ml/dataset/`: `cells.csv`, `sudoku-photos.csv`,
 `kind-checks.jsonl` and `STATUS.md`.

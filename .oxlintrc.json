@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "import", "react", "jest", "vitest"],
-  "jsPlugins": ["./scripts/oxlint/sudoku-plugin.mjs"],
+  "jsPlugins": ["./tools/oxlint/sudoku-plugin.mjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",

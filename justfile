@@ -21,8 +21,8 @@ test: test-ts test-api test-ml
 # Vitest (core, sync contract, the sync-api unit tests), Jest (app) and the lint plugin test
 test-ts:
     pnpm -r test
-    node --test 'scripts/oxlint/*.test.mjs'
-    node --test 'scripts/icons/*.test.mjs'
+    node --test 'tools/oxlint/*.test.mjs'
+    node --test 'tools/icons/*.test.mjs'
     node --test 'backend/infra/*.test.ts'
 
 # The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
@@ -82,7 +82,7 @@ bundle:
 
 # Render every app icon and favicon PNG into mobile/assets/icons (ADR-022)
 icons:
-    node scripts/icons/render.mjs
+    node tools/icons/render.mjs
 
 # Build the development variant and install it on a device (ADR-022). Find the UDID with: xcrun devicectl list devices
 ios-dev device:
@@ -100,11 +100,11 @@ lint-workflows:
 
 # Check relative links in the docs
 docs-check:
-    python3 scripts/check_links.py docs AGENTS.md README.md contracts fixtures ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md data/README.md backend web
+    python3 tools/check_links.py docs AGENTS.md README.md mobile shared backend web tools ml/README.md ml/LABELLING.md ml/DATA_SOURCES.md ml/dataset/README.md
 
 # Regenerate the preprocessing reference fixtures (synthetic only, ADR-013)
 preprocess-fixtures:
-    uv run --directory ml python -m sudoku_ml.fixtures ../fixtures/preprocess
+    uv run --directory ml python -m sudoku_ml.fixtures ../shared/fixtures/preprocess
 
 # Train a model from a config in ml/configs/ (default: the cell classifier)
 train config="cell-classifier":
@@ -118,7 +118,7 @@ export run:
 install-model run version="1.0.0":
     uv run --directory ml python -m sudoku_ml.install {{run}} ../mobile/assets/models {{version}}
 
-# Rewrite data/cells.csv from the cell folders and the journal. --forget-missing drops the rows of vanished cells
+# Rewrite ml/dataset/cells.csv from the cell folders and the journal. --forget-missing drops the rows of vanished cells
 dataset-manifest *flags:
     uv run --directory ml python -m sudoku_ml.manifest {{flags}}
 
@@ -131,12 +131,12 @@ pull-scans device destination="$HOME/scan-corrections" app="com.vandemaelefelix.
     mkdir -p "{{destination}}"
     xcrun devicectl device copy from --device "{{device}}" --domain-type appDataContainer --domain-identifier "{{app}}" --source Documents/scan-corrections --destination "{{destination}}"
 
-# Move cells to the digits in a relabel CSV (header file,new_label), then rewrite data/cells.csv
+# Move cells to the digits in a relabel CSV (header file,new_label), then rewrite ml/dataset/cells.csv
 relabel file:
     file="$(realpath "{{file}}")" && uv run --directory ml python -m sudoku_ml.relabel "$file"
     just dataset-manifest
 
-# Rank the likely wrong digit and kind labels into data/work/suspects.csv, for the Review screen
+# Rank the likely wrong digit and kind labels into ml/dataset/work/suspects.csv, for the Review screen
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
 
@@ -148,11 +148,11 @@ group-cells run="":
 prelabel-cells run="":
     uv run --directory ml python -m sudoku_ml.prelabel {{run}}
 
-# Open the labelling page on 127.0.0.1. At the start it repairs a stopped session, rewrites data/cells.csv and pre-labels new cells
+# Open the labelling page on 127.0.0.1. At the start it repairs a stopped session, rewrites ml/dataset/cells.csv and pre-labels new cells
 label-cells:
     uv run --directory ml python -m sudoku_ml.label_server
 
-# Check that the images and the two tables in data/ agree, and print a report. Exit code 1 on a problem
+# Check that the images and the two tables in ml/dataset/ agree, and print a report. Exit code 1 on a problem
 check-data:
     uv run --directory ml python -m sudoku_ml.data_check
 
@@ -161,7 +161,7 @@ label-rollback session:
     uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
     just dataset-manifest
 
-# Copy the old layout (<old_ml_root>/datasets and data/) into data/ and the image store. Dry run without --apply. Flags: --apply, --force, --prefer-log
+# Copy the old layout (<old_ml_root>/datasets and data/) into ml/dataset/ and the image store. Dry run without --apply. Flags: --apply, --force, --prefer-log
 migrate-layout old_ml_root *flags:
     old="$(realpath "{{old_ml_root}}")" && uv run --directory ml python -m sudoku_ml.migrate_layout "$old" {{flags}}
 
