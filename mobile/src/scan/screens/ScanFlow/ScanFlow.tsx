@@ -26,17 +26,22 @@ export function ScanFlow() {
     [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge],
   )
   const play = useScannedStart()
-  const { enqueueScan } = useScanShare()
+  const { enqueueScan, discardPhoto } = useScanShare()
   const router = useRouter()
   const home = useCallback(() => router.dismissTo('/'), [router])
   const [phase, setPhase] = useState<Phase>({ phase: 'live' })
   // A new key mounts a new CameraScreen: the effect scene, its warm-up and the flattened grid start new.
   const [scene, setScene] = useState(0)
 
-  const retake = useCallback(() => {
-    setScene((current) => current + 1)
-    setPhase({ phase: 'live' })
-  }, [])
+  // A retake drops the scan, so nothing needs its photo any more.
+  const retake = useCallback(
+    (dropped: RecogniseResult | null) => {
+      if (dropped?.ok && dropped.photoPath !== undefined) discardPhoto(dropped.photoPath)
+      setScene((current) => current + 1)
+      setPhase({ phase: 'live' })
+    },
+    [discardPhoto],
+  )
   const done = useCallback((result: RecogniseResult) => setPhase({ phase: 'review', result }), [])
 
   const review = phase.phase === 'review' ? phase.result : null

@@ -22,6 +22,7 @@ export function useScanShare() {
     declineNotice: () => void scanShare.declineNotice().catch(() => undefined),
     setOn: (next: boolean) => void scanShare.setShareScans(next).catch(() => undefined),
     enqueueScan: scanShare.enqueueScan,
+    discardPhoto: scanShare.discardPhoto,
     drainQueue,
     version: versionLabel(),
   }

@@ -29,9 +29,12 @@ export type ScanShareDeps = {
 export type ScanShare = {
   /**
    * Adds a finished scan to the queue and starts a drain. Never throws and never waits for the network (SUD-01).
-   * Does nothing when sharing is off, when the photo is not there, or when the record breaks the contract.
+   * Queues nothing when sharing is off, when the photo is not there, or when the record breaks the contract.
+   * Deletes the original photo in every case: the queue keeps its own cropped copy.
    */
   enqueueScan(photoPath: string | undefined, result: RecogniseResult, finalGrid: readonly CellLook[]): Promise<void>
+  /** Deletes a photo that the player does not share, for example after Retake. Never throws. */
+  discardPhoto(photoPath: string): void
   /** Turning sharing off clears the queue and deletes the photos. Nothing uploads later. */
   setShareScans(on: boolean): Promise<void>
   /** "Got it": the notice is seen and the waiting scans go out. */
@@ -43,36 +46,14 @@ export type ScanShare = {
 export function createScanShare(deps: ScanShareDeps): ScanShare {
   return {
     async enqueueScan(photoPath, result, finalGrid) {
-      if (!deps.isOn() || !result.ok || photoPath === undefined) return
       try {
-        const scanId = deps.newId()
-        const cropped = await deps.crop(photoPath, result)
-        const record = buildRecord({
-          scanId,
-          contributorId: await deps.contributorId(),
-          appVersion: deps.appVersion,
-          modelVersion: deps.modelVersion,
-          corners: cropped.corners,
-          cells: result.cells,
-          looks: finalGrid,
-        })
-        if (record === null) {
-          devWarn('scanShare', 'the scan record is not valid, so the scan is not shared')
-          return
-        }
-        // The player can turn sharing off while the crop runs. The check comes right before the write.
-        if (!deps.isOn()) return
-        const path = deps.writePhoto(scanId, cropped.jpeg)
-        await (await deps.queue()).enqueue({ scanId, record: JSON.stringify(record), photoPath: path }, deps.now())
-        if (!deps.isOn()) {
-          await clearQueue(deps)
-          return
-        }
-        deps.onQueued()
-        void deps.drainQueue()
-      } catch (error) {
-        devWarn('scanShare', `the scan is not queued: ${errorMessage(error)}`)
+        await enqueue(deps, photoPath, result, finalGrid)
+      } finally {
+        if (photoPath !== undefined) discard(deps, photoPath)
       }
+    },
+    discardPhoto(photoPath) {
+      discard(deps, photoPath)
     },
     async setShareScans(on) {
       await deps.setOn(on)
@@ -86,6 +67,52 @@ export function createScanShare(deps: ScanShareDeps): ScanShare {
       await this.setShareScans(false)
       await deps.markNoticeSeen()
     },
+  }
+}
+
+async function enqueue(
+  deps: ScanShareDeps,
+  photoPath: string | undefined,
+  result: RecogniseResult,
+  finalGrid: readonly CellLook[],
+): Promise<void> {
+  if (!deps.isOn() || !result.ok || photoPath === undefined) return
+  try {
+    const scanId = deps.newId()
+    const cropped = await deps.crop(photoPath, result)
+    const record = buildRecord({
+      scanId,
+      contributorId: await deps.contributorId(),
+      appVersion: deps.appVersion,
+      modelVersion: deps.modelVersion,
+      corners: cropped.corners,
+      cells: result.cells,
+      looks: finalGrid,
+    })
+    if (record === null) {
+      devWarn('scanShare', 'the scan record is not valid, so the scan is not shared')
+      return
+    }
+    // The player can turn sharing off while the crop runs. The check comes right before the write.
+    if (!deps.isOn()) return
+    const path = deps.writePhoto(scanId, cropped.jpeg)
+    await (await deps.queue()).enqueue({ scanId, record: JSON.stringify(record), photoPath: path }, deps.now())
+    if (!deps.isOn()) {
+      await clearQueue(deps)
+      return
+    }
+    deps.onQueued()
+    void deps.drainQueue()
+  } catch (error) {
+    devWarn('scanShare', `the scan is not queued: ${errorMessage(error)}`)
+  }
+}
+
+function discard(deps: ScanShareDeps, path: string): void {
+  try {
+    deps.deletePhoto(path)
+  } catch (error) {
+    devWarn('scanShare', `the photo is not deleted: ${errorMessage(error)}`)
   }
 }
 
