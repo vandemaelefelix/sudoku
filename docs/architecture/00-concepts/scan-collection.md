@@ -79,6 +79,6 @@ flowchart LR
 | SUD-01 | A failed upload MUST NOT block play or scanning. |
 | SUD-02 | A photo MUST leave the device only through the setting "Help improve the app". Camera frames and cell images MUST NOT leave the device. |
 | SUD-08 | Scan photos MUST NOT be committed. |
-| SUD-10 | Scan cells MUST NOT become fixtures. |
-| SUD-11 | The scans route MUST have its own throttle. The shared app key is not a secret. |
+| SUD-10 | Fixture cells MUST NOT appear in any training dataset. Scan cells never become fixtures. |
+| SUD-11 | The AWS bill MUST stay below €10 a month. The scans route has its own throttle. The shared app key is not a secret. |
 | Idempotence | A repeated `POST /v1/scans` with the same `scanId` MUST make no second item. |
