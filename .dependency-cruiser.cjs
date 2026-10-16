@@ -59,7 +59,7 @@ module.exports = {
         'ADR-027: the app and the packages never import the SST code. The API is their only link to the backend.',
       severity: 'error',
       from: { path: '^(apps|packages)/' },
-      to: { path: '^(infra/|sst\\.config\\.ts$)' },
+      to: { path: '^(backend/infra/|sst\\.config\\.ts$)' },
     },
     {
       name: 'adr-028-game-and-stats-do-not-use-account',
@@ -74,31 +74,31 @@ module.exports = {
         'ADR-027: the app and the packages never import the Lambda code. The API is their only link to the backend.',
       severity: 'error',
       from: { path: '^(apps|packages)/' },
-      to: { path: '^services/' },
+      to: { path: '^backend/(api|kill-switch)/' },
     },
     {
       name: 'adr-027-services-do-not-import-the-app',
       comment: 'ADR-027: the Lambda shares only @sudoku/sync-contract with the app.',
       severity: 'error',
-      from: { path: '^services/' },
+      from: { path: '^backend/(api|kill-switch)/' },
       to: { path: '^apps/' },
     },
     {
       name: 'adr-027-services-do-not-import-infra',
       comment: 'ADR-027: the Lambda reads its resources through the SST Resource object, not through the SST code.',
       severity: 'error',
-      from: { path: '^services/' },
-      to: { path: '^(infra/|sst\\.config\\.ts$)' },
+      from: { path: '^backend/(api|kill-switch)/' },
+      to: { path: '^(backend/infra/|sst\\.config\\.ts$)' },
     },
     {
       name: 'adr-027-infra-reads-only-shared-lambda-files',
       comment:
-        'ADR-027: infra/storage.ts reads the table layout from tableDesign.ts, so the test table matches. infra/api-on.ts and the kill-switch check share the AWS code and the flag name of services/kill-switch/src. The SST code reads no other Lambda file.',
+        'ADR-027: backend/infra/storage.ts reads the table layout from tableDesign.ts, so the test table matches. backend/infra/api-on.ts and the kill-switch check share the AWS code and the flag name of backend/kill-switch/src. The SST code reads no other Lambda file.',
       severity: 'error',
-      from: { path: '^(infra/|sst\\.config\\.ts$)' },
+      from: { path: '^(backend/infra/|sst\\.config\\.ts$)' },
       to: {
-        path: '^services/',
-        pathNot: ['^services/sync-api/src/tableDesign\\.ts$', '^services/kill-switch/src/'],
+        path: '^backend/(api|kill-switch)/',
+        pathNot: ['^backend/api/src/tableDesign\\.ts$', '^backend/kill-switch/src/'],
       },
     },
     {

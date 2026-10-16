@@ -7,5 +7,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["sst.config.ts", "infra/**/*.ts", ".sst/platform/config.d.ts"]
+  "include": ["sst.config.ts", "backend/infra/**/*.ts", ".sst/platform/config.d.ts"]
 }

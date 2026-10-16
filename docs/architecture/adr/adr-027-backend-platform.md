@@ -184,7 +184,7 @@ The backend has these limits:
 - Before any TestFlight or App Store submission, the developer checks App Store guideline 4.8
   (Login Services). If it applies, the app adds Sign in with Apple. v1 keeps email and Google.
 - The Clerk settings live in the Clerk dashboard. The setup steps are in
-  [`infra/README.md`](../../../infra/README.md).
+  [`infra/README.md`](../../../backend/infra/README.md).
 - The Lambda tests run with Vitest against a local DynamoDB in a container. The test table must
   match `infra/storage.ts`.
 - A budget alert can come hours late. The throttles bound the cost of those hours.
@@ -213,7 +213,7 @@ The backend has these limits:
 ## Amendment 2026-10-15: the AWS account and the SST setup
 
 The SST setup makes decisions 3, 7, 8 and 9 concrete. The details are in
-[`infra/README.md`](../../../infra/README.md).
+[`infra/README.md`](../../../backend/infra/README.md).
 
 1. **Two AWS profiles.** `aws login --profile sudoku-login` signs the developer in. Every other
    command uses the profile `sudoku`. It reads the credentials of `sudoku-login` through
@@ -253,7 +253,7 @@ The kill switch and its flag per stage (decision 9) are not part of this setup. 
 ## Amendment 2026-10-15: the Clerk development instance
 
 The Clerk development instance makes decision 1 concrete. The steps are in the section Clerk of
-[`infra/README.md`](../../../infra/README.md).
+[`infra/README.md`](../../../backend/infra/README.md).
 
 1. **`felix` and `dev` share the development instance.** Its issuer is `CLERK_ISSUER` in
    `infra/config.ts`. `production` has its own issuer, `https://clerk.sudoku.felixvandemaele.be`.
@@ -285,7 +285,7 @@ The Clerk development instance makes decision 1 concrete. The steps are in the s
 ## Amendment 2026-10-15: the sync API
 
 The build of the sync API makes decisions 4, 6 and 9 concrete. The code is in
-[`infra/api.ts`](../../../infra/api.ts) and [`services/sync-api/`](../../../services/sync-api/README.md).
+[`infra/api.ts`](../../../backend/infra/api.ts) and [`services/sync-api/`](../../../backend/api/README.md).
 
 1. **The throttle applies to each route.** An HTTP API sets `defaultRouteSettings` per route, not
    per stage. With `DELETE /v1/account`, the worst case is 2 requests per second in total. This
@@ -306,8 +306,8 @@ The build of the sync API makes decisions 4, 6 and 9 concrete. The code is in
 ## Amendment 2026-10-15: the kill switch
 
 The build of the kill switch makes decision 9 concrete. The code is in
-[`infra/kill-switch.ts`](../../../infra/kill-switch.ts) and
-[`services/kill-switch/`](../../../services/kill-switch/src/killSwitch.ts).
+[`infra/kill-switch.ts`](../../../backend/infra/kill-switch.ts) and
+[`services/kill-switch/`](../../../backend/kill-switch/src/killSwitch.ts).
 
 1. **The budget has a third alert.** At $9 actual, it publishes to the SNS topic `KillSwitchTopic`
    and it emails the developer. The topic policy allows only `budgets.amazonaws.com` of this
@@ -385,7 +385,7 @@ This amendment makes decision 8 concrete. The reasons for the workflow design ar
 ## Amendment 2026-10-15: delete the account
 
 The build of `DELETE /v1/account` makes decision 10 concrete. The code is in
-[`services/sync-api/src/account.ts`](../../../services/sync-api/src/account.ts).
+[`services/sync-api/src/account.ts`](../../../backend/api/src/account.ts).
 
 1. **The order is the tombstone, the rows, the Clerk user.** Each step is safe to repeat. A failed
    call is retried whole. The app can retry while its Clerk session is valid, and the session

@@ -66,9 +66,9 @@ table. See [ADR-027](../architecture/adr/adr-027-backend-platform.md) and
 | CI and the deploy workflows | [ADR-010](../architecture/adr/adr-010-testing-and-ci.md) |
 | Data and privacy rules | [ADR-013](../architecture/adr/adr-013-fixtures-and-data-licensing.md), [privacy policy](../privacy/privacy-policy.md) |
 | The deployment nodes | [Deployment view](../architecture/07-deployment-view.md) |
-| The AWS setup, the guard, the budget, the kill switch | [`infra/README.md`](../../infra/README.md) |
-| The website | [`site/README.md`](../../site/README.md) |
-| The sync Lambda | [`services/sync-api/README.md`](../../services/sync-api/README.md) |
+| The AWS setup, the guard, the budget, the kill switch | [`backend/infra/README.md`](../../backend/infra/README.md) |
+| The website | [`web/README.md`](../../web/README.md) |
+| The sync Lambda | [`backend/api/README.md`](../../backend/api/README.md) |
 | The app variants | [ADR-022](../architecture/adr/adr-022-app-variants.md), [`apps/mobile/AGENTS.md`](../../apps/mobile/AGENTS.md) |
 
 ## 2. Inventory
@@ -119,10 +119,10 @@ Apple is off. Both instances have the JWT template `sudoku-api` (audience `sudok
 | Bundle ID | `com.vandemaelefelix.sudoku.dev` | `com.vandemaelefelix.sudoku` |
 | Apple Team ID | `575384CG4F` | `575384CG4F` |
 | Plan | Development instance | Hobby, fixed 7-day sessions |
-| Config in the repository | `CLERK_ISSUER` in [`infra/config.ts`](../../infra/config.ts), `app.config.ts` | Same files, `PRODUCTION_BACKEND` in `app.config.ts` |
+| Config in the repository | `CLERK_ISSUER` in [`backend/infra/config.ts`](../../backend/infra/config.ts), `app.config.ts` | Same files, `PRODUCTION_BACKEND` in `app.config.ts` |
 
 The production instance is a copy of the development instance. The dashboard steps are in
-[`infra/README.md`](../../infra/README.md#clerk).
+[`backend/infra/README.md`](../../backend/infra/README.md#clerk).
 
 ### 2.3 Google Cloud
 
@@ -153,8 +153,8 @@ The client IDs end in `.apps.googleusercontent.com`. The iOS IDs are also in
 | --- | --- |
 | Vercel team | Personal team `felix-vandemaeles-projects`. It owns the domain `felixvandemaele.be` |
 | Project | `sudoku-site`, repository `vandemaelefelix/sudoku`, Root Directory `site` |
-| Settings | Include files outside the root: on. Framework: `Other`. Install, build and output: see [`site/README.md`](../../site/README.md) and `site/vercel.json`. Variable `ENABLE_EXPERIMENTAL_COREPACK=1` |
-| Production branch | **Unverified.** `site/README.md` says `develop`. Check **Settings, Git** in Vercel |
+| Settings | Include files outside the root: on. Framework: `Other`. Install, build and output: see [`web/README.md`](../../web/README.md) and `web/vercel.json`. Variable `ENABLE_EXPERIMENTAL_COREPACK=1` |
+| Production branch | **Unverified.** `web/README.md` says `develop`. Check **Settings, Git** in Vercel |
 | URLs | `https://sudoku.felixvandemaele.be`, `https://sudoku.felixvandemaele.be/privacy`. Fallback: `sudoku-site-mauve.vercel.app` |
 | Privacy page source | [`docs/privacy/privacy-policy.md`](../privacy/privacy-policy.md). The build renders it |
 | Registrar | GoDaddy holds the registration only |
@@ -186,8 +186,8 @@ new name under `sudoku.` needs its own record. The CAA records allow `letsencryp
 | `dev` deploy | Runs on a push to `develop` that changes a backend file |
 | `production` deploy | Runs on a manual start (`workflow_dispatch`) from `develop`. It has no reviewer gate, because a private repository on the Free plan has none |
 
-The trust policy is in [`infra/github-oidc-policy.ts`](../../infra/github-oidc-policy.ts). The details are in
-[`infra/README.md`](../../infra/README.md#deploys-from-github-actions).
+The trust policy is in [`backend/infra/github-oidc-policy.ts`](../../backend/infra/github-oidc-policy.ts). The details are in
+[`backend/infra/README.md`](../../backend/infra/README.md#deploys-from-github-actions).
 
 ## 3. Secrets
 
@@ -269,7 +269,7 @@ must return 401: `curl -i -X POST <apiUrl>/v1/sync`.
 
 ### Run the smoke test
 
-The script is [`services/sync-api/scripts/smoke.ts`](../../services/sync-api/scripts/smoke.ts).
+The script is [`backend/api/scripts/smoke.ts`](../../backend/api/scripts/smoke.ts).
 It creates a Clerk session for a user and writes one game row. So it has limits:
 
 - It supports the development Clerk instance only. That means the stages `felix` and `dev`.
@@ -304,7 +304,7 @@ The Clerk session survives a delete of the app, because it lives in the iOS Keyc
 
 ### Add a stage
 
-1. Add the name to `STAGES` and the issuer to `CLERK_ISSUER` in [`infra/config.ts`](../../infra/config.ts).
+1. Add the name to `STAGES` and the issuer to `CLERK_ISSUER` in [`backend/infra/config.ts`](../../backend/infra/config.ts).
 2. Add the stage to the trust policy and the workflows only if CI deploys it.
 3. Set `ClerkSecretKey` for the stage (chapter 3).
 4. Run `just deploy-api <stage>`.
@@ -313,14 +313,14 @@ A stage with no issuer fails the deploy, except `production`. Write an ADR first
 
 ### Change the budget
 
-Edit [`infra/budget-alerts.ts`](../../infra/budget-alerts.ts). The limit is a rule: SUD-11 caps the bill. Amend the ADR first, then deploy `production`.
+Edit [`backend/infra/budget-alerts.ts`](../../backend/infra/budget-alerts.ts). The limit is a rule: SUD-11 caps the bill. Amend the ADR first, then deploy `production`.
 Only `production` owns the budget.
 
 ### Change the domain
 
 1. Add the domain to a Vercel team. Vercel needs a team to own a domain.
 2. Make a new Clerk production instance, or move the domain of the existing one. The issuer changes.
-3. Change `CLERK_PRODUCTION_ISSUER` in `infra/config.ts` and `PRODUCTION_BACKEND` in `app.config.ts`.
+3. Change `CLERK_PRODUCTION_ISSUER` in `backend/infra/config.ts` and `PRODUCTION_BACKEND` in `app.config.ts`.
 4. Update the Google authorised domains and the privacy and home page URLs.
 5. Deploy `production`. Build a new production app.
 
@@ -360,7 +360,7 @@ Preferred path: the user deletes the account in the app.
 
 Manual path, when the user cannot use the app. No script does this yet. A hand-made delete is
 easy to get wrong, so write a script (for example `just delete-account`) that reuses
-[`services/sync-api/src/account.ts`](../../services/sync-api/src/account.ts). Until it exists, follow these steps. The order is the
+[`backend/api/src/account.ts`](../../backend/api/src/account.ts). Until it exists, follow these steps. The order is the
 same as in the API: the tombstone, the rows, the Clerk user. Run `just aws-login` first. Use
 `--profile sudoku --region eu-west-1`. Use the table name of `production` from `aws dynamodb list-tables`.
 
@@ -390,11 +390,11 @@ Start with the account check. `aws sts get-caller-identity --profile sudoku` mus
 | --- | --- | --- |
 | `just deploy-api` says the session expired, or `credential_process` fails | The 12 hour session ended | `just aws-login` |
 | A deploy fails with "Unexpected error occurred" | SST hides the message | Run the deploy again with logs: `env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN AWS_PROFILE=sudoku pnpm exec sst deploy --stage <stage> --print-logs`. `just deploy-api` takes no flags. Read the lines above the error |
-| A deploy refuses with "stopped by the kill switch" | The flag `/sudoku/kill-switch/<stage>` exists | Check the bill. Run `just api-on <stage>`. See [the kill switch](../../infra/README.md#the-kill-switch) |
+| A deploy refuses with "stopped by the kill switch" | The flag `/sudoku/kill-switch/<stage>` exists | Check the bill. Run `just api-on <stage>`. See [the kill switch](../../backend/infra/README.md#the-kill-switch) |
 | A deploy says it needs `AWS_PROFILE` unset | The shell has an employer profile or access keys | Use `just deploy-api`. It clears the variables. Never use `appstrakt` or `dyna` |
-| The deploy workflow fails with "Could not assume role" | The variable is wrong, or the workflow file or branch does not match the trust policy | Check the repository variables. Check `job_workflow_ref` and the `develop` branch. See [`infra/README.md`](../../infra/README.md#deploys-from-github-actions) |
+| The deploy workflow fails with "Could not assume role" | The variable is wrong, or the workflow file or branch does not match the trust policy | Check the repository variables. Check `job_workflow_ref` and the `develop` branch. See [`backend/infra/README.md`](../../backend/infra/README.md#deploys-from-github-actions) |
 | A deploy hangs on a lock | A deploy stopped half way | `AWS_PROFILE=sudoku pnpm exec sst unlock --stage <stage>` |
-| The app gets 401 on every call | The issuer does not match, the audience is wrong, or the app uses the wrong instance | Check the issuer with `curl` (see [`infra/README.md`](../../infra/README.md#check-the-issuer-and-the-publishable-key)). Check the JWT template `sudoku-api` |
+| The app gets 401 on every call | The issuer does not match, the audience is wrong, or the app uses the wrong instance | Check the issuer with `curl` (see [`backend/infra/README.md`](../../backend/infra/README.md#check-the-issuer-and-the-publishable-key)). Check the JWT template `sudoku-api` |
 | `curl` without a token gets 401 on a stopped stage | The authorizer answers before the throttle | This is normal. Only a request with a valid token shows 429 |
 | The app gets 429 | The throttle (1 per second, burst 10), or a stopped stage | Check `get-stage` and the flag |
 | The kill switch ran, but only some steps worked | An earlier bug in the Lambda | The Lambda now logs each step and the reason. Read its CloudWatch log. Fix the step. Then run `just api-on <stage>` |
@@ -434,7 +434,7 @@ the bill by hand after `just api-on`.
 | Item | Next step |
 | --- | --- |
 | App Store release | Join the Apple Developer Program. Check guideline 4.8 (Sign in with Apple). Fill the App Store privacy labels ([ADR-013](../architecture/adr/adr-013-fixtures-and-data-licensing.md)) |
-| Throttled request billing | Check in Cost Explorer whether AWS bills a throttled request. Steps are in [`infra/README.md`](../../infra/README.md#test-the-kill-switch-on-felix-developer-only) |
+| Throttled request billing | Check in Cost Explorer whether AWS bills a throttled request. Steps are in [`backend/infra/README.md`](../../backend/infra/README.md#test-the-kill-switch-on-felix-developer-only) |
 | Clerk Hobby or Pro | Decide before the release. Pro allows a custom session lifetime |
 | Google publishing status | **Unverified.** Check **Google Auth Platform, Audience** |
 | Vercel production branch | **Unverified.** Check **Settings, Git** |
