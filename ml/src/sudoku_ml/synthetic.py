@@ -14,6 +14,7 @@ class Sample:
     image: np.ndarray  # (64, 64, 3) uint8 RGB cell image
     digit: int  # index in DIGIT_CLASSES, 0 = empty
     kind: int  # index in KIND_CLASSES, or UNKNOWN_KIND
+    photo: str = ""  # id of the scan photo that the cell came from, or empty
 
 
 def font_files(fonts_dir: Path) -> list[Path]:

@@ -55,6 +55,11 @@ Android rules (an adaptive icon with a safe zone, plus a monochrome layer).
 `isDevelopmentVariant()` reads it with `expo-constants`. The development variant uses it for tools that the production app
 must not show, such as the reset of the stats (ADR-023).
 
+## Amendment 2026-10-16: the pull recipe
+
+The Consequences name `just pull-scans`. The recipe for the device corrections is now `just pull-device-scans`.
+`just pull-scans` pulls the shared scans from the cloud (ADR-030). The old line stays as written.
+
 ## Reassessment Triggers
 
 - EAS Build is adopted (ADR-010): move `APP_VARIANT` into the build profiles of `eas.json`.

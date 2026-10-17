@@ -7,6 +7,7 @@ import pytest
 import torch
 from PIL import Image
 
+import sudoku_ml.train as train_module
 from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND, kind_index
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import load_cells, read_kinds
@@ -187,3 +188,12 @@ def test_label_state_lines_when_the_state_is_unknown():
         "- Kind labels: unknown (cells.csv is out of date)\n"
         "- Kind accuracy (real test cells): no labelled test cells\n"
     )
+
+
+def test_the_flag_adds_unedited_scan_cells_to_the_config(tmp_path: Path, monkeypatch):
+    seen = []
+    monkeypatch.setattr("sudoku_ml.train.train", lambda config: seen.append(config) or tmp_path)
+    path = smoke_config(tmp_path, real_cells=True)
+    assert train_module.main([str(path)]) == tmp_path
+    assert train_module.main([str(path), "--app-unedited"]) == tmp_path
+    assert [c.app_unedited for c in seen] == [False, True]

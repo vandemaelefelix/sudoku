@@ -85,8 +85,8 @@ def test_stack_shapes():
 
 def write_manifest(path: Path, rows: list[tuple[str, str, str]]) -> None:
     path.write_text(
-        "cell_id,digit,kind,photo_id,row,col\n"
-        + "".join(f"{i},{lab},{k},,,\n" for i, lab, k in rows)
+        "cell_id,digit,kind,photo_id,row,col,label_source\n"
+        + "".join(f"{i},{lab},{k},,,,\n" for i, lab, k in rows)
     )
 
 
