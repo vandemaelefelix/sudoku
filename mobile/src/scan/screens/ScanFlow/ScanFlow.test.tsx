@@ -18,6 +18,12 @@ jest.mock('@/scan/hooks/useScannedStart', () => ({ useScannedStart: jest.fn() })
 const mockSave = jest.fn()
 jest.mock('@/scan/utils/correctionStore', () => ({ saveScanCorrection: (...args: unknown[]) => mockSave(...args) }))
 
+const mockDiscard = jest.fn()
+const mockEnqueue = jest.fn()
+jest.mock('@/scanShare/useScanShare', () => ({
+  useScanShare: () => ({ enqueueScan: mockEnqueue, discardPhoto: mockDiscard }),
+}))
+
 const mockMounts: number[] = []
 jest.mock('@/scan/effects/components/EffectCanvas', () => ({
   EffectCanvas: jest.fn(() => {
@@ -150,4 +156,43 @@ it('hands Home of the review to the router, as a dismiss to the home route', () 
   const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
   props.onHome!()
   expect(mockDismissTo).toHaveBeenCalledWith('/')
+})
+
+function reviewWith(result: RecogniseResult) {
+  givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result })
+  render(<ScanFlow />)
+  act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(result))
+  givenPhase({ phase: 'live' })
+}
+
+describe('the photo of a scan that the player drops', () => {
+  const WITH_PHOTO = { ...OK, photoPath: '/tmp/photo.jpg' } as RecogniseResult
+
+  it('is deleted on Retake from the review', () => {
+    reviewWith(WITH_PHOTO)
+    fireEvent.press(screen.getByTestId('retake'))
+    expect(mockDiscard).toHaveBeenCalledWith('/tmp/photo.jpg')
+    expect(mockEnqueue).not.toHaveBeenCalled()
+  })
+
+  it('is deleted on Retake from the capture transition', () => {
+    givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result: WITH_PHOTO })
+    render(<ScanFlow />)
+    givenPhase({ phase: 'live' })
+    fireEvent.press(screen.getByTestId('retake'))
+    expect(mockDiscard).toHaveBeenCalledWith('/tmp/photo.jpg')
+  })
+
+  it('needs no delete when the result has no photo', () => {
+    reviewWith(OK)
+    fireEvent.press(screen.getByTestId('retake'))
+    expect(mockDiscard).not.toHaveBeenCalled()
+  })
+
+  it('is not deleted here when the player plays, because the queue step deletes it', () => {
+    reviewWith(WITH_PHOTO)
+    jest.mocked(CorrectionScreen).mock.calls.at(-1)![0].onExit!([] as CellLook[])
+    expect(mockEnqueue).toHaveBeenCalledWith('/tmp/photo.jpg', WITH_PHOTO, [])
+    expect(mockDiscard).not.toHaveBeenCalled()
+  })
 })

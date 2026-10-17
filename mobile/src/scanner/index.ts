@@ -3,6 +3,7 @@ export { probeOpenCV } from './opencvProbe'
 export {
   type CellResult,
   type Classifier,
+  KIND_CLASSES,
   type Kind,
   ModelContractError,
   type RawOutputs,

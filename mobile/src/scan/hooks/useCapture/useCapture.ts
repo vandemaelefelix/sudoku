@@ -7,6 +7,7 @@ import { createScanner, type RecogniseResult, type Scanner } from '@/scanner'
 import { sameAspect, uprightAspect } from '@/scan/utils/preview.utils'
 import { flatToSkImage, saveFlatPng } from '@/scan/utils/flatImage.utils'
 import { saveUprightPhoto } from '@/scan/utils/photoFile'
+import { shareStore } from '@/scanShare/shareStore'
 import { photoToSkImage } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
@@ -55,7 +56,8 @@ function withFlat(result: OkResult, photoPath: string | null): OkResult {
       devWarn('scan', `the flattened grid has no image: ${errorMessage(error)}`)
     }
   }
-  if (!__DEV__ || photoPath == null) return kept
+  if (photoPath == null) return kept
+  if (!__DEV__) return { ...kept, photoPath }
   let flatPath: string | undefined
   try {
     flatPath = flat == null ? undefined : saveFlatPng(flat)
@@ -157,13 +159,14 @@ export function useCapture(photoOutput: Pick<CameraPhotoOutput, 'capturePhoto'>)
         devWarn('scan', 'the photo and the frame differ in aspect, so the locked quad does not fit the photo')
         if (current()) update({ quad: null })
       }
-      // Development builds only: the correction screen shows this photo and can save it with the corrections.
-      const saved = __DEV__
-        ? saveUprightPhoto(photo).catch((error) => {
-            devWarn('scan', `the photo is not saved: ${errorMessage(error)}`)
-            return null
-          })
-        : Promise.resolve(null)
+      // Development builds keep the photo for the dev menu. Every build keeps it while sharing is on: the scan upload crops it (ADR-030).
+      const saved =
+        __DEV__ || shareStore.get()
+          ? saveUprightPhoto(photo).catch((error) => {
+              devWarn('scan', `the photo is not saved: ${errorMessage(error)}`)
+              return null
+            })
+          : Promise.resolve(null)
       try {
         await Promise.all([
           scanner.recognise(photo, locked).then(

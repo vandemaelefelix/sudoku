@@ -279,6 +279,9 @@ importers:
       '@sudoku/core':
         specifier: workspace:*
         version: link:../shared/core
+      '@sudoku/scan-contract':
+        specifier: workspace:*
+        version: link:../shared/scan-contract
       '@sudoku/sync-contract':
         specifier: workspace:*
         version: link:../shared/sync-contract
