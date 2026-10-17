@@ -5,6 +5,7 @@ packages:
   - backend/kill-switch
   - shared/core
   - shared/sync-contract
+  - shared/scan-contract
 
 allowBuilds:
   '@shopify/react-native-skia': true

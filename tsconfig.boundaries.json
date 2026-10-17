@@ -12,6 +12,7 @@
     "mobile/src",
     "shared/core/src",
     "shared/sync-contract/src",
+    "shared/scan-contract/src",
     "backend/api/src",
     "backend/kill-switch/src"
   ]
