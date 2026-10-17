@@ -39,7 +39,8 @@ import { styles } from './CameraScreen.styles'
 /**
  * The live camera, from lock-on the capture transition, and after it the static correction screen.
  * layout: the correction screen layout that the transition ends on. onDone: called once when the transition ends, with an ok result.
- * onRetake: the parent mounts a new CameraScreen, so the scene, its lock-on latch and the transition start new.
+ * onRetake: the parent mounts a new CameraScreen, so the scene, its lock-on latch and the transition start new. It gets the result
+ * that the player leaves, so the parent can delete its photo.
  * review: set by the parent after onDone. The correction screen of the transition stays mounted and becomes the static screen, so
  * its Skia canvases have drawn before they show. The camera and the transition layers unmount.
  */
@@ -51,8 +52,8 @@ export function CameraScreen({
 }: {
   layout: CorrectionLayout
   onDone: (result: RecogniseResult) => void
-  onRetake: () => void
-  review?: Pick<CorrectionProps, 'onPlay' | 'onSave' | 'onHome'>
+  onRetake: (result: RecogniseResult | null) => void
+  review?: Pick<CorrectionProps, 'onPlay' | 'onSave' | 'onExit' | 'onHome'>
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
@@ -137,7 +138,7 @@ export function CameraScreen({
         <CorrectionScreen
           result={capturing.result}
           layout={layout}
-          onRetake={onRetake}
+          onRetake={() => onRetake(capturing.result)}
           {...(review ?? { clock, reduceMotion: crossFade, waiting, resultsAt })}
         />
       ) : (

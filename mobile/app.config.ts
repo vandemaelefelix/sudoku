@@ -80,11 +80,18 @@ export function variantConfig(
   variant: AppVariant,
   syncApiUrl: string | undefined = process.env.SYNC_API_URL,
   production: ProductionBackend = PRODUCTION_BACKEND,
+  scanAppKey: string | undefined = process.env.SCAN_APP_KEY,
 ): ExpoConfig {
+  // The shared key of the scans route (ADR-030). It is in every build and is not a secret. Without it the build uploads no scans.
+  const scanKey = scanAppKey === undefined || scanAppKey === '' ? {} : { scanAppKey }
   if (variant === 'production') {
     // Without a key the production variant has no account UI, so the URL override has nothing to serve.
-    if (production.clerkPublishableKey === null) return config
-    return { ...config, extra: { ...config.extra, ...clerkProduction(production, syncApiUrl) } }
+    if (production.clerkPublishableKey === null) {
+      return scanAppKey === undefined || scanAppKey === ''
+        ? config
+        : { ...config, extra: { ...config.extra, ...scanKey } }
+    }
+    return { ...config, extra: { ...config.extra, ...clerkProduction(production, syncApiUrl), ...scanKey } }
   }
   return {
     ...config,
@@ -96,6 +103,7 @@ export function variantConfig(
       appVariant: 'development',
       ...CLERK_DEVELOPMENT,
       syncApiUrl: syncApiUrl === undefined || syncApiUrl === '' ? DEVELOPMENT_SYNC_API_URL : syncApiUrl,
+      ...scanKey,
     },
     icon: `${DEV_ICONS}/ios-light.png`,
     ios: {

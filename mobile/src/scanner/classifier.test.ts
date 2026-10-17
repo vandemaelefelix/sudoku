@@ -73,6 +73,16 @@ describe('checkManifest', () => {
 })
 
 describe('decodeOutputs', () => {
+  it('keeps the 10 digit and 4 kind probabilities of each cell for the scan record', () => {
+    const digit = rows(10, 4, 0.6)
+    const kind = rows(4, 1, 0.9)
+    const cells = decodeOutputs({ digit, kind })
+    expect(at(cells, 80).digitProbs).toEqual(Array.from(digit.subarray(800, 810)))
+    expect(at(cells, 80).kindProbs).toEqual(Array.from(kind.subarray(320, 324)))
+    expect(at(cells, 0).digitProbs).toHaveLength(10)
+    expect(at(cells, 0).kindProbs).toHaveLength(4)
+  })
+
   it('reads the second guess of the digit head', () => {
     const digit = rows(10, 4, 0.6)
     digit[9] = 0.3

@@ -10,7 +10,16 @@ export type Kind = (typeof KIND_CLASSES)[number]
 
 /** digit: 0 means empty. confidence: the lower top probability of the two heads, 0..1. */
 /** second: the digit class with the second highest score, the guess the correction screen marks when the first is wrong. */
-export type CellResult = { digit: number; kind: Kind; confidence: number; validPair: boolean; second: number }
+export type CellResult = {
+  digit: number
+  kind: Kind
+  confidence: number
+  validPair: boolean
+  second: number
+  /** The 10 digit probabilities and the 4 kind probabilities of the model. The scan record keeps them (ADR-030). */
+  digitProbs?: number[]
+  kindProbs?: number[]
+}
 
 export type OutputIndex = { digit: number; kind: number }
 
@@ -91,7 +100,9 @@ export function decodeOutputs(raw: RawOutputs): CellResult[] {
     const validPair = digit === 0 ? kind === 'none' || kind === 'notes' : kind === 'printed' || kind === 'handwritten'
     const confidence = Math.min(raw.digit[n * DIGIT_CLASSES + digit] ?? 0, raw.kind[n * width + kindIndex] ?? 0)
     const second = argmaxExcept(raw.digit, n * DIGIT_CLASSES, DIGIT_CLASSES, digit)
-    cells.push({ digit, kind, confidence, validPair, second })
+    const digitProbs = Array.from(raw.digit.subarray(n * DIGIT_CLASSES, (n + 1) * DIGIT_CLASSES))
+    const kindProbs = Array.from(raw.kind.subarray(n * width, (n + 1) * width))
+    cells.push({ digit, kind, confidence, validPair, second, digitProbs, kindProbs })
   }
   return cells
 }

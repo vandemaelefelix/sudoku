@@ -223,3 +223,6 @@ jest.mock('expo-network', () => ({
   addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
   getNetworkStateAsync: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
 }))
+
+// expo-crypto is native. Tests get a real v4 UUID from Node.
+jest.mock('expo-crypto', () => ({ randomUUID: () => require('node:crypto').randomUUID() }))

@@ -7,6 +7,8 @@ import { useAssists } from '@/game/hooks/useAssists'
 import { AssistPreview } from '@/settings/components/AssistPreview'
 import { AppearancePicker } from '@/settings/components/AppearancePicker'
 import { AssistRow } from '@/settings/components/AssistRow'
+import { ScanningSection } from '@/settings/components/ScanningSection'
+import { SettingsFooter } from '@/settings/components/SettingsFooter'
 import { ThemePicker } from '@/settings/components/ThemePicker'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
@@ -19,7 +21,7 @@ type SettingsScreenProps = { onBack(): void; onSignIn(): void }
 
 /**
  * The assists, the haptics switch, the colourway and the appearance. Each change applies at once, ticks and is saved.
- * The account section comes last, in a build with a Clerk key.
+ * The scanning switch comes before the account section, which is there in a build with a Clerk key. The footer shows the version and the ID.
  */
 export function SettingsScreen({ onBack, onSignIn }: SettingsScreenProps) {
   const { assists, setAssist } = useAssists()
@@ -125,7 +127,9 @@ export function SettingsScreen({ onBack, onSignIn }: SettingsScreenProps) {
             onChange={switchHaptics}
           />
         </View>
+        <ScanningSection />
         <AccountSection onSignIn={onSignIn} />
+        <SettingsFooter />
       </ScrollView>
     </>
   )
