@@ -8,7 +8,7 @@ status: DRAFT
 | --- | --- | --- |
 | One project, two toolchains (OC-1) | Polyglot monorepo. pnpm workspaces for TypeScript, uv for Python, one `justfile` at the root for both | [ADR-001](adr/adr-001-polyglot-monorepo.md) |
 | Smooth live scanning (QG 2) with known tech (TC-2) | React Native (Expo) with VisionCamera frame processors. Vision work runs natively off the JS thread, through community libraries first, a Swift plugin per step only where those fall short | [ADR-002](adr/adr-002-react-native-and-scanner-engine.md) |
-| Offline and private (QG 3, TC-3) | All inference on the device. Nothing leaves the phone without an explicit user action | [ADR-003](adr/adr-003-on-device-inference.md) |
+| Offline and private (QG 3, TC-3) | All inference on the device. Camera frames and cell images stay on the phone. A photo leaves only through a setting that the player can turn off | [ADR-003](adr/adr-003-on-device-inference.md) |
 | Curved pages "to some level", without over-engineering | Two stages: a cheap 4-corner lock-on live, then on capture a per-cell flatten from the 100 grid intersections | [ADR-004](adr/adr-004-two-stage-scan-pipeline.md) |
 | Learn the current ML stack (OC-2), train on a Mac (TC-4) | PyTorch on MPS, exported to TFLite (LiteRT) | [ADR-005](adr/adr-005-pytorch-to-tflite.md) |
 | Resume half-filled book puzzles (F-05) | One small CNN with two heads: digit and kind | [ADR-006](adr/adr-006-two-head-cell-classifier.md) |

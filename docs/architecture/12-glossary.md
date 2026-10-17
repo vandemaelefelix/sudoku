@@ -222,3 +222,6 @@ status: DRAFT
 | Operations runbook | `docs/operations/runbook.md`. The one entry point for the backend: where each part lives, how the parts connect and what to do when one breaks |
 | Area | A top-level folder that holds one deliverable: `mobile`, `ml`, `backend` or `web` (ADR-029) |
 | Shared | The folder for code and files that more than one area uses (ADR-029) |
+| Contributor ID | A random ID that the app makes for the device. It names the owner of an uploaded scan. It has no link to a person, unless the player signs in (ADR-030) |
+| Scan record | The data of one finished scan: the cropped photo, the corners, the model answers, the final grid and the `edited` flags. The app uploads it when the setting "Help improve the app" is on (ADR-030) |
+| Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training uses it to filter cells (ADR-030) |

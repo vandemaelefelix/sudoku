@@ -41,8 +41,8 @@ handwritten digits on the device, and load the puzzle to play, solve or get a hi
 3. `ml/` (Python) and the TypeScript side share files only: `shared/model-contract/`, `shared/fixtures/` and the
    promoted model. Neither side imports the other (SUD-07).
 4. Do not commit training images or private fixtures (SUD-08).
-5. Do not let camera frames, photos or cell images leave the device without an explicit user
-   action (SUD-02). No analytics, no tracking, no ads.
+5. Do not let camera frames or cell images leave the device. A photo leaves only through the setting
+   "Help improve the app" (SUD-02). No analytics, no tracking, no ads.
 
 ## Architecture documentation
 

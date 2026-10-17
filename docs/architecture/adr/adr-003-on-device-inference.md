@@ -47,3 +47,12 @@ without an explicit user action for each export (SUD-02).
 
 - A model that would help does not fit the phone's speed or memory budget.
 - Over-the-air model updates become worth having (with the backend).
+
+## Amendment 2026-10-16: scan collection
+
+[ADR-030](adr-030-scan-collection.md) amends the rule on exports in the Decision and the Consequences.
+
+1. Inference still runs on the device. Camera frames and cell images never leave the device.
+2. A photo leaves the device only through the setting "Help improve the app". The setting is on by default. The
+   player can turn it off. The rule "an explicit user action for each export" ends.
+3. F-11 is now the upload of a finished scan through this setting. The player no longer chooses each time.
