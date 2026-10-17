@@ -62,13 +62,14 @@ describe('findFunctions', () => {
       ListFunctionsCommand: () => ({
         Functions: [
           { FunctionName: 'sudoku-felix-SyncApiFunctionAbc' },
+          { FunctionName: 'sudoku-felix-ScansFunctionXyz' },
           { FunctionName: 'sudoku-production-SyncApiFunctionDef' },
           { FunctionName: 'sudoku-production-KillSwitchSubscriberXyz' },
         ],
       }),
     })
     const { ops: o } = ops({ lambda })
-    expect(await o.findFunctions('felix')).toEqual(['sudoku-felix-SyncApiFunctionAbc'])
+    expect(await o.findFunctions('felix')).toEqual(['sudoku-felix-SyncApiFunctionAbc', 'sudoku-felix-ScansFunctionXyz'])
     expect(await o.findFunctions('production')).toEqual(['sudoku-production-SyncApiFunctionDef'])
     expect(sent(lambda, ListFunctionsCommand).length).toBeGreaterThan(0)
   })
@@ -156,6 +157,32 @@ describe('startApi', () => {
     const update = sent(apigw, UpdateStageCommand)[0]!.input
     expect(update.DefaultRouteSettings).toMatchObject({ ThrottlingRateLimit: 1, ThrottlingBurstLimit: 10 })
     expect(update.RouteSettings['POST /v1/sync']).toMatchObject({ ThrottlingRateLimit: 1, ThrottlingBurstLimit: 10 })
+  })
+})
+
+describe('startApi with route overrides', () => {
+  it('keeps the tighter throttle of an overridden route, also when the route is not in the stage yet', async () => {
+    const apigw = client({
+      GetStageCommand: () => ({
+        DefaultRouteSettings: { ThrottlingRateLimit: 0, ThrottlingBurstLimit: 0 },
+        RouteSettings: {
+          'POST /v1/sync': { ThrottlingRateLimit: 0, ThrottlingBurstLimit: 0 },
+          'POST /v1/scans': { ThrottlingRateLimit: 0, ThrottlingBurstLimit: 0 },
+        },
+      }),
+      UpdateStageCommand: () => ({}),
+    })
+    const scans = { throttlingRateLimit: 0.5, throttlingBurstLimit: 5 }
+    await ops({ apigw }).ops.startApi(
+      'api-1',
+      { throttlingRateLimit: 1, throttlingBurstLimit: 10 },
+      {
+        'POST /v1/scans': scans,
+      },
+    )
+    const update = sent(apigw, UpdateStageCommand)[0]!.input
+    expect(update.RouteSettings['POST /v1/sync']).toMatchObject({ ThrottlingRateLimit: 1, ThrottlingBurstLimit: 10 })
+    expect(update.RouteSettings['POST /v1/scans']).toMatchObject({ ThrottlingRateLimit: 0.5, ThrottlingBurstLimit: 5 })
   })
 })
 

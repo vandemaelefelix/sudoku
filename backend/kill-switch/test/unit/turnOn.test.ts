@@ -21,7 +21,14 @@ describe('turnOn', () => {
     const { deps, calls } = makeDeps()
     await turnOn(deps, 'felix', throttle)
     expect(calls).toEqual(['api:api-1', 'fn:fn-1', 'clear:felix'])
-    expect(deps.startApi).toHaveBeenCalledWith('api-1', throttle)
+    expect(deps.startApi).toHaveBeenCalledWith('api-1', throttle, {})
+  })
+
+  it('passes the route throttles on, so the scans route keeps its own limit', async () => {
+    const { deps } = makeDeps()
+    const routes = { 'POST /v1/scans': { throttlingRateLimit: 0.5, throttlingBurstLimit: 5 } }
+    await turnOn(deps, 'felix', throttle, routes)
+    expect(deps.startApi).toHaveBeenCalledWith('api-1', throttle, routes)
   })
 
   it('keeps the flag when a step fails', async () => {

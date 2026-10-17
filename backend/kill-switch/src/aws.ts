@@ -25,8 +25,11 @@ export interface AwsClients {
 }
 
 // SST names a function `<app>-<stage>-<logical name><hash>`. The kill-switch Lambda has the tags of
-// the production stage too, so the name picks the sync-api function and never the kill switch itself.
-const syncFunctionPrefix = (stage: string): string => `sudoku-${stage}-SyncApiFunction`
+// the production stage too, so the name picks the API functions and never the kill switch itself (ADR-030: two functions).
+const apiFunctionPrefixes = (stage: string): string[] => [
+  `sudoku-${stage}-SyncApiFunction`,
+  `sudoku-${stage}-ScansFunction`,
+]
 
 // The log and the summary name the failing call and the AWS error. A message alone can be empty.
 async function named<T>(call: string, step: () => Promise<T>): Promise<T> {
@@ -43,17 +46,24 @@ export type AwsOps = Omit<KillSwitchDeps, 'now'> & TurnOnDeps
 export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: string | undefined } = {}): AwsOps {
   const { apigw, lambda, ssm, sns } = clients
 
-  async function setThrottle(apiId: string, rate: number, burst: number): Promise<void> {
+  async function setThrottle(
+    apiId: string,
+    rate: number,
+    burst: number,
+    routeThrottles: Record<string, Throttle> = {},
+  ): Promise<void> {
     // The `$default` stage of an HTTP API: SST creates no other stage (ADR-027).
     const stageName = '$default'
     const stage = await named('GetStage', () => apigw.send(new GetStageCommand({ ApiId: apiId, StageName: stageName })))
-    const apply = (settings: RouteSettings | undefined): RouteSettings => ({
+    const apply = (settings: RouteSettings | undefined, limit?: Throttle): RouteSettings => ({
       ...settings,
-      ThrottlingRateLimit: rate,
-      ThrottlingBurstLimit: burst,
+      ThrottlingRateLimit: limit?.throttlingRateLimit ?? rate,
+      ThrottlingBurstLimit: limit?.throttlingBurstLimit ?? burst,
     })
+    // A route with its own limit goes in the map even when the stage lost its entry.
+    const keys = new Set([...Object.keys(stage.RouteSettings ?? {}), ...Object.keys(routeThrottles)])
     const routes = Object.fromEntries(
-      Object.entries(stage.RouteSettings ?? {}).map(([key, settings]) => [key, apply(settings)]),
+      [...keys].map((key) => [key, apply(stage.RouteSettings?.[key], routeThrottles[key])]),
     )
     // API Gateway answers BadRequestException to an empty RouteSettings map, so send the map only with routes.
     await named('UpdateStage', () =>
@@ -89,15 +99,16 @@ export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: str
         // oxlint-disable-next-line eslint/no-await-in-loop -- Each page needs the marker of the page before it.
         const page = await lambda.send(new ListFunctionsCommand({ Marker: marker }))
         for (const fn of page.Functions ?? []) {
-          if (fn.FunctionName?.startsWith(syncFunctionPrefix(stage))) names.push(fn.FunctionName)
+          const name = fn.FunctionName
+          if (name && apiFunctionPrefixes(stage).some((prefix) => name.startsWith(prefix))) names.push(name)
         }
         marker = page.NextMarker
       } while (marker)
       return names
     },
     stopApi: (apiId) => setThrottle(apiId, 0, 0),
-    startApi: (apiId, throttle: Throttle) =>
-      setThrottle(apiId, throttle.throttlingRateLimit, throttle.throttlingBurstLimit),
+    startApi: (apiId, throttle: Throttle, routeThrottles) =>
+      setThrottle(apiId, throttle.throttlingRateLimit, throttle.throttlingBurstLimit, routeThrottles),
     async stopFunction(name) {
       await lambda.send(new PutFunctionConcurrencyCommand({ FunctionName: name, ReservedConcurrentExecutions: 0 }))
     },

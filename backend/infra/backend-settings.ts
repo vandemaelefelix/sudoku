@@ -6,6 +6,10 @@ export const API_AUDIENCE = 'sudoku-api'
 // SUD-11, ADR-027 decision 9. An HTTP API applies this to each route, not to the stage as a whole.
 export const STAGE_THROTTLE = { throttlingRateLimit: 1, throttlingBurstLimit: 10 } as const
 
+// SUD-11, ADR-030. The public scans route has no authorizer, so it gets its own, tighter limit.
+export const SCANS_ROUTE_KEY = 'POST /v1/scans'
+export const SCANS_THROTTLE = { throttlingRateLimit: 0.5, throttlingBurstLimit: 5 } as const
+
 // The SST default format without the IP and the user agent (F-16: no tracking).
 // Every value is a string, so a missing context variable cannot break the JSON.
 export const ACCESS_LOG_FORMAT = JSON.stringify({

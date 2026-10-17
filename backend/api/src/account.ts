@@ -4,7 +4,7 @@ import type { SyncDeps } from './deps'
 import type { Response } from './http'
 import { unauthorized } from './http'
 import type { LogFields } from './log'
-import { identityKey, userPk } from './tableDesign'
+import { SCAN_PREFIX, identityKey, photoKey, userPk } from './tableDesign'
 
 const TOMBSTONE_TTL_SECONDS = 30 * 86_400
 const BATCH_SIZE = 25
@@ -82,6 +82,9 @@ async function deletePass(deps: SyncDeps, userId: string): Promise<number> {
       }),
     )
     const keys = (page.Items ?? []) as Key[]
+    // The photo goes first: a failed photo delete leaves the row, so a retry still finds the scan.
+    // oxlint-disable-next-line eslint/no-await-in-loop -- Each page of the query is handled before the next.
+    await deletePhotos(deps, keys)
     const batches: Key[][] = []
     for (let i = 0; i < keys.length; i += BATCH_SIZE) batches.push(keys.slice(i, i + BATCH_SIZE))
     for (let i = 0; i < batches.length; i += PARALLEL_BATCHES) {
@@ -109,4 +112,15 @@ async function deleteBatch(deps: SyncDeps, keys: Key[]): Promise<void> {
     pending = { [deps.tableName]: left as { DeleteRequest: { Key: Key } }[] }
   }
   throw new Error('DynamoDB left items unprocessed.')
+}
+
+async function deletePhotos(deps: SyncDeps, keys: Key[]): Promise<void> {
+  const scanIds = keys.filter((key) => key.sk.startsWith(SCAN_PREFIX)).map((key) => key.sk.slice(SCAN_PREFIX.length))
+  if (scanIds.length === 0) return
+  if (!deps.photos) throw new Error('No photo store is linked.')
+  const { photos } = deps
+  for (let i = 0; i < scanIds.length; i += PARALLEL_BATCHES * 4) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- At most 16 deletes run at once.
+    await Promise.all(scanIds.slice(i, i + PARALLEL_BATCHES * 4).map((id) => photos.delete(photoKey(id))))
+  }
 }
