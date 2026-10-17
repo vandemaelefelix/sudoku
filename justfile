@@ -111,9 +111,9 @@ docs-check:
 preprocess-fixtures:
     uv run --directory ml python -m sudoku_ml.fixtures ../shared/fixtures/preprocess
 
-# Train a model from a config in ml/configs/ (default: the cell classifier)
-train config="cell-classifier":
-    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
+# Train a model from a config in ml/configs/ (default: the cell classifier). Flag: --app-unedited adds scan cells that the player did not edit
+train config="cell-classifier" *flags:
+    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml {{flags}}
 
 # Export a training run to TFLite and check it against PyTorch and TFLite 2.17
 export run:
@@ -132,9 +132,13 @@ import-photos folder *flags:
     folder="$(realpath "{{folder}}")" && uv run --directory ml python -m sudoku_ml.photo_import "$folder" {{flags}}
 
 # Copy the scans that the player corrected on the phone to a folder on the Mac (#77). Find the device with: xcrun devicectl list devices. For the development variant, pass app=com.vandemaelefelix.sudoku.dev
-pull-scans device destination="$HOME/scan-corrections" app="com.vandemaelefelix.sudoku":
+pull-device-scans device destination="$HOME/scan-corrections" app="com.vandemaelefelix.sudoku":
     mkdir -p "{{destination}}"
     xcrun devicectl device copy from --device "{{device}}" --domain-type appDataContainer --domain-identifier "{{app}}" --source Documents/scan-corrections --destination "{{destination}}"
+
+# Download the uploaded scans of a stage into ml/dataset/ (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage
+pull-scans table bucket:
+    {{sudoku_aws}} uv run --directory ml python -m sudoku_ml.pull_scans --table "{{table}}" --bucket "{{bucket}}"
 
 # Move cells to the digits in a relabel CSV (header file,new_label), then rewrite ml/dataset/cells.csv
 relabel file:

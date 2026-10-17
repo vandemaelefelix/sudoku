@@ -32,8 +32,8 @@ def rows(manifest: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
-def row(cell_id: str, digit: str, kind: str = "", photo: str = "", r="", c="") -> dict:
-    return dict(zip(CELL_FIELDS, [cell_id, digit, kind, photo, str(r), str(c)], strict=True))
+def row(cell_id: str, digit: str, kind: str = "", photo: str = "", r="", c="", label="") -> dict:
+    return dict(zip(CELL_FIELDS, [cell_id, digit, kind, photo, str(r), str(c), label], strict=True))
 
 
 @pytest.fixture
@@ -57,7 +57,9 @@ def test_the_file_has_unix_line_ends(paths: DataPaths):
     add_cell(paths.cells, "7", 10)
     write_cells_manifest(paths)
     assert b"\r" not in paths.cells_csv.read_bytes()
-    assert paths.cells_csv.read_text().startswith("cell_id,digit,kind,photo_id,row,col\n")
+    assert paths.cells_csv.read_text().startswith(
+        "cell_id,digit,kind,photo_id,row,col,label_source\n"
+    )
 
 
 def test_moved_cell_gets_its_new_digit(paths: DataPaths):
@@ -101,7 +103,7 @@ def test_the_journal_folds_into_the_kind_and_source_columns(paths: DataPaths):
     write_cells_manifest(paths)
     assert rows(paths.cells_csv) == [
         row(three, "3"),
-        row(seven, "7", "handwritten"),
+        row(seven, "7", "handwritten", label="verified"),
         row(empty, "empty"),
         row(other, "unlabeled", "", PHOTO, 4, 8),
     ]
@@ -114,7 +116,7 @@ def test_the_table_is_the_base_after_the_journal_is_gone(paths: DataPaths):
     write_cells_manifest(paths)
     paths.journal.unlink()
     write_cells_manifest(paths)
-    assert rows(paths.cells_csv) == [row(seven, "7", "printed", PHOTO, 0, 1)]
+    assert rows(paths.cells_csv) == [row(seven, "7", "printed", PHOTO, 0, 1, "verified")]
     table = read_cells_table(paths.cells_csv)
     assert table[seven].kind == "printed" and table[seven].source == (PHOTO, 0, 1)
 
@@ -162,7 +164,9 @@ def test_a_table_that_does_not_parse_is_never_rebuilt(paths: DataPaths):
 )
 def test_a_bad_source_does_not_parse(paths: DataPaths, source: str):
     paths.root.mkdir(parents=True)
-    paths.cells_csv.write_text(f"cell_id,digit,kind,photo_id,row,col\n{'a' * 64},7,,{source}\n")
+    paths.cells_csv.write_text(
+        f"cell_id,digit,kind,photo_id,row,col,label_source\n{'a' * 64},7,,{source},\n"
+    )
     with pytest.raises(ValueError, match="line 2"):
         read_cells_table(paths.cells_csv)
 
@@ -177,5 +181,5 @@ def test_repair_drops_the_kind_of_a_cell_that_left_the_digit_folders(paths: Data
     with pytest.raises(ValueError, match="empty cell"):
         write_cells_manifest(paths)
     assert repair_and_write(paths) == 1
-    assert rows(paths.cells_csv) == [row(seven, "empty")]
+    assert rows(paths.cells_csv) == [row(seven, "empty", label="verified")]
     assert [x.screen for x in read_journal(paths.journal)] == ["repair"]
