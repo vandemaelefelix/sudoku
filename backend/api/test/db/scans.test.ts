@@ -51,6 +51,19 @@ describe('POST /v1/scans', () => {
   const row = async (pk: string, sk: string) =>
     (await table.db.send(new GetCommand({ TableName: table.tableName, Key: { pk, sk }, ConsistentRead: true }))).Item
 
+  // The fixtures share one contributorId, so a query on the pk alone also counts the rows of the other tests.
+  const scanRows = async (pk: string, sk: string) =>
+    (
+      await table.db.send(
+        new QueryCommand({
+          TableName: table.tableName,
+          KeyConditionExpression: 'pk = :pk AND sk = :sk',
+          ExpressionAttributeValues: { ':pk': pk, ':sk': sk },
+          ConsistentRead: true,
+        }),
+      )
+    ).Items ?? []
+
   beforeAll(async () => {
     table = await createTestTable()
   })
@@ -132,13 +145,7 @@ describe('POST /v1/scans', () => {
     const second = await handleScan(deps(), event(record))
     expect(second.statusCode).toBe(200)
     expect(JSON.parse(second.body ?? '').uploadUrl).not.toBe(JSON.parse(first.body ?? '').uploadUrl)
-    const { Items } = await table.db.send(
-      new QueryCommand({
-        TableName: table.tableName,
-        KeyConditionExpression: 'pk = :pk',
-        ExpressionAttributeValues: { ':pk': `CONTRIB#${record.contributorId}` },
-      }),
-    )
+    const Items = await scanRows(`CONTRIB#${record.contributorId}`, `SCAN#${record.scanId}`)
     expect(Items).toHaveLength(1)
   })
 
@@ -167,13 +174,7 @@ describe('POST /v1/scans', () => {
     const repeat = await handleScan(deps(), event(record, { 'x-app-key': KEY, ...JPEG, authorization: 'Bearer good' }))
     expect(repeat.statusCode).toBe(200)
     expect(presigned).toHaveLength(2)
-    const { Items } = await table.db.send(
-      new QueryCommand({
-        TableName: table.tableName,
-        KeyConditionExpression: 'pk = :pk',
-        ExpressionAttributeValues: { ':pk': `CONTRIB#${record.contributorId}` },
-      }),
-    )
+    const Items = await scanRows(`CONTRIB#${record.contributorId}`, `SCAN#${record.scanId}`)
     expect(Items).toHaveLength(1)
     const identity = (
       await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey('user_clerk_1') }))
