@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { BY_SYNCED, TABLE, countSk, gameSk, identityKey, userPk } from '../../src/tableDesign'
+import {
+  BY_PENDING,
+  BY_SYNCED,
+  TABLE,
+  contribPk,
+  scanSk,
+  countSk,
+  gameSk,
+  identityKey,
+  userPk,
+} from '../../src/tableDesign'
 
 describe('the table design', () => {
   it('keys the identity row by the Clerk sub (ADR-027 decision 2)', () => {
@@ -15,10 +25,22 @@ describe('the table design', () => {
   it('has the local index bySynced on syncedAt, from the first deploy', () => {
     expect(TABLE.primaryIndex).toEqual({ hashKey: 'pk', rangeKey: 'sk' })
     expect(TABLE.localIndexes).toEqual({ [BY_SYNCED]: { rangeKey: 'syncedAt' } })
-    expect(TABLE.fields).toEqual({ pk: 'string', sk: 'string', syncedAt: 'string' })
+    expect(TABLE.fields).toEqual({
+      pk: 'string',
+      sk: 'string',
+      syncedAt: 'string',
+      gsiPending: 'string',
+      createdAt: 'string',
+    })
   })
 
   it('names one TTL attribute for the tombstone and the daily count', () => {
     expect(TABLE.ttl).toBe('expiresAt')
+  })
+
+  it('keys the scan rows and has the sparse global index byPending (ADR-030)', () => {
+    expect(contribPk('c-1')).toBe('CONTRIB#c-1')
+    expect(scanSk('s-1')).toBe('SCAN#s-1')
+    expect(TABLE.globalIndexes).toEqual({ [BY_PENDING]: { hashKey: 'gsiPending', rangeKey: 'createdAt' } })
   })
 })

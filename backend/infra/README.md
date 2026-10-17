@@ -18,6 +18,7 @@ The [operations runbook](../../docs/operations/runbook.md) lists every part of t
 | `clerk.ts` | The Clerk secret key of each stage with a Clerk instance. `api.ts` links it to the Lambda for `DELETE /v1/account` |
 | `storage.ts` | The DynamoDB table `SyncTable`. Its layout comes from `backend/api/src/tableDesign.ts` |
 | `api.ts` | The HTTP API `SyncApi` with the routes `POST /v1/sync` and `DELETE /v1/account`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` (30 s timeout, linked to the table and `ClerkSecretKey`) |
+| `scans-bucket.ts`, `scans.ts` | The private photo bucket `ScansBucket` (encrypted, 365 days), the Lambda `ScansFunction`, the secret `ScanAppKey` and the route `POST /v1/scans` with no authorizer. The route throttle is in `api.ts` (ADR-030) |
 | `kill-switch.ts` | The SNS topic of the budget, its policy, the `kill-switch` Lambda and the alert email. Only the account stage creates them |
 | `kill-switch-settings.ts` | The flag name, the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
 | `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The workflows `deploy-api-dev.yml` and `deploy-api-production.yml` call it |
@@ -379,7 +380,7 @@ Do these steps once, after the first `production` deploy. They change the real a
    - `aws ssm get-parameter --name /sudoku/kill-switch/felix` shows the flag.
    - `aws lambda get-function-concurrency --function-name <SyncApiFunction name>` shows 0.
    - `just deploy-api felix` refuses and prints the kill-switch message.
-8. Run `just api-on felix`. Check that `get-stage` shows the throttle 1 and 10 again, that the function concurrency is gone and that the flag is gone.
+8. Run `just api-on felix`. Check that `get-stage` shows the throttle 1 and 10 again (0.5 and 5 on `POST /v1/scans`), that the function concurrency is gone and that the flag is gone.
 9. In the app (development variant, signed in on `felix`), finish a game while the stage is
    stopped. No error shows, and the waiting list keeps the entry.
 10. Billing check, to answer whether AWS bills a throttled request: stop `felix` again (step 5).

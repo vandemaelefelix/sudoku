@@ -60,6 +60,7 @@ export default $config({
     await import('./backend/infra/clerk.ts')
     await import('./backend/infra/storage.ts')
     const { api } = await import('./backend/infra/api.ts')
+    await import('./backend/infra/scans.ts')
     return { apiUrl: api.url, ...deployRoles }
   },
 })

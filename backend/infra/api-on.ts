@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline/promises'
 import { createAwsOps } from '../kill-switch/src/aws.ts'
 import { createClients } from '../kill-switch/src/clients.ts'
 import { turnOn } from '../kill-switch/src/turnOn.ts'
-import { STAGE_THROTTLE } from './backend-settings.ts'
+import { SCANS_ROUTE_KEY, SCANS_THROTTLE, STAGE_THROTTLE } from './backend-settings.ts'
 import { AWS_REGION } from './config.ts'
 import { parseApiOnArgs } from './kill-switch-settings.ts'
 
@@ -62,7 +62,7 @@ if (!args.yes) {
 
 const ops = createAwsOps(createClients(AWS_REGION))
 try {
-  await turnOn(ops, args.stage, STAGE_THROTTLE)
+  await turnOn(ops, args.stage, STAGE_THROTTLE, { [SCANS_ROUTE_KEY]: SCANS_THROTTLE })
 } catch (error) {
   console.error(`Stage ${args.stage} stays stopped, and its flag stays. ${(error as Error).message}`)
   process.exit(1)
