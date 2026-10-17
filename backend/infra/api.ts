@@ -23,11 +23,20 @@ export const syncFunction = new sst.aws.Function('SyncApiFunction', {
   timeout: '30 seconds',
 })
 
+// The stage sets a throttle for the scans route. API Gateway refuses that setting before the route exists.
+// scans.ts creates the route after the API, so the stage waits for this promise (scans.ts imports api.ts).
+let announceScansRoute: (route: $util.Resource) => void = () => {}
+const scansRoute = new Promise<$util.Resource>((resolve) => {
+  announceScansRoute = resolve
+})
+export { announceScansRoute }
+
 export const api = new sst.aws.ApiGatewayV2('SyncApi', {
   // Only the native app calls the API. SST turns CORS on by default.
   cors: false,
   transform: {
-    stage: (args) => {
+    stage: (args, opts) => {
+      opts.dependsOn = scansRoute
       args.defaultRouteSettings = STAGE_THROTTLE
       // SUD-11: the public scans route has its own limit.
       args.routeSettings = [{ routeKey: SCANS_ROUTE_KEY, ...SCANS_THROTTLE }]

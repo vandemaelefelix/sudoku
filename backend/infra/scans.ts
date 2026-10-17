@@ -1,5 +1,5 @@
 import { API_AUDIENCE, SCANS_ROUTE_KEY } from './backend-settings.ts'
-import { api } from './api.ts'
+import { announceScansRoute, api } from './api.ts'
 import { CLERK_ISSUER, type Stage } from './config.ts'
 import { scansBucket } from './scans-bucket.ts'
 import { table } from './storage.ts'
@@ -18,5 +18,5 @@ export const scansFunction = new sst.aws.Function('ScansFunction', {
   },
 })
 
-// No authorizer: the handler checks the app key header. The throttle is in api.ts (SUD-11).
-api.route(SCANS_ROUTE_KEY, scansFunction.arn)
+// No authorizer: the handler checks the app key header. The throttle is in api.ts (SUD-11). The stage waits for this route.
+announceScansRoute(api.route(SCANS_ROUTE_KEY, scansFunction.arn))
