@@ -41,7 +41,7 @@ The system has three parts. The backend starts with accounts and the history syn
 | F-08 | Everything above works without a network connection | Must |
 | F-09 | Statistics and history (best times, streaks, finished puzzles), stored on the device | Should |
 | F-10 | Animated transition from the photo to the flattened grid, with digits filling in | Should |
-| F-11 | Export a corrected scan as training data | Should |
+| F-11 | Share a corrected scan as training data, through a disclosed setting that the player can turn off (ADR-030) | Should |
 | F-12 | Correct strongly curved book pages beyond per-cell flattening | Could |
 | F-13 | Android build | Could |
 | F-14 | Accounts and a cloud sync of the history. A leaderboard later | Should (accounts and sync), Could (leaderboard). Part 3, the backend |

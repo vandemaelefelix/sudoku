@@ -7,7 +7,7 @@ publish: allowed for the Google consent screen. Check again before the App Store
 
 <!-- Source of the public page. `web/build.mjs` renders it at build time. See ../../web/README.md. Check this policy again before the App Store submission. -->
 
-Last changed: 2026-10-15
+Last changed: 2026-10-16
 
 ## Who
 
@@ -15,7 +15,8 @@ Felix Vandemaele runs the Sudoku app. Contact: <vandemaelefelix@gmail.com>.
 
 ## Without an account
 
-The app works without an account. No data leaves your phone. The games, the settings and the stats stay on the phone.
+The app works without an account. The games, the settings and the stats stay on the phone. The only data that can leave
+the phone is a finished scan. See the section "Scans that help improve the app".
 
 ## With an account
 
@@ -32,6 +33,28 @@ You can make an account to back up your finished games. The app then holds this 
 
 Clerk Inc. is the sign-in service. It acts as a processor for us. It keeps session and device data, such as your IP
 address, to run the sign-in. AWS DynamoDB in Ireland keeps the history and the daily request count.
+
+## Scans that help improve the app
+
+The setting "Help improve the app" is on by default. You can turn it off at any time in Settings, under Scanning.
+When it is on, the app sends each finished scan. A scan is finished when you leave the correction screen, except
+through Retake. We use the scans to train the digit reader in the app.
+
+| Data | Why | Where |
+| --- | --- | --- |
+| A photo of the grid, cropped to the grid plus a margin. It has no EXIF data and no position | To train the digit reader | AWS `eu-west-1`, Ireland |
+| The four corners of the grid in the photo | To cut the cells again | AWS `eu-west-1`, Ireland |
+| The answer of the app for each cell, and your corrections | To label the cells | AWS `eu-west-1`, Ireland |
+| A random device ID, the contributor ID | To find your scans when you ask us to delete them | AWS `eu-west-1`, Ireland |
+| Your user ID, only if you are signed in | To remove your scans when you delete the account | AWS `eu-west-1`, Ireland |
+
+The contributor ID shows in the footer of Settings. It is not linked to you, unless you are signed in.
+The app does not send cell images, camera frames, your position or the result of your game.
+
+We keep a scan for 12 months. Then the photo and the record expire.
+
+To delete your scans, send an email to the contact address with your contributor ID. If you delete a signed-in account,
+we also delete the scans that you sent while signed in. Scans that you sent while signed out stay under your contributor ID. Deleting the account does not remove them. Send us an email, and we delete them. A retry after a lost response can leave two records for one scan. We delete both. Deletion does not undo training. A digit reader that already learned from a scan stays as it is.
 
 ## International transfers
 
@@ -50,7 +73,7 @@ We process this data under Article 6(1)(b) of the GDPR: it is needed to perform 
 
 ## What the app does not collect
 
-- Camera frames, photos and scan images. A scan runs on the phone. The images never leave it.
+- Camera frames and cell images. A scan runs on the phone. Only a finished scan can leave it, when "Help improve the app" is on.
 - The settings and the game in progress.
 - Your location.
 - An advertising ID.
@@ -60,7 +83,7 @@ The app does not track you. The app has no ads.
 
 ## How long we keep the data
 
-We keep the data until you delete the account.
+We keep the account data until you delete the account. We keep scans for 12 months.
 
 When you delete the account:
 
@@ -73,7 +96,8 @@ The server log has one line per request. It holds our user ID and no email. It i
 
 ## Delete your account
 
-Open Settings, then Account, then Delete account. You can also send an email to the contact address.
+Open Settings, then Account, then Delete account. You can also send an email to the contact address. Deleting the
+account also deletes the scans that you sent while signed in. It does not delete the scans that you sent while signed out. Send us an email for those.
 
 ## Your rights
 
