@@ -1,0 +1,1 @@
+export { ScanShareNotice } from './ScanShareNotice'
