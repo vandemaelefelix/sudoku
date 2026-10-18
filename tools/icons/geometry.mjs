@@ -1,43 +1,96 @@
-// The icon design "Centred, in front of the waves", in a 100 × 100 design space.
+// The icon design "Scatter with digits", in a 100 × 100 design space.
 // Colours from the Cobalt palette (ADR-021, ADR-025). The icon is a fixed image and does not follow the saved theme.
 
-/** [centre y, amplitude] of the 4 waves. Each lower wave swings more, like the Op-art panel edge. */
-export const WAVES = [
-  [36.5, 1],
-  [45.5, 1.6],
-  [54.5, 2.2],
-  [63.5, 2.8],
+export const ACCENT = '#1f3fd1'
+/** Width of a white grid line: 16 px of the 1024 px icon. */
+export const LINE_WIDTH = (16 / 1024) * 100
+/** Ink height of a digit. */
+export const DIGIT_HEIGHT = 23
+/** The digit of each cell, by row. null is a cell with no digit. Each digit appears once. */
+export const DIGITS = [
+  ['5', null, '7'],
+  ['8', '2', null],
+  [null, '6', '9'],
 ]
-export const WAVE_PERIOD = 24
-export const WAVE_WIDTH = 3
-/** The 9: centre and ink height in design units. */
-export const NINE = { cx: 50, cy: 50, height: 58 }
-/** Design units of empty space between the 9 and a wave. */
-export const KNOCKOUT = 3.5
+/** The tinted cells as [row, column]. The tint has no digit. */
+export const TINT_CELLS = [
+  [0, 1],
+  [1, 2],
+  [2, 0],
+]
 /** Android shows the centre 72 dp of the 108 dp adaptive layer. */
 export const ANDROID_SCALE = 72 / 108
-/** The 66 dp safe circle of the 108 dp layer, as a radius in design units. */
-export const SAFE_RADIUS = (33 / 108) * 100
-/** A band across the top-right corner, at 45°. Its centre line is x - y = cx - cy. */
-export const IOS_RIBBON = { cx: 88, cy: 12, length: 80, thickness: 11, textHeight: 5.5, rotate: 45 }
-/** A horizontal strip below the scaled 9. A round launcher mask cuts its ends, which is intended. */
-export const ANDROID_RIBBON = { cx: 50, cy: 76.5, length: 120, thickness: 8, textHeight: 4.5, rotate: 0 }
+/**
+ * A band across the top-right corner, at 45°. Its centre line is x - y = cx - cy.
+ * clearance: design units of empty ground between the band and the marks, so a cut digit does not show through the letters.
+ */
+export const IOS_RIBBON = { cx: 88, cy: 12, length: 80, thickness: 11, textHeight: 5.5, rotate: 45, clearance: 2.5 }
+/**
+ * A horizontal strip over the bottom row of the scaled grid. The row ends at the edge of the safe circle, so the strip covers the lower third of its digits.
+ * A round launcher mask cuts its ends, which is intended.
+ */
+export const ANDROID_RIBBON = { cx: 50, cy: 77.5, length: 120, thickness: 6, textHeight: 3.6, rotate: 0, clearance: 0 }
 
-/** ground null: transparent, iOS or the launcher draws the ground. */
+const channel = (hex, i) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16)
+
+/** The colour `amount` of the way from `from` to `to`. */
+export function mix(from, to, amount) {
+  const out = [0, 1, 2].map((i) => Math.round(channel(from, i) + (channel(to, i) - channel(from, i)) * amount))
+  return `#${out.map((n) => n.toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * ground null: transparent, iOS or the launcher draws the ground.
+ * tint is a colour with an opacity, so that a grey icon can use white at a low opacity.
+ */
 export const PALETTES = {
-  light: { ground: '#ffffff', digit: '#0f1d5c', waves: '#1f3fd1', ribbon: '#1f3fd1' },
-  dark: { ground: null, digit: '#ffffff', waves: '#c3cbef', ribbon: '#1f3fd1' },
-  tinted: { ground: null, digit: '#ffffff', waves: '#b3b3b3', ribbon: '#ffffff' },
-  mono: { ground: null, digit: '#ffffff', waves: '#ffffff', ribbon: '#ffffff' },
+  light: {
+    ground: ACCENT,
+    tint: { color: mix(ACCENT, '#ffffff', 0.2), opacity: 1 },
+    line: { color: '#ffffff', opacity: 1 },
+    digit: '#ffffff',
+    ribbon: '#ffffff',
+  },
+  dark: {
+    ground: mix(ACCENT, '#000000', 0.16),
+    tint: { color: '#ffffff', opacity: 0.12 },
+    line: { color: '#ffffff', opacity: 0.3 },
+    digit: '#ffffff',
+    ribbon: '#ffffff',
+  },
+  tinted: {
+    ground: null,
+    tint: { color: '#ffffff', opacity: 0.2 },
+    line: { color: '#b3b3b3', opacity: 1 },
+    digit: '#ffffff',
+    ribbon: '#ffffff',
+  },
+  mono: {
+    ground: null,
+    tint: { color: '#ffffff', opacity: 0 },
+    line: { color: '#ffffff', opacity: 1 },
+    digit: '#ffffff',
+    ribbon: '#ffffff',
+  },
 }
 
 const r = (n) => +n.toFixed(2)
+const THIRD = 100 / 3
 
-/** A sine wave from x0 to x1, one point per unit. Same formula as wavePoints in the app (ADR-021). */
-export function wavePath(y, amp, x0, x1) {
-  const points = []
-  for (let x = x0; x <= x1; x += 1) points.push(`${r(x)} ${r(y - amp * Math.sin((2 * Math.PI * x) / WAVE_PERIOD))}`)
-  return `M${points.join(' L')}`
+/** The centre of a cell, in design units. */
+export const cellCentre = (row, col) => ({ cx: (col + 0.5) * THIRD, cy: (row + 0.5) * THIRD })
+
+/** The centre of the two inner lines, in design units. */
+export const LINE_POSITIONS = [THIRD, 2 * THIRD]
+
+/** The area of a cell between the grid lines. The cells and the lines do not overlap, so a line with opacity has one colour. */
+export function cellRect(row, col) {
+  const half = LINE_WIDTH / 2
+  const x1 = col * THIRD + (col > 0 ? half : 0)
+  const x2 = (col + 1) * THIRD - (col < 2 ? half : 0)
+  const y1 = row * THIRD + (row > 0 ? half : 0)
+  const y2 = (row + 1) * THIRD - (row < 2 ? half : 0)
+  return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
 }
 
 /** The band rectangle with the text cut out. Draw it with fill-rule evenodd, so the text shows the layer below. */
@@ -47,34 +100,47 @@ export function ribbonPath(text, { cx, cy, length, thickness }) {
   return `M${r(x)} ${r(y)} H${r(x + length)} V${r(y + thickness)} H${r(x)} Z ${text.d}`
 }
 
-export function iconSvg({ palette, layers, nine, scale = 1, ribbon = null }) {
+const rect = ({ x, y, width, height }, fill, opacity) =>
+  `<rect x="${r(x)}" y="${r(y)}" width="${r(width)}" height="${r(height)}" fill="${fill}"${opacity === 1 ? '' : ` fill-opacity="${opacity}"`}/>`
+
+/** digits: the path data of each digit, as [{ d }] in the order of DIGITS from the top left. */
+export function iconSvg({ palette, layers, digits, scale = 1, ribbon = null }) {
   const p = PALETTES[palette]
-  // Wide enough that the waves still run past the edge after the scale.
-  const x0 = 50 - 52 / scale
-  const x1 = 50 + 52 / scale
-  const defs = []
   const content = []
-  if (layers.includes('waves')) {
-    // The mask is in the coordinates of the scaled group, the same as the 9.
-    defs.push(
-      `<mask id="knockout" maskUnits="userSpaceOnUse" x="-100" y="-100" width="300" height="300">` +
-        `<rect x="-100" y="-100" width="300" height="300" fill="#ffffff"/>` +
-        `<path d="${nine}" fill="#000000" stroke="#000000" stroke-width="${2 * KNOCKOUT}" stroke-linejoin="round"/>` +
-        `</mask>`,
-    )
-    const d = WAVES.map(([y, amp]) => wavePath(y, amp, x0, x1)).join(' ')
-    content.push(
-      `<path d="${d}" fill="none" stroke="${p.waves}" stroke-width="${WAVE_WIDTH}" stroke-linecap="round" mask="url(#knockout)"/>`,
-    )
+  if (layers.includes('cells')) {
+    for (const [row, col] of TINT_CELLS) content.push(rect(cellRect(row, col), p.tint.color, p.tint.opacity))
   }
-  if (layers.includes('nine')) content.push(`<path d="${nine}" fill="${p.digit}"/>`)
+  if (layers.includes('lines')) {
+    // The vertical lines stop at the horizontal lines, so a line with opacity has one colour at a crossing.
+    const half = LINE_WIDTH / 2
+    const edges = [0, ...LINE_POSITIONS.flatMap((at) => [at - half, at + half]), 100]
+    for (const at of LINE_POSITIONS) {
+      content.push(rect({ x: 0, y: at - half, width: 100, height: LINE_WIDTH }, p.line.color, p.line.opacity))
+      for (let i = 0; i < edges.length; i += 2) {
+        content.push(
+          rect(
+            { x: at - half, y: edges[i], width: LINE_WIDTH, height: edges[i + 1] - edges[i] },
+            p.line.color,
+            p.line.opacity,
+          ),
+        )
+      }
+    }
+  }
+  if (layers.includes('digits')) for (const { d } of digits) content.push(`<path d="${d}" fill="${p.digit}"/>`)
   const ground = layers.includes('ground') ? `<rect width="100" height="100" fill="${p.ground}"/>` : ''
-  const body =
+  const scaled =
     scale === 1
       ? content.join('')
       : `<g transform="translate(50 50) scale(${scale}) translate(-50 -50)">${content.join('')}</g>`
+  const body = ribbon
+    ? `<mask id="clearance" maskUnits="userSpaceOnUse" x="-100" y="-100" width="300" height="300">` +
+      `<rect x="-100" y="-100" width="300" height="300" fill="#ffffff"/>` +
+      `<rect x="${r(ribbon.cx - ribbon.length / 2)}" y="${r(ribbon.cy - ribbon.thickness / 2 - ribbon.clearance)}" width="${ribbon.length}" height="${r(ribbon.thickness + 2 * ribbon.clearance)}" fill="#000000" transform="rotate(${ribbon.rotate} ${ribbon.cx} ${ribbon.cy})"/>` +
+      `</mask><g mask="url(#clearance)">${scaled}</g>`
+    : scaled
   const band = ribbon
     ? `<path d="${ribbon.d}" fill="${p.ribbon}" fill-rule="evenodd" transform="rotate(${ribbon.rotate} ${ribbon.cx} ${ribbon.cy})"/>`
     : ''
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>${defs.join('')}</defs>${ground}${body}${band}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${ground}${body}${band}</svg>`
 }

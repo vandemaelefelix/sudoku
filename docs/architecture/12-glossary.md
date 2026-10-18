@@ -166,7 +166,7 @@ status: DRAFT
 | App variant | One of two builds of the app with its own bundle ID: the development variant and the production variant. `APP_VARIANT` selects it (ADR-022) |
 | Development variant | The app variant for daily work: "Sudoku Dev", bundle ID `com.vandemaelefelix.sudoku.dev`, an icon with a DEV ribbon. The default (ADR-022) |
 | Production variant | The app variant for real use and release: "Sudoku", bundle ID `com.vandemaelefelix.sudoku`, the clean icon (ADR-022) |
-| DEV ribbon | The cobalt band with "DEV" cut out of it on the development variant icon: across the top-right corner on iOS, a strip below the 9 on Android |
+| DEV ribbon | The white band with "DEV" cut out of it on the development variant icon: across the top-right corner on iOS, a strip over the bottom row of the grid on Android |
 | Abandoned game | A game that a new game replaces before it ends. It has the history result `abandoned`. It is not in the win rate. See ADR-023 |
 | Flawless win | A won game with zero mistakes and zero hints. See ADR-023 |
 | Day streak | The number of days in a row with at least one won game, in the time zone of the player. See ADR-023 |
