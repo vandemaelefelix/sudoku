@@ -22,7 +22,7 @@
     "android": {
       "package": "com.vandemaelefelix.sudoku",
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#1f3fd1",
         "foregroundImage": "./assets/icons/production/android-foreground.png",
         "backgroundImage": "./assets/icons/production/android-background.png",
         "monochromeImage": "./assets/icons/production/android-monochrome.png"

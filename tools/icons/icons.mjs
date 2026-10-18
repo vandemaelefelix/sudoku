@@ -1,46 +1,60 @@
 import resvg from '@resvg/resvg-js'
-import { ANDROID_RIBBON, ANDROID_SCALE, IOS_RIBBON, NINE, iconSvg, ribbonPath } from './geometry.mjs'
+import {
+  ANDROID_RIBBON,
+  ANDROID_SCALE,
+  DIGITS,
+  DIGIT_HEIGHT,
+  IOS_RIBBON,
+  cellCentre,
+  iconSvg,
+  ribbonPath,
+} from './geometry.mjs'
 import { FONTS, loadFont, outline } from './glyph.mjs'
 
 const { Resvg } = resvg
 
 function ribbonFor(mono, spec) {
   const text = outline(mono, 'DEV', { cx: spec.cx, cy: spec.cy, height: spec.textHeight })
-  return { d: ribbonPath(text, spec), rotate: spec.rotate, cx: spec.cx, cy: spec.cy }
+  return { ...spec, d: ribbonPath(text, spec) }
 }
 
 /** Every PNG of the app icon and the favicon (ADR-022). */
 export function buildIcons() {
-  const nine = outline(loadFont(FONTS.serif), '9', NINE).d
+  const serif = loadFont(FONTS.serif)
+  const digits = DIGITS.flatMap((cells, row) =>
+    cells.flatMap((char, col) =>
+      char === null ? [] : [outline(serif, char, { ...cellCentre(row, col), height: DIGIT_HEIGHT })],
+    ),
+  )
   const mono = loadFont(FONTS.mono)
   const iosRibbon = ribbonFor(mono, IOS_RIBBON)
   const androidRibbon = ribbonFor(mono, ANDROID_RIBBON)
-  const all = ['ground', 'waves', 'nine']
-  const marks = ['waves', 'nine']
+  const all = ['ground', 'cells', 'lines', 'digits']
+  const marks = ['cells', 'lines', 'digits']
 
   const variant = (folder, dev) => [
     {
       file: `${folder}/ios-light.png`,
       size: 1024,
-      svg: iconSvg({ palette: 'light', layers: all, nine, ribbon: dev ? iosRibbon : null }),
+      svg: iconSvg({ palette: 'light', layers: all, digits, ribbon: dev ? iosRibbon : null }),
     },
     {
       file: `${folder}/ios-dark.png`,
       size: 1024,
-      svg: iconSvg({ palette: 'dark', layers: marks, nine, ribbon: dev ? iosRibbon : null }),
+      svg: iconSvg({ palette: 'dark', layers: all, digits, ribbon: dev ? iosRibbon : null }),
     },
     {
       file: `${folder}/ios-tinted.png`,
       size: 1024,
-      svg: iconSvg({ palette: 'tinted', layers: marks, nine, ribbon: dev ? iosRibbon : null }),
+      svg: iconSvg({ palette: 'tinted', layers: marks, digits, ribbon: dev ? iosRibbon : null }),
     },
     {
       file: `${folder}/android-foreground.png`,
       size: 1024,
       svg: iconSvg({
         palette: 'light',
-        layers: ['nine'],
-        nine,
+        layers: marks,
+        digits,
         scale: ANDROID_SCALE,
         ribbon: dev ? androidRibbon : null,
       }),
@@ -48,20 +62,26 @@ export function buildIcons() {
     {
       file: `${folder}/android-monochrome.png`,
       size: 1024,
-      svg: iconSvg({ palette: 'mono', layers: marks, nine, scale: ANDROID_SCALE, ribbon: dev ? androidRibbon : null }),
+      svg: iconSvg({
+        palette: 'mono',
+        layers: ['lines', 'digits'],
+        digits,
+        scale: ANDROID_SCALE,
+        ribbon: dev ? androidRibbon : null,
+      }),
     },
   ]
 
   return [
     ...variant('production', false),
     ...variant('development', true),
-    // The waves in the background layer keep the knockout of the 9 in the foreground layer.
+    // Both variants use this background: the accent, drawn by hand for the full 108 dp layer.
     {
       file: 'production/android-background.png',
       size: 1024,
-      svg: iconSvg({ palette: 'light', layers: ['ground', 'waves'], nine, scale: ANDROID_SCALE }),
+      svg: iconSvg({ palette: 'light', layers: ['ground'], digits }),
     },
-    { file: 'favicon.png', size: 48, svg: iconSvg({ palette: 'light', layers: all, nine }) },
+    { file: 'favicon.png', size: 48, svg: iconSvg({ palette: 'light', layers: all, digits }) },
   ]
 }
 
