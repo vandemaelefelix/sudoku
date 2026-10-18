@@ -124,16 +124,18 @@ test('the light and dark grounds are opaque and the other palettes have no groun
   )
 })
 
+// The distance of a point from the band, in design units. The band rotates around its centre.
+const margin = (ribbon, [x, y]) => {
+  // The band rotates around its centre. Express the point in the band frame.
+  const a = (-ribbon.rotate * Math.PI) / 180
+  const dx = x - ribbon.cx
+  const dy = y - ribbon.cy
+  const u = dx * Math.cos(a) - dy * Math.sin(a)
+  const v = dx * Math.sin(a) + dy * Math.cos(a)
+  return Math.max(Math.abs(u) - ribbon.length / 2, Math.abs(v) - ribbon.thickness / 2)
+}
+
 test('the DEV ribbons leave every digit untouched', () => {
-  const margin = (ribbon, [x, y]) => {
-    // The band rotates around its centre. Express the point in the band frame.
-    const a = (-ribbon.rotate * Math.PI) / 180
-    const dx = x - ribbon.cx
-    const dy = y - ribbon.cy
-    const u = dx * Math.cos(a) - dy * Math.sin(a)
-    const v = dx * Math.sin(a) + dy * Math.cos(a)
-    return Math.max(Math.abs(u) - ribbon.length / 2, Math.abs(v) - ribbon.thickness / 2)
-  }
   for (const { char, glyph } of placed) {
     for (const point of corners(glyph.box)) assert.ok(margin(IOS_RIBBON, point) > IOS_RIBBON.clearance, `iOS ${char}`)
     for (const point of corners(glyph.box).map(([x, y]) => scaled(x, y)))
