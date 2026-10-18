@@ -71,8 +71,9 @@ The icon is now the "Scatter with digits" design. The serif 9 over the waves is 
 4. iOS tinted: a grey version on a transparent ground, as before.
 5. Android: the background is the solid accent. The foreground is the grid at `ANDROID_SCALE`, so it stays in the visible 72 dp.
    The monochrome layer has white lines and digits on a transparent ground.
-6. The DEV ribbon is white now, because a cobalt band does not show on a cobalt ground. The iOS ribbon keeps a clear margin
-   around itself. The Android strip covers the lower third of the bottom row. The scaled grid leaves no room below the row.
+6. The DEV ribbon is white now, because a cobalt band does not show on a cobalt ground. The iOS ribbon crosses the
+   bottom-left corner, over the empty tinted cell. It keeps a clear margin, so it does not touch a digit.
+   The Android ribbon is a short plate over the empty tinted cell at the top centre.
 
 ## Reassessment Triggers
 

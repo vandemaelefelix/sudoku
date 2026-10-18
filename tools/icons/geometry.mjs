@@ -21,15 +21,23 @@ export const TINT_CELLS = [
 /** Android shows the centre 72 dp of the 108 dp adaptive layer. */
 export const ANDROID_SCALE = 72 / 108
 /**
- * A band across the top-right corner, at 45°. Its centre line is x - y = cx - cy.
+ * A band across the bottom-left corner, at 45°, over the empty tinted cell. Its centre line is x - y = cx - cy.
  * clearance: design units of empty ground between the band and the marks, so a cut digit does not show through the letters.
  */
-export const IOS_RIBBON = { cx: 88, cy: 12, length: 80, thickness: 11, textHeight: 5.5, rotate: 45, clearance: 2.5 }
+export const IOS_RIBBON = { cx: 12, cy: 88, length: 80, thickness: 11, textHeight: 5.5, rotate: 45, clearance: 2.5 }
 /**
- * A horizontal strip over the bottom row of the scaled grid. The row ends at the edge of the safe circle, so the strip covers the lower third of its digits.
- * A round launcher mask cuts its ends, which is intended.
+ * A short plate over the empty tinted cell at the top centre of the scaled grid. No digit lies under it.
+ * The cell centre is (50, 27.8) after the scale, and the plate is as wide as the cell.
  */
-export const ANDROID_RIBBON = { cx: 50, cy: 77.5, length: 120, thickness: 6, textHeight: 3.6, rotate: 0, clearance: 0 }
+export const ANDROID_RIBBON = {
+  cx: 50,
+  cy: 50 - (100 / 3) * ANDROID_SCALE,
+  length: 20,
+  thickness: 8,
+  textHeight: 4.5,
+  rotate: 0,
+  clearance: 0,
+}
 
 const channel = (hex, i) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16)
 

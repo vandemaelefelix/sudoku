@@ -100,7 +100,7 @@ test('the scaled grid and its digits stay inside the Android visible area of 72 
   }
 })
 
-test('the Android strip text stays inside the safe circle', () => {
+test('the Android plate and its text stays inside the safe circle', () => {
   const text = outline(mono, 'DEV', { cx: ANDROID_RIBBON.cx, cy: ANDROID_RIBBON.cy, height: ANDROID_RIBBON.textHeight })
   for (const [x, y] of corners(text.box)) assert.ok(Math.hypot(x - 50, y - 50) < SAFE_RADIUS, `corner ${x}, ${y}`)
 })
@@ -110,7 +110,7 @@ test('the iOS ribbon text stays inside the rounded corner', () => {
   const r = 22.37
   const text = outline(mono, 'DEV', { cx: IOS_RIBBON.cx, cy: IOS_RIBBON.cy, height: IOS_RIBBON.textHeight })
   const half = Math.hypot(text.box.x2 - text.box.x1, text.box.y2 - text.box.y1) / 2
-  assert.ok(Math.hypot(IOS_RIBBON.cx - (100 - r), IOS_RIBBON.cy - r) + half < r)
+  assert.ok(Math.hypot(IOS_RIBBON.cx - r, IOS_RIBBON.cy - (100 - r)) + half < r)
 })
 
 test('the light and dark grounds are opaque and the other palettes have no ground', () => {
@@ -122,4 +122,21 @@ test('the light and dark grounds are opaque and the other palettes have no groun
     iconSvg({ palette: 'tinted', layers: ['cells', 'lines', 'digits'], digits }),
     /<rect width="100" height="100"/,
   )
+})
+
+test('the DEV ribbons leave every digit untouched', () => {
+  const margin = (ribbon, [x, y]) => {
+    // The band rotates around its centre. Express the point in the band frame.
+    const a = (-ribbon.rotate * Math.PI) / 180
+    const dx = x - ribbon.cx
+    const dy = y - ribbon.cy
+    const u = dx * Math.cos(a) - dy * Math.sin(a)
+    const v = dx * Math.sin(a) + dy * Math.cos(a)
+    return Math.max(Math.abs(u) - ribbon.length / 2, Math.abs(v) - ribbon.thickness / 2)
+  }
+  for (const { char, glyph } of placed) {
+    for (const point of corners(glyph.box)) assert.ok(margin(IOS_RIBBON, point) > IOS_RIBBON.clearance, `iOS ${char}`)
+    for (const point of corners(glyph.box).map(([x, y]) => scaled(x, y)))
+      assert.ok(margin(ANDROID_RIBBON, point) > 0, `Android ${char}`)
+  }
 })
