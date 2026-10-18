@@ -3,7 +3,7 @@ import { parse } from 'opentype.js'
 
 const FONT_DIR = new URL('../../mobile/assets/fonts/', import.meta.url)
 
-// The fonts the app bundles (ADR-021). The icon uses the same 9 as a given digit of the Op-art theme.
+// The fonts the app bundles (ADR-021). The icon uses the serif digits of the Op-art theme.
 export const FONTS = {
   serif: new URL('InstrumentSerif-Regular.ttf', FONT_DIR),
   mono: new URL('IBMPlexMono-Medium.ttf', FONT_DIR),

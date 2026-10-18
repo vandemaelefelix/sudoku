@@ -16,8 +16,8 @@ test('builds every file that the app config uses', () => {
   assert.deepEqual([...byFile.keys()].toSorted(), expected.toSorted())
 })
 
-test('the iOS light icon is 1024 px and fully opaque in both variants', () => {
-  for (const file of ['production/ios-light.png', 'development/ios-light.png']) {
+test('the iOS light and dark icons are 1024 px and fully opaque in both variants', () => {
+  for (const file of ['light', 'dark'].flatMap((n) => [`production/ios-${n}.png`, `development/ios-${n}.png`])) {
     const image = renderPng(byFile.get(file))
     assert.equal(image.width, 1024)
     assert.equal(image.height, 1024)
@@ -25,8 +25,8 @@ test('the iOS light icon is 1024 px and fully opaque in both variants', () => {
   }
 })
 
-test('the dark and tinted icons have a transparent ground', () => {
-  for (const file of ['production/ios-dark.png', 'production/ios-tinted.png']) {
+test('the tinted and the Android layers have a transparent corner', () => {
+  for (const file of ['ios-tinted', 'android-foreground', 'android-monochrome'].map((n) => `production/${n}.png`)) {
     const image = renderPng(byFile.get(file))
     assert.equal(image.pixels[3], 0, `${file} top-left pixel`)
   }
@@ -37,6 +37,11 @@ test('only the development files carry a ribbon', () => {
     const ribbon = svg.includes('fill-rule="evenodd"')
     assert.equal(ribbon, file.startsWith('development/'), file)
   }
+})
+
+test('the Android background is the solid accent', () => {
+  const image = renderPng(byFile.get('production/android-background.png'))
+  assert.deepEqual(Array.from(image.pixels.slice(0, 4)), [0x1f, 0x3f, 0xd1, 255])
 })
 
 test('the favicon is 48 px', () => {

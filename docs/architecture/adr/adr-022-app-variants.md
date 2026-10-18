@@ -60,6 +60,21 @@ must not show, such as the reset of the stats (ADR-023).
 The Consequences name `just pull-scans`. The recipe for the device corrections is now `just pull-device-scans`.
 `just pull-scans` pulls the shared scans from the cloud (ADR-030). The old line stays as written.
 
+## Amendment 2026-10-18: the scatter grid icon
+
+The icon is now the "Scatter with digits" design. The serif 9 over the waves is gone. The decisions above stay as written.
+
+1. The icon is a flat 3 × 3 grid that fills the whole image. It has no margin and no rounded corners. White lines 16 px wide
+   separate the cells. Three cells have a light tint. Six cells hold one white digit of Instrument Serif: 5, 7, 8, 2, 6 and 9.
+2. iOS light: the ground is the cobalt accent `#1f3fd1`. The tint is the accent mixed 20 % with white.
+3. iOS dark: the ground is the accent darkened 16 % towards black. The tint is white at 12 % and the lines are white at 30 %.
+4. iOS tinted: a grey version on a transparent ground, as before.
+5. Android: the background is the solid accent. The foreground is the grid at `ANDROID_SCALE`, so it stays in the visible 72 dp.
+   The monochrome layer has white lines and digits on a transparent ground.
+6. The DEV ribbon is white now, because a cobalt band does not show on a cobalt ground. The iOS ribbon crosses the
+   bottom-left corner, over the empty tinted cell. It keeps a clear margin, so it does not touch a digit.
+   The Android ribbon is a short plate over the empty tinted cell at the top centre.
+
 ## Reassessment Triggers
 
 - EAS Build is adopted (ADR-010): move `APP_VARIANT` into the build profiles of `eas.json`.
