@@ -95,6 +95,7 @@ stateDiagram-v2
 | One attempt | The lock latch refuses a second start. A Retake mounts a new camera screen, so a new session starts |
 | Stale attempt | An unmount makes the attempt stale. A stale attempt writes no state. It disposes an image that arrives late |
 | Image lifetime | The UI thread lets go of the photo image first. The JS thread disposes it after that |
+| Flat image | The session does not dispose the flattened grid image. It has no dispose call and goes with the result. A canvas that is still leaving may draw it |
 | Gates | The session opens the photo gate and the results gate from the attempt. The clock writes the arrival time of the results once |
 | Plan | The plan changes with the layout, the locked grid and the cross-fade rule. The clock publishes the frame again when the plan changes |
 | Clock order | The overlay calls `stepClock` first in each UI frame. The step publishes the frame that the overlay then draws |

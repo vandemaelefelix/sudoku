@@ -928,6 +928,24 @@ describe('CorrectionScreen with a full grid', () => {
     expect(screen.getByTestId('play')).toBeTruthy()
   })
 
+  it('starts no game, no home, no save and no exit during the transition, although the parent gives them', () => {
+    const actions = { onPlay: jest.fn(), onHome: jest.fn(), onSave: jest.fn(), onExit: jest.fn() }
+    const view = render(
+      <CorrectionScreen
+        session={capturing(fullScan(), { clock: clock(1.5) })}
+        layout={layout}
+        onRetake={jest.fn()}
+        {...actions}
+      />,
+    )
+    fireEvent.press(screen.getByTestId('play'))
+    expect(screen.queryByTestId('verify')).toBeNull()
+    expect(screen.queryByTestId('scan-another')).toBeNull()
+    expect(screen.queryByTestId('dev-open')).toBeNull()
+    view.unmount()
+    for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled()
+  })
+
   it('offers no Check for a grid that is not full', () => {
     render(<CorrectionScreen session={review(okResult({ 0: given }))} layout={layout} onRetake={jest.fn()} />)
     expect(screen.queryByTestId('verify')).toBeNull()
