@@ -1,11 +1,15 @@
 import { countsForBestTime, fromSavedGame, hasMoves, toSavedGame, type SavedGame } from '@sudoku/core'
 import type { BestTimes, HistoryRepository } from './HistoryRepository'
 import { createMemoryStatsRepository } from './memoryStats'
-import { createMemorySyncStateRepository } from './SyncStateRepository'
+import { createMemorySyncStateRepository, forgetMemoryOwnerState, writeMemoryCursor } from './SyncStateRepository'
+import { adoptKey } from './syncStateSql'
+import { readWaitingBatch } from './waitingBatch'
+import { parseChanges } from './wireEntry'
 import { withChangeNotice } from './changeNotice'
 import { resultOf, type PuzzleRepository } from './PuzzleRepository'
 import type { GameStorage } from './gameStorage.types'
 import type { HistoryEntry, HistoryRecord, Level, PuzzleSource, StorageDeps } from './storage.types'
+import { devWarn } from '@/utils/log.utils'
 
 type Progress = { id: string; level: Level; source: PuzzleSource; seed: number | null; saved: SavedGame }
 
@@ -38,6 +42,8 @@ function countingDeps(): StorageDeps {
 export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameStorage {
   let progress: Progress | null = null
   const rows: HistoryRow[] = []
+  // The table sync_state. The history shares it with the sync state, as the SQLite repositories do.
+  const state = new Map<string, string>()
 
   const insert = (entry: HistoryEntry, owner: string | null) => {
     const at = entry.finishedAt
@@ -55,6 +61,8 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       .filter((row) => row.record.deletedAt === null && row.owner === owner)
       .toSorted((a, b) => b.record.finishedAt.localeCompare(a.record.finishedAt) || b.seq - a.seq)
       .map((row) => entryOf(row.record))
+
+  const unowned = () => rows.filter((row) => row.owner === null && row.record.deletedAt === null)
 
   const load = () => {
     if (progress === null) return null
@@ -126,42 +134,57 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
         row.record = { ...row.record, deletedAt: now, updatedAt: now > next ? now : next }
       }
     },
-    async pending(owner, limit) {
-      return rows
-        .filter((row) => row.owner === owner && isPending(row))
-        .toSorted((a, b) => a.record.updatedAt.localeCompare(b.record.updatedAt) || a.seq - b.seq)
-        .slice(0, limit)
-        .map((row) => row.record)
+    nextBatch: (owner) =>
+      readWaitingBatch(async (limit) =>
+        rows
+          .filter((row) => row.owner === owner && isPending(row))
+          .toSorted((a, b) => a.record.updatedAt.localeCompare(b.record.updatedAt) || a.seq - b.seq)
+          .slice(0, limit)
+          .map((row) => row.record),
+      ),
+    async hasWaiting(owner) {
+      return rows.some((row) => row.owner === owner && isPending(row))
     },
-    async markPushed(pushed) {
+    async applySyncPage({ owner, sent, acceptedIds, changes, cursor }) {
+      const accepted = new Set(acceptedIds)
+      const pushed = sent.filter(({ id }) => accepted.has(id))
+      const { records, dropped } = parseChanges(changes)
+      if (dropped > 0) devWarn('sync', `${dropped} downloaded entries break the sync contract and were dropped`)
       for (const row of rows) {
-        const accepted = pushed.some(({ id, updatedAt }) => id === row.record.id && updatedAt === row.record.updatedAt)
-        if (accepted) row.pushedAt = row.record.updatedAt
+        const marked = pushed.some(({ id, updatedAt }) => id === row.record.id && updatedAt === row.record.updatedAt)
+        if (marked) row.pushedAt = row.record.updatedAt
       }
-    },
-    async upsertRemote(records, owner) {
+      let changed = false
       for (const record of records) {
         const row = rows.find((candidate) => candidate.record.id === record.id)
         if (row === undefined) {
           rows.push({ record, owner, pushedAt: record.updatedAt, seq: rows.length })
+          changed = true
         } else if (row.owner === owner && record.updatedAt >= row.record.updatedAt) {
-          if (record.updatedAt > row.record.updatedAt) row.record = record
+          if (record.updatedAt > row.record.updatedAt) {
+            row.record = record
+            changed = true
+          }
           row.pushedAt = record.updatedAt
         }
       }
+      writeMemoryCursor(state, owner, cursor)
+      return { changed, pushAgain: pushed.length > 0 && rows.some((row) => row.owner === owner && isPending(row)) }
     },
-    async adoptUnowned(owner) {
-      const adopted = rows.filter((row) => row.owner === null && row.record.deletedAt === null)
+    async adoptable(owner) {
+      return state.has(adoptKey(owner)) ? 0 : unowned().length
+    },
+    async answerAdopt(owner, accepted) {
+      const adopted = accepted ? unowned() : []
       for (const row of adopted) row.owner = owner
+      state.set(adoptKey(owner), '1')
       return adopted.length
-    },
-    async countUnowned() {
-      return rows.filter((row) => row.owner === null && row.record.deletedAt === null).length
     },
     async deleteOwner(owner) {
       for (let index = rows.length - 1; index >= 0; index -= 1) {
         if (rows[index]?.owner === owner) rows.splice(index, 1)
       }
+      forgetMemoryOwnerState(state, owner)
     },
     async list(owner) {
       return visible(owner)
@@ -182,6 +205,6 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
     puzzles,
     history,
     stats: createMemoryStatsRepository(visible, deps),
-    sync: createMemorySyncStateRepository(),
+    sync: createMemorySyncStateRepository(state),
   })
 }

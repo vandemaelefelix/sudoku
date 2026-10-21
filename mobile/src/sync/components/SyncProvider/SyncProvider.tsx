@@ -84,7 +84,6 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, accountApi, child
         ? adopting.current.done
         : runAdoptStep({
             history: storage.history,
-            state: storage.sync,
             owner: signedInOwner,
             ask: askToAdopt,
           }).catch(() => undefined)

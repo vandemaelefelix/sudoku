@@ -20,7 +20,6 @@ export function createAppSyncService(storage: GameStorage, api: SyncApi, account
       cleanUpDeletedAccount(
         {
           history: storage.history,
-          state: storage.sync,
           signOut: () => account().signOut(),
           announce: () => Alert.alert(ACCOUNT_DELETED_TITLE),
         },

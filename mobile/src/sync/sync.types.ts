@@ -1,5 +1,3 @@
-import type { HistoryRecord } from '@/storage'
-
 export type SyncTrigger = 'game-end' | 'foreground' | 'network' | 'sign-in'
 
 /** The player who syncs now. `isCurrent` turns false when a sign-out or another account ends the session. */
@@ -39,5 +37,3 @@ export type RunResult = 'synced' | 'partial' | 'failed' | 'skipped' | 'stopped' 
 export type RunOutcome = { result: RunResult; changed: boolean; retryAfterMs: number | null }
 
 export type SyncStatus = { lastSyncedAt: string | null; revision: number }
-
-export type RemoteRecords = { records: HistoryRecord[]; dropped: number }

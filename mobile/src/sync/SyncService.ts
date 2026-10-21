@@ -178,7 +178,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       if (current === null || paused || current.owner === deletedOwner) return 'ignored'
       if (reason === 'game-end') {
         try {
-          if ((await history.pending(current.owner, 1)).length === 0) return 'ignored'
+          if (!(await history.hasWaiting(current.owner))) return 'ignored'
         } catch {
           return 'failed'
         }

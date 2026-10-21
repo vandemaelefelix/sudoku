@@ -1,6 +1,9 @@
 import { countsForBestTime, createGame, hint, place, select, tick, type Game } from '@sudoku/core'
+import { MAX_ENTRIES_PER_SYNC } from '@sudoku/sync-contract'
 import type { GameStorage } from './gameStorage.types'
+import type { SyncPageInput } from './HistoryRepository'
 import type { HistoryRecord, Level, PuzzleSource, StorageDeps } from './storage.types'
+import { toWireEntry } from './wireEntry'
 
 // The puzzle of the design canvas. Cell 2 is empty and needs a 4.
 const GIVENS = digits('530070000600195000098000060800060003400803001700020006060000280000419005000080079')
@@ -46,11 +49,16 @@ export function lostGame(playedMs: number): Game {
   return game
 }
 
+/** An id that the sync contract accepts. */
+export function uuid(n: number): string {
+  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+}
+
 export function testDeps(): StorageDeps {
   let ids = 0
   let seconds = 0
   return {
-    newId: () => `game-${++ids}`,
+    newId: () => uuid(++ids),
     now: () => new Date(Date.UTC(2026, 9, 12, 9, 0, seconds++)).toISOString(),
   }
 }
@@ -79,11 +87,11 @@ function single<T>(items: readonly T[]): T {
   return item
 }
 
-/** A history entry as the server sends it. */
-function remote(id: string, changes: Partial<HistoryRecord> = {}): HistoryRecord {
+/** A history entry as the server sends it. Its id does not clash with the ids of `testDeps`. */
+function remote(n: number, changes: Partial<HistoryRecord> = {}): HistoryRecord {
   const at = '2026-10-01T09:00:00.000Z'
   return {
-    id,
+    id: uuid(900 + n),
     level: 'easy',
     source: 'generated',
     seed: null,
@@ -99,11 +107,30 @@ function remote(id: string, changes: Partial<HistoryRecord> = {}): HistoryRecord
   }
 }
 
+/** Gives `owner` a saved cursor, as a page of the server does. Tests need it to set up the sync state. */
+export async function seedCursor(storage: GameStorage, owner: string, cursor: string): Promise<void> {
+  await storage.history.applySyncPage({ owner, sent: [], acceptedIds: [], changes: [], cursor })
+}
+
+/** An answer of the server that takes the entries it got and sends nothing. */
+function accepting(owner: string, sent: readonly HistoryRecord[]): SyncPageInput {
+  return { owner, sent, acceptedIds: sent.map((record) => record.id), changes: [], cursor: 'cursor' }
+}
+
+/** An answer of the server that sends these entries and takes none. */
+function sending(owner: string, records: readonly HistoryRecord[]): SyncPageInput {
+  return { owner, sent: [], acceptedIds: [], changes: records.map(toWireEntry), cursor: 'cursor' }
+}
+
+async function batchIds(storage: GameStorage, owner: string): Promise<string[]> {
+  return (await storage.history.nextBatch(owner)).map((record) => record.id)
+}
+
 /** Storage whose clock the test sets, so a win lands on a chosen day. */
 async function clocked(open: (deps: StorageDeps) => Promise<GameStorage>) {
   let nowIso = '2026-10-10T09:00:00.000Z'
   let ids = 0
-  const clockedStorage = await open({ newId: () => `clocked-${++ids}`, now: () => nowIso })
+  const clockedStorage = await open({ newId: () => uuid(++ids), now: () => nowIso })
   return {
     storage: clockedStorage,
     setNow: (iso: string) => {
@@ -128,7 +155,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
     it('returns the game it started', async () => {
       const game = newGame()
       const started = await storage.puzzles.start({ level: 'easy', source: 'generated', game, owner: null })
-      expect(started).toEqual({ id: 'game-1', level: 'easy', source: 'generated', seed: null, game })
+      expect(started).toEqual({ id: uuid(1), level: 'easy', source: 'generated', seed: null, game })
       await expect(storage.puzzles.current()).resolves.toEqual(started)
     })
 
@@ -337,252 +364,384 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       it('holds a finished game of the owner with its timestamps', async () => {
         const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         const entry = single(await storage.history.list(ALICE))
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([
+        await expect(storage.history.nextBatch(ALICE)).resolves.toEqual([
           { ...entry, id, createdAt: entry.finishedAt, updatedAt: entry.finishedAt, deletedAt: null },
         ])
+        await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(true)
       })
 
-      it('holds only the entries of the owner, oldest change first, up to the limit', async () => {
+      it('holds only the entries of the owner, oldest change first', async () => {
         const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         await finishGame(storage, 'easy', wonGame(50_000), 'generated', null)
         await finishGame(storage, 'easy', wonGame(40_000), 'generated', BOB)
         const second = await finishGame(storage, 'hard', lostGame(20_000), 'generated', ALICE)
         const third = await finishGame(storage, 'hard', wonGame(90_000), 'generated', ALICE)
-        const ids = async (limit: number) => (await storage.history.pending(ALICE, limit)).map((record) => record.id)
-        await expect(ids(10)).resolves.toEqual([first, second, third])
-        await expect(ids(2)).resolves.toEqual([first, second])
+        expect(await batchIds(storage, ALICE)).toEqual([first, second, third])
       })
 
-      it('drops the entries that the server accepted', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
-        const [first, second] = await storage.history.pending(ALICE, 10)
-        if (first === undefined || second === undefined) throw new Error('Expected two entries')
-        await storage.history.markPushed([first])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([{ id: second.id }])
-        await storage.history.markPushed([second, { id: 'unknown', updatedAt: second.updatedAt }])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      it('never holds a game finished while signed out', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await expect(storage.history.nextBatch(ALICE)).resolves.toEqual([])
+        await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
       })
 
-      it('changes nothing for an empty list', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        await storage.history.markPushed([])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toHaveLength(1)
+      it('gives one request of entries, then the rest after the server took them', async () => {
+        const ids: string[] = []
+        for (let n = 0; n < MAX_ENTRIES_PER_SYNC + 1; n += 1) {
+          // oxlint-disable-next-line no-await-in-loop -- the clock and the ids count the calls in order.
+          ids.push(await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE))
+        }
+        const first = await storage.history.nextBatch(ALICE)
+        expect(first.map((record) => record.id)).toEqual(ids.slice(0, MAX_ENTRIES_PER_SYNC))
+        await storage.history.applySyncPage(accepting(ALICE, first))
+        expect(await batchIds(storage, ALICE)).toEqual(ids.slice(MAX_ENTRIES_PER_SYNC))
       })
 
       it('holds a cleared entry again, as a deleted entry with a newer change', async () => {
         const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([sent])
+        const sent = single(await storage.history.nextBatch(ALICE))
+        await storage.history.applySyncPage(accepting(ALICE, [sent]))
+        await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
         await storage.history.clear(ALICE)
-        const deleted = single(await storage.history.pending(ALICE, 10))
+        const deleted = single(await storage.history.nextBatch(ALICE))
         expect(deleted).toMatchObject({ id, deletedAt: expect.any(String) })
         expect(deleted.updatedAt > sent.updatedAt).toBe(true)
       })
 
-      it('keeps an entry that changed after the push', async () => {
-        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.clear(ALICE)
-        await storage.history.markPushed([sent])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toMatchObject([{ id, deletedAt: expect.any(String) }])
-      })
-
-      it('ignores a repeated mark, also after a newer change', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([sent])
-        await storage.history.markPushed([sent])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-        await storage.history.clear(ALICE)
-        const deleted = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([sent])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([deleted])
-        await storage.history.markPushed([deleted])
-        await storage.history.markPushed([deleted])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-      })
-
-      it('drops an entry of a clock ahead once the server accepts it', async () => {
+      it('holds an entry of a clock ahead until the server takes it', async () => {
         const { storage: clockedStorage, setNow } = await clocked(open)
         storage = clockedStorage
         setNow('2030-01-01T00:00:00.000Z')
         await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
         setNow('2026-10-12T10:00:00.000Z')
-        const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([sent])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+        const sent = single(await storage.history.nextBatch(ALICE))
+        await storage.history.applySyncPage(accepting(ALICE, [sent]))
+        await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
       })
 
-      it('never holds a game finished while signed out', async () => {
+      describe('an entry that breaks the sync contract', () => {
+        const BAD = 'not-a-uuid'
+
+        async function openWithIds(bad: number): Promise<GameStorage> {
+          let ids = 0
+          return open({
+            newId: () => (++ids <= bad ? `${BAD}-${ids}` : uuid(ids)),
+            now: testDeps().now,
+          })
+        }
+
+        it('stays on the waiting list and never leaves in a batch', async () => {
+          const mixed = await openWithIds(1)
+          await finishGame(mixed, 'easy', wonGame(60_000), 'generated', ALICE)
+          const good = await finishGame(mixed, 'easy', wonGame(50_000), 'generated', ALICE)
+          expect(await batchIds(mixed, ALICE)).toEqual([good])
+          await mixed.history.applySyncPage(accepting(ALICE, await mixed.history.nextBatch(ALICE)))
+          await expect(mixed.history.nextBatch(ALICE)).resolves.toEqual([])
+          await expect(mixed.history.hasWaiting(ALICE)).resolves.toBe(true)
+        })
+
+        it('does not block the valid entries behind it', async () => {
+          const mixed = await openWithIds(MAX_ENTRIES_PER_SYNC + 5)
+          for (let n = 0; n < MAX_ENTRIES_PER_SYNC + 5; n += 1) {
+            // oxlint-disable-next-line no-await-in-loop -- the clock and the ids count the calls in order.
+            await finishGame(mixed, 'easy', wonGame(60_000), 'generated', ALICE)
+          }
+          const good = await finishGame(mixed, 'easy', wonGame(50_000), 'generated', ALICE)
+          expect(await batchIds(mixed, ALICE)).toEqual([good])
+        })
+      })
+    })
+
+    describe('applySyncPage', () => {
+      describe('the pushed entries', () => {
+        it('takes the accepted entries off the waiting list', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+          const [first, second] = await storage.history.nextBatch(ALICE)
+          if (first === undefined || second === undefined) throw new Error('Expected two entries')
+          await storage.history.applySyncPage(accepting(ALICE, [first]))
+          expect(await batchIds(storage, ALICE)).toEqual([second.id])
+          await storage.history.applySyncPage(accepting(ALICE, [second]))
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+        })
+
+        it('marks only the entries that the server named, and only the ones that it got', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+          await finishGame(storage, 'easy', wonGame(40_000), 'generated', ALICE)
+          const sent = await storage.history.nextBatch(ALICE)
+          const [first, second, third] = sent
+          if (first === undefined || second === undefined || third === undefined) throw new Error('Expected three')
+          const acceptedIds = [first.id, third.id, uuid(999)]
+          await storage.history.applySyncPage({ ...accepting(ALICE, sent.slice(0, 2)), acceptedIds })
+          expect(await batchIds(storage, ALICE)).toEqual([second.id, third.id])
+        })
+
+        it('keeps an entry that changed after the push', async () => {
+          const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const sent = single(await storage.history.nextBatch(ALICE))
+          await storage.history.clear(ALICE)
+          await storage.history.applySyncPage(accepting(ALICE, [sent]))
+          const left = single(await storage.history.nextBatch(ALICE))
+          expect(left).toMatchObject({ id, deletedAt: expect.any(String) })
+        })
+
+        it('ignores a repeated page, also after a newer change', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const sent = single(await storage.history.nextBatch(ALICE))
+          await storage.history.applySyncPage(accepting(ALICE, [sent]))
+          await storage.history.applySyncPage(accepting(ALICE, [sent]))
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+          await storage.history.clear(ALICE)
+          const deleted = single(await storage.history.nextBatch(ALICE))
+          await storage.history.applySyncPage(accepting(ALICE, [sent]))
+          await expect(storage.history.nextBatch(ALICE)).resolves.toEqual([deleted])
+          await storage.history.applySyncPage(accepting(ALICE, [deleted]))
+          await storage.history.applySyncPage(accepting(ALICE, [deleted]))
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+        })
+
+        it('changes no entry for a page without pushed entries', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          await storage.history.applySyncPage(accepting(ALICE, []))
+          await expect(storage.history.nextBatch(ALICE)).resolves.toHaveLength(1)
+        })
+      })
+
+      describe('the downloaded entries', () => {
+        it('adds a new entry that is not on the waiting list', async () => {
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { seed: 412_077 })]))
+          const {
+            createdAt: _createdAt,
+            updatedAt: _updatedAt,
+            deletedAt: _deletedAt,
+            ...entry
+          } = remote(1, { seed: 412_077 })
+          await expect(storage.history.list(ALICE)).resolves.toEqual([entry])
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+          await expect(storage.history.list(null)).resolves.toEqual([])
+        })
+
+        it('replaces an entry with a newer change', async () => {
+          await storage.history.applySyncPage(sending(ALICE, [remote(1)]))
+          await storage.history.applySyncPage(
+            sending(ALICE, [remote(1, { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' })]),
+          )
+          await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: remote(1).id, playedMs: 45_000 }])
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+        })
+
+        it('ignores an older change', async () => {
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { updatedAt: '2026-10-02T09:00:00.000Z' })]))
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { playedMs: 45_000 })]))
+          await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ playedMs: 60_000 }])
+        })
+
+        it('ignores a change with the same time', async () => {
+          await storage.history.applySyncPage(sending(ALICE, [remote(1)]))
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { playedMs: 45_000 })]))
+          await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ playedMs: 60_000 }])
+        })
+
+        it('takes a local entry off the waiting list when the server sends the same change', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const sent = single(await storage.history.nextBatch(ALICE))
+          await storage.history.applySyncPage(sending(ALICE, [{ ...sent, playedMs: 45_000 }]))
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+          await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: sent.id, playedMs: 60_000 }])
+        })
+
+        it('keeps the waiting list of an entry of another owner with the same change', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
+          const sent = single(await storage.history.nextBatch(BOB))
+          await storage.history.applySyncPage(sending(ALICE, [sent]))
+          await expect(storage.history.nextBatch(BOB)).resolves.toEqual([sent])
+        })
+
+        it('removes an entry that the server deleted', async () => {
+          await storage.history.applySyncPage(sending(ALICE, [remote(1)]))
+          const later = '2026-10-02T09:00:00.000Z'
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { updatedAt: later, deletedAt: later })]))
+          await expect(storage.history.list(ALICE)).resolves.toEqual([])
+          await expect(storage.stats.summary(null, { includeScanned: true, owner: ALICE })).resolves.toMatchObject({
+            played: 0,
+          })
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+        })
+
+        it('keeps a deleted entry it did not know, so an older copy does not bring it back', async () => {
+          const later = '2026-10-02T09:00:00.000Z'
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { updatedAt: later, deletedAt: later })]))
+          await storage.history.applySyncPage(sending(ALICE, [remote(1)]))
+          await expect(storage.history.list(ALICE)).resolves.toEqual([])
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+        })
+
+        it('never takes an entry from another owner', async () => {
+          const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
+          await storage.history.applySyncPage(
+            sending(ALICE, [{ ...remote(1), id, updatedAt: '2030-01-01T00:00:00.000Z' }]),
+          )
+          await expect(storage.history.list(ALICE)).resolves.toEqual([])
+          await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id, playedMs: 60_000 }])
+          expect(await batchIds(storage, BOB)).toEqual([id])
+        })
+
+        it('changes nothing when the server sends back an entry of this device', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const sent = single(await storage.history.nextBatch(ALICE))
+          await storage.history.applySyncPage(accepting(ALICE, [sent]))
+          await storage.history.applySyncPage(sending(ALICE, [sent]))
+          await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
+        })
+
+        it('lists the entries by the time they finished, whatever the order of the page', async () => {
+          await storage.history.applySyncPage(
+            sending(ALICE, [
+              remote(2, { finishedAt: '2026-10-02T09:00:00.000Z' }),
+              remote(3, { finishedAt: '2026-10-03T09:00:00.000Z' }),
+              remote(1, { finishedAt: '2026-09-30T09:00:00.000Z' }),
+            ]),
+          )
+          const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
+          expect(ids).toEqual([id, remote(3).id, remote(2).id, remote(1).id])
+        })
+
+        it('keeps the newest of two copies in one page', async () => {
+          await storage.history.applySyncPage(
+            sending(ALICE, [remote(1, { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' }), remote(1)]),
+          )
+          await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ playedMs: 45_000 }])
+        })
+
+        it('clears an entry with a change from a clock ahead of this one, and puts it on the waiting list', async () => {
+          const future = '2030-01-01T00:00:00.000Z'
+          await storage.history.applySyncPage(sending(ALICE, [remote(1, { updatedAt: future })]))
+          await storage.history.clear(ALICE)
+          const deleted = single(await storage.history.nextBatch(ALICE))
+          expect(deleted).toMatchObject({ id: remote(1).id, deletedAt: expect.any(String) })
+          expect(deleted.updatedAt > future).toBe(true)
+        })
+
+        it('drops an entry that breaks the sync contract, writes the rest and saves the cursor', async () => {
+          const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+          const page = sending(ALICE, [remote(1), remote(2)])
+          const bad = { ...toWireEntry(remote(3)), level: 'insane' }
+          await storage.history.applySyncPage({ ...page, changes: [bad, 'text', ...page.changes], cursor: 'c9' })
+          const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
+          expect(ids.toSorted()).toEqual([remote(1).id, remote(2).id])
+          await expect(storage.sync.cursor(ALICE)).resolves.toBe('c9')
+          warn.mockRestore()
+        })
+      })
+
+      describe('the result', () => {
+        it('reports a change for a new entry and for a newer one', async () => {
+          const later = remote(1, { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' })
+          await expect(storage.history.applySyncPage(sending(ALICE, [remote(1)]))).resolves.toMatchObject({
+            changed: true,
+          })
+          await expect(storage.history.applySyncPage(sending(ALICE, [later]))).resolves.toMatchObject({ changed: true })
+        })
+
+        it('reports no change for an older copy, a repeat and an echo of a pushed entry', async () => {
+          await storage.history.applySyncPage(sending(ALICE, [remote(1)]))
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const echo = single(await storage.history.nextBatch(ALICE))
+          await expect(storage.history.applySyncPage(sending(ALICE, [remote(1)]))).resolves.toMatchObject({
+            changed: false,
+          })
+          await expect(
+            storage.history.applySyncPage({ ...accepting(ALICE, [echo]), changes: [toWireEntry(echo)] }),
+          ).resolves.toMatchObject({ changed: false })
+        })
+
+        it('asks for another push while the server takes entries and more wait', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+          const [first, second] = await storage.history.nextBatch(ALICE)
+          if (first === undefined || second === undefined) throw new Error('Expected two entries')
+          await expect(storage.history.applySyncPage(accepting(ALICE, [first]))).resolves.toMatchObject({
+            pushAgain: true,
+          })
+          await expect(storage.history.applySyncPage(accepting(ALICE, [second]))).resolves.toMatchObject({
+            pushAgain: false,
+          })
+        })
+
+        it('asks for no push when the server took nothing, as at the daily cap', async () => {
+          await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
+          const sent = await storage.history.nextBatch(ALICE)
+          await expect(
+            storage.history.applySyncPage({ ...accepting(ALICE, sent), acceptedIds: [] }),
+          ).resolves.toMatchObject({ pushAgain: false })
+          await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(true)
+        })
+      })
+
+      it('saves the cursor of the owner with the page', async () => {
+        await storage.history.applySyncPage({ ...accepting(ALICE, []), cursor: 'cursor-1' })
+        await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-1')
+        await expect(storage.sync.cursor(BOB)).resolves.toBeNull()
+      })
+    })
+
+    describe('adopt', () => {
+      it('counts the live entries without an owner', async () => {
         await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-      })
-    })
-
-    describe('upsertRemote', () => {
-      it('adds a new entry that is not on the waiting list', async () => {
-        await storage.history.upsertRemote([remote('r1', { seed: 412_077 })], ALICE)
-        const {
-          createdAt: _createdAt,
-          updatedAt: _updatedAt,
-          deletedAt: _deletedAt,
-          ...entry
-        } = remote('r1', {
-          seed: 412_077,
-        })
-        await expect(storage.history.list(ALICE)).resolves.toEqual([entry])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-        await expect(storage.history.list(null)).resolves.toEqual([])
+        await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)
+        await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
+        await expect(storage.history.adoptable(ALICE)).resolves.toBe(2)
       })
 
-      it('replaces an entry with a newer change', async () => {
-        await storage.history.upsertRemote([remote('r1')], ALICE)
-        await storage.history.upsertRemote(
-          [remote('r1', { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' })],
-          ALICE,
-        )
-        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 45_000 }])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+      it('does not count a cleared entry and does not change anything', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await storage.history.clear(null)
+        await expect(storage.history.adoptable(ALICE)).resolves.toBe(0)
+        await expect(storage.history.adoptable(ALICE)).resolves.toBe(0)
       })
 
-      it('ignores an older change', async () => {
-        await storage.history.upsertRemote([remote('r1', { updatedAt: '2026-10-02T09:00:00.000Z' })], ALICE)
-        await storage.history.upsertRemote([remote('r1', { playedMs: 45_000 })], ALICE)
-        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 60_000 }])
-      })
-
-      it('ignores a change with the same time', async () => {
-        await storage.history.upsertRemote([remote('r1')], ALICE)
-        await storage.history.upsertRemote([remote('r1', { playedMs: 45_000 })], ALICE)
-        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 60_000 }])
-      })
-
-      it('takes a local entry off the waiting list when the server sends the same change', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.upsertRemote([{ ...sent, playedMs: 45_000 }], ALICE)
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: sent.id, playedMs: 60_000 }])
-      })
-
-      it('keeps the waiting list of an entry of another owner with the same change', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
-        const sent = single(await storage.history.pending(BOB, 10))
-        await storage.history.upsertRemote([sent], ALICE)
-        await expect(storage.history.pending(BOB, 10)).resolves.toEqual([sent])
-      })
-
-      it('removes an entry that the server deleted', async () => {
-        await storage.history.upsertRemote([remote('r1')], ALICE)
-        const later = '2026-10-02T09:00:00.000Z'
-        await storage.history.upsertRemote([remote('r1', { updatedAt: later, deletedAt: later })], ALICE)
-        await expect(storage.history.list(ALICE)).resolves.toEqual([])
-        await expect(storage.stats.summary(null, { includeScanned: true, owner: ALICE })).resolves.toMatchObject({
-          played: 0,
-        })
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-      })
-
-      it('keeps a deleted entry it did not know, so an older copy does not bring it back', async () => {
-        const later = '2026-10-02T09:00:00.000Z'
-        await storage.history.upsertRemote([remote('r1', { updatedAt: later, deletedAt: later })], ALICE)
-        await storage.history.upsertRemote([remote('r1')], ALICE)
-        await expect(storage.history.list(ALICE)).resolves.toEqual([])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-      })
-
-      it('never takes an entry from another owner', async () => {
-        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
-        await storage.history.upsertRemote([remote(id, { updatedAt: '2030-01-01T00:00:00.000Z' })], ALICE)
-        await expect(storage.history.list(ALICE)).resolves.toEqual([])
-        await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id, playedMs: 60_000 }])
-        await expect(storage.history.pending(BOB, 10)).resolves.toMatchObject([{ id }])
-      })
-
-      it('changes nothing when the server sends back an entry of this device', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const sent = single(await storage.history.pending(ALICE, 10))
-        await storage.history.markPushed([sent])
-        await storage.history.upsertRemote([sent], ALICE)
-        await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-      })
-
-      it('lists the entries by the time they finished, whatever the order of the upsert', async () => {
-        await storage.history.upsertRemote(
-          [
-            remote('r2', { finishedAt: '2026-10-02T09:00:00.000Z' }),
-            remote('r3', { finishedAt: '2026-10-03T09:00:00.000Z' }),
-            remote('r1', { finishedAt: '2026-09-30T09:00:00.000Z' }),
-          ],
-          ALICE,
-        )
-        const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
-        const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
-        expect(ids).toEqual([id, 'r3', 'r2', 'r1'])
-      })
-
-      it('keeps the newest of two copies in one call', async () => {
-        await storage.history.upsertRemote(
-          [remote('r1', { playedMs: 45_000, updatedAt: '2026-10-02T09:00:00.000Z' }), remote('r1')],
-          ALICE,
-        )
-        await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: 'r1', playedMs: 45_000 }])
-      })
-
-      it('clears an entry with a change from a clock ahead of this one, and puts it on the waiting list', async () => {
-        const future = '2030-01-01T00:00:00.000Z'
-        await storage.history.upsertRemote([remote('r1', { updatedAt: future })], ALICE)
-        await storage.history.clear(ALICE)
-        const deleted = single(await storage.history.pending(ALICE, 10))
-        expect(deleted).toMatchObject({ id: 'r1', deletedAt: expect.any(String) })
-        expect(deleted.updatedAt > future).toBe(true)
-      })
-    })
-
-    describe('adoptUnowned', () => {
-      it('gives the entries without an owner to the owner and puts them on the waiting list', async () => {
+      it('gives the entries without an owner to the owner on yes, and puts them on the waiting list', async () => {
         const first = await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
         const second = await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)
-        await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(2)
+        await expect(storage.history.answerAdopt(ALICE, true)).resolves.toBe(2)
         await expect(storage.history.list(null)).resolves.toEqual([])
         const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
         expect(ids).toEqual([second, first])
-        const pending = (await storage.history.pending(ALICE, 10)).map((record) => record.id)
-        expect(pending).toEqual([first, second])
+        expect(await batchIds(storage, ALICE)).toEqual([first, second])
+      })
+
+      it('leaves the entries without an owner on no', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await expect(storage.history.answerAdopt(ALICE, false)).resolves.toBe(0)
+        await expect(storage.history.list(null)).resolves.toHaveLength(1)
+        await expect(storage.history.list(ALICE)).resolves.toEqual([])
       })
 
       it('leaves a cleared entry without an owner', async () => {
         await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
         await storage.history.clear(null)
         const live = await finishGame(storage, 'easy', wonGame(50_000), 'generated', null)
-        await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(1)
-        const pending = (await storage.history.pending(ALICE, 10)).map((record) => record.id)
-        expect(pending).toEqual([live])
+        await expect(storage.history.answerAdopt(ALICE, true)).resolves.toBe(1)
+        expect(await batchIds(storage, ALICE)).toEqual([live])
       })
 
       it('leaves the entries of another owner', async () => {
         const bob = await finishGame(storage, 'easy', wonGame(60_000), 'generated', BOB)
-        await expect(storage.history.adoptUnowned(ALICE)).resolves.toBe(0)
+        await expect(storage.history.answerAdopt(ALICE, true)).resolves.toBe(0)
         await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id: bob }])
         await expect(storage.history.list(ALICE)).resolves.toEqual([])
       })
-    })
 
-    describe('countUnowned', () => {
-      it('counts the live entries without an owner', async () => {
+      it('offers nothing again to an owner who answered, yes or no, and still offers to another owner', async () => {
         await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
-        await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)
-        await finishGame(storage, 'easy', wonGame(50_000), 'generated', ALICE)
-        await expect(storage.history.countUnowned()).resolves.toBe(2)
-      })
-
-      it('does not count a cleared entry and does not change anything', async () => {
-        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
-        await storage.history.clear(null)
-        await expect(storage.history.countUnowned()).resolves.toBe(0)
-        await expect(storage.history.countUnowned()).resolves.toBe(0)
+        await storage.history.answerAdopt(ALICE, false)
+        await expect(storage.history.adoptable(ALICE)).resolves.toBe(0)
+        await expect(storage.history.adoptable(BOB)).resolves.toBe(1)
+        await storage.history.answerAdopt(BOB, true)
+        await expect(storage.history.adoptable(BOB)).resolves.toBe(0)
       })
     })
 
@@ -593,7 +752,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         await finishGame(storage, 'hard', lostGame(20_000), 'generated', ALICE)
         await storage.history.deleteOwner(ALICE)
         await expect(storage.history.list(ALICE)).resolves.toEqual([])
-        await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+        await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
       })
 
       it('leaves the entries of another owner and of no owner', async () => {
@@ -604,30 +763,50 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         await expect(storage.history.list(BOB)).resolves.toMatchObject([{ id: bob }])
         await expect(storage.history.list(null)).resolves.toMatchObject([{ id: nobody }])
       })
+
+      it('clears the sync state of the owner and nothing of another owner', async () => {
+        await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
+        await storage.history.applySyncPage({ ...accepting(ALICE, []), cursor: 'cursor-1' })
+        await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
+        await storage.sync.saveSyncedAt(BOB, '2026-10-15T11:00:00.000Z')
+        await storage.history.answerAdopt(ALICE, false)
+        await storage.history.answerAdopt(BOB, false)
+        await storage.history.deleteOwner(ALICE)
+        await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
+        await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()
+        await expect(storage.history.adoptable(ALICE)).resolves.toBe(1)
+        await expect(storage.sync.syncedAt(BOB)).resolves.toBe('2026-10-15T11:00:00.000Z')
+        await expect(storage.history.adoptable(BOB)).resolves.toBe(0)
+      })
+
+      it('keeps the cursor of another owner', async () => {
+        await storage.history.applySyncPage({ ...accepting(BOB, []), cursor: 'cursor-bob' })
+        await storage.history.deleteOwner(ALICE)
+        await expect(storage.sync.cursor(BOB)).resolves.toBe('cursor-bob')
+      })
     })
 
     describe('sync state', () => {
-      it('has no cursor, time or answer at first', async () => {
+      it('has no cursor or time at first', async () => {
         await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
         await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()
-        await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(false)
       })
 
       it('keeps the cursor of its owner', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await seedCursor(storage, ALICE, 'cursor-1')
         await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-1')
-        await storage.sync.saveCursor(ALICE, 'cursor-2')
+        await seedCursor(storage, ALICE, 'cursor-2')
         await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-2')
       })
 
       it('gives no cursor to another owner and forgets the old one', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await seedCursor(storage, ALICE, 'cursor-1')
         await expect(storage.sync.cursor(BOB)).resolves.toBeNull()
         await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
       })
 
       it('clears the cursor alone', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await seedCursor(storage, ALICE, 'cursor-1')
         await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
         await storage.sync.clearCursor()
         await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
@@ -638,24 +817,6 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
         await expect(storage.sync.syncedAt(ALICE)).resolves.toBe('2026-10-15T10:00:00.000Z')
         await expect(storage.sync.syncedAt(BOB)).resolves.toBeNull()
-      })
-
-      it('remembers the answer to the adopt prompt per owner', async () => {
-        await storage.sync.markAdoptAsked(ALICE)
-        await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(true)
-        await expect(storage.sync.adoptAsked(BOB)).resolves.toBe(false)
-      })
-
-      it('clears everything of one owner and nothing of another', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
-        await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
-        await storage.sync.markAdoptAsked(ALICE)
-        await storage.sync.markAdoptAsked(BOB)
-        await storage.sync.clear(ALICE)
-        await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
-        await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()
-        await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(false)
-        await expect(storage.sync.adoptAsked(BOB)).resolves.toBe(true)
       })
     })
 
@@ -704,8 +865,8 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
         })
         let seen = -1
         storage.subscribe(() => {
-          void storage.history.pending(ALICE, 10).then((pending) => {
-            seen = pending.length
+          void storage.history.nextBatch(ALICE).then((batch) => {
+            seen = batch.length
           })
         })
         await storage.puzzles.save(id, wonGame(60_000), ALICE)
