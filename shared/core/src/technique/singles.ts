@@ -1,31 +1,13 @@
 import { BOXES, COLUMNS, ROWS, UNITS, UNITS_OF, type UnitKind } from '../units'
 import { bitCount } from '../bits'
-import { ALL_DIGITS, bitOf, blockerOf, digitsOf, sortedUnique } from './masks'
+import { placementStep } from './build'
+import { ALL_DIGITS, bitOf, blockerOf, digitsOf } from './masks'
 import type { Candidates, Step } from './types'
 
 const UNITS_OF_KIND: Readonly<Record<UnitKind, readonly number[]>> = {
   box: BOXES.map((_, box) => 18 + box),
   row: ROWS.map((_, row) => row),
   column: COLUMNS.map((_, column) => 9 + column),
-}
-
-function placementStep(
-  technique: 'fullHouse' | 'hiddenSingle' | 'nakedSingle',
-  cell: number,
-  digit: number,
-  units: readonly number[],
-  support: Iterable<number | undefined>,
-): Step {
-  const digits = digitsOf(bitOf(digit))
-  return {
-    technique,
-    placements: [{ cell, digit: digits[0]! }],
-    eliminations: [],
-    units,
-    pattern: [cell],
-    support: sortedUnique([...support].filter((blocker): blocker is number => blocker !== undefined)),
-    digits,
-  }
 }
 
 /** A box, then a row, then a column. A cell that is the last of two units gives one step. */
