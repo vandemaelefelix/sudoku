@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated'
 import { Icon } from '@/game/components/Icon'
-import { PanelButton } from '@/scan/components/PanelButton'
+import { PanelButton } from '@/components/PanelButton'
 import { swapInButtons } from '@/scan/utils/swap.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'

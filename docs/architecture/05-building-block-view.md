@@ -18,7 +18,9 @@ sudoku/
 │   ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)
 │   ├── src/account/         # sign-in, sign-out and delete account with Clerk (ADR-027)
 │   ├── src/sync/            # SyncService: pushes and pulls the history (ADR-028)
-│   ├── src/utils/           # code that more than one feature uses: geometry, homography, logs
+│   ├── src/scanShare/       # the scan upload: record, crop, queue, uploader, sharing switch (ADR-030)
+│   ├── src/components/      # UI that more than one feature uses: PanelButton
+│   ├── src/utils/           # code that more than one feature uses: geometry, homography, logs, the final grid type
 │   └── assets/models/       # promoted model files + manifest.json (committed)
 ├── ml/                      # Python (uv): training, evaluation, export, promote
 │   ├── src/
@@ -77,9 +79,11 @@ flowchart TB
 | --- | --- | --- | --- |
 | **@sudoku/core** | Board model, rule checks, a backtracking solver (uniqueness), a technique solver (grading and hints), the generator ([ADR-011](adr/adr-011-puzzle-generation-and-hints.md)), the streak, the counted-game rule for the best time and the clock format ([ADR-023](adr/adr-023-player-stats.md)) | nothing | React Native, Expo, any I/O (SUD-04) |
 | **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens. One game session (`createGameSession`) holds the game in progress: the reducer, the clock, the pause and the saves. One puzzle start (`createPuzzleStart`) starts every game: from a level, from a scan, a new puzzle and a retry | @sudoku/core, local storage | the scanner (SUD-03), account, sync (ADR-028) |
-| **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen. The capture session holds the state from lock-on to the review | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
+| **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen. The capture session holds the state from lock-on to the review. The correction session holds the state of the review | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
-| **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |
+| **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs, the `FinalGrid` type. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |
+| **Shared components** (`src/components/`) | UI that more than one feature uses, for example `PanelButton` | the theme, `src/utils/` | any feature folder |
+| **Scan share** (`src/scanShare/`) | Builds the upload record from the scan result and the `FinalGrid`, crops the photo, queues and uploads it ([ADR-030](adr/adr-030-scan-collection.md)) | scanner module, `src/utils/`, `src/components/`, scan contract | the scan UI (`src/scan/`) |
 | **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)). Holds the sync state. Applies each sync page, the adopt and the owner delete in one transaction each. Tells the sync about a finished game | expo-sqlite, sync contract (the check of each history entry) | — |
 | **Account** (`src/account/`) | Sign-in, sign-out and delete account with Clerk. Gives a fresh token for each request ([ADR-027](adr/adr-027-backend-platform.md)). The account lifecycle owns the delete order, the 410 reaction and the owner cache behind a Clerk adapter ([ADR-028](adr/adr-028-history-sync.md)). It imports only types of `src/sync/` for this | `@clerk/expo` | the game UI |
 | **Sync** (`src/sync/`) | Pushes the waiting list and pulls the changes on each trigger. Silent on failure ([ADR-028](adr/adr-028-history-sync.md)) | local storage, account, sync contract, `expo-network` | the game UI, the stats UI |
@@ -131,3 +135,4 @@ dependency-cruiser enforces these rules in `just boundaries` ([ADR-027](adr/adr-
 | `adr-027-services-do-not-import-the-app` | `backend/api/` or `backend/kill-switch/` imports `mobile/` |
 | `adr-027-services-do-not-import-infra` | `backend/api/` or `backend/kill-switch/` imports `backend/infra/` or `sst.config.ts` |
 | `adr-027-infra-reads-only-the-table-design` | `backend/infra/` and `sst.config.ts` import a file of `backend/api/` or `backend/kill-switch/` other than `backend/api/src/tableDesign.ts` |
+| `adr-030-scanshare-does-not-use-scan` | `mobile/src/scanShare/` imports `mobile/src/scan/`. This rule is an app rule, not a backend rule |

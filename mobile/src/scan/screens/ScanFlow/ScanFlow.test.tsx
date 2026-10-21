@@ -3,7 +3,7 @@ import { CameraScreen } from '@/scan/screens/CameraScreen'
 import { ScanFlow } from './ScanFlow'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
 import type { CaptureResult } from '@/scan/utils/captureResult.utils'
-import type { CellLook } from '@/scan/utils/correction.utils'
+import type { FinalGrid } from '@/utils/finalGrid.utils'
 
 const mockDismissTo = jest.fn()
 jest.mock('expo-router', () => ({ useRouter: () => ({ dismissTo: mockDismissTo }) }))
@@ -81,7 +81,7 @@ it('hands Play to the scanned start, and Home to the router as a dismiss to the 
 
 it('hands Save to the correction store, in a development build', () => {
   render(<ScanFlow />)
-  const looks = [] as CellLook[]
+  const looks = [] as FinalGrid
   camera().onSave!(OK, looks)
   expect(mockSave).toHaveBeenCalledWith(OK, looks)
 })
@@ -115,15 +115,15 @@ describe('the photo of a scan that the player drops', () => {
 
   it('is not deleted here when the player leaves, because the queue step deletes it', () => {
     render(<ScanFlow />)
-    camera().onExit(WITH_PHOTO, [] as CellLook[])
+    camera().onExit(WITH_PHOTO, [] as FinalGrid)
     expect(mockEnqueue).toHaveBeenCalledWith('/tmp/photo.jpg', WITH_PHOTO, [])
     expect(mockDiscard).not.toHaveBeenCalled()
   })
 
   it('does not join the upload queue without an ok result', () => {
     render(<ScanFlow />)
-    camera().onExit(null, [] as CellLook[])
-    camera().onExit({ ok: false, reason: 'no grid' }, [] as CellLook[])
+    camera().onExit(null, [] as FinalGrid)
+    camera().onExit({ ok: false, reason: 'no grid' }, [] as FinalGrid)
     expect(mockEnqueue).not.toHaveBeenCalled()
   })
 })

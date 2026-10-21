@@ -1,6 +1,7 @@
 import type { CellResult } from '@/scanner'
 import type { Quad } from '@/utils/geometry.utils'
-import { type CellLook, cellLook } from './correction.utils'
+import { cellLook, type CellLook } from './correction.utils'
+import { finalGrid } from './finalGrid.utils'
 import { buildScanRecord } from './correctionLog.utils'
 
 const corners: Quad = [
@@ -23,7 +24,7 @@ const unchanged = (cells: CellResult[]): CellLook[] => cells.map(cellLook)
 describe('buildScanRecord', () => {
   it('marks no cell as corrected when the player changed nothing', () => {
     const cells = scan()
-    const record = buildScanRecord(cells, unchanged(cells), corners, 'now', 'run')
+    const record = buildScanRecord(cells, finalGrid(cells, unchanged(cells)), corners, 'now', 'run')
     expect(record.cells.some((cell) => cell.digitCorrected || cell.kindCorrected)).toBe(false)
   })
 
@@ -31,7 +32,7 @@ describe('buildScanRecord', () => {
     const cells = scan()
     const looks = unchanged(cells)
     looks[4] = { ...looks[4]!, digit: '2' }
-    const record = buildScanRecord(cells, looks, corners, 'now', 'run')
+    const record = buildScanRecord(cells, finalGrid(cells, looks), corners, 'now', 'run')
     expect(record.cells).toHaveLength(81)
     expect(record.cells[4]).toEqual({
       row: 0,
@@ -49,7 +50,7 @@ describe('buildScanRecord', () => {
     const cells = scan()
     const looks = unchanged(cells)
     looks[0] = { ...looks[0]!, style: 'entry' }
-    const first = buildScanRecord(cells, looks, corners, 'now', 'run').cells[0]!
+    const first = buildScanRecord(cells, finalGrid(cells, looks), corners, 'now', 'run').cells[0]!
     expect(first).toMatchObject({
       final: { digit: 1, kind: 'handwritten' },
       kindCorrected: true,
@@ -61,9 +62,21 @@ describe('buildScanRecord', () => {
     const cells = scan()
     const looks = unchanged(cells)
     looks[2] = { digit: '', style: 'empty', uncertain: false }
-    expect(buildScanRecord(cells, looks, corners, 'now', 'run').cells[2]).toMatchObject({
+    expect(buildScanRecord(cells, finalGrid(cells, looks), corners, 'now', 'run').cells[2]).toMatchObject({
       final: { digit: 0, kind: 'none' },
       digitCorrected: true,
+    })
+  })
+
+  it('records a pencil-marked cell as notes, not as a handwritten digit', () => {
+    const cells = scan()
+    cells[1] = { ...empty, kind: 'notes' }
+    const record = buildScanRecord(cells, finalGrid(cells, unchanged(cells)), corners, 'now', 'run')
+    expect(record.cells[1]).toMatchObject({
+      model: { digit: 0, kind: 'notes' },
+      final: { digit: 0, kind: 'notes' },
+      digitCorrected: false,
+      kindCorrected: false,
     })
   })
 })

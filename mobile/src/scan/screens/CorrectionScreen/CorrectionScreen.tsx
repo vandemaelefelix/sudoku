@@ -1,5 +1,5 @@
 import { Canvas, Picture, Skia, createPicture } from '@shopify/react-native-skia'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import Animated, {
   FadeOut,
@@ -10,37 +10,23 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
-import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
-import type { Digit } from '@sudoku/core'
+import { PanelButton } from '@/components/PanelButton'
 import { LEVEL_NAMES } from '@/constants/level.constants'
 import { Icon } from '@/game/components/Icon'
-import { levelOf } from '@/game/utils/start.utils'
 import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/components/CorrectionCell'
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
-import { CorrectionSummary, type FullGridPanel } from '@/scan/components/CorrectionSummary'
-import { DevMenu, type SaveState } from '@/scan/components/DevMenu'
-import { PanelButton } from '@/scan/components/PanelButton'
+import { CorrectionSummary } from '@/scan/components/CorrectionSummary'
+import { DevMenu } from '@/scan/components/DevMenu'
 import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
-import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
-import { useScanExit } from '@/scan/hooks/useScanExit'
-import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
-import { useVerify } from '@/scan/hooks/useVerify'
+import { type CorrectionExits, useCorrectionSession } from '@/scan/hooks/useCorrectionSession'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 import { swapIn } from '@/scan/utils/swap.utils'
-import { panelAt, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
+import { panelAt, resultsGateReached, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
 import { SWAP_OUT_MS } from '@/scan/constants/swap.constants'
 import { easeOut } from '@/utils/motion.utils'
-import {
-  cellLook,
-  drawGridLines,
-  gridLineStyle,
-  type CellLook,
-  type CorrectionLayout,
-} from '@/scan/utils/correction.utils'
-import { checkPlay, type ScannedStart } from '@/scan/utils/play.utils'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { cellLook, drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { SHARED_TYPE } from '@/theme/shared.tokens'
 import { pressedStyles } from '@/theme/pressed.styles'
@@ -56,35 +42,25 @@ import {
   TITLE,
 } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
-import { GATE_RESULTS } from '@/scan/constants/transition.constants'
-import { PANEL_PADDING, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
+import { PANEL_PADDING } from '@/scan/constants/correction.constants'
 
-export type CorrectionProps = {
+export type CorrectionProps = CorrectionExits & {
   /**
    * The capture session. In the capturing phase the clock drives every layer and the results may be null. In the review phase
    * everything shows and the player can edit.
    */
   session: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'waiting' | 'resultsAt'>
   layout: CorrectionLayout
-  onRetake: (looks: readonly CellLook[]) => void
-  /** Play this puzzle. Without it, the button stays off. */
-  onPlay?: (start: ScannedStart, looks: readonly CellLook[]) => void
-  /** Save the scan with the corrections (development builds). With it, the dev menu shows Save. */
-  onSave?: (looks: readonly CellLook[]) => Promise<boolean>
-  /** Called when the screen unmounts after the player could edit it, by any route except the Retake button. The scan is final. */
-  onExit?: (looks: readonly CellLook[]) => void
-  /** Home, on the solved panel. */
-  onHome?: (() => void) | undefined
 }
 
 // The old content fades out while the new content rises in, so a change of state reads as one motion.
 const SWAP_OUT = FadeOut.duration(SWAP_OUT_MS).easing(easeOut)
 const PANEL_RESIZE = LinearTransition.duration(PANEL_RESIZE_MS).easing(easeOut)
 
-export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, onExit, onHome }: CorrectionProps) {
-  const { result } = session
+export function CorrectionScreen({ session: capture, layout, ...exits }: CorrectionProps) {
+  const { result } = capture
   // The transition clock exists until the review. In the review, every layer shows and nothing waits.
-  const transition = session.phase === 'review' ? null : session
+  const transition = capture.phase === 'review' ? null : capture
   const clock = transition?.clock
   const reduceMotion = transition?.crossFade ?? false
   const waiting = transition?.waiting
@@ -108,117 +84,21 @@ export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, on
     [cellSize, givenRole.scale, entryRole.scale, baseScale],
   )
 
-  // The ring threshold of the dev menu. It is not saved: a new scan starts at REVIEW_CONFIDENCE.
-  const [threshold, setThreshold] = useState(REVIEW_CONFIDENCE)
-  const {
-    looks,
-    selected,
-    picking,
-    conflicts,
-    toCheck,
-    flow,
-    grid: corrected,
-    actions,
-  } = useCorrectionEdits(result, threshold)
-  const { play } = useHaptics()
-  // The check answers tick, and a picked digit taps like a number key of the game.
-  const checkActions = useMemo(
-    () => ({
-      yes: () => {
-        play('tick')
-        actions.yes()
-      },
-      no: () => {
-        play('tick')
-        actions.no()
-      },
-      setDigit: (digit: Digit) => {
-        play('tap')
-        actions.setDigit(digit)
-      },
-      clear: () => {
-        play('tap')
-        actions.clear()
-      },
-    }),
-    [actions, play],
-  )
-  // The player edits only the finished screen. During the transition the cells are not pressable and show no edit marks.
-  const editable = clock == null && ok !== null
-  const markRetake = useScanExit(looks, editable, onExit)
-  const open = editable && selected !== null ? selected : null
-  const openLook = open === null ? undefined : looks[open]
-  const conflictCount = conflicts.filter(Boolean).length
-  // The solver runs when the panel shows the summary, never per key and never while the transition clock runs.
-  const check = useMemo(
-    () => (editable && selected === null ? checkPlay(corrected, conflicts) : null),
-    [editable, selected, corrected, conflicts],
-  )
-  const start = check?.ok ? check.start : null
-  const blockText = check !== null && !check.ok ? PLAY_BLOCK_TEXT[check.block] : null
-  const canPlay = start !== null && onPlay !== undefined
-  // The grid is full when no cell is empty, with or without a conflict. It does not depend on the open cell: the marks stay
-  // while the player fixes a wrong cell in the check sheet.
-  const full = editable && corrected.givens.every((digit, cell) => digit !== 0 || corrected.entries[cell] !== 0)
-  const { verdict, verify } = useVerify(corrected, full)
-  const solved = verdict?.status === 'solved'
-  // The celebration (pulse and haptic) starts once the sheet is closed, so the player sees it. It then stays on until the
-  // verdict changes: opening and closing a cell of a solved grid must not replay it.
-  const [celebrated, setCelebrated] = useState(false)
-  const celebrate = solved && (celebrated || open === null)
-  if (celebrate !== celebrated) setCelebrated(celebrate)
-  const pulse = useSolvedPulse(celebrated)
-  // The cells to mark: the wrong entries of the unique solution, or the cells that break a rule.
-  const marked = useMemo<ReadonlySet<number>>(() => {
-    if (verdict?.status === 'wrong') return new Set(Object.keys(verdict.hints).map(Number))
-    if (verdict?.status === 'clash') return new Set(verdict.cells)
-    return new Set()
-  }, [verdict])
-  const fullPanel = useMemo<FullGridPanel | null>(
-    () =>
-      full
-        ? {
-            phase: verdict === null ? 'ready' : verdict.status,
-            count: marked.size,
-            onVerify: verify,
-            onScanAnother: () => onRetake(looks),
-            onHome,
-          }
-        : null,
-    [full, verdict, marked, verify, onRetake, looks, onHome],
-  )
-  const solvedBefore = useRef(false)
-  useEffect(() => {
-    if (celebrated && !solvedBefore.current) play('success')
-    solvedBefore.current = celebrated
-  }, [celebrated, play])
-  // Success when the last check makes the puzzle playable. The first summary of a review only sets the state: a scan that
-  // needs no check already had its success haptic. While a cell is open, the summary has no check, so the state waits.
-  const readyBefore = useRef<boolean | null>(null)
-  const ready = start !== null
-  useEffect(() => {
-    if (!editable || selected !== null) return
-    if (readyBefore.current === false && ready) play('success')
-    readyBefore.current = ready
-  }, [editable, selected, ready, play])
-
-  // The solution shows until the next edit: it belongs to the looks it was shown for.
-  const [solutionFor, setSolutionFor] = useState<readonly CellLook[] | null>(null)
-  const solution = start !== null && solutionFor === looks ? start.solution : null
-
+  const correction = useCorrectionSession(capture, exits)
+  const { actions, editable, looks, open, openLook, picking, solution, solved, threshold } = correction
+  const blockText = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
+  const full = correction.fullGrid && {
+    ...correction.fullGrid,
+    onVerify: actions.verify,
+    onScanAnother: actions.scanAnother,
+    onHome: exits.onHome,
+  }
+  // The dev menu belongs to the screen: these switches change what the screen draws, never the scan.
   const devTools = __DEV__ && editable
   const [devOpen, setDevOpen] = useState(false)
   const [view, setView] = useState<InspectorView>('photo')
   const [labelKinds, setLabelKinds] = useState(false)
   const [showConfidence, setShowConfidence] = useState(false)
-  const [saving, setSaving] = useState<{ looks: readonly CellLook[]; status: Exclude<SaveState, 'idle'> } | null>(null)
-  // A new edit makes the saved copy old, so Save works again: the status counts only for the looks that it was made for.
-  const saveState: SaveState = saving !== null && saving.looks === looks ? saving.status : 'idle'
-  const save = async () => {
-    if (!onSave || saveState === 'saving') return
-    setSaving({ looks, status: 'saving' })
-    setSaving({ looks, status: (await onSave(looks)) ? 'saved' : 'failed' })
-  }
 
   const confidences = useMemo<(CellConfidence | null)[] | null>(() => {
     if (!devTools || !showConfidence || ok === null) return null
@@ -270,24 +150,14 @@ export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, on
   const boardBox = [gridBox, { opacity: clock ? 0 : 1 }]
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
-  // A recognised grid gets its success when the results gate opens: the digits start to sweep in at that moment.
-  // A boolean, not ok: a worklet copies what it captures to the UI thread, and the result holds images.
-  const recognised = ok !== null
-  useAnimatedReaction(
-    () => recognised && resultsAt != null && resultsAt.value >= 0,
-    (gateOpen, previous) => {
-      if (gateOpen && previous === false) scheduleOnRN(play, 'success')
-    },
-  )
   // A failure keeps the results gate closed, so the clock never reaches the panel ramp. The failure panel slides in on its own
   // timing instead, from the moment the clock reaches the results gate (any held clock with Reduce Motion).
   const failureSlide = useSharedValue(0)
   useAnimatedReaction(
-    () => failed && (clock == null || reduceMotion || clock.value >= GATE_RESULTS - 1e-6),
+    () => failed && resultsGateReached(clock?.value, reduceMotion),
     (go, previous) => {
       if (go === previous) return
       failureSlide.set(go ? withTiming(1, { duration: FAILURE_SLIDE_MS, easing: easeOut }) : 0)
-      if (go) scheduleOnRN(play, 'warning')
     },
   )
   const panelStyle = useAnimatedStyle(() => {
@@ -316,10 +186,7 @@ export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, on
           testID="retake"
           accessibilityRole="button"
           accessibilityLabel="Retake the photo"
-          onPress={() => {
-            markRetake()
-            onRetake(looks)
-          }}
+          onPress={actions.retake}
           hitSlop={8}
           style={({ pressed }) => [styles.retake, pressed && pressedStyles.pressed]}
         >
@@ -370,9 +237,9 @@ export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, on
           left={grid.x + (n % 9) * cellSize}
           top={grid.y + Math.floor(n / 9) * cellSize}
           selected={open === n}
-          conflict={editable && ((conflicts[n] ?? false) || marked.has(n))}
-          hint={verdict?.status === 'wrong' ? String(verdict.hints[n] ?? '') : ''}
-          pulse={celebrated ? pulse : undefined}
+          conflict={correction.conflictCells.has(n)}
+          hint={String(correction.hints[n] ?? '')}
+          pulse={correction.celebrated ? correction.pulse : undefined}
           solution={solution === null || look.digit !== '' ? '' : String(solution[n] ?? '')}
           confidence={confidences?.[n] ?? null}
           onSelect={editable ? actions.select : undefined}
@@ -410,54 +277,47 @@ export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, on
             <Animated.View
               // A new key mounts new content, so each state change plays the swap. The next cell keeps the key:
               // the panel stays and CorrectionCheck moves its content to the new cell.
-              key={result.ok === false ? 'failure' : open === null ? 'summary' : picking ? 'pick' : 'check'}
+              key={correction.panel}
               {...(clock || !motion ? {} : { entering: swapIn, exiting: SWAP_OUT })}
             >
-              {result.ok === false ? (
+              {!result.ok ? (
                 <View testID="correction-failure" style={styles.failure}>
                   <Text style={styles.failureTitle}>The scan failed</Text>
                   <Text style={styles.failureReason}>{result.reason}</Text>
-                  <PanelButton testID="retake-failure" label="Retake" kind="primary" onPress={() => onRetake(looks)} />
+                  <PanelButton testID="retake-failure" label="Retake" kind="primary" onPress={actions.retake} />
                 </View>
               ) : open !== null && openLook ? (
                 <CorrectionCheck
                   cell={open}
                   look={openLook}
                   looks={looks}
-                  flow={flow}
+                  flow={correction.flow}
                   picking={picking}
                   image={result.flatImage}
                   hint={result.cells[open]?.second ?? null}
                   labelKinds={devTools && labelKinds}
                   animate={motion}
                   onClose={actions.close}
-                  onYes={checkActions.yes}
-                  onNo={checkActions.no}
-                  onDigit={checkActions.setDigit}
-                  onClear={checkActions.clear}
+                  onYes={actions.yes}
+                  onNo={actions.no}
+                  onDigit={actions.setDigit}
+                  onClear={actions.clear}
                   onKind={actions.setKind}
                 />
               ) : (
                 <CorrectionSummary
-                  toCheck={toCheck}
-                  conflictCount={editable ? conflictCount : 0}
-                  level={LEVEL_NAMES[levelOf(corrected.givens)]}
+                  toCheck={correction.toCheck}
+                  conflictCount={correction.conflictCount}
+                  level={LEVEL_NAMES[correction.level]}
                   blockText={blockText}
-                  canPlay={canPlay}
+                  canPlay={correction.canPlay}
                   animate={!clock && motion}
-                  canSolve={start !== null}
+                  canSolve={correction.canSolve}
                   solutionShown={solution !== null}
-                  full={fullPanel}
+                  full={full}
                   onStartCheck={actions.startCheck}
-                  onPlay={
-                    start !== null && onPlay
-                      ? () => {
-                          play('thud')
-                          onPlay(start, looks)
-                        }
-                      : undefined
-                  }
-                  onToggleSolve={() => setSolutionFor(solution === null ? looks : null)}
+                  onPlay={correction.canPlay ? actions.play : undefined}
+                  onToggleSolve={actions.toggleSolution}
                 />
               )}
             </Animated.View>
@@ -476,9 +336,9 @@ export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, on
           showConfidence={showConfidence}
           onShowConfidence={setShowConfidence}
           threshold={threshold}
-          onThreshold={setThreshold}
-          saveState={saveState}
-          onSave={onSave && ok.photoPath != null ? () => void save() : undefined}
+          onThreshold={correction.setThreshold}
+          saveState={correction.saveState}
+          onSave={correction.canSave ? actions.save : undefined}
         />
       )}
     </View>

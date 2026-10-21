@@ -181,6 +181,42 @@ A full grid has nothing to play, so the correction screen verifies it. The playe
 
 After the first tap, each edit updates the result. An edit that empties a cell brings back Play and Solve.
 
+### The correction session
+
+One module, the correction session (`useCorrectionSession`), owns the state of the correction screen. It reads the capture session
+for the phase and the result. It combines the edits (`useCorrectionEdits`), the verdict (`useVerify`) and the solved pulse
+(`useSolvedPulse`). The screen renders its view. It sends the intents of the player to the session.
+
+The screen keeps four things. They are the layout, the Skia pictures, the transition presentation and the switches of the dev menu.
+The transition presentation is the clock, the results time and the Reduce Motion rule of the cells, the rings and the panel.
+
+```mermaid
+stateDiagram-v2
+    [*] --> summary: the result is ok
+    [*] --> failure: the result failed
+    summary --> check: Start the check, with a cell to check
+    summary --> pick: a tap on a sure cell
+    check --> pick: No
+    check --> check: Yes or a digit, with a cell left to check
+    check --> summary: the last cell, or Close
+    pick --> check: a digit, with a cell left to check
+    pick --> summary: a digit on a sure cell, Empty or Close
+```
+
+| Rule | What the session does |
+| --- | --- |
+| Editable | The player edits only the review phase of an ok result. During the transition the cells are inert and show no marks |
+| Play gate | The session runs the solver only when the panel shows the summary, never per key and never during the transition |
+| Verdict | After the first tap on Check, the verdict follows every edit. A grid with an empty cell has none |
+| Celebration | The solved pulse and its haptic start once the open cell closes. They stay on until the verdict changes |
+| Haptic cues | The session plays them: tick for Yes and No, tap for a digit and Empty, thud for Play, success for a solved grid, for a scan that turns playable after a check and for the results gate, warning for the failure panel |
+| Retake order | `retake` marks the scan as not accepted, then calls `onRetake`. The unmount that follows does not call `onExit`. Scan another does not mark: it accepts the scan |
+| Exit | `onExit` gets the final grid when the screen unmounts after the player could edit it, by any route except `retake`. The scan is final |
+
+The final grid is the one definition of a scan after the edits: `finalGrid` in `src/scan/utils/finalGrid.utils.ts`. The development
+scan log (`buildScanRecord`) and the upload record (`buildRecord`, ADR-030) both read it. `src/scanShare/` does not import the scan UI.
+It reads only the `FinalGrid` type in `src/utils/`.
+
 ## Open questions
 
 | Question | Decided by |
