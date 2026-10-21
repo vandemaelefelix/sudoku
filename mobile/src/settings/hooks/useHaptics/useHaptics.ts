@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { createHapticsStore } from '@/settings/utils/haptics.utils'
+import { createSettingStore } from '@/settings/settingStore'
+import { HAPTICS_SETTING } from '@/settings/utils/haptics.utils'
 import { playHaptic, type HapticName } from '@/utils/haptics.utils'
-import { devLog, errorMessage } from '@/utils/log.utils'
 
 // One store for the app: the switch in Settings must reach every screen that plays a haptic.
-const hapticsStore = createHapticsStore(kvSettings)
+const hapticsStore = createSettingStore(kvSettings, HAPTICS_SETTING)
 
 function setOn(on: boolean): void {
-  hapticsStore.set(on).catch((error: unknown) => devLog('haptics', `haptics switch not saved: ${errorMessage(error)}`))
+  hapticsStore.trySet(on)
 }
 
 // Reads the switch at the moment of the haptic, so play keeps its identity and an effect that calls it does not run again.

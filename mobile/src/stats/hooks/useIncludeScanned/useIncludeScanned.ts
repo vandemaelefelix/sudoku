@@ -1,13 +1,13 @@
 import { useSyncExternalStore } from 'react'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { createIncludeScannedStore } from '@/stats/utils/includeScanned.utils'
-import { devLog, errorMessage } from '@/utils/log.utils'
+import { createSettingStore } from '@/settings/settingStore'
+import { INCLUDE_SCANNED_SETTING } from '@/stats/utils/includeScanned.utils'
 
 // One store for the app: the switch on the stats screen must reach the home card too.
-const store = createIncludeScannedStore(kvSettings)
+const store = createSettingStore(kvSettings, INCLUDE_SCANNED_SETTING)
 
 function setIncludeScanned(on: boolean): void {
-  store.set(on).catch((error: unknown) => devLog('stats', `scanned switch not saved: ${errorMessage(error)}`))
+  store.trySet(on)
 }
 
 /** Whether scanned puzzles count in the stats. setIncludeScanned keeps its identity. */
