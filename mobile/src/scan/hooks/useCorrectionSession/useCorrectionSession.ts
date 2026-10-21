@@ -1,3 +1,4 @@
+import type { SkImage } from '@shopify/react-native-skia'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAnimatedReaction } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
@@ -10,6 +11,7 @@ import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useCorrectionEdits, type CorrectionEditActions } from '@/scan/hooks/useCorrectionEdits'
 import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
 import { useVerify } from '@/scan/hooks/useVerify'
+import type { CaptureOk } from '@/scan/utils/captureResult.utils'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { isFull, markedCells, panelState, type PanelState } from '@/scan/utils/correctionSession.utils'
 import { finalGrid } from '@/scan/utils/finalGrid.utils'
@@ -54,7 +56,9 @@ export type CorrectionActions = Omit<CorrectionEditActions, 'yes' | 'no' | 'setD
  * of the player and the checks of the grid. The screen sends intents through `actions`.
  *
  * editable: the player can edit. It is false during the capture transition, and for a failed or missing result.
- * panel: null until the result arrives. open and openLook: the cell in the panel. picking: its keypad.
+ * panel: null until the result arrives. openCell: the cell in the panel. picking: its keypad. hint: the second guess of the scanner
+ * for that cell.
+ * scan: the ok result, for the dev menu. failure: the reason of a failed scan. image: the flattened grid, for the cell crop.
  * conflictCells: the cells to mark, which are the given conflicts and the cells of the verdict. hints: the solution digit of each
  * wrong entry, after Check.
  * block: why Play is off, or null. canPlay: the gate is open and the parent gave onPlay. canSolve: the gate is open.
@@ -66,9 +70,12 @@ export type CorrectionSession = {
   editable: boolean
   panel: PanelState | null
   looks: readonly CellLook[]
-  open: number | null
-  openLook: CellLook | undefined
+  openCell: { cell: number; look: CellLook } | null
   picking: boolean
+  scan: CaptureOk | null
+  failure: string | null
+  image: SkImage | undefined
+  hint: number | null
   flow: readonly number[]
   toCheck: number
   conflictCount: number
@@ -252,13 +259,17 @@ export function useCorrectionSession(
     },
   }
 
+  const openLook = open === null ? undefined : looks[open]
   return {
     editable,
     panel: result == null ? null : panelState(failed, open, picking),
     looks,
-    open,
-    openLook: open === null ? undefined : looks[open],
+    openCell: openLook === undefined || open === null ? null : { cell: open, look: openLook },
     picking,
+    scan: ok,
+    failure: result != null && !result.ok ? result.reason : null,
+    image: ok?.flatImage,
+    hint: open === null ? null : (ok?.cells[open]?.second ?? null),
     flow,
     toCheck,
     conflictCount: editable ? conflicts.filter(Boolean).length : 0,

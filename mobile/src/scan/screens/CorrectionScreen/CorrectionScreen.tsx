@@ -58,7 +58,6 @@ const SWAP_OUT = FadeOut.duration(SWAP_OUT_MS).easing(easeOut)
 const PANEL_RESIZE = LinearTransition.duration(PANEL_RESIZE_MS).easing(easeOut)
 
 export function CorrectionScreen({ session: capture, layout, ...exits }: CorrectionProps) {
-  const { result } = capture
   // The transition clock exists until the review. In the review, every layer shows and nothing waits.
   const transition = capture.phase === 'review' ? null : capture
   const clock = transition?.clock
@@ -70,8 +69,6 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const systemReduceMotion = useReducedMotion()
   const motion = !(reduceMotion || systemReduceMotion)
   const { bar, title, grid, panel } = layout
-  const failed = result != null && !result.ok
-  const ok = result?.ok === true ? result : null
   const cellSize = grid.width / 9
   // A theme sets its digit sizes relative to the system font: a serif given needs more size than a sans entry to look as large.
   const { given: givenRole, entry: entryRole } = theme.type
@@ -85,7 +82,9 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   )
 
   const correction = useCorrectionSession(capture, exits)
-  const { actions, editable, looks, open, openLook, picking, solution, solved, threshold } = correction
+  const { actions, editable, looks, openCell, picking, scan, solution, solved, threshold } = correction
+  const open = openCell?.cell ?? null
+  const failed = correction.panel === 'failure'
   const blockText = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
   const full = correction.fullGrid && {
     ...correction.fullGrid,
@@ -101,9 +100,9 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const [showConfidence, setShowConfidence] = useState(false)
 
   const confidences = useMemo<(CellConfidence | null)[] | null>(() => {
-    if (!devTools || !showConfidence || ok === null) return null
+    if (!devTools || !showConfidence || scan === null) return null
     return looks.map((look, n) => {
-      const read = ok.cells[n]
+      const read = scan.cells[n]
       if (read === undefined) return null
       const scanned = cellLook(read, threshold)
       const edited = scanned.digit !== look.digit || scanned.style !== look.style
@@ -113,7 +112,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
         low: read.confidence < threshold,
       }
     })
-  }, [devTools, showConfidence, ok, looks, threshold])
+  }, [devTools, showConfidence, scan, looks, threshold])
 
   // The pictures are made again when the theme changes (ADR-015, point 10). The cell fill lies under the cells and the lines lie
   // over them, so the fill of an open or conflicting cell never covers a grid line.
@@ -179,7 +178,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
         <Picture picture={board} />
       </Canvas>
       <Animated.View
-        pointerEvents={result == null ? 'none' : 'box-none'}
+        pointerEvents={correction.panel === null ? 'none' : 'box-none'}
         style={[styles.bar, { left: bar.x, top: bar.y, width: bar.width, height: bar.height }, titleStyle]}
       >
         <Pressable
@@ -251,7 +250,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
       <Canvas testID="correction-lines" pointerEvents="none" style={boardBox}>
         <Picture picture={lines} />
       </Canvas>
-      {result == null && waiting && (
+      {correction.panel === null && waiting && (
         <Animated.View
           testID="correction-waiting"
           pointerEvents="none"
@@ -260,14 +259,14 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           <ActivityIndicator color={theme.colors.textMuted} />
         </Animated.View>
       )}
-      {result != null && (
+      {correction.panel !== null && (
         <Animated.View
           testID="correction-panel"
           // The keypad makes the panel taller. The panel grows to it instead of jumping.
           {...(motion ? { layout: PANEL_RESIZE } : {})}
           style={[styles.panel, { left: panel.x, width: panel.width, minHeight: panel.height }, panelStyle]}
         >
-          {!(openLook && picking) && <ThemeDecoration slot="panelEdge" />}
+          {!(openCell && picking) && <ThemeDecoration slot="panelEdge" />}
           <View
             style={[
               styles.panelBody,
@@ -280,21 +279,21 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
               key={correction.panel}
               {...(clock || !motion ? {} : { entering: swapIn, exiting: SWAP_OUT })}
             >
-              {!result.ok ? (
+              {correction.panel === 'failure' ? (
                 <View testID="correction-failure" style={styles.failure}>
                   <Text style={styles.failureTitle}>The scan failed</Text>
-                  <Text style={styles.failureReason}>{result.reason}</Text>
+                  <Text style={styles.failureReason}>{correction.failure}</Text>
                   <PanelButton testID="retake-failure" label="Retake" kind="primary" onPress={actions.retake} />
                 </View>
-              ) : open !== null && openLook ? (
+              ) : openCell !== null && correction.panel !== 'summary' ? (
                 <CorrectionCheck
-                  cell={open}
-                  look={openLook}
+                  cell={openCell.cell}
+                  look={openCell.look}
                   looks={looks}
                   flow={correction.flow}
                   picking={picking}
-                  image={result.flatImage}
-                  hint={result.cells[open]?.second ?? null}
+                  image={correction.image}
+                  hint={correction.hint}
                   labelKinds={devTools && labelKinds}
                   animate={motion}
                   onClose={actions.close}
@@ -324,11 +323,11 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           </View>
         </Animated.View>
       )}
-      {devTools && ok !== null && (
+      {devTools && scan !== null && (
         <DevMenu
           visible={devOpen}
           onClose={() => setDevOpen(false)}
-          result={ok}
+          result={scan}
           view={view}
           onView={setView}
           labelKinds={labelKinds}

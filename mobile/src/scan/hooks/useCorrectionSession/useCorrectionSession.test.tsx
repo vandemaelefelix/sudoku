@@ -110,14 +110,14 @@ describe('the panel state', () => {
     expect(result.current.toCheck).toBe(3)
     act(() => result.current.actions.startCheck())
     expect(result.current.panel).toBe('check')
-    expect(result.current.open).toBe(3)
-    expect(result.current.openLook).toMatchObject({ digit: '4', uncertain: true })
+    expect(result.current.openCell).toMatchObject({ cell: 3, look: { digit: '4', uncertain: true } })
+    expect(result.current.hint).toBe(9)
     expect(result.current.flow).toEqual([3, 40, 70])
     act(() => result.current.actions.no())
     expect(result.current.panel).toBe('pick')
     act(() => result.current.actions.setDigit(9))
     expect(result.current.panel).toBe('check')
-    expect(result.current.open).toBe(40)
+    expect(result.current.openCell?.cell).toBe(40)
     expect(result.current.looks[3]).toMatchObject({ digit: '9', style: 'entry', uncertain: false })
     act(() => result.current.actions.yes())
     act(() => result.current.actions.yes())
@@ -137,7 +137,7 @@ describe('the panel state', () => {
     const { result } = session(capturing(flowScan(), 1.5))
     expect(result.current.editable).toBe(false)
     act(() => result.current.actions.select(0))
-    expect(result.current.open).toBeNull()
+    expect(result.current.openCell).toBeNull()
     expect(result.current.panel).toBe('summary')
     expect(result.current.conflictCount).toBe(0)
   })
@@ -314,6 +314,23 @@ describe('the full grid and the celebration', () => {
   })
 })
 
+type Reaction = { prepare: () => boolean; react: (now: boolean, previous: boolean | null) => void }
+
+/** The reaction whose handler plays `name`. The session does not name its reactions, so the test finds one by what it does. */
+async function reactionPlaying(name: string): Promise<Reaction> {
+  for (const [prepare, react] of jest.mocked(useAnimatedReaction).mock.calls) {
+    mockPlay.mockClear()
+    ;(react as Reaction['react'])(true, false)
+    // oxlint-disable-next-line no-await-in-loop -- each probe must settle before the next one clears mockPlay
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    if (mockPlay.mock.calls.some(([played]) => played === name)) {
+      mockPlay.mockClear()
+      return { prepare, react } as unknown as Reaction
+    }
+  }
+  throw new Error(`no reaction plays ${name}`)
+}
+
 describe('the haptic cues', () => {
   it('ticks for Yes and No, and taps for a digit and Empty', () => {
     const { result } = session(review(flowScan()))
@@ -355,10 +372,7 @@ describe('the haptic cues', () => {
     const resultsAt = shared(-1)
     const { result } = session({ ...capturing(okResult(), 0.6), resultsAt })
     expect(result.current.panel).toBe('summary')
-    const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls[0]! as unknown as [
-      () => boolean,
-      (open: boolean, previous: boolean | null) => void,
-    ]
+    const { prepare, react } = await reactionPlaying('success')
     expect(prepare()).toBe(false)
     resultsAt.value = 0.7
     expect(prepare()).toBe(true)
@@ -372,8 +386,7 @@ describe('the haptic cues', () => {
     jest.mocked(useAnimatedReaction).mockClear()
     const { result } = session(capturing({ ok: false, reason: 'x' }, 0.5))
     expect(result.current.panel).toBe('failure')
-    const [, failure] = jest.mocked(useAnimatedReaction).mock.calls
-    const [prepare, react] = failure! as unknown as [() => boolean, (go: boolean, previous: boolean | null) => void]
+    const { prepare, react } = await reactionPlaying('warning')
     expect(prepare()).toBe(false)
     react(false, null)
     expect(mockPlay).not.toHaveBeenCalled()
@@ -383,15 +396,13 @@ describe('the haptic cues', () => {
     expect(mockPlay).toHaveBeenCalledTimes(1)
   })
 
-  it('opens the failure gate with Reduce Motion at any clock value, and at the results gate without it', () => {
+  it('opens the failure gate with Reduce Motion at any clock value, and at the results gate without it', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
     session(capturing({ ok: false, reason: 'x' }, 0, -1, true))
-    const prepareHeld = jest.mocked(useAnimatedReaction).mock.calls[1]![0] as () => boolean
-    expect(prepareHeld()).toBe(true)
+    expect((await reactionPlaying('warning')).prepare()).toBe(true)
     jest.mocked(useAnimatedReaction).mockClear()
     session(capturing({ ok: false, reason: 'x' }, GATE_RESULTS))
-    const prepareAtGate = jest.mocked(useAnimatedReaction).mock.calls[1]![0] as () => boolean
-    expect(prepareAtGate()).toBe(true)
+    expect((await reactionPlaying('warning')).prepare()).toBe(true)
   })
 })
 
