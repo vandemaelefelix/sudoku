@@ -89,6 +89,81 @@ The finish card shows the number of a generated puzzle (#43). The seed is that n
 - The seed is stored with the game in progress and the history (ADR-012, amendment "the seed").
 - A scanned puzzle has no seed. Its card says "Scanned from paper".
 
+## Amendment: generation by technique (2026-10-21)
+
+`generate(level, seed)` keeps only a puzzle whose `grade()` is that level (#202). The number of
+givens no longer sets the level. The givens count of a generated puzzle is a result, not a target.
+`GIVENS_TARGET` stays for the scanned puzzles until #203 removes it.
+
+- **One stream.** The seed makes one random stream. Each attempt draws a full grid. It then
+  removes givens in random order while the puzzle stays unique. The removal stops at the floor of
+  the level.
+- **Accept rule.** An attempt is accepted when `grade(givens).level` is the wanted level. The
+  generator never accepts or returns a `beyond` puzzle. `gradesAs(givens, level)` gives the same
+  answer as `grade()`. It runs the solver with the levels up to the wanted level only. It stops
+  at the first step of a harder level. It computes the choice only when the hardest technique is
+  a single. A miss costs less. A test proves the equality at 40, 34, 29 and 17 givens, and at
+  the border of `EASY_MIN_CHOICE`.
+- **Floor.** The floor is a number of givens where the removal stops. It keeps an easy puzzle
+  open. The grade decides the level, not the floor. The yields come from the research record
+  (section 8) and a re-measure of 4 000 seeds per floor. The time per puzzle is the time of one
+  attempt (removal and `gradesAs`) divided by the yield. The table shows the floor that the
+  generator uses, and for hard and expert the floors that lost:
+
+  | Level | Floor | Yield % | Attempts | Time per puzzle (ms) | Why |
+  | --- | --- | --- | --- | --- | --- |
+  | easy | 40 | 53 | 1.9 | 0.9 | Only about 40 givens and more give a choice of 19 or more. At 34 givens, 6 % are easy |
+  | medium | 34 | 91 | 1.1 | 0.6 | Almost every puzzle with 34 givens is medium. Fewer givens only add `beyond` |
+  | hard | 29 | 8.6 | 11.6 | 10.3 | The lowest time per puzzle |
+  | hard | 25 | 15.3 | 6.5 | 14.7 | The removal costs 1.6 ms per attempt, against 0.4 ms at 29 |
+  | hard | 17 | 16.4 | 6.1 | 23.2 | A minimal puzzle. The removal costs 3.1 ms per attempt |
+  | expert | 25 | 7.8 | 12.8 | 31.9 | The same time as 29, with 2.4 times fewer attempts. The tail is shorter |
+  | expert | 29 | 3.3 | 30.3 | 31.5 | |
+  | expert | 17 | 8.8 | 11.4 | 46.3 | A minimal puzzle. The removal costs 3.1 ms per attempt |
+
+  The removal is the larger part of an attempt at a low floor. A lower floor raises the yield of
+  hard and expert a little, but the removal costs more than it gains. A puzzle of hard or expert
+  has more than the floor of givens when the removal cannot reach it. It is still a valid puzzle
+  of its level.
+- **`MAX_ATTEMPTS` is 250.** Expert is the rarest level. Its yield at 25 givens is 7.8 %, so an
+  attempt misses with a chance of 0.922. The chance that all 250 attempts miss is 0.922^250, about
+  1.5 in 1 billion. The app draws from 1 000 000 seeds, so about 0.0015 seeds are
+  expected to need the fallback. The mean is 12.8 attempts. The p99 is 57 attempts (ln 0.01 / ln 0.922). A miss of all
+  attempts costs about 0.6 s on a Mac.
+- **Fallback.** When no attempt matches, the generator grades the attempts. It returns the one
+  that `fallbackRank` ranks first: the nearest level. At the same distance, a level below the
+  wanted level wins, because a puzzle that is too easy is safer than one that is too hard. The
+  result is never `beyond`. When every attempt is `beyond`, the generator reveals givens of the
+  solution until the solver finishes. A full grid is always easy. The seed stays the same. The
+  result is still the same on every device. `generateAtLevel` takes the limit and the accept
+  rule as parameters, so a test forces the fallback.
+- **Speed of the removal.** The removal checks only if another solution exists with the removed
+  cell set to another digit. It starts from the known solution and allocates nothing per call. A
+  test shows that it removes the same givens as a removal that counts solutions with `solve()`.
+- **Time on a Mac** (Node, one thread, `generate`, 20 seeds in `generator.test.ts`, and 2 000
+  seeds for the tail of hard and expert):
+
+  | Level | Median of 20 (ms) | Slowest of 20 (ms) | Median of 2 000 (ms) | p99 of 2 000 (ms) | Slowest of 2 000 (ms) |
+  | --- | --- | --- | --- | --- | --- |
+  | easy | 0.5 | 2.3 | - | - | - |
+  | medium | 0.6 | 1.1 | - | - | - |
+  | hard | 9.6 | 42 | 7.8 | 48 | 88 |
+  | expert | 23.5 | 94 | 23.0 | 133 | 243 |
+
+  The tail of easy and medium is not measured. It is far below hard. One expert attempt takes
+  2.5 ms: 1.6 ms for the removal and 0.9 ms for `gradesAs`. The removal is about two thirds of
+  the time, so the solver is not the bottleneck and `technique/` stays as it is. The test bounds
+  the median, not the slowest seed, so a busy CI worker does not fail it.
+- **Estimate for an iPhone.** Hermes is 5 to 10 times slower than Node on a Mac. This is an
+  assumption, not a measurement. Expert then takes 115 to 230 ms at the median. It takes 0.7 to
+  1.3 s at p99 and 1.2 to 2.4 s at the slowest of 2 000. Hard takes 0.2 to 0.5 s at p99.
+- **Pool.** The rule of point 4 is that the pool returns when a level takes more than 1 s. The
+  pool is not needed on a Mac, where no level comes near 1 s. For the iPhone, the decision waits
+  for the iPhone check of epic #204. On the estimate, the slowest expert puzzles can pass 1 s. If
+  they pass 1 s in the check, a follow-up issue brings the pool for expert, or a bundled set.
+- **History.** A seed now gives another puzzle than before. The history keeps the seed number
+  and the level of a saved game. A game in progress keeps its own givens.
+
 ## Consequences
 
 - The technique set grows over time. Each new technique makes hints better and grading finer,

@@ -3,6 +3,7 @@ import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-li
 import { Alert, Pressable, Text, type AlertButton } from 'react-native'
 import { createGame, generate, isWrong } from '@sudoku/core'
 import type { ScannedStart } from '@/scan/utils/play.utils'
+import { levelOf } from '@/game/utils/start.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
@@ -61,7 +62,7 @@ it('starts the scan as the game in progress, then opens the game', async () => {
   await pressPlay()
   await waitFor(() => expect(screen).toHavePathname('/game'))
   const progress = await storage.puzzles.current()
-  expect(progress).toMatchObject({ level: 'hard', source: 'scanned' })
+  expect(progress).toMatchObject({ level: levelOf(givens), source: 'scanned' })
   expect(progress?.game.givens).toEqual(givens)
   expect(progress?.game.entries[open]).toBe(entries[open])
   expect(progress && isWrong(progress.game, open)).toBe(true)

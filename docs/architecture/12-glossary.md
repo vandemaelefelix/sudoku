@@ -152,10 +152,11 @@ status: DRAFT
 | Lost hold | The 400 ms between the third mistake and the rise of the game over sheet, so the player sees the shake and the third dot |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
-| Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level. The grade of a puzzle sets it, when the generator and the scanner use `grade()` (amendment 2026-10-21). Until then the number of givens sets it |
+| Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level. The grade of a puzzle sets it. The generator keeps only puzzles that grade as the wanted level (amendment 2026-10-21). Until #203, a scanned puzzle still gets its level from the number of givens |
 | Technique level | The level of a technique: easy, medium, hard or expert. `TECHNIQUE_LEVEL` holds it. The technique level of the hardest technique that a solve uses is the level of the puzzle. Not the tier of ADR-032, which groups techniques for the hint rollout (ADR-011) |
 | Tier | A group of techniques in the hint rollout of ADR-032: tier 1, tier 2 and tier 3. A tier is not a level. The place of a technique in the difficulty scale is its technique level (ADR-011, ADR-032) |
 | Choice | The mean value of the first 25 moves of a solve in rounds. A round fills every cell that a single can fill, all at once. It counts one move per cell, with the number of cells of the round as value. A step that is not a single counts one move with the value 0. A low choice means that the next cell is hard to find (ADR-011) |
+| Givens floor | The number of givens where the generator stops the removal. Easy 40, medium 34, hard 29, expert 25. It keeps an easy puzzle open. It does not set the level: the grade does (ADR-011) |
 | Grade | The result of `grade(givens)`: the level (or `beyond`), the hardest technique, the score, the choice and the number of steps. The puzzle must have exactly one solution (ADR-011) |
 | Score | The sum of the weights of the steps of a grade, in Sudoku Explainer points. It orders puzzles inside a level. The level does not use it (ADR-011) |
 | Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
@@ -165,7 +166,7 @@ status: DRAFT
 | Peer | A cell that shares a row, column or box with another cell. A cell has 20 peers |
 | Unit | One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once |
 | Solution | The full grid that the givens allow. A playable puzzle has exactly one |
-| Seed | An integer that names one generated puzzle. The same seed and level give the same puzzle on every device (ADR-011). The app stores it with the game (ADR-012) |
+| Seed | An integer that names one generated puzzle. The same seed and level give the same puzzle on every device (ADR-011). The seed gives one random stream, and the generator tries full grids from it until one grades as the level. The app stores it with the game (ADR-012) |
 | Time played | The time a game counted while its status was playing. The app tells the core how much time passed. The core never reads a clock |
 | Saved game | A game as a plain object with a version number, so the app can store it and load it again (ADR-012) |
 | Game in progress | The one game that the app saves after every move, so the player can resume it. Starting a new game discards it (ADR-012) |
