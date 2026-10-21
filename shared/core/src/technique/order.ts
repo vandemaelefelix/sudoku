@@ -1,4 +1,4 @@
-import type { TechniqueRank } from './types'
+import type { Step, TechniqueRank } from './types'
 
 /**
  * The order in which a person finds the techniques, with the difficulty rating of each one in Sudoku
@@ -17,3 +17,12 @@ export const TECHNIQUE_ORDER: readonly TechniqueRank[] = [
   { technique: 'nakedTriple', weight: 3.6 },
   { technique: 'hiddenTriple', weight: 4.0 },
 ]
+
+/** The rating of the rank that finds the step. A hidden single in a box has its own rank. */
+export function stepWeight(step: Step): number {
+  const kind = step.units[0]! >= 18 ? 'box' : 'row'
+  const rank = TECHNIQUE_ORDER.find(
+    (item) => item.technique === step.technique && (item.unitKinds === undefined || item.unitKinds.includes(kind)),
+  )
+  return rank!.weight
+}

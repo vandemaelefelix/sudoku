@@ -33,7 +33,8 @@ function firstDigit(step: Step): number {
 }
 
 /**
- * Every step of the easiest technique that applies, or [] when no tier 1 technique applies.
+ * Every step of the easiest technique that applies. Returns [] when no tier 1 technique applies,
+ * or when an empty cell has no candidate.
  * `candidates` may be smaller than the board gives, for example after earlier eliminations.
  * The steps are sorted by focus unit, first pattern cell and first digit.
  * Throws a RangeError when an argument does not have 81 cells.
@@ -42,6 +43,8 @@ export function nextSteps(candidates: Candidates, board: readonly number[]): Ste
   if (candidates.length !== GRID_CELLS || board.length !== GRID_CELLS) {
     throw new RangeError(`The candidates and the board have ${GRID_CELLS} cells each`)
   }
+  // A step on a contradictory position would teach a wrong lesson.
+  if (candidates.some((mask, cell) => mask === 0 && board[cell] === 0)) return []
   for (const rank of TECHNIQUE_ORDER) {
     const steps = findSteps(rank, candidates, board)
     if (steps.length === 0) continue

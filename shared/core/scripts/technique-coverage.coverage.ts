@@ -1,8 +1,7 @@
 import { expect, test } from 'vitest'
 import { generate, LEVELS, type Level } from '../src/generator'
-import { TECHNIQUE_ORDER } from '../src/technique/order'
+import { stepWeight } from '../src/technique/order'
 import { playThrough } from '../src/technique/playThrough'
-import type { Step } from '../src/technique/types'
 
 const PUZZLES_PER_LEVEL = 1000
 
@@ -15,16 +14,6 @@ const GROUPS: readonly Group[] = [
   { name: 'and pairs', limit: 3.4 },
   { name: 'and triples (all of tier 1)', limit: 4.0 },
 ]
-
-function weightOf(step: Step): number {
-  const box = step.technique === 'hiddenSingle' && step.units[0]! >= 18
-  const rank = TECHNIQUE_ORDER.find(
-    (item) =>
-      item.technique === step.technique &&
-      (item.unitKinds === undefined || item.unitKinds.includes(box ? 'box' : 'row')),
-  )
-  return rank!.weight
-}
 
 const percent = (part: number, whole: number): string => `${((part / whole) * 100).toFixed(1)} %`
 
@@ -40,7 +29,7 @@ function measure(level: Level): Result[] {
     results.push({
       solved: run.solved,
       steps: run.steps.length,
-      hardest: Math.max(0, ...run.steps.map(weightOf)),
+      hardest: Math.max(0, ...run.steps.map(stepWeight)),
       emptyLeft: 81 - givens - placed,
     })
   }

@@ -1,8 +1,7 @@
 import { GRID_CELLS } from '../grid'
 import { PEERS } from '../units'
+import { ALL_DIGITS } from './masks'
 import type { Candidates } from './types'
-
-const ALL_DIGITS = 0b1_1111_1111
 
 /**
  * The digits that can still go in each cell, from the givens and the entries only.

@@ -1,3 +1,4 @@
+import type { Digit } from '../game/types'
 import { BOXES, COLUMNS, ROWS, UNITS, UNITS_OF, type UnitKind } from '../units'
 import { bitCount } from '../bits'
 import { placementStep } from './build'
@@ -54,7 +55,7 @@ export function findHiddenSingles(
         const blockers = cells
           .filter((other) => other !== cell && board[other] === 0)
           .map((other) => blockerOf(board, other, digit))
-        steps.push(placementStep('hiddenSingle', cell, digit, [unit], blockers))
+        steps.push(placementStep('hiddenSingle', cell, digit as Digit, [unit], blockers))
       }
     }
   }

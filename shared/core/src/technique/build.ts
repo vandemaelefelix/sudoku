@@ -1,23 +1,22 @@
 import type { Digit } from '../game/types'
-import { bitOf, digitsOf, sortedUnique } from './masks'
+import { sortedUnique } from './masks'
 import type { CellDigit, Step } from './types'
 
 export function placementStep(
   technique: 'fullHouse' | 'hiddenSingle' | 'nakedSingle',
   cell: number,
-  digit: number,
+  digit: Digit,
   units: readonly number[],
   support: Iterable<number | undefined>,
 ): Step {
-  const digits = digitsOf(bitOf(digit))
   return {
     technique,
-    placements: [{ cell, digit: digits[0]! }],
+    placements: [{ cell, digit }],
     eliminations: [],
     units,
     pattern: [cell],
     support: sortedUnique([...support].filter((blocker): blocker is number => blocker !== undefined)),
-    digits,
+    digits: [digit],
   }
 }
 

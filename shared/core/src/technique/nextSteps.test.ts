@@ -7,7 +7,7 @@ import { nextSteps } from './nextSteps'
 import { TECHNIQUE_ORDER } from './order'
 import { playThrough } from './playThrough'
 import { boardWith, struck } from './testKit'
-import type { Step } from './types'
+import type { Candidates, Step } from './types'
 
 const SEEDS = Array.from({ length: 15 }, (_, i) => i + 1)
 const FILLS = [0, 10, 20, 30]
@@ -16,6 +16,24 @@ const focusKey = (step: Step): number => step.units[0]! * 100 + step.pattern[0]!
 
 function isSortedAndUnique(values: readonly number[]): boolean {
   return values.every((value, i) => i === 0 || values[i - 1]! < value)
+}
+
+function checkStep(step: Step, before: readonly number[], candidates: Candidates, solution: readonly number[]): void {
+  expect(step.placements.length + step.eliminations.length).toBeGreaterThan(0)
+  for (const { cell, digit } of step.placements) {
+    expect(before[cell]).toBe(0)
+    expect(digit).toBe(solution[cell])
+    expect(candidates[cell]! & (1 << (digit - 1))).not.toBe(0)
+  }
+  for (const { cell, digit } of step.eliminations) {
+    expect(digit).not.toBe(solution[cell])
+    expect(candidates[cell]! & (1 << (digit - 1))).not.toBe(0)
+  }
+  const keys = step.eliminations.map(({ cell, digit }) => cell * 10 + digit)
+  expect(isSortedAndUnique(keys)).toBe(true)
+  expect(isSortedAndUnique(step.pattern)).toBe(true)
+  expect(isSortedAndUnique(step.support)).toBe(true)
+  expect(isSortedAndUnique(step.digits)).toBe(true)
 }
 
 describe('TECHNIQUE_ORDER', () => {
@@ -45,11 +63,20 @@ describe('nextSteps', () => {
     expect(nextSteps(computeCandidates(board), board)).toEqual([])
   })
 
-  it('finds nothing when a cell has no candidates and no technique applies', () => {
+  it('finds nothing when an empty cell has no candidates, even if a step would apply elsewhere', () => {
     const board = createEmptyGrid()
     const candidates = computeCandidates(board)
+    candidates[40] = 1
+    expect(nextSteps(candidates, board)).toHaveLength(1)
     candidates[0] = 0
     expect(nextSteps(candidates, board)).toEqual([])
+  })
+
+  it('does not count a placed cell as a cell without candidates', () => {
+    const board = boardWith({ 0: 5 })
+    const candidates = computeCandidates(board)
+    candidates[40] = 1
+    expect(nextSteps(candidates, board)).toHaveLength(1)
   })
 
   it('refuses arguments of the wrong size', () => {
@@ -66,7 +93,7 @@ describe('nextSteps', () => {
   })
 })
 
-describe('the steps never contradict the unique solution', () => {
+describe('every step of every position never contradicts the unique solution', () => {
   describe.for(LEVELS)('%s', (level) => {
     it.for(SEEDS)('seed %i, with 0, 10, 20 and 30 solution digits filled in', (seed) => {
       const puzzle = generate(level, seed)
@@ -76,24 +103,14 @@ describe('the steps never contradict the unique solution', () => {
         const empty = board.flatMap((digit, index) => (digit === 0 ? [index] : []))
         for (const cell of shuffled(empty, random).slice(0, fill)) board[cell] = puzzle.solution[cell]!
         const run = playThrough(board)
-        run.steps.forEach((step: Step, i) => {
-          const { board: before, candidates } = run.positions[i]!
-          expect(step.placements.length + step.eliminations.length).toBeGreaterThan(0)
-          for (const { cell, digit } of step.placements) {
-            expect(before[cell]).toBe(0)
-            expect(digit).toBe(puzzle.solution[cell])
-            expect(candidates[cell]! & (1 << (digit - 1))).not.toBe(0)
+        let checked = 0
+        for (const { board: before, candidates } of run.positions) {
+          for (const step of nextSteps(candidates, before)) {
+            checkStep(step, before, candidates, puzzle.solution)
+            checked++
           }
-          for (const { cell, digit } of step.eliminations) {
-            expect(digit).not.toBe(puzzle.solution[cell])
-            expect(candidates[cell]! & (1 << (digit - 1))).not.toBe(0)
-          }
-          const keys = step.eliminations.map(({ cell, digit }) => cell * 10 + digit)
-          expect(isSortedAndUnique(keys)).toBe(true)
-          expect(isSortedAndUnique(step.pattern)).toBe(true)
-          expect(isSortedAndUnique(step.support)).toBe(true)
-          expect(isSortedAndUnique(step.digits)).toBe(true)
-        })
+        }
+        expect(checked).toBeGreaterThanOrEqual(run.steps.length)
       }
     })
   })
