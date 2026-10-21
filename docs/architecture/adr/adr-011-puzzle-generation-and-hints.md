@@ -112,3 +112,87 @@ The finish card shows the number of a generated puzzle (#43). The seed is that n
 - A hint now teaches in four rungs: look, technique, why and answer.
 - The fallback reveals the empty cell with the fewest candidates. It still reveals one cell of the solution.
 - The v1 random hint stays until the hint card ships (#196).
+
+## Amendment: grading by technique (2026-10-21)
+
+The technique solver exists (#199, #200, #201, ADR-032). `grade()` in `@sudoku/core` grades a puzzle
+with it. This replaces the level-by-givens rule of the amendment of 2026-10-12 for grading. It also
+replaces "bands on that score" in point 2. The generator (#202) and the scanned puzzles (#203)
+switch to `grade()` in their own issues. Until then the app still sets the level from the givens.
+
+- **Technique level.** Each technique has one level. `TECHNIQUE_LEVEL` holds it. The level of a
+  puzzle is the level of the hardest technique that the solve uses. The word "tier" in ADR-032
+  names a group of techniques in the hint rollout. It is not a level.
+
+  | Level | Techniques |
+  | --- | --- |
+  | easy | full house, hidden single, naked single |
+  | medium | pointing, box-line reduction, naked and hidden pair, naked and hidden triple |
+  | hard | X-wing, swordfish, jellyfish, skyscraper, two-string kite, XY-wing, XYZ-wing, W-wing, naked and hidden quad |
+  | expert | unique rectangle, simple colouring, X-chain, XY-chain |
+
+- **Grade order.** The grade runs the solver with `GRADE_ORDER`. It holds the ranks of
+  `TECHNIQUE_ORDER` sorted by level: easy, medium, hard, expert. Inside a level the order of
+  `TECHNIQUE_ORDER` stays. The reason: in `TECHNIQUE_ORDER` the X-wing comes before the hidden
+  pair and the hidden triple. A solve in that order could use an X-wing although medium
+  techniques solve the puzzle, and the puzzle would grade hard. Hints keep `TECHNIQUE_ORDER`.
+- **Hardest technique.** It is the technique of the highest level among the steps. A tie goes to
+  the higher weight.
+- **Weight and score.** The weight of a step is its Sudoku Explainer rating in `TECHNIQUE_ORDER`
+  (`stepWeight`). The score is the sum of the weights of all steps. For example, a hidden single
+  in a box weighs 1.2, a naked single 2.3, pointing 2.6, X-wing 3.2 and XY-chain 6.6. The score
+  does not set the level.
+
+  The weights are the Sudoku Explainer ratings in `TECHNIQUE_ORDER`. The table lists the 24 ranks
+  of the 23 techniques. The hidden single has one rank for a box and one for a row or a column.
+
+  | Technique | Technique level | Weight |
+  | --- | --- | --- |
+  | Full house | easy | 1.0 |
+  | Hidden single (box) | easy | 1.2 |
+  | Hidden single (row or column) | easy | 1.5 |
+  | Naked single | easy | 2.3 |
+  | Pointing | medium | 2.6 |
+  | Box-line reduction | medium | 2.8 |
+  | Naked pair | medium | 3.0 |
+  | X-wing | hard | 3.2 |
+  | Hidden pair | medium | 3.4 |
+  | Naked triple | medium | 3.6 |
+  | Swordfish | hard | 3.8 |
+  | Hidden triple | medium | 4.0 |
+  | Skyscraper | hard | 4.0 |
+  | Two-string kite | hard | 4.1 |
+  | XY-wing | hard | 4.2 |
+  | XYZ-wing | hard | 4.4 |
+  | W-wing | hard | 4.4 |
+  | Unique rectangle | expert | 4.5 |
+  | Simple colouring | expert | 4.6 |
+  | Naked quad | hard | 5.0 |
+  | Jellyfish | hard | 5.2 |
+  | Hidden quad | hard | 5.4 |
+  | X-chain | expert | 6.5 |
+  | XY-chain | expert | 6.6 |
+
+- **Choice.** The solve runs in rounds. A round fills every empty cell that a full house, a
+  hidden single or a naked single can fill, all at once. It counts one move per cell, and each
+  move has the number of cells of its round as its value. When no single applies, the round
+  applies the first other step in `GRADE_ORDER` and counts one move with the value 0. The choice
+  is the mean value of the first 25 moves (`CHOICE_MOVES`). This follows the dependency metric of
+  Pelanek. A low choice means that the next cell is hard to find. The rounds do not depend on the
+  scan order, so the choice of a puzzle that needs only singles is the same under every symmetry
+  transform.
+- **Easy threshold.** A puzzle that needs only singles, with a choice below `EASY_MIN_CHOICE`,
+  is medium. `EASY_MIN_CHOICE` is 19. At 40 givens, 53 % of the puzzles reach it. At 25 givens
+  and for minimal puzzles, none does.
+- **`beyond`.** A puzzle that the solver does not finish grades as `beyond`. `beyond` is not a
+  level of the game. 9.5 % of the puzzles with 25 givens are `beyond`. The generator rejects
+  them.
+- **Precondition.** The givens must have exactly one solution. The solver then uses the
+  techniques that need a unique solution (unique rectangle). `grade()` does not check this.
+- **Stability.** The level does not depend on the orientation or the digit labels of a puzzle.
+  In 35 000 measured pairs, the level and the hardest technique never changed.
+- **Data.** The research record
+  [2026-10-21-technique-grading.md](../../research/2026-10-21-technique-grading.md) measures
+  10 000 puzzles. It gives the level shares, the choice, the grade time (10 ms at most on a Mac)
+  and the yield for the generator.
+- Hints that teach (#45) and the pool of point 4 stay as they were.
