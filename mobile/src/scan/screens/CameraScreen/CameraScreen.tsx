@@ -28,7 +28,8 @@ import { useCaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
 import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
 import type { CaptureResult } from '@/scan/utils/captureResult.utils'
-import type { CellLook, CorrectionLayout } from '@/scan/utils/correction.utils'
+import type { CorrectionLayout } from '@/scan/utils/correction.utils'
+import type { FinalGrid } from '@/utils/finalGrid.utils'
 import type { ViewSize } from '@/utils/geometry.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
@@ -42,7 +43,7 @@ import { styles } from './CameraScreen.styles'
  * screen has its own exits.
  * onRetake: the parent mounts a new CameraScreen, so the capture session, the scene, its lock-on latch and the transition start new.
  * It gets the result that the player leaves, so the parent can delete its photo.
- * onExit and onSave get the result of the scan with the looks of the player. The correction screen of the transition stays mounted
+ * onExit and onSave get the result of the scan with its final grid. The correction screen of the transition stays mounted
  * and becomes the static screen at the end, so its Skia canvases have drawn before they show. The camera and the transition layers
  * unmount.
  */
@@ -60,8 +61,8 @@ export function CameraScreen({
   onPlay: NonNullable<CorrectionProps['onPlay']>
   onHome: () => void
   onClose: () => void
-  onExit: (result: CaptureResult | null, looks: readonly CellLook[]) => void
-  onSave?: (result: CaptureResult | null, looks: readonly CellLook[]) => Promise<boolean>
+  onExit: (result: CaptureResult | null, finalGrid: FinalGrid) => void
+  onSave?: (result: CaptureResult | null, finalGrid: FinalGrid) => Promise<boolean>
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
@@ -136,8 +137,8 @@ export function CameraScreen({
           onRetake={() => onRetake(result)}
           onPlay={onPlay}
           onHome={onHome}
-          onExit={(looks) => onExit(result, looks)}
-          {...(onSave ? { onSave: (looks: readonly CellLook[]) => onSave(result, looks) } : {})}
+          onExit={(finalGrid) => onExit(result, finalGrid)}
+          {...(onSave ? { onSave: (finalGrid: FinalGrid) => onSave(result, finalGrid) } : {})}
         />
       ) : (
         <>

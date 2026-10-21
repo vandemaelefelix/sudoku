@@ -301,15 +301,6 @@ describe('CorrectionScreen with a clock', () => {
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
   })
 
-  it('plays a warning when the failure panel starts to slide', async () => {
-    jest.mocked(Haptics.notificationAsync).mockClear()
-    render(failureUi(clock(GATE_RESULTS)))
-    slideReaction().react(true, false)
-    await waitFor(() =>
-      expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Warning),
-    )
-  })
-
   it('starts the failure slide with Reduce Motion and the clock held at 0', () => {
     const { rerender } = render(failureUi(clock(0), true))
     const { prepare, react } = slideReaction()

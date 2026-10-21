@@ -1,6 +1,6 @@
 import { Linking, Modal, Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { PanelButton } from '@/scan/components/PanelButton'
+import { PanelButton } from '@/components/PanelButton'
 import { NOTICE, POLICY_LINK_LABEL, POLICY_URL } from '@/scanShare/constants/scanShare.constants'
 import { useScanShare } from '@/scanShare/useScanShare'
 import { pressedStyles } from '@/theme/pressed.styles'
