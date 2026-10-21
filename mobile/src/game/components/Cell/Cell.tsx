@@ -1,8 +1,7 @@
-import { memo, useEffect, type ReactNode } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { memo, useEffect, useState, type ReactNode } from 'react'
+import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native'
+import { useUnistyles } from 'react-native-unistyles'
 import Animated, {
-  FadeIn,
-  FadeOut,
   ReduceMotion,
   useAnimatedStyle,
   useReducedMotion,
@@ -25,7 +24,7 @@ import { NO_PULSE } from '@/game/constants/pulse.constants'
 import type { Intro } from '@/game/hooks/useGridIntro'
 import type { Pulse } from '@/game/hooks/usePulse'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
-import type { CellView, DigitSize } from '@/game/utils/cell.utils'
+import { displayFill, type CellView, type DigitSize } from '@/game/utils/cell.utils'
 import { columnOf, rowOf } from '@/game/utils/grid.utils'
 import { introCellAlpha } from '@/game/utils/intro.utils'
 import type { MarkKind } from '@/game/utils/mark.utils'
@@ -48,9 +47,42 @@ type CellProps = CellView & {
   markId?: number | undefined
 }
 
-// A fade moves nothing, so Reduce Motion keeps it.
-const FILL_IN = FadeIn.duration(FILL_FADE_MS).easing(easeOut).reduceMotion(ReduceMotion.Never)
-const FILL_OUT = FadeOut.duration(FILL_FADE_MS).easing(easeOut).reduceMotion(ReduceMotion.Never)
+type Fill = CellView['fill']
+
+/** The new fill over the old one. It starts clear after a change and fades in. A fade moves nothing, so Reduce Motion keeps it. */
+function FillOver({ cell, fill, fade }: { cell: number; fill: Fill; fade: boolean }) {
+  const { theme } = useUnistyles()
+  const opacity = useSharedValue(fade ? 0 : 1)
+  useEffect(() => {
+    if (fade) opacity.set(withTiming(1, { duration: FILL_FADE_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }))
+  }, [fade, opacity])
+  const style = useAnimatedStyle(() => ({ opacity: opacity.get() }))
+  return (
+    <Animated.View testID={`cell-${cell}-fill-fade`} style={[RNStyleSheet.absoluteFill, style]}>
+      <View testID={`cell-${cell}-fill`} style={[styles.fillLayer, displayFill(theme.components.cell, fill)]} />
+    </Animated.View>
+  )
+}
+
+/**
+ * The fill of a display cell, which crossfades on a change. The colours come from the theme hook, not from the cell
+ * styles: after Settings opens a second time, Unistyles no longer updates the fill styles of the preview on a theme
+ * switch. Only a display grid renders this, so the cells of a game still read no theme hook (ADR-015).
+ */
+function FillFade({ cell, fill }: { cell: number; fill: Fill }) {
+  const { theme } = useUnistyles()
+  const [layers, setLayers] = useState({ under: fill, over: fill })
+  if (layers.over !== fill) setLayers({ under: layers.over, over: fill })
+  return (
+    <>
+      <View
+        testID={`cell-${cell}-fill-under`}
+        style={[styles.fillLayer, displayFill(theme.components.cell, layers.under)]}
+      />
+      <FillOver key={layers.over} cell={cell} fill={layers.over} fade={layers.under !== layers.over} />
+    </>
+  )
+}
 
 /** The digit of a mistake shakes once. Reduce Motion keeps it still: the colour of the digit already tells. */
 function MistakeShake({ children }: { children: ReactNode }) {
@@ -153,13 +185,7 @@ export const Cell = memo(function Cell({
     // A display grid crossfades its fills, so a change of an assist in Settings reads as a change, not a flicker.
     return (
       <View testID={`cell-${cell}`} style={[styles.cell, styles.plain, ring && styles.ring]}>
-        <Animated.View
-          key={fill}
-          testID={`cell-${cell}-fill`}
-          entering={FILL_IN}
-          exiting={FILL_OUT}
-          style={[styles.fillLayer, styles[fill]]}
-        />
+        <FillFade cell={cell} fill={fill} />
         {content}
       </View>
     )

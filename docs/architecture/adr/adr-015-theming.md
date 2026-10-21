@@ -14,6 +14,8 @@ status: ACCEPTED
 Amended by [ADR-021](adr-021-four-themes.md): point 2 (four themes, not two) and point 9 (the
 first theme decorations). Point 2 amended again by [ADR-025](adr-025-opart-colourways.md): three Op-art colourways, no System choice.
 
+Amended by [ADR-031](adr-031-display-grid-fill-colours.md): a display grid renders its fill layers again on a theme switch.
+
 ## Context
 
 The app styles its components with React Native `StyleSheet`. `src/theme/colors.ts` has a light
