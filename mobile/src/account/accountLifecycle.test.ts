@@ -198,6 +198,20 @@ describe('a lost answer counts as a delete (ADR-028)', () => {
     await expect(storage.history.list(ALICE)).resolves.toEqual([])
   })
 
+  it('forgets the lost attempt on request', async () => {
+    const { lifecycle } = setup([{ kind: 'offline' }], { tokens: ['t1', null] })
+    await expect(lifecycle.deleteAccount(ALICE)).resolves.toBe('offline')
+    lifecycle.forgetLostAttempt()
+    await expect(lifecycle.deleteAccount(ALICE)).resolves.toBe('offline')
+    await expect(storage.history.list(ALICE)).resolves.toHaveLength(1)
+  })
+
+  it('forgets the lost attempt after a delete', async () => {
+    const { lifecycle } = setup([{ kind: 'offline' }, { kind: 'ok' }], { tokens: ['t1', null] })
+    await expect(lifecycle.deleteAccount(ALICE)).resolves.toBe('deleted')
+    await expect(lifecycle.deleteAccount(ALICE)).resolves.toBe('offline')
+  })
+
   it('remembers the lost attempt for its owner only', async () => {
     const { lifecycle } = setup([{ kind: 'offline' }], { tokens: ['t1', null] })
     await expect(lifecycle.deleteAccount(ALICE)).resolves.toBe('offline')

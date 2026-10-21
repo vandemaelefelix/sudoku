@@ -4,7 +4,7 @@ import { tokenCache } from '@clerk/expo/token-cache'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { resumePendingSignOut } from '@/account/accountLifecycle'
 import { AccountContext, UNCONFIGURED_ACCOUNT, type Account, type AccountStatus } from '@/account/hooks/useAccount'
-import { createClerkAdapter } from '@/account/utils/clerkAdapter.utils'
+import { createClerkAdapter, trySignOut } from '@/account/utils/clerkAdapter.utils'
 import { readPublishableKey } from '@/account/utils/clerkConfig.utils'
 import { keychainOwnerCache } from '@/account/utils/ownerCache.utils'
 import { OwnerContext } from '@/storage/hooks/useOwner'
@@ -56,6 +56,8 @@ function ClerkBridge({ children }: { children: ReactNode }) {
   const markDeleted = useCallback(() => setDeleted(true), [])
   const email = status === 'signedIn' ? (user?.primaryEmailAddress?.emailAddress ?? null) : null
   const clerk = useMemo(() => createClerkAdapter({ getToken, signOut }), [getToken, signOut])
+  // The retry below depends on signOut only, so a new token function does not start a second sign-out.
+  const signOutOfClerk = useCallback(() => trySignOut(signOut), [signOut])
   const getApiToken = useCallback<Account['getApiToken']>(
     async (options) => (status === 'signedIn' ? clerk.getApiToken(options) : null),
     [status, clerk],
@@ -65,14 +67,14 @@ function ClerkBridge({ children }: { children: ReactNode }) {
     if (clerkStatus === 'loading') return
     void resumePendingSignOut({
       ownerCache: keychainOwnerCache,
-      clerk,
+      clerk: { signOut: signOutOfClerk },
       clerkSignedOut: clerkStatus === 'signedOut',
       onPending: () => setDeleted(true),
     })
-  }, [clerkStatus, clerk])
+  }, [clerkStatus, signOutOfClerk])
   const account = useMemo<Account>(
-    () => ({ status, email, signOut: clerk.signOut, getApiToken, markDeleted }),
-    [status, email, clerk, getApiToken, markDeleted],
+    () => ({ status, email, signOut: signOutOfClerk, getApiToken, markDeleted }),
+    [status, email, signOutOfClerk, getApiToken, markDeleted],
   )
   return (
     <AccountContext value={account}>

@@ -43,6 +43,11 @@ export type AccountLifecycle = {
    * more. After a failure, a call tries again. It rejects when the local data was not deleted.
    */
   onAccountDeleted(owner: string): Promise<void>
+  /**
+   * Forgets a lost delete attempt. Call it when the delete screen goes away and on a sign-out. A lost answer counts as
+   * a delete only inside one open screen, so a timed-out delete cannot wipe the phone much later (ADR-028).
+   */
+  forgetLostAttempt(): void
 }
 
 /**
@@ -124,6 +129,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps): AccountLifec
       }
       // A run that goes on must not write entries after the local data is gone.
       await sync.stop()
+      lostAttemptOf = null
       let signedOut: boolean
       try {
         signedOut = await cleanUpOnce(owner, () => Alert.alert(DELETED_TITLE, DELETED_MESSAGE))
@@ -136,6 +142,9 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps): AccountLifec
       if (!signedOut) await ownerCache.setPendingSignOut(true)
       account.markDeleted()
       return 'deleted'
+    },
+    forgetLostAttempt() {
+      lostAttemptOf = null
     },
     async onAccountDeleted(owner) {
       await cleanUpOnce(owner, () => Alert.alert(ACCOUNT_DELETED_TITLE))

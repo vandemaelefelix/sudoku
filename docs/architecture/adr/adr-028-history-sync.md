@@ -328,11 +328,13 @@ The rules of the amendments "the sync in the app" and "delete the account" stay.
 3. **The cleanup runs once for each owner.** The lifecycle keeps the first call and gives the same result to a
    second call. The record lives in the lifecycle, not in the module, so a test starts clean. A failed cleanup is
    forgotten, so the next call tries again.
-4. **The lost answer is the memory of the lifecycle.** The record names the owner. It lives as long as the sync
-   provider, not as long as the Settings section. A 401 or a missing token after a lost attempt for the same owner
-   counts as a delete (decision 5 of the amendment "delete the account").
-5. **The delete flow reads the real sign-out result.** When a 410 cleanup came first, the delete flow now sets the
-   pending sign-out when that sign-out failed. It assumed a good sign-out before.
+4. **The lost answer lasts as long as one open delete screen.** The lifecycle keeps the record of the owner. It
+   forgets the record when the Settings section goes away, on a sign-out, and after a delete. This is the lifetime
+   of the old hook. A 401 or a missing token after a lost attempt for the same owner counts as a delete (decision 5
+   of the amendment "delete the account"). A timed-out delete cannot wipe the phone later in the session.
+5. **The delete flow reads the real sign-out result.** The old flow assumed a good sign-out when it did not see the
+   call. This happened in two cases. A 410 cleanup came first. Or `deleteOwner` failed and the flow signed out
+   in the catch. In both cases the flow now sets the pending sign-out when the sign-out failed.
 6. **Clerk sits behind `ClerkAdapter`.** The adapter has `getApiToken` and `signOut`. Both never throw. `@clerk/expo`
    is the real adapter. A test gives a fake. The lifecycle also gets the sync (`pause`, `stop`, `resume`), the
    account API, the history repository and the owner cache as arguments, so one test drives a whole delete with fakes.

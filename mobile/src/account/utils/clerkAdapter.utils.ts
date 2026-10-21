@@ -32,14 +32,17 @@ export function createClerkAdapter({ getToken, signOut }: ClerkAuth): ClerkAdapt
         return null
       }
     },
-    async signOut() {
-      try {
-        await signOut()
-        return true
-      } catch (error) {
-        devWarn('account', `Clerk did not sign out: ${errorMessage(error)}`)
-        return false
-      }
-    },
+    signOut: () => trySignOut(signOut),
+  }
+}
+
+/** Signs out through Clerk and never rejects. It resolves false when Clerk fails. */
+export async function trySignOut(signOut: () => Promise<unknown>): Promise<boolean> {
+  try {
+    await signOut()
+    return true
+  } catch (error) {
+    devWarn('account', `Clerk did not sign out: ${errorMessage(error)}`)
+    return false
   }
 }
