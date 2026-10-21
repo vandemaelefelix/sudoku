@@ -30,7 +30,10 @@ status: DRAFT
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
 | Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
-| Technique solver | The solver in `@sudoku/core` that will solve like a person. It will grade difficulty and give hints (ADR-011). v1 does not have it |
+| Technique solver | The solver in `@sudoku/core` that solves like a person. It tries the techniques in order, applies the first step it finds, and starts again from the first technique. It returns the steps and a status: `solved`, `stalled` or `invalid`. Grading and hints build on it (ADR-011) |
+| Candidate | A digit that a cell can still hold. The candidate state keeps a 9-bit mask for each cell. Bit d stands for digit d. A filled cell has an empty mask |
+| Technique | A rule of logic that finds a step in a candidate state, for example a hidden single or a naked pair. It has an id and a `find` function. The list `TECHNIQUES` holds them in solver order |
+| Step | One result of a technique: the technique id, the placements, the eliminations, the units and the pattern cells and digits. It is plain JSON with no prose. `applyStep` applies it to a candidate state |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |

@@ -19,3 +19,16 @@ export type { Streak } from './stats/streak'
 export { countsForBestTime } from './stats/bestTime'
 export type { CountedGameFacts } from './stats/bestTime'
 export { formatClock, wholeSeconds } from './game/clock'
+export { solveWithTechniques, type SolveOptions } from './techniques/solve'
+export { TECHNIQUES } from './techniques/techniques'
+export { applyStep, createCandidateState, isContradiction } from './techniques/candidates'
+export type {
+  CandidateState,
+  CellDigit,
+  SolveStatus,
+  Step,
+  Technique,
+  TechniqueId,
+  TechniqueSolve,
+  UnitRef,
+} from './techniques/types'
