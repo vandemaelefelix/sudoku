@@ -28,6 +28,8 @@ and ends at a placed digit. The technique solver builds it. Each step is a `Step
 - The solver finds candidates from the givens and the entries. It never reads the notes.
 - The solver picks the technique that a person finds easiest (Sudoku Explainer order). At the
   same rank, the step nearest the selected cell wins. The same board gives the same plan.
+- The hint plan passes `unique: true` to the solver. A game puzzle has exactly one solution.
+  The unique rectangle needs this option.
 
 ### The rungs
 
