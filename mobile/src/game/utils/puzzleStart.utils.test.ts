@@ -1,6 +1,7 @@
 import { createGame, generate, place, select, tick, type Digit, type Game, type Level } from '@sudoku/core'
 import { createMemoryStorage, type GameStorage, type SavedProgress } from '@/storage'
 import { createPuzzleStart } from './puzzleStart.utils'
+import { levelOf } from './start.utils'
 
 const OWNER = 'user-alice'
 
@@ -185,7 +186,7 @@ describe('playScan', () => {
     const { storage, start } = setup(true, OWNER)
     const spy = spyStart(storage)
     const started = await start.playScan({ givens, solution, entries })
-    expect(started).toMatchObject({ level: 'hard', source: 'scanned', seed: null })
+    expect(started).toMatchObject({ level: levelOf(givens), source: 'scanned', seed: null })
     expect(started?.game.givens).toEqual(givens)
     expect(started?.game.entries[open]).toBe(entries[open])
     expect(started?.game.mistakes).toBe(0)

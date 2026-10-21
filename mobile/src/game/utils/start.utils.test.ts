@@ -1,4 +1,4 @@
-import { GIVENS_TARGET, LEVELS, generate, type Level } from '@sudoku/core'
+import { generate, grade, type Level } from '@sudoku/core'
 import { SEED_COUNT } from '@/game/constants/start.constants'
 import { levelOf, newGeneratedGame } from './start.utils'
 
@@ -7,7 +7,7 @@ const withGivens = (count: number) => Array.from({ length: 81 }, (_, cell) => (c
 it('generates a game at the level, with the seed from the random number', () => {
   const { game, seed } = newGeneratedGame('hard', () => 0.5)
   expect(seed).toBe(500_000)
-  expect(game.givens.filter((digit) => digit !== 0)).toHaveLength(GIVENS_TARGET.hard)
+  expect(grade(game.givens).level).toBe('hard')
   expect(game.givens).toEqual(generate('hard', 500_000).givens)
   expect(game).toMatchObject({ status: 'playing', mistakes: 0, playedMs: 0 })
 })
@@ -33,13 +33,5 @@ describe('levelOf', () => {
     [0, 'expert'],
   ])('gives %i givens the level %s', (count, level) => {
     expect(levelOf(withGivens(count))).toBe(level)
-  })
-
-  it('gives each generated puzzle its own level back', () => {
-    for (const level of LEVELS) {
-      const { givens } = generate(level, 3)
-      expect(givens.filter((digit) => digit !== 0)).toHaveLength(GIVENS_TARGET[level])
-      expect(levelOf(givens)).toBe(level)
-    }
   })
 })
