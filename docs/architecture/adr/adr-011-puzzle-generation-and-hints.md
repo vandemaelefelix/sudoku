@@ -127,8 +127,8 @@ givens no longer sets the level. The givens count of a generated puzzle is a res
   of its level.
 - **`MAX_ATTEMPTS` is 250.** Expert is the rarest level. Its yield at 25 givens is 7.8 %, so an
   attempt misses with a chance of 0.922. The chance that all 250 attempts miss is 0.922^250, about
-  1.5 in 1 billion. The app draws from 1 000 000 seeds, so the fallback is expected for 0.0015 of
-  them. The mean is 12.8 attempts. The p99 is 57 attempts (ln 0.01 / ln 0.922). A miss of all
+  1.5 in 1 billion. The app draws from 1 000 000 seeds, so about 0.0015 seeds are
+  expected to need the fallback. The mean is 12.8 attempts. The p99 is 57 attempts (ln 0.01 / ln 0.922). A miss of all
   attempts costs about 0.6 s on a Mac.
 - **Fallback.** When no attempt matches, the generator grades the attempts. It returns the one
   that `fallbackRank` ranks first: the nearest level. At the same distance, a level below the
