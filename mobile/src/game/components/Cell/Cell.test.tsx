@@ -166,3 +166,22 @@ describe('the conflict hatch (ADR-026)', () => {
     jest.restoreAllMocks()
   })
 })
+
+const fillOf = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor
+
+it('crossfades a display fill: the old fill stays under the new one, which starts clear', () => {
+  const colours = cobalt.components.cell
+  const view = render(<Cell {...base} interactive={false} fill="plain" onSelect={jest.fn()} />)
+  view.rerender(<Cell {...base} interactive={false} fill="peer" onSelect={jest.fn()} />)
+  expect(fillOf('cell-2-fill-under')).toBe(colours.fill)
+  expect(fillOf('cell-2-fill')).toBe(colours.peer)
+  expect(StyleSheet.flatten(screen.getByTestId('cell-2-fill-fade').props.style)).toMatchObject({ opacity: 0 })
+})
+
+it('takes the colours of a display fill from the theme hook, not from the cell styles', () => {
+  const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
+  const theming = jest.spyOn(unistyles, 'useUnistyles').mockReturnValue({ theme: forest } as never)
+  render(<Cell {...base} interactive={false} fill="peer" onSelect={jest.fn()} />)
+  expect(fillOf('cell-2-fill')).toBe(forest.components.cell.peer)
+  theming.mockRestore()
+})
