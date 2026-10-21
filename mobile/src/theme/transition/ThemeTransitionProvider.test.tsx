@@ -4,12 +4,13 @@ import { useEffect } from 'react'
 import { Text } from 'react-native'
 import * as reanimated from 'react-native-reanimated'
 import { useReducedMotion } from 'react-native-reanimated'
+import { UnistylesRuntime } from 'react-native-unistyles'
 import { TRANSITION_MS } from './transition.constants'
 import { ThemeTransitionProvider } from './ThemeTransitionProvider'
 import { useThemeTransition, type ThemeTransition } from './useThemeTransition'
 
-const api: { start: ThemeTransition['start'] } = { start: () => false }
-const start: ThemeTransition['start'] = (theme, apply) => api.start(theme, apply)
+const api: { start: ThemeTransition['start'] } = { start: () => undefined }
+const start: ThemeTransition['start'] = (theme, apply, settleMs) => api.start(theme, apply, settleMs)
 function Probe() {
   const transition = useThemeTransition()
   useEffect(() => {
@@ -52,11 +53,16 @@ function renderProvider() {
 }
 
 async function begin(apply: () => void, name: 'forest' | 'bordeaux' = 'forest') {
-  let accepted = false
   await act(async () => {
-    accepted = start({ name, appearance: 'light' }, apply)
+    start({ name, appearance: 'light' }, apply)
   })
-  return accepted
+}
+
+function endTheWave() {
+  act(() => {
+    endWave?.(true)
+    jest.runAllTicks()
+  })
 }
 
 /** The first layout of the overlay means its picture is on screen. The switch waits one more frame. */
@@ -150,43 +156,103 @@ it('switches at once, with no overlay, when the picture fails', async () => {
   expect(screen.queryByTestId('theme-cell-wave')).toBeNull()
 })
 
-it('accepts a new switch after a failed picture', async () => {
+it('takes a new picture for a switch after a failed picture', async () => {
   snapshot.mockRejectedValueOnce(new Error('Invalid view tag'))
   renderProvider()
   await begin(jest.fn())
-  expect(await begin(jest.fn(), 'bordeaux')).toBe(true)
+  await begin(jest.fn(), 'bordeaux')
+  expect(snapshot).toHaveBeenCalledTimes(2)
 })
 
-it('ignores a second switch while the picture is taken and while the wave runs, and accepts one after it', async () => {
+it('keeps only the last switch made during a wave, and plays it when the wave ends', async () => {
   const first = jest.fn()
-  const second = jest.fn()
+  const replaced = jest.fn()
+  const last = jest.fn()
   renderProvider()
-  let accepted = true
-  act(() => {
-    start({ name: 'forest', appearance: 'light' }, first)
-    accepted = start({ name: 'bordeaux', appearance: 'colour' }, second)
-  })
-  expect(accepted).toBe(false)
-  await act(async () => {})
-  accepted = true
-  act(() => {
-    accepted = start({ name: 'bordeaux', appearance: 'colour' }, second)
-  })
-  expect(accepted).toBe(false)
+  await begin(first)
   layOut()
   act(() => {
-    endWave?.(true)
-    jest.runAllTicks()
+    start({ name: 'bordeaux', appearance: 'colour' }, replaced)
+    start({ name: 'bordeaux', appearance: 'light' }, last)
   })
-  expect(second).not.toHaveBeenCalled()
-  expect(await begin(second, 'bordeaux')).toBe(true)
+  expect(snapshot).toHaveBeenCalledTimes(1)
+  await act(async () => endTheWave())
+  expect(snapshot).toHaveBeenCalledTimes(2)
+  layOut()
+  expect(last).toHaveBeenCalledTimes(1)
+  expect(replaced).not.toHaveBeenCalled()
 })
 
-it('switches at once, with no picture and no overlay, with Reduce Motion', async () => {
+it('keeps a switch made while the picture is taken', async () => {
+  const second = jest.fn()
+  renderProvider()
+  act(() => {
+    start({ name: 'forest', appearance: 'light' }, jest.fn())
+    start({ name: 'bordeaux', appearance: 'colour' }, second)
+  })
+  await act(async () => {})
+  layOut()
+  await act(async () => endTheWave())
+  layOut()
+  expect(second).toHaveBeenCalledTimes(1)
+})
+
+describe('with the look of the target on screen', () => {
+  beforeEach(() => Object.defineProperty(UnistylesRuntime, 'themeName', { value: 'forest', configurable: true }))
+  afterEach(() => Object.defineProperty(UnistylesRuntime, 'themeName', { value: undefined, configurable: true }))
+
+  it('applies the switch at once, with no wave', () => {
+    const apply = jest.fn()
+    renderProvider()
+    act(() => start({ name: 'forest', appearance: 'light' }, apply))
+    expect(apply).toHaveBeenCalledTimes(1)
+    expect(snapshot).not.toHaveBeenCalled()
+  })
+
+  it('applies a waiting switch back to that look with no second wave', async () => {
+    const back = jest.fn()
+    renderProvider()
+    await begin(jest.fn(), 'bordeaux')
+    layOut()
+    act(() => start({ name: 'forest', appearance: 'light' }, back))
+    await act(async () => endTheWave())
+    expect(back).toHaveBeenCalledTimes(1)
+    expect(snapshot).toHaveBeenCalledTimes(1)
+  })
+})
+
+it('takes the picture only after the settle time, and keeps a switch made while it waits', async () => {
+  const second = jest.fn()
+  renderProvider()
+  act(() => {
+    start({ name: 'forest', appearance: 'light' }, jest.fn(), 160)
+  })
+  act(() => {
+    jest.advanceTimersByTime(159)
+  })
+  expect(snapshot).not.toHaveBeenCalled()
+  act(() => {
+    start({ name: 'bordeaux', appearance: 'light' }, second, 160)
+  })
+  await act(async () => {
+    jest.advanceTimersByTime(1)
+  })
+  expect(snapshot).toHaveBeenCalledTimes(1)
+  expect(screen.getByTestId('theme-cell-wave')).toBeTruthy()
+  layOut()
+  await act(async () => endTheWave())
+  // The waiting switch keeps the rest of its settle time.
+  await act(async () => {
+    jest.runAllTimers()
+  })
+  expect(snapshot).toHaveBeenCalledTimes(2)
+})
+
+it('switches at once, with no picture and no overlay, with Reduce Motion', () => {
   jest.mocked(useReducedMotion).mockReturnValue(true)
   const apply = jest.fn()
   renderProvider()
-  expect(await begin(apply)).toBe(true)
+  act(() => start({ name: 'forest', appearance: 'light' }, apply, 160))
   expect(apply).toHaveBeenCalledTimes(1)
   expect(snapshot).not.toHaveBeenCalled()
   expect(screen.queryByTestId('theme-cell-wave')).toBeNull()

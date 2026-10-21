@@ -76,6 +76,8 @@ The other themes make the app larger and harder to keep:
     The effect uses the splash cells of ADR-024, in the colours of the new theme. It takes 700 ms.
     It works like a view transition: the old screen stays on top, and a moving boundary reveals the
     new screen. The boundary is the front of the cell wave, and it is not see through.
+    - A choice in Settings moves the picker indicator at once. The provider takes the picture
+      when the 160 ms slide of the indicator ends, so the picture never cuts the slide.
     - The provider takes a picture of the app with Skia `makeImageFromView`. It draws the picture
       over every screen at full strength. The player sees no change at that moment.
     - The theme switches under the picture, after the first layout of the overlay and one frame.
@@ -98,7 +100,8 @@ The other themes make the app larger and harder to keep:
       the current theme.
     - The provider frees the picture only after the overlay is gone, one frame later. A frame
       that draws a freed picture crashes the app.
-    - A choice in Settings during the effect is refused. The picker does not move.
+    - A choice in Settings during the effect waits. The picker moves at once. When the wave ends, the
+      last choice plays its own wave. A choice of the look on screen plays no wave.
     - With Reduce Motion the theme switches at once and nothing draws.
     - If the picture fails or is empty, the theme switches at once and nothing draws. The app logs
       the failure in development.
@@ -111,7 +114,7 @@ The other themes make the app larger and harder to keep:
 - A player who saved Daylight, Midnight, Op-art or Progressive sees Cobalt at the next start.
 - The contrast test covers three themes, and all three use one builder.
 - The app has no dark mode. The iPhone setting changes nothing.
-- A theme switch takes 700 ms. The player cannot choose again during that time.
+- A theme switch takes 700 ms. A switch from Settings waits 160 ms more for the slide of the picker. A choice during the effect waits for its end, so quick choices play their waves one after the other.
 - The picture of the app uses memory for one frame of the screen until the effect ends. The provider frees it then.
 - A native modal is not part of the picture, because it lives outside the app view. A switch with a modal open shows no old modal in the effect.
 - The splash cells and the picture draw for 700 ms per switch. Each frame builds one path of up to 189 rectangles and one erase. The cost on an older iPhone is not measured.
