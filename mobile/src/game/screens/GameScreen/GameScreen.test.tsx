@@ -10,7 +10,7 @@ const layoutBoard = () =>
   // The board draws the grid after it knows its size.
   fireEvent(screen.getByTestId('board'), 'layout', { nativeEvent: { layout: { width: 358, height: 358 } } })
 
-const renderScreen = ({ onBack = jest.fn(), onNewPuzzle, onRetry }: Callbacks = {}) => {
+const renderScreen = ({ onBack = jest.fn(), onNewPuzzle, onRetry = jest.fn() }: Callbacks = {}) => {
   render(<GameScreen start={sampleStart()} onBack={onBack} onNewPuzzle={onNewPuzzle} onRetry={onRetry} />)
   layoutBoard()
 }
@@ -102,24 +102,7 @@ it('shows the game over sheet at the third mistake, and not before', () => {
   expect(screen.getByLabelText('3 of 3 mistakes', hidden)).toBeTruthy()
 })
 
-it('starts the same puzzle again from Try this puzzle again', () => {
-  renderScreen()
-  act(() => jest.advanceTimersByTime(2000))
-  loseOnCell2()
-  pressOnSheet('Try this puzzle again')
-  expect(screen.queryByText('Out of mistakes')).toBeNull()
-  expect(screen.getByLabelText('0 of 3 mistakes')).toBeTruthy()
-  expect(screen.getByText('00:00')).toBeTruthy()
-  layoutBoard()
-  expect(screen.getByLabelText('Row 1, column 3, empty')).toBeTruthy()
-  expect(screen.getByLabelText('Row 1, column 1, given 5')).toBeTruthy()
-  expect(screen.getByLabelText('Hint')).toBeEnabled()
-  expect(screen.getByLabelText('Undo')).toBeDisabled()
-  act(() => jest.advanceTimersByTime(3000))
-  expect(screen.getByText('00:03')).toBeTruthy()
-})
-
-it('leaves the retry to the caller when it gives onRetry', () => {
+it('leaves the retry to the caller', () => {
   const onRetry = jest.fn()
   renderScreen({ onRetry })
   loseOnCell2()

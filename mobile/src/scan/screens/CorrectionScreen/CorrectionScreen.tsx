@@ -18,6 +18,7 @@ import type { Digit } from '@sudoku/core'
 import type { RecogniseResult } from '@/scanner'
 import { LEVEL_NAMES } from '@/constants/level.constants'
 import { Icon } from '@/game/components/Icon'
+import { levelOf } from '@/game/utils/start.utils'
 import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/components/CorrectionCell'
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
 import { CorrectionSummary, type FullGridPanel } from '@/scan/components/CorrectionSummary'
@@ -39,7 +40,7 @@ import {
   type CellLook,
   type CorrectionLayout,
 } from '@/scan/utils/correction.utils'
-import { checkPlay, levelOf, type ScannedStart } from '@/scan/utils/play.utils'
+import { checkPlay, type ScannedStart } from '@/scan/utils/play.utils'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { SHARED_TYPE } from '@/theme/shared.tokens'
@@ -212,7 +213,7 @@ export function CorrectionScreen({
 
   // The solution shows until the next edit: it belongs to the looks it was shown for.
   const [solutionFor, setSolutionFor] = useState<readonly CellLook[] | null>(null)
-  const solution = start !== null && solutionFor === looks ? start.puzzle.solution : null
+  const solution = start !== null && solutionFor === looks ? start.solution : null
 
   const devTools = __DEV__ && editable
   const [devOpen, setDevOpen] = useState(false)
