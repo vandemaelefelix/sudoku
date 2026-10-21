@@ -160,7 +160,7 @@ export type Theme = {
       /** Diagonal stripes over the conflict fill, 45°. Null: the fill alone marks the conflict. width and pitch in points, pitch along the x axis. */
       conflictHatch: { color: string; opacity: number; width: number; pitch: number } | null
       note: string
-      /** The width of the ring that marks the selected cell. 0 for none: in Light the selected fill marks it. */
+      /** The width of the ring that marks the selected cell, in points. 0 for none. */
       selectedRingWidth: number
     }
     key: { fill: string; digit: string; noteDigit: string }

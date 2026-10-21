@@ -43,11 +43,12 @@ describe('the theme registry', () => {
     }
   })
 
-  it('rings the selected cell in Colour only, with a lighter tint of the page as its fill', () => {
+  it('rings the selected cell in both looks, with a lighter tint of the page as its fill in Colour', () => {
     for (const name of THEME_NAMES) {
-      expect(THEMES[name].components.cell.selectedRingWidth).toBe(0)
+      expect(THEMES[name].components.cell.selectedRingWidth).toBe(2)
+      expect(THEMES[name].components.cell.ring).toBe(THEMES[name].colors.accent)
       const colour = COLOUR_THEMES[name].components.cell
-      expect(colour.selectedRingWidth).toBe(2)
+      expect(colour.selectedRingWidth).toBe(3)
       expect(colour.ring).toBe('#ffffff')
       expect(colour.selected).not.toBe('#ffffff')
       expect(colour.given).toBe('#ffffff')
@@ -55,9 +56,9 @@ describe('the theme registry', () => {
   })
 
   it('derives the Colour page from the accent: the same hue, darker', () => {
-    expect(COLOUR_THEMES.cobalt.colors.background).toBe('#1a35b0')
-    expect(COLOUR_THEMES.forest.colors.background).toBe('#115132')
-    expect(COLOUR_THEMES.bordeaux.colors.background).toBe('#671229')
+    expect(COLOUR_THEMES.cobalt.colors.background).toBe('#162c92')
+    expect(COLOUR_THEMES.forest.colors.background).toBe('#0e432a')
+    expect(COLOUR_THEMES.bordeaux.colors.background).toBe('#560f22')
   })
 
   it('types the entries of Colour with the light tint of each colourway', () => {
@@ -66,12 +67,12 @@ describe('the theme registry', () => {
     expect(COLOUR_THEMES.bordeaux.components.cell.entry).toBe('#ffd9e4')
   })
 
-  it('marks a conflict in Colour with a hatch over the peer fill and a white digit, the same in every colourway', () => {
+  it('marks a conflict in Colour with an amber hatch over the peer fill and an amber digit, the same in every colourway', () => {
     for (const name of THEME_NAMES) {
       const { cell, checkRing } = COLOUR_THEMES[name].components
       expect(cell.conflictFill).toBe(cell.peer)
-      expect(cell.conflict).toBe('#ffffff')
-      expect(cell.conflictHatch).toEqual({ color: '#ffffff', opacity: 0.2, width: 1.6, pitch: 5 })
+      expect(cell.conflict).toBe('#ffc94d')
+      expect(cell.conflictHatch).toEqual({ color: '#ffc94d', opacity: 0.25, width: 1.6, pitch: 5 })
       expect(checkRing.color).not.toBe(cell.conflictFill)
     }
   })
