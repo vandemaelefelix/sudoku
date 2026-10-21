@@ -5,17 +5,18 @@ import type { CaptureState } from '@/scan/hooks/useCapture'
 import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
 import { useTransitionClock } from '@/scan/hooks/useTransitionClock'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
+import { claimLock, createLockLatch, type LockSource } from '@/scan/utils/lockOn.utils'
 import { toPreview } from '@/scan/utils/preview.utils'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import type { CaptureFrame, Gates, TransitionPlan } from '@/scan/utils/transition.utils'
 import { type Quad, rectQuad, type ViewSize } from '@/utils/geometry.utils'
-import type { HapticName } from '@/utils/haptics.utils'
 import { devLog } from '@/utils/log.utils'
 
 /**
  * Lock-on and the capture transition into the correction screen.
  * startCapture: keeps its identity while capture does, because the UI thread holds it as onLock from the first frame.
- * Its haptic is thud for the automatic lock-on, which the player did not tap, and tap for the shutter.
+ * Its source decides the haptic: thud for the automatic lock-on, which the player did not tap, and tap for the shutter.
+ * The first source to call it starts the capture. The lock-on latch refuses the other one (lockOn.utils).
  * stepClock: the transition clock step, for the overlay to call first in each UI frame. onDone: called once with an ok result.
  */
 export function useCaptureTransition({
@@ -42,16 +43,15 @@ export function useCaptureTransition({
   const gates = useSharedValue<Gates>({ photo: false, results: false })
   const captureFrame = useSharedValue<CaptureFrame | null>(null)
   const [lockedView, setLockedView] = useState<Quad | null>(null)
-  const lockedAt = useRef<number | null>(null)
+  const latch = useRef(createLockLatch())
   const latestResult = useRef<RecogniseResult | null>(null)
   const planVersion = useRef(0)
 
   const { play } = useHaptics()
   const startCapture = useCallback(
-    (quad: Quad | null, haptic: HapticName = 'thud') => {
-      if (lockedAt.current != null) return
-      lockedAt.current = Date.now()
-      play(haptic)
+    (quad: Quad | null, source: LockSource = 'auto') => {
+      if (!claimLock(latch.current, source, Date.now())) return
+      play(source === 'shutter' ? 'tap' : 'thud')
       // The frame aspect at lock-on: the photo has the field of view of the frames.
       const aspect = detection.get()?.aspect ?? 0
       setLockedView(quad == null ? null : toPreview(quad, aspect, viewSize.get()))
@@ -87,7 +87,7 @@ export function useCaptureTransition({
   const finish = useCallback(() => {
     const done = latestResult.current
     if (done == null || !done.ok) return
-    if (lockedAt.current != null) devLog('scan', `transition done in ${Date.now() - lockedAt.current} ms`)
+    if (latch.current.source != null) devLog('scan', `transition done in ${Date.now() - latch.current.at} ms`)
     onDone(done)
   }, [onDone])
 

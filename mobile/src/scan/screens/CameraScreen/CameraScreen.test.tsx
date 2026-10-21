@@ -390,7 +390,7 @@ describe('capture', () => {
     jest.mocked(useReducedMotion).mockReturnValue(false)
   })
 
-  it('locks on through the canvas, once, with the quad', () => {
+  it('locks on through the canvas with the quad, and captures once for a second onLock', () => {
     lockOn(quad, { quad, image: null, result: null })
     expect(capture).toHaveBeenCalledTimes(1)
     expect(capture).toHaveBeenCalledWith(quad, expect.any(Number))
