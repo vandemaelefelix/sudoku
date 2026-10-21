@@ -118,6 +118,18 @@ describe('newGame', () => {
     await starting
   })
 
+  it('a failed opened() does not fail the start', async () => {
+    const { storage, start } = setup()
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const started = await start.newGame('easy', () => {
+      throw new Error('no route')
+    })
+    expect(started).toMatchObject({ level: 'easy' })
+    expect(await storage.puzzles.current()).toEqual(started)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('The game screen does not open'))
+    warn.mockRestore()
+  })
+
   it('a second call while a start runs does nothing', async () => {
     const { storage, start } = setup()
     const spy = spyStart(storage)
