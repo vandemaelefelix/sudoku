@@ -186,10 +186,11 @@ describe('a session that ends late', () => {
     const { api } = scriptedApi([OK])
     const { service } = serviceWith(api)
     service.setSession(sessionOf(ALICE))
-    const save = storage.sync.saveCursor.bind(storage.sync)
-    jest.spyOn(storage.sync, 'saveCursor').mockImplementationOnce(async (owner, cursor) => {
-      await save(owner, cursor)
+    const apply = storage.history.applySyncPage.bind(storage.history)
+    jest.spyOn(storage.history, 'applySyncPage').mockImplementationOnce(async (page) => {
+      const result = await apply(page)
       service.setSession(sessionOf(BOB))
+      return result
     })
     await service.trigger('foreground')
     await flush()
@@ -322,7 +323,7 @@ describe('backoff', () => {
 describe('a failure inside the run', () => {
   it('never reaches the caller', async () => {
     const { service } = serviceWith(fakeServer().api)
-    jest.spyOn(storage.history, 'pending').mockRejectedValue(new Error('disk full'))
+    jest.spyOn(storage.history, 'nextBatch').mockRejectedValue(new Error('disk full'))
     service.setSession(sessionOf(ALICE))
     await expect(service.trigger('foreground')).resolves.toBe('failed')
   })

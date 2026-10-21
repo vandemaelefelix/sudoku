@@ -57,10 +57,7 @@ export function useDeleteAccount(sleep: (ms: number) => Promise<void> = wait): (
       return signedOut
     }
     try {
-      await cleanUpDeletedAccount(
-        { history: storage.history, state: storage.sync, signOut: trackedSignOut, announce },
-        owner,
-      )
+      await cleanUpDeletedAccount({ history: storage.history, signOut: trackedSignOut, announce }, owner)
     } catch (error) {
       devWarn('account', `The local data of the deleted account was not cleaned up: ${errorMessage(error)}`)
       if (!signOutCalled) signedOut = await account.signOut()

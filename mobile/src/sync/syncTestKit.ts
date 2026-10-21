@@ -1,16 +1,13 @@
 import type { SyncRequest } from '@sudoku/sync-contract'
-import { createMemoryStorage, type GameStorage, type StorageDeps } from '@/storage'
-import { newGame, wonGame } from '@/storage/repositories.contract'
+import { createMemoryStorage, toWireEntry, type GameStorage, type StorageDeps } from '@/storage'
+import { newGame, seedCursor, uuid, wonGame } from '@/storage/repositories.contract'
 import type { SyncApi } from './syncApi'
-import { toWireEntry } from './wireEntry'
 import type { SyncApiResult } from './sync.types'
 
 export const ALICE = 'user-alice'
 export const BOB = 'user-bob'
 
-export function uuid(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
+export { seedCursor, uuid }
 
 /** Memory storage with UUID ids, as the sync contract needs. The clock moves one second per call. */
 export function createTestStorage(): GameStorage {

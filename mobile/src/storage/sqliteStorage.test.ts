@@ -1,10 +1,12 @@
 import { tick } from '@sudoku/core'
 import { migrate } from './migrations'
 import { openNodeDatabase, temporaryDatabaseFile, type NodeDatabase } from './nodeDatabase'
-import { describeGameStorage, movedGame, newGame, testDeps, wonGame } from './repositories.contract'
+import type { SyncPageInput } from './HistoryRepository'
+import { describeGameStorage, movedGame, newGame, seedCursor, testDeps, uuid, wonGame } from './repositories.contract'
 import { createSqliteStorage } from './sqliteStorage'
 import type { SqlDatabase } from './sql.types'
-import type { Level } from './storage.types'
+import type { HistoryRecord, Level } from './storage.types'
+import { toWireEntry } from './wireEntry'
 
 const open: NodeDatabase[] = []
 
@@ -20,6 +22,36 @@ afterEach(() => {
 })
 
 describeGameStorage('the SQLite storage', async (deps) => (await openStorage(undefined, deps)).storage)
+
+const REMOTE_AT = '2026-10-01T09:00:00.000Z'
+const record = (n: number, playedMs: number): HistoryRecord => ({
+  id: uuid(900 + n),
+  level: 'easy',
+  source: 'generated',
+  seed: null,
+  result: 'won',
+  playedMs,
+  mistakes: 0,
+  hintsUsed: 0,
+  finishedAt: REMOTE_AT,
+  createdAt: REMOTE_AT,
+  updatedAt: REMOTE_AT,
+  deletedAt: null,
+})
+const page = (changes: HistoryRecord[], cursor = 'next'): SyncPageInput => ({
+  owner: 'user-alice',
+  sent: [],
+  acceptedIds: [],
+  changes: changes.map(toWireEntry),
+  cursor,
+})
+// The contract of the sync is stricter than the CHECKs, so no valid entry breaks a CHECK. This trigger breaks
+// the insert of one entry in the way a CHECK does.
+const refuse = (db: NodeDatabase, playedMs: number, message: string) =>
+  db.execAsync(
+    `CREATE TRIGGER refuse BEFORE INSERT ON game_history WHEN NEW.played_ms = ${playedMs}
+      BEGIN SELECT RAISE(ABORT, '${message}'); END`,
+  )
 
 describe('createSqliteStorage', () => {
   it('resumes after the app is killed', async () => {
@@ -88,27 +120,59 @@ describe('createSqliteStorage', () => {
     await expect(storage.history.list(null)).resolves.toEqual([])
   })
 
-  it('writes no entry of a remote batch when one entry breaks a CHECK', async () => {
-    const { storage } = await openStorage()
-    const at = '2026-10-01T09:00:00.000Z'
-    const entry = {
-      id: 'r1',
-      level: 'easy',
-      source: 'generated',
-      seed: null,
-      result: 'won',
-      playedMs: 60_000,
-      mistakes: 0,
-      hintsUsed: 0,
-      finishedAt: at,
-      createdAt: at,
-      updatedAt: at,
-      deletedAt: null,
-    } as const
-    await expect(
-      storage.history.upsertRemote([entry, { ...entry, id: 'r2', playedMs: -1 }], 'user-alice'),
-    ).rejects.toThrow('CHECK constraint failed')
-    await expect(storage.history.list('user-alice')).resolves.toEqual([])
+  describe('a sync page', () => {
+    it('drops an entry that breaks a CHECK, writes the rest and saves the cursor', async () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const { db, storage } = await openStorage()
+      await refuse(db, 777, 'CHECK constraint failed: played_ms')
+      await expect(
+        storage.history.applySyncPage(page([record(1, 60_000), record(2, 777), record(3, 50_000)])),
+      ).resolves.toMatchObject({ changed: true })
+      const ids = (await storage.history.list('user-alice')).map((entry) => entry.id)
+      expect(ids.toSorted()).toEqual([uuid(901), uuid(903)])
+      await expect(storage.sync.cursor('user-alice')).resolves.toBe('next')
+      warn.mockRestore()
+    })
+
+    it('writes nothing, not even the cursor, when the database fails for another reason', async () => {
+      const { db, storage } = await openStorage()
+      await refuse(db, 777, 'disk I/O error')
+      await seedCursor(storage, 'user-alice', 'before')
+      await expect(storage.history.applySyncPage(page([record(1, 60_000), record(2, 777)], 'after'))).rejects.toThrow(
+        'disk I/O error',
+      )
+      await expect(storage.history.list('user-alice')).resolves.toEqual([])
+      await expect(storage.sync.cursor('user-alice')).resolves.toBe('before')
+    })
+  })
+
+  it('queues every sync write behind a finish, so none meets "database is locked"', async () => {
+    const db = openNodeDatabase()
+    open.push(db)
+    await migrate(db)
+    let armed = false
+    const writes: Promise<unknown>[] = []
+    const interleaved: SqlDatabase = {
+      ...db,
+      withExclusiveTransactionAsync: (task) =>
+        db.withExclusiveTransactionAsync(async (txn) => {
+          await task(txn)
+          if (armed) {
+            armed = false
+            const sync = { owner: 'user-alice', sent: [], acceptedIds: [], changes: [], cursor: 'next' }
+            writes.push(
+              storage.history.applySyncPage(sync),
+              storage.history.answerAdopt('user-alice', true),
+              storage.history.deleteOwner('user-alice'),
+            )
+          }
+        }),
+    }
+    const storage = createSqliteStorage(interleaved, testDeps())
+    const { id } = await storage.puzzles.start({ level: 'easy', source: 'generated', game: newGame(), owner: null })
+    armed = true
+    await storage.puzzles.save(id, wonGame(50_000), null)
+    await expect(Promise.all(writes)).resolves.toHaveLength(3)
   })
 
   it('keeps a saved game that does not load, and gives null', async () => {

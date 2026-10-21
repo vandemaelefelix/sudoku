@@ -8,7 +8,7 @@ import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
 import { SyncControlContext, type SyncControl } from '@/sync/hooks/useSyncControl'
 import type { DeleteAccountResult } from '@/sync/sync.types'
-import { ALICE, BOB, createTestStorage, finishGame } from '@/sync/syncTestKit'
+import { ALICE, BOB, createTestStorage, finishGame, seedCursor } from '@/sync/syncTestKit'
 import { cleanUpDeletedAccount, forgetCleanedUpOwners } from '@/sync/accountDeleted'
 import { useDeleteAccount } from './useDeleteAccount'
 
@@ -28,7 +28,7 @@ beforeEach(async () => {
   await finishGame(storage, ALICE)
   await finishGame(storage, BOB)
   await finishGame(storage, null)
-  await storage.sync.saveCursor(ALICE, 'c')
+  await seedCursor(storage, ALICE, 'c')
 })
 
 afterEach(() => jest.restoreAllMocks())
