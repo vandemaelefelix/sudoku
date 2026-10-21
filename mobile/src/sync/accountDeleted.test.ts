@@ -1,6 +1,6 @@
 import type { GameStorage } from '@/storage'
 import { cleanUpDeletedAccount, forgetCleanedUpOwners } from './accountDeleted'
-import { ALICE, BOB, createTestStorage, finishGame } from './syncTestKit'
+import { ALICE, BOB, createTestStorage, finishGame, seedCursor } from './syncTestKit'
 
 let storage: GameStorage
 
@@ -10,7 +10,7 @@ beforeEach(async () => {
   await finishGame(storage, ALICE)
   await finishGame(storage, BOB)
   await finishGame(storage, null)
-  await storage.sync.saveCursor(ALICE, 'c')
+  await seedCursor(storage, ALICE, 'c')
   await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
 })
 

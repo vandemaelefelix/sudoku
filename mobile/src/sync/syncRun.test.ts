@@ -2,7 +2,17 @@ import type { SyncRequest } from '@sudoku/sync-contract'
 import { toWireEntry, type GameStorage } from '@/storage'
 import { MAX_ROUNDS } from './constants/sync.constants'
 import { runSync } from './syncRun'
-import { ALICE, BOB, createTestStorage, fakeServer, finishGame, noSleep, scriptedApi, uuid } from './syncTestKit'
+import {
+  ALICE,
+  BOB,
+  createTestStorage,
+  fakeServer,
+  finishGame,
+  noSleep,
+  scriptedApi,
+  seedCursor,
+  uuid,
+} from './syncTestKit'
 import type { SyncApiResult, SyncSession } from './sync.types'
 import type { SyncApi } from './syncApi'
 
@@ -151,7 +161,7 @@ describe('pull', () => {
   })
 
   it('clears the cursor on invalid_cursor and makes a full pull, once', async () => {
-    await storage.sync.saveCursor(ALICE, 'old')
+    await seedCursor(storage, ALICE, 'old')
     const { api, requests } = scriptedApi([{ kind: 'cursor_invalid' }, OK({ cursor: 'fresh' })])
     await expect(run(api)).resolves.toMatchObject({ result: 'synced' })
     expect(requests.map((request) => request.cursor)).toEqual(['old', null])
@@ -239,7 +249,7 @@ describe('failure', () => {
     { kind: 'rejected' },
   ])('is silent and changes nothing for %j', async (answer) => {
     const id = await finishGame(storage, ALICE)
-    await storage.sync.saveCursor(ALICE, 'keep')
+    await seedCursor(storage, ALICE, 'keep')
     await expect(run(scriptedApi([answer]).api)).resolves.toMatchObject({ result: 'failed' })
     expect(await waitingIds()).toEqual([id])
     await expect(storage.sync.cursor(ALICE)).resolves.toBe('keep')

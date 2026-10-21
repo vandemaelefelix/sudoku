@@ -121,8 +121,8 @@ sync rules and the table layout stay.
 
 - Every one of these writes goes through the shared write queue and `withExclusiveTransactionAsync`. A caller
   never sequences two repository calls to get one change.
-- `SyncStateRepository` keeps the cursor and the time of the last run. It loses `adoptAsked`, `markAdoptAsked`
-  and `clear`. The history repository writes those keys of `sync_state` in its own transactions.
+- `SyncStateRepository` keeps the cursor and the time of the last run. It loses `saveCursor`, `adoptAsked`,
+  `markAdoptAsked` and `clear`. Only `applySyncPage` writes the cursor. The history repository writes those keys of `sync_state` in its own transactions.
 - The history repository checks each entry with the zod schema of `shared/sync-contract/`. The check is part of
   the repository, so `src/storage/` imports `@sudoku/sync-contract`. `wireEntry.ts` moved from `src/sync/` to
   `src/storage/`. A test keeps `HistoryRecord` and the contract equal.

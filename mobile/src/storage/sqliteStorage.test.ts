@@ -2,7 +2,7 @@ import { tick } from '@sudoku/core'
 import { migrate } from './migrations'
 import { openNodeDatabase, temporaryDatabaseFile, type NodeDatabase } from './nodeDatabase'
 import type { SyncPageInput } from './HistoryRepository'
-import { describeGameStorage, movedGame, newGame, testDeps, uuid, wonGame } from './repositories.contract'
+import { describeGameStorage, movedGame, newGame, seedCursor, testDeps, uuid, wonGame } from './repositories.contract'
 import { createSqliteStorage } from './sqliteStorage'
 import type { SqlDatabase } from './sql.types'
 import type { HistoryRecord, Level } from './storage.types'
@@ -137,7 +137,7 @@ describe('createSqliteStorage', () => {
     it('writes nothing, not even the cursor, when the database fails for another reason', async () => {
       const { db, storage } = await openStorage()
       await refuse(db, 777, 'disk I/O error')
-      await storage.sync.saveCursor('user-alice', 'before')
+      await seedCursor(storage, 'user-alice', 'before')
       await expect(storage.history.applySyncPage(page([record(1, 60_000), record(2, 777)], 'after'))).rejects.toThrow(
         'disk I/O error',
       )

@@ -107,6 +107,11 @@ function remote(n: number, changes: Partial<HistoryRecord> = {}): HistoryRecord 
   }
 }
 
+/** Gives `owner` a saved cursor, as a page of the server does. Tests need it to set up the sync state. */
+export async function seedCursor(storage: GameStorage, owner: string, cursor: string): Promise<void> {
+  await storage.history.applySyncPage({ owner, sent: [], acceptedIds: [], changes: [], cursor })
+}
+
 /** An answer of the server that takes the entries it got and sends nothing. */
 function accepting(owner: string, sent: readonly HistoryRecord[]): SyncPageInput {
   return { owner, sent, acceptedIds: sent.map((record) => record.id), changes: [], cursor: 'cursor' }
@@ -788,20 +793,20 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       })
 
       it('keeps the cursor of its owner', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await seedCursor(storage, ALICE, 'cursor-1')
         await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-1')
-        await storage.sync.saveCursor(ALICE, 'cursor-2')
+        await seedCursor(storage, ALICE, 'cursor-2')
         await expect(storage.sync.cursor(ALICE)).resolves.toBe('cursor-2')
       })
 
       it('gives no cursor to another owner and forgets the old one', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await seedCursor(storage, ALICE, 'cursor-1')
         await expect(storage.sync.cursor(BOB)).resolves.toBeNull()
         await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
       })
 
       it('clears the cursor alone', async () => {
-        await storage.sync.saveCursor(ALICE, 'cursor-1')
+        await seedCursor(storage, ALICE, 'cursor-1')
         await storage.sync.saveSyncedAt(ALICE, '2026-10-15T10:00:00.000Z')
         await storage.sync.clearCursor()
         await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
