@@ -1,4 +1,4 @@
-import { ALL_DIGITS, bitCount, cellsWith, combinations, DIGITS, digitsOf, makeStep, UNITS } from './scan'
+import { bitCount, cellsWith, combinations, DIGITS, digitsOf, makeStep, UNITS } from './scan'
 import type { CandidateState, Technique, TechniqueId } from './types'
 
 /**
@@ -39,7 +39,7 @@ function hiddenSubset(id: TechniqueId, size: number, state: CandidateState) {
       if (where.length !== size) continue
       const keep = subset.reduce((mask, digit) => mask | (1 << digit), 0)
       const eliminations = where.flatMap((cell) =>
-        digitsOf(state.candidates[cell]! & ALL_DIGITS & ~keep).map((digit) => ({ cell, digit })),
+        digitsOf(state.candidates[cell]! & ~keep).map((digit) => ({ cell, digit })),
       )
       if (eliminations.length === 0) continue
       return makeStep(id, { eliminations, units: [ref], cells: where, digits: subset })

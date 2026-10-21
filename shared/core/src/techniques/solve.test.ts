@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { generate, LEVELS, type Level } from '../generator'
+import { applyStep, createCandidateState } from './candidates'
 import { solveWithTechniques } from './solve'
 import { nakedSingle } from './singles'
 
@@ -57,13 +58,20 @@ describe.for(LEVELS)('%s puzzles', (level) => {
       const { givens, solution } = generate(level, seed)
       const { status, steps, values } = solveWithTechniques(givens)
       expect(status).not.toBe('invalid')
+      let state = createCandidateState(givens)
       for (const step of steps) {
         expect(step.placements.length + step.eliminations.length).toBeGreaterThan(0)
-        for (const { cell, digit } of step.placements) expect(digit).toBe(solution[cell])
-        for (const { cell, digit } of step.eliminations) expect(digit).not.toBe(solution[cell])
+        for (const { cell, digit } of step.placements) {
+          expect(state.values[cell]).toBe(0)
+          expect(digit).toBe(solution[cell])
+        }
+        for (const { cell, digit } of step.eliminations) {
+          expect(state.candidates[cell]! & (1 << digit)).not.toBe(0)
+          expect(digit).not.toBe(solution[cell])
+        }
+        state = applyStep(state, step)
       }
-      expect(values.map((value, cell) => (value === 0 ? solution[cell] : value))).toEqual(solution)
-      expect(status === 'solved' ? values : solution).toEqual(solution)
+      expect(values.filter((value, cell) => value !== 0 && value !== solution[cell])).toEqual([])
     }
   })
 

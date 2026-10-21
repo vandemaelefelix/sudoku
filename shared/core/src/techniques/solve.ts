@@ -9,7 +9,8 @@ export type SolveOptions = {
 
 /**
  * Applies the first technique that makes progress, then starts again from the first technique.
- * `stalled` means no technique finds a step. `invalid` means the grid has no solution.
+ * `stalled` means no technique finds a step. `invalid` proves the grid has no solution.
+ * A grid with no solution can also end `stalled`.
  * Throws a RangeError for a grid that is not 81 integers from 0 to 9.
  */
 export function solveWithTechniques(givens: readonly number[], options: SolveOptions = {}): TechniqueSolve {
