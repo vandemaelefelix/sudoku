@@ -16,8 +16,22 @@ export type TechniqueId =
   | 'nakedTriple'
   | 'hiddenPair'
   | 'hiddenTriple'
+  | 'nakedQuad'
+  | 'hiddenQuad'
+  | 'xWing'
+  | 'swordfish'
+  | 'jellyfish'
+  | 'skyscraper'
+  | 'twoStringKite'
+  | 'xyWing'
+  | 'xyzWing'
+  | 'wWing'
 
-/** Every list is sorted. A step has at least one placement or one elimination. */
+/**
+ * Every list is sorted, with three exceptions. The units start with the focus unit. The pattern of
+ * a wing lists the pivot (or the two cells of a W-wing) first. The digits of a wing start with the
+ * digit that the step removes. A step has at least one placement or one elimination.
+ */
 export type Step = {
   readonly technique: TechniqueId
   readonly placements: readonly CellDigit[]

@@ -2,16 +2,11 @@ import type { Digit } from '../game/types'
 import { BOX_OF, COL_OF, ROW_OF, UNITS } from '../units'
 import { eliminationStep } from './build'
 import { bitOf } from './masks'
+import { placesOf } from './sight'
 import type { Candidates, Step } from './types'
 
 const BOX_UNITS = [18, 19, 20, 21, 22, 23, 24, 25, 26]
 const LINE_UNITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-
-function placesOf(candidates: Candidates, board: readonly number[], unit: number, digit: number): number[] {
-  const cells = UNITS[unit]!
-  if (cells.some((cell) => board[cell] === digit)) return []
-  return cells.filter((cell) => candidates[cell]! & bitOf(digit))
-}
 
 function sameValue(cells: readonly number[], table: readonly number[]): boolean {
   return cells.every((cell) => table[cell] === table[cells[0]!])
