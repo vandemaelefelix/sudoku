@@ -88,6 +88,12 @@ it('starts live on the camera', () => {
   expect(mockMounts).toHaveLength(1)
 })
 
+it('hands the close button to the router, as a dismiss to the home route', () => {
+  render(<ScanFlow />)
+  fireEvent.press(screen.getByTestId('scan-close'))
+  expect(mockDismissTo).toHaveBeenCalledWith('/')
+})
+
 /** Renders the flow at the end of a transition with an ok result, and finishes it. */
 function finishTransition() {
   givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result: OK })

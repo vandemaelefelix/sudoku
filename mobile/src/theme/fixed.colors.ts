@@ -3,6 +3,8 @@ export const FIXED_COLORS = {
   flash: '#ffffff',
   shutterRing: '#ffffff',
   shutterFill: 'rgba(255,255,255,0.3)',
+  closeIcon: '#ffffff',
+  closeFill: 'rgba(0,0,0,0.4)',
   dim: '#000000',
   bracket: '#ffffff',
   starCore: 'rgba(255,255,255,1)',
