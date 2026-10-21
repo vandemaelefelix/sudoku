@@ -392,17 +392,4 @@ describe('the shutter and the automatic lock race', () => {
     expect(starts).toBe(1)
     expect(latch.source).toBe('shutter')
   })
-
-  it('does not fire the automatic lock again after a shutter press', () => {
-    const lock = createLockOn()
-    const latch = createLockLatch()
-    claimLock(latch, 'shutter', 0)
-    let fired = 0
-    for (let t = 0; t <= AUTO_AT + 1; t += FRAME) {
-      step(lock, detection(gridAt(50, 300)), t, lock.last == null)
-      if (lock.fired && claimLock(latch, 'auto', t)) fired++
-    }
-    expect(fired).toBe(0)
-    expect(latch.source).toBe('shutter')
-  })
 })

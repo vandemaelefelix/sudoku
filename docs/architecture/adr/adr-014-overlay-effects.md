@@ -70,7 +70,7 @@ Decision 1 and decision 2 stay. An effect still reads the scene and never change
   every SkSL source with CanvasKit, so most compile errors fail `just test-ts`.
 - The saved choice is a key-value pair, not a row. The row rules of ADR-012 (UUID keys,
   timestamps, soft delete) are for data that may sync. A development setting does not sync.
-- Lock-on does not exist yet. Each effect shows its lock-on reaction in the steady state. The amendment of 2026-10-21 and ADR-019 replace this.
+- Lock-on does not exist yet. Each effect shows its lock-on reaction in the steady state.
 - The other 17 effects of the prototype can come later without a change to the engine.
 
 ## Reassessment Triggers
