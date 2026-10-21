@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { generate, LEVELS, type Level } from '../src/generator'
+import { LEVELS, type Level } from '../src/level'
+import { ungradedPuzzle } from '../src/technique/testKit'
 import { stepWeight, TECHNIQUE_ORDER, TIER_1_ORDER } from '../src/technique/order'
 import { playThrough } from '../src/technique/playThrough'
 import type { TechniqueId, TechniqueRank } from '../src/technique/types'
@@ -27,7 +28,7 @@ type Result = { solved: boolean; steps: number; hardest: number; emptyLeft: numb
 function measure(level: Level, ranks: readonly TechniqueRank[]): Result[] {
   const results: Result[] = []
   for (let seed = 1; seed <= PUZZLES_PER_LEVEL; seed++) {
-    const { givens: board } = generate(level, seed)
+    const { givens: board } = ungradedPuzzle(level, seed)
     const run = playThrough(board, ranks, { unique: true })
     const placed = run.steps.reduce((sum, step) => sum + step.placements.length, 0)
     const givens = board.filter((digit) => digit !== 0).length
@@ -50,7 +51,7 @@ test('the share of generated puzzles that tier 1 and tier 2 solve to the end', (
   const lines: string[] = []
 
   lines.push(
-    `Seeds 1 to ${PUZZLES_PER_LEVEL} of each level, from \`generate\`. All tier 1 techniques, easiest first.`,
+    `Seeds 1 to ${PUZZLES_PER_LEVEL} of each level, from the v1 givens counts (ADR-011). All tier 1 techniques, easiest first.`,
     '',
   )
   lines.push(
