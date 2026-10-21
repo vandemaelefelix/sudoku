@@ -6,7 +6,7 @@ import { styles } from './CloseButton.styles'
 
 type CloseButtonProps = {
   onPress(): void
-  /** True over the live camera: the button takes a fixed light icon on a dark disc, so any camera image keeps it readable. */
+  /** True over the live camera. The button then has a light icon on a dark disc, which stays readable on any image. */
   overCamera: boolean
 }
 
