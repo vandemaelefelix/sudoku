@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { generate, LEVELS } from '../generator'
+import { ungradedPuzzle } from './testKit'
+import { LEVELS } from '../level'
 import { createRandom } from '../random'
 import { computeCandidates } from './candidates'
 import { PEERS, UNITS } from '../units'
@@ -51,7 +52,7 @@ function uniqueState(givens: readonly number[], solution: readonly number[], ran
 
 const uniqueStates: State[] = LEVELS.flatMap((level, index) =>
   [1, 2, 3, 4].flatMap((seed) => {
-    const { givens, solution } = generate(level, seed)
+    const { givens, solution } = ungradedPuzzle(level, seed)
     const random = createRandom(index * 100 + seed + 50)
     return Array.from({ length: STATES_PER_SOLUTION }, () => uniqueState(givens, solution, random))
   }),
@@ -59,7 +60,7 @@ const uniqueStates: State[] = LEVELS.flatMap((level, index) =>
 
 const states: State[] = LEVELS.flatMap((level, index) =>
   [1, 2, 3, 4].flatMap((seed) => {
-    const { solution } = generate(level, seed)
+    const { solution } = ungradedPuzzle(level, seed)
     const random = createRandom(index * 100 + seed)
     return Array.from({ length: STATES_PER_SOLUTION }, () => fuzzState(solution, random))
   }),

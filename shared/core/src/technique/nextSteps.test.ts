@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyGrid } from '../grid'
-import { generate, LEVELS } from '../generator'
+import { LEVELS } from '../level'
 import { createRandom, shuffled } from '../random'
 import { computeCandidates } from './candidates'
 import { nextSteps } from './nextSteps'
 import { TECHNIQUE_ORDER, TIER_1_ORDER } from './order'
 import { playThrough } from './playThrough'
 import { expectWellFormed } from './stepChecks'
-import { boardWith, struck } from './testKit'
+import { boardWith, struck, ungradedPuzzle } from './testKit'
 import type { Candidates, Step } from './types'
 
 const SEEDS = Array.from({ length: 15 }, (_, i) => i + 1)
@@ -94,13 +94,13 @@ describe('nextSteps', () => {
   })
 
   it('searches only the ranks that the caller gives', () => {
-    const run = playThrough(generate('expert', 1).givens, TIER_1_ORDER)
+    const run = playThrough(ungradedPuzzle('expert', 1).givens, TIER_1_ORDER)
     const { board, candidates } = run.final
     expect(nextSteps(candidates, board, TIER_1_ORDER)).toEqual([])
   })
 
   it('never plays the unique rectangle unless the caller says that the puzzle has one solution', () => {
-    const { givens } = generate('expert', 99)
+    const { givens } = ungradedPuzzle('expert', 99)
     const without = playThrough(givens)
     const withUnique = playThrough(givens, undefined, { unique: true })
     expect(without.steps.some((step) => step.technique === 'uniqueRectangle')).toBe(false)
@@ -134,7 +134,7 @@ describe('nextSteps', () => {
   })
 
   it('sorts the steps by focus unit, then first pattern cell', () => {
-    const { board, candidates } = playThrough(generate('easy', 1).givens).positions[1]!
+    const { board, candidates } = playThrough(ungradedPuzzle('easy', 1).givens).positions[1]!
     const steps = nextSteps(candidates, board)
     expect(steps.length).toBeGreaterThan(1)
     const keys = steps.map(focusKey)
@@ -145,7 +145,7 @@ describe('nextSteps', () => {
 describe('every step of every position never contradicts the unique solution', () => {
   describe.for(LEVELS)('%s', (level) => {
     it.for(SEEDS)('seed %i, with 0, 10, 20 and 30 solution digits filled in', (seed) => {
-      const puzzle = generate(level, seed)
+      const puzzle = ungradedPuzzle(level, seed)
       for (const fill of FILLS) {
         const random = createRandom(seed * 100 + fill)
         const board = [...puzzle.givens]
@@ -167,7 +167,7 @@ describe('every step of every position never contradicts the unique solution', (
 
 describe('determinism', () => {
   it('gives the same steps for the same input and leaves the input as it was', () => {
-    const puzzle = generate('hard', 3)
+    const puzzle = ungradedPuzzle('hard', 3)
     const run = playThrough(puzzle.givens)
     expect(run.steps.length).toBeGreaterThan(10)
     for (const { board, candidates } of run.positions) {
@@ -181,7 +181,7 @@ describe('determinism', () => {
   })
 
   it('does not depend on the order in which the positions are asked', () => {
-    const run = playThrough(generate('medium', 9).givens)
+    const run = playThrough(ungradedPuzzle('medium', 9).givens)
     const forward = run.positions.map(({ board, candidates }) => nextSteps(candidates, board))
     const again: Step[][] = []
     for (let i = run.positions.length - 1; i >= 0; i--) {

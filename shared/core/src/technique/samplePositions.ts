@@ -1,4 +1,5 @@
-import { generate, LEVELS } from '../generator'
+import { LEVELS } from '../level'
+import { ungradedPuzzle } from './testKit'
 import { TIER_1_ORDER } from './order'
 import { playThrough, type Position } from './playThrough'
 
@@ -13,7 +14,7 @@ const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 export function benchPositions(): Position[] {
   return LEVELS.flatMap((level) =>
     SEEDS.flatMap((seed) => {
-      const { givens } = generate(level, seed)
+      const { givens } = ungradedPuzzle(level, seed)
       const { positions, final } = playThrough(givens, undefined, { unique: true })
       const stuck = playThrough(givens, TIER_1_ORDER).final
       return [positions[0], positions[Math.floor(positions.length / 2)], positions.at(-1), stuck, final].filter(
