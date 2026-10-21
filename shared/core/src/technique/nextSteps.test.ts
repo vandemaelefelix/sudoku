@@ -32,7 +32,7 @@ function checkStep(step: Step, before: readonly number[], candidates: Candidates
   }
   const keys = step.eliminations.map(({ cell, digit }) => cell * 10 + digit)
   expect(isSortedAndUnique(keys)).toBe(true)
-  expectWellFormed(step)
+  expectWellFormed(step, candidates)
 }
 
 describe('TECHNIQUE_ORDER', () => {
@@ -42,7 +42,7 @@ describe('TECHNIQUE_ORDER', () => {
     expect(increases.every(Boolean)).toBe(true)
   })
 
-  it('lists the tier 2 techniques after the tier 1 techniques of the same weight', () => {
+  it('lists every technique in the order of the table', () => {
     expect(TECHNIQUE_ORDER.map((rank) => rank.technique)).toEqual([
       'fullHouse',
       'hiddenSingle',
