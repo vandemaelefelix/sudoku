@@ -12,7 +12,7 @@ sudoku/
 │   ├── src/app/             # routes (Expo Router, ADR-016): each file renders one screen
 │   ├── src/home/            # home UI: the levels, Continue, Scan and Settings
 │   ├── src/game/            # game UI: screens/, components/, hooks/, utils/, constants/
-│   ├── src/settings/        # settings UI and SettingsRepository: assists, theme
+│   ├── src/settings/        # settings UI, SettingsRepository and the setting store: assists, theme
 │   ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
 │   ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
 │   ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)

@@ -1,5 +1,6 @@
 import { kvSettings } from '@/settings/SettingsRepository'
-import { createShareStore } from './scanShareSettings'
+import { createSettingStore } from '@/settings/settingStore'
+import { SHARE_SCANS_SETTING } from './scanShareSettings'
 
 /** The one share store of the app: the switch in Settings must reach the correction screen, the capture and the uploader. */
-export const shareStore = createShareStore(kvSettings)
+export const shareStore = createSettingStore(kvSettings, SHARE_SCANS_SETTING)

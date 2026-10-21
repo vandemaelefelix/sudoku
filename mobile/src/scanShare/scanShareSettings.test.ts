@@ -1,48 +1,20 @@
 import { createMemorySettings } from '@/settings/memorySettings'
 import { CONTRIBUTOR_ID_KEY, NOTICE_SEEN_KEY, SHARE_SCANS_KEY } from './constants/scanShare.constants'
-import {
-  createContributorId,
-  createNoticeStore,
-  createShareStore,
-  markNoticeSeen,
-  readNoticeSeen,
-} from './scanShareSettings'
+import { createSettingStore } from '@/settings/settingStore'
+import { createContributorId, createNoticeStore, SHARE_SCANS_SETTING } from './scanShareSettings'
 
-describe('share store', () => {
-  it('is on by default', () => {
-    expect(createShareStore(createMemorySettings()).get()).toBe(true)
+describe('share setting', () => {
+  it('is on by default and off only for "off"', () => {
+    expect(SHARE_SCANS_SETTING.parse(null)).toBe(true)
+    expect(SHARE_SCANS_SETTING.parse('on')).toBe(true)
+    expect(SHARE_SCANS_SETTING.parse('broken')).toBe(true)
+    expect(SHARE_SCANS_SETTING.parse('off')).toBe(false)
   })
 
-  it('saves a change, tells the listeners and reads it back', async () => {
+  it('saves "on" or "off" under the same key', async () => {
     const settings = createMemorySettings()
-    const store = createShareStore(settings)
-    const listener = jest.fn()
-    store.subscribe(listener)
-    await store.set(false)
-    expect(store.get()).toBe(false)
-    expect(listener).toHaveBeenCalledTimes(1)
+    await createSettingStore(settings, SHARE_SCANS_SETTING).set(false)
     expect(await settings.get(SHARE_SCANS_KEY)).toBe('off')
-    expect(createShareStore(settings).get()).toBe(false)
-  })
-
-  it('gives on when the store throws', () => {
-    const settings = {
-      ...createMemorySettings(),
-      getSync: () => {
-        throw new Error('locked')
-      },
-    }
-    expect(createShareStore(settings).get()).toBe(true)
-  })
-})
-
-describe('notice flag', () => {
-  it('is false by default and true after the player saw the notice', async () => {
-    const settings = createMemorySettings()
-    expect(await readNoticeSeen(settings)).toBe(false)
-    await markNoticeSeen(settings)
-    expect(await readNoticeSeen(settings)).toBe(true)
-    expect(await settings.get(NOTICE_SEEN_KEY)).toBe('yes')
   })
 })
 
@@ -79,6 +51,17 @@ describe('notice store', () => {
     expect(store.due()).toBe(false)
     expect(await settings.get(NOTICE_SEEN_KEY)).toBe('yes')
     expect(createNoticeStore(settings).seen()).toBe(true)
+  })
+
+  it('saves the answer again when the first save failed', async () => {
+    const settings = createMemorySettings()
+    const save = jest.spyOn(settings, 'set').mockRejectedValueOnce(new Error('disk full'))
+    const store = createNoticeStore(settings)
+    await expect(store.markSeen()).rejects.toThrow('disk full')
+    expect(store.seen()).toBe(true)
+    await store.markSeen()
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(await settings.get(NOTICE_SEEN_KEY)).toBe('yes')
   })
 
   it('does not become due once the notice was seen', () => {
