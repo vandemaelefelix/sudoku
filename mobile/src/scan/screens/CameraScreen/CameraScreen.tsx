@@ -20,7 +20,8 @@ import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import type { RecogniseResult } from '@/scanner'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { CameraPermission } from '@/scan/components/CameraPermission'
+import { type CameraBlock, CameraPermission } from '@/scan/components/CameraPermission'
+import { CloseButton } from '@/scan/components/CloseButton'
 import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { EffectPicker } from '@/scan/effects/components/EffectPicker'
@@ -41,6 +42,7 @@ import { styles } from './CameraScreen.styles'
  * layout: the correction screen layout that the transition ends on. onDone: called once when the transition ends, with an ok result.
  * onRetake: the parent mounts a new CameraScreen, so the scene, its lock-on latch and the transition start new. It gets the result
  * that the player leaves, so the parent can delete its photo.
+ * onClose: the close button before the capture. The correction screen has its own exits.
  * review: set by the parent after onDone. The correction screen of the transition stays mounted and becomes the static screen, so
  * its Skia canvases have drawn before they show. The camera and the transition layers unmount.
  */
@@ -48,11 +50,13 @@ export function CameraScreen({
   layout,
   onDone,
   onRetake,
+  onClose,
   review,
 }: {
   layout: CorrectionLayout
   onDone: (result: RecogniseResult) => void
   onRetake: (result: RecogniseResult | null) => void
+  onClose: () => void
   review?: Pick<CorrectionProps, 'onPlay' | 'onSave' | 'onExit' | 'onHome'>
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
@@ -92,8 +96,14 @@ export function CameraScreen({
     if (canRequestPermission) void requestPermission()
   }, [canRequestPermission, requestPermission])
 
-  if (!hasPermission) return <CameraPermission block={canRequestPermission ? 'waiting' : 'denied'} />
-  if (device == null) return <CameraPermission block="missing" />
+  const blocked = (block: CameraBlock) => (
+    <>
+      <CameraPermission block={block} />
+      <CloseButton onPress={onClose} overCamera={false} />
+    </>
+  )
+  if (!hasPermission) return blocked(canRequestPermission ? 'waiting' : 'denied')
+  if (device == null) return blocked('missing')
   return (
     <View
       testID="camera-screen"
@@ -155,6 +165,13 @@ export function CameraScreen({
               style={({ pressed }) => [styles.shutter, pressed && pressedStyles.pressed]}
               onPress={() => startCapture(frameQuad.get(), 'tap')}
             />
+          </Animated.View>
+          <Animated.View
+            exiting={FadeOut.duration(theme.motion.short).easing(easeOut).reduceMotion(ReduceMotion.Never)}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="box-none"
+          >
+            <CloseButton onPress={onClose} overCamera />
           </Animated.View>
           {__DEV__ ? <EffectPicker effect={effect} settings={kvSettings} /> : null}
         </>
