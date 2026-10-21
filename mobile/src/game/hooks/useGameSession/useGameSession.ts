@@ -1,49 +1,32 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AppState } from 'react-native'
-import type { NewGame } from '@sudoku/core'
-import type { GameActions } from '@/game/hooks/useGameActions'
-import { useGameClock } from '@/game/hooks/useGameClock'
 import type { GameState } from '@/game/hooks/useGameState'
 import { useMoveHaptics } from '@/game/hooks/useMoveHaptics'
-import { reduceSession, startSession } from '@/game/utils/session.utils'
+import { createGameSession, type GameActions, type SaveGame } from '@/game/utils/gameSession.utils'
+import type { GameStart } from '@/game/utils/session.utils'
 
-/** The three parts of a game session. Each part keeps its identity until its own content changes. */
-export type GameSession = { state: GameState; playedMs: number; actions: GameActions }
+/** The play screen gives the save. Without it, the game screen saves nothing. */
+export const GameSaveContext = createContext<SaveGame | null>(null)
+
+/** The three parts of a game. Each part keeps its identity until its own content changes. */
+export type GameSessionView = { state: GameState; playedMs: number; actions: GameActions }
 
 /**
- * One game in progress. start is read once, when the hook mounts.
- * The game pauses when the app is not active, and stays paused until the player resumes it.
+ * One game in progress. start is read once, when the hook mounts. The rules, the clock and the saves live in
+ * createGameSession. This hook reads the session, runs it while mounted and gives it the one AppState listener.
  */
-export function useGameSession(start: NewGame): GameSession {
-  const [session, dispatch] = useReducer(reduceSession, start, startSession)
-  const onElapsed = useCallback((elapsedMs: number) => dispatch({ type: 'tick', elapsedMs }), [])
-  const flushClock = useGameClock(session.game.status === 'playing', onElapsed)
-  useMoveHaptics(session.move, session.game.status === 'lost')
-  // The flush comes first: the core ignores a tick once the game is paused.
-  const pause = useCallback(() => {
-    flushClock()
-    dispatch({ type: 'pause' })
-  }, [flushClock])
+export function useGameSession(start: GameStart): GameSessionView {
+  const [session] = useState(() => createGameSession(start))
+  const save = useContext(GameSaveContext)
+  const { game, board, notesMode, move } = useSyncExternalStore(session.subscribe, session.getSnapshot)
+  useEffect(() => session.attach(save), [session, save])
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
-      if (next !== 'active') pause()
+      if (next !== 'active') session.background()
     })
     return () => subscription.remove()
-  }, [pause])
-  const { board, notesMode, move } = session
+  }, [session])
+  useMoveHaptics(move, game.status === 'lost')
   const state = useMemo<GameState>(() => ({ board, notesMode, move }), [board, notesMode, move])
-  const actions = useMemo<GameActions>(
-    () => ({
-      select: (cell) => dispatch({ type: 'select', cell }),
-      digit: (digit) => dispatch({ type: 'digit', digit }),
-      erase: () => dispatch({ type: 'erase' }),
-      undo: () => dispatch({ type: 'undo' }),
-      hint: () => dispatch({ type: 'hint', random: Math.random }),
-      toggleNotesMode: () => dispatch({ type: 'toggleNotesMode' }),
-      pause,
-      resume: () => dispatch({ type: 'resume' }),
-    }),
-    [pause],
-  )
-  return { state, playedMs: session.game.playedMs, actions }
+  return { state, playedMs: game.playedMs, actions: session.actions }
 }

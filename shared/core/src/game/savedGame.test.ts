@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { hint, pause, place, select, tick, toggleNote } from './actions'
+import { erase, hint, pause, place, select, tick, toggleNote, undo } from './actions'
 import { createGame } from './createGame'
 import { SAMPLE_GIVENS, SAMPLE_SOLUTION, solvedExcept } from './samplePuzzle'
-import { fromSavedGame, SAVED_GAME_VERSION, toSavedGame } from './savedGame'
+import { fromSavedGame, needsSave, SAVED_GAME_VERSION, toSavedGame } from './savedGame'
+import type { Game } from './types'
 
 function gameInProgress() {
   const entries = solvedExcept(2, 3, 40)
@@ -122,5 +123,54 @@ describe('saved game', () => {
     const saved = toSavedGame(gameInProgress())
     saved.undoSteps[0] = { entries: [1], notes: [] }
     expect(() => fromSavedGame(saved)).toThrow(RangeError)
+  })
+})
+
+describe('needsSave', () => {
+  const OPEN = 2
+  const fresh = () =>
+    createGame({ givens: SAMPLE_GIVENS, solution: SAMPLE_SOLUTION, entries: solvedExcept(OPEN, 3, 40) })
+
+  it('a selection alone does not need a save', () => {
+    const game = fresh()
+    expect(needsSave(game, select(game, OPEN))).toBe(false)
+  })
+
+  it('a clock tick alone does not need a save', () => {
+    const game = fresh()
+    expect(needsSave(game, tick(game, 1000))).toBe(false)
+  })
+
+  it.each([
+    ['a number', (game: Game) => place(select(game, OPEN), 4).game],
+    ['a wrong number', (game: Game) => place(select(game, OPEN), 5).game],
+    ['a note', (game: Game) => toggleNote(select(game, OPEN), 3).game],
+    ['an undo', (game: Game) => undo(place(select(game, OPEN), 4).game).game],
+    ['an erase', (game: Game) => erase(place(select(game, OPEN), 4).game).game],
+    ['a hint', (game: Game) => hint(game, () => 0).game],
+    ['a pause', (game: Game) => pause(game)],
+  ])('%s needs a save', (_name, act) => {
+    const game = fresh()
+    expect(needsSave(game, act(game))).toBe(true)
+  })
+
+  it('stores exactly the fields of a game, so needsSave sees every stored field', () => {
+    // A field that the save stores and that needsSave does not know would never trigger a write.
+    const game = gameInProgress()
+    const stored = Object.keys(toSavedGame(game)).filter((field) => field !== 'version')
+    expect(new Set(stored)).toEqual(new Set(Object.keys(game)))
+  })
+
+  it('notices a change of each other field', () => {
+    const game = fresh()
+    const changed: Partial<Game>[] = [
+      { entries: [...game.entries] },
+      { notes: [...game.notes] },
+      { undoSteps: [...game.undoSteps] },
+      { mistakes: game.mistakes + 1 },
+      { hintsUsed: game.hintsUsed + 1 },
+      { status: 'paused' },
+    ]
+    for (const change of changed) expect(needsSave(game, { ...game, ...change })).toBe(true)
   })
 })
