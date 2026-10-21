@@ -6,9 +6,10 @@ import { Stack } from 'expo-router'
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 import { generate } from '@sudoku/core'
 import GameRoute from '@/app/game'
+import type { SharedValue } from 'react-native-reanimated'
 import type { CellResult, RecogniseResult } from '@/scanner'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
-import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
+import { type CorrectionProps, CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
@@ -44,9 +45,19 @@ function scanResult(): RecogniseResult {
   }
 }
 
+// The finished scan: the clock values are not read in the review phase.
+const review: CorrectionProps['session'] = {
+  phase: 'review',
+  result: scanResult(),
+  crossFade: false,
+  clock: { value: 0 } as SharedValue<number>,
+  waiting: { value: false } as SharedValue<boolean>,
+  resultsAt: { value: 0 } as SharedValue<number>,
+}
+
 function ScanReview() {
   const play = useScannedStart()
-  return <CorrectionScreen result={scanResult()} layout={layout} onRetake={jest.fn()} onPlay={play} />
+  return <CorrectionScreen session={review} layout={layout} onRetake={jest.fn()} onPlay={play} />
 }
 
 function renderScan(storage: GameStorage = createMemoryStorage()) {

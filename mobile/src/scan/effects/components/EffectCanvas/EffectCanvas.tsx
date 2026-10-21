@@ -5,7 +5,7 @@ import { type SharedValue, useFrameCallback, useReducedMotion, useSharedValue } 
 import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import { countFrame, EMPTY_WINDOW } from '@/scan/utils/tracking.utils'
-import type { CaptureFrame } from '@/scan/utils/transition.utils'
+import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
 import {
   advance,
   advanceCapture,
@@ -29,34 +29,32 @@ function logLock(report: LockReport) {
 }
 
 function logLockWithoutQuad() {
-  devLog('lock', 'locked, but frameQuad is null: onLock not called')
+  devLog('lock', 'locked, but frameQuad is null: startCapture not called')
 }
 
 /**
  * outline: the smoothed grid in view points, or null. view: the size of the camera view in points.
  * effect: an index into EFFECTS. Only the JS thread writes it, and only when the developer picks an effect.
- * frameQuad: the same grid, normalised to the upright frame. onLock: called once per scene, on the JS thread, with frameQuad at lock-on.
- * capture: the transition frame (the dots follow its quad), or null in the live phase. While it is set, outline is ignored and onLock is not called.
- * beforeFrame: runs first in each UI frame, with the frame timestamp in milliseconds. The transition clock steps here, so the
- * overlay draws the grid of this frame.
+ * frameQuad: the same grid, normalised to the upright frame.
+ * session: the capture session. The overlay steps its clock first in each UI frame, so it draws the grid of this frame. It calls
+ * startCapture once per scene, on the JS thread, with frameQuad at lock-on. While the session has a captureFrame, the dots follow
+ * its quad, outline is ignored and the overlay does not lock on.
  */
 export function EffectCanvas({
   outline,
   view,
   effect,
   frameQuad,
-  onLock,
-  capture,
-  beforeFrame,
+  session,
 }: {
   outline: SharedValue<Quad | null>
   view: SharedValue<ViewSize>
   effect: SharedValue<number>
   frameQuad: SharedValue<Quad | null>
-  onLock: (quad: Quad) => void
-  capture?: SharedValue<CaptureFrame | null>
-  beforeFrame?: (timestamp: number) => void
+  session: Pick<CaptureSession, 'startCapture' | 'stepClock' | 'captureFrame'>
 }) {
+  // The frame worklet captures these names, as it captured the props before.
+  const { startCapture, stepClock, captureFrame } = session
   // Reanimated reads the setting once at app start, so a change takes effect after a restart.
   const reduceMotion = useReducedMotion()
   const { theme } = useUnistyles()
@@ -78,7 +76,7 @@ export function EffectCanvas({
 
   useFrameCallback((frame) => {
     'worklet'
-    if (beforeFrame != null) beforeFrame(frame.timestamp)
+    stepClock(frame.timestamp)
     const size = view.get()
     if (size.width <= 0 || size.height <= 0) return
     const t = frame.timestamp / 1000
@@ -86,7 +84,7 @@ export function EffectCanvas({
     const index = effect.get()
     const active = effectAt(index)
     const quad = outline.get()
-    const captured = capture == null ? null : capture.get()
+    const captured = captureFrame.get()
     engine.modify((current) => {
       'worklet'
       if (captured != null && current != null)
@@ -98,7 +96,7 @@ export function EffectCanvas({
     // The tracker fires in the frame of lock-on only, so the quad crosses to the JS thread once.
     if (captured == null && now.lockOn.fired) {
       const locked = frameQuad.get()
-      if (locked != null) scheduleOnRN(onLock, locked)
+      if (locked != null) scheduleOnRN(startCapture, locked, 'auto')
       else if (__DEV__) scheduleOnRN(logLockWithoutQuad)
     }
     if (__DEV__ && captured == null) {

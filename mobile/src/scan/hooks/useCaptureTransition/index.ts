@@ -1,1 +1,0 @@
-export { useCaptureTransition } from './useCaptureTransition'

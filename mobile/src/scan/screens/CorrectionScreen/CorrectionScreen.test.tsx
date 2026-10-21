@@ -3,7 +3,8 @@ import * as Haptics from 'expo-haptics'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import { generate } from '@sudoku/core'
-import type { CellResult, RecogniseResult } from '@/scanner'
+import type { CellResult } from '@/scanner'
+import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import type { ScannedStart } from '@/scan/utils/play.utils'
 import { createPicture, Skia } from '@shopify/react-native-skia'
@@ -11,7 +12,7 @@ import type { Theme } from '@/theme/theme.types'
 import { cobalt } from '@/theme/themes/cobalt'
 import { forest } from '@/theme/themes/forest'
 import { bordeaux } from '@/theme/themes/bordeaux'
-import { CorrectionScreen } from './CorrectionScreen'
+import { type CorrectionProps, CorrectionScreen } from './CorrectionScreen'
 import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
@@ -29,7 +30,7 @@ jest.mock('@/scan/components/ScanInspector', () => {
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
 const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
 
-function okResult(over: { [n: number]: Partial<CellResult> } = {}): RecogniseResult {
+function okResult(over: { [n: number]: Partial<CellResult> } = {}): CaptureResult {
   const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
   return { ok: true, cells, quad: [] as never, corners: 'detected' as never, cornerOffset: null, timings: {} as never }
 }
@@ -38,6 +39,33 @@ const given = { digit: 5, kind: 'printed', confidence: 1 } as const
 const entry = { digit: 7, kind: 'handwritten', confidence: 1 } as const
 const style = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style)
 const clock = (value: number) => ({ value }) as SharedValue<number>
+type Session = CorrectionProps['session']
+/** The finished scan: the player can edit, and every layer shows. */
+const review = (result: CaptureResult | null): Session => ({
+  phase: 'review',
+  result,
+  crossFade: false,
+  clock: clock(0),
+  waiting: { value: false } as SharedValue<boolean>,
+  resultsAt: clock(0),
+})
+/** The transition: the clock drives the layers. The results arrived at 0 unless the test says otherwise, so the sweep does not shift. */
+const capturing = (
+  result: CaptureResult | null,
+  over: {
+    clock?: SharedValue<number>
+    waiting?: SharedValue<boolean>
+    resultsAt?: SharedValue<number>
+    reduceMotion?: boolean
+  } = {},
+): Session => ({
+  phase: 'capturing',
+  result,
+  crossFade: over.reduceMotion ?? false,
+  clock: over.clock ?? clock(0),
+  waiting: over.waiting ?? ({ value: false } as SharedValue<boolean>),
+  resultsAt: over.resultsAt ?? clock(0),
+})
 /** The entering animation of the nearest element, the node itself or above it, that takes one. */
 const entering = (node: ReturnType<typeof screen.getByTestId> | null): unknown => {
   for (let at = node; at; at = at.parent) if ('entering' in at.props) return at.props.entering
@@ -46,7 +74,7 @@ const entering = (node: ReturnType<typeof screen.getByTestId> | null): unknown =
 
 describe('CorrectionScreen in review', () => {
   it('styles the digits as given, entry and empty from the tokens', () => {
-    render(<CorrectionScreen result={okResult({ 0: given, 1: entry })} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult({ 0: given, 1: entry }))} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('5')
     expect(style('correction-cell-0')).toMatchObject({
       color: cobalt.components.cell.given,
@@ -65,7 +93,7 @@ describe('CorrectionScreen in review', () => {
   it('draws a dashed ring only on the uncertain cells', () => {
     render(
       <CorrectionScreen
-        result={okResult({ 0: { ...given, confidence: 0.5 }, 1: entry, 2: { validPair: false } })}
+        session={review(okResult({ 0: { ...given, confidence: 0.5 }, 1: entry, 2: { validPair: false } }))}
         layout={layout}
         onRetake={jest.fn()}
       />,
@@ -85,7 +113,7 @@ describe('CorrectionScreen in review', () => {
   it('shows the count of cells to check', () => {
     render(
       <CorrectionScreen
-        result={okResult({ 0: { confidence: 0.1 }, 1: { confidence: 0.1 } })}
+        session={review(okResult({ 0: { confidence: 0.1 }, 1: { confidence: 0.1 } }))}
         layout={layout}
         onRetake={jest.fn()}
       />,
@@ -94,7 +122,7 @@ describe('CorrectionScreen in review', () => {
   })
 
   it('shows the title, the level and a disabled Play button', () => {
-    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult())} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByText('Check the scan')).toBeTruthy()
     expect(screen.getByTestId('correction-level')).toHaveTextContent('Expert')
     expect(screen.getByTestId('play').props.accessibilityState).toMatchObject({ disabled: true })
@@ -103,13 +131,13 @@ describe('CorrectionScreen in review', () => {
 
   it('calls onRetake', () => {
     const onRetake = jest.fn()
-    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={onRetake} />)
+    render(<CorrectionScreen session={review(okResult())} layout={layout} onRetake={onRetake} />)
     fireEvent.press(screen.getByTestId('retake'))
     expect(onRetake).toHaveBeenCalledTimes(1)
   })
 
   it('takes the panel colour from the theme styles, not from an inline object', () => {
-    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult())} layout={layout} onRetake={jest.fn()} />)
     const own = screen.getByTestId('correction-panel').props.style.flat(Infinity)
     expect(own).toContainEqual(
       expect.objectContaining({
@@ -131,7 +159,7 @@ describe('CorrectionScreen in review', () => {
       .spyOn(unistyles, 'useUnistyles')
       .mockReturnValue({ theme, rt: unistyles.UnistylesRuntime } as never)
     const paint = jest.spyOn(Skia, 'Paint')
-    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult())} layout={layout} onRetake={jest.fn()} />)
     for (const [record] of jest.mocked(createPicture).mock.calls.slice(-2)) {
       record({ drawRect: jest.fn(), drawLine: jest.fn() } as never)
     }
@@ -145,7 +173,7 @@ describe('CorrectionScreen in review', () => {
   })
 
   it('draws the grid lines over the cells, so the fill of an open cell never covers a line', () => {
-    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult({ 0: given }))} layout={layout} onRetake={jest.fn()} />)
     const order = screen
       .getByTestId('correction-screen')
       .props.children.flat(Infinity)
@@ -160,7 +188,7 @@ describe('CorrectionScreen in review', () => {
   })
 
   it('draws the background and the board', () => {
-    render(<CorrectionScreen result={okResult()} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult())} layout={layout} onRetake={jest.fn()} />)
     expect(style('correction-screen').backgroundColor).toBe(cobalt.colors.background)
     expect(style('correction-board').opacity).toBe(1)
     expect(style('correction-lines').opacity).toBe(1)
@@ -168,7 +196,7 @@ describe('CorrectionScreen in review', () => {
 
   it('shows the failure and Retake, without digits', () => {
     const onRetake = jest.fn()
-    render(<CorrectionScreen result={{ ok: false, reason: 'no grid' }} layout={layout} onRetake={onRetake} />)
+    render(<CorrectionScreen session={review({ ok: false, reason: 'no grid' })} layout={layout} onRetake={onRetake} />)
     expect(screen.getByTestId('correction-failure')).toHaveTextContent(/The scan failed/)
     expect(screen.getByText('no grid')).toBeTruthy()
     expect(screen.queryByTestId('correction-cell-0')).toBeNull()
@@ -180,10 +208,9 @@ describe('CorrectionScreen in review', () => {
   it('shows a spinner while it waits for the result', () => {
     render(
       <CorrectionScreen
-        result={null}
+        session={capturing(null, { waiting: { value: true } as SharedValue<boolean> })}
         layout={layout}
         onRetake={jest.fn()}
-        waiting={{ value: true } as SharedValue<boolean>}
       />,
     )
     expect(style('correction-waiting').opacity).toBe(1)
@@ -193,10 +220,9 @@ describe('CorrectionScreen in review', () => {
   it('hides the spinner when it does not wait', () => {
     render(
       <CorrectionScreen
-        result={null}
+        session={capturing(null, { waiting: { value: false } as SharedValue<boolean> })}
         layout={layout}
         onRetake={jest.fn()}
-        waiting={{ value: false } as SharedValue<boolean>}
       />,
     )
     expect(style('correction-waiting').opacity).toBe(0)
@@ -205,11 +231,9 @@ describe('CorrectionScreen in review', () => {
 
 const failureUi = (shared: SharedValue<number>, reduceMotion = false) => (
   <CorrectionScreen
-    result={{ ok: false, reason: 'x' }}
+    session={capturing({ ok: false, reason: 'x' }, { clock: shared, reduceMotion: reduceMotion })}
     layout={layout}
     onRetake={jest.fn()}
-    clock={shared}
-    reduceMotion={reduceMotion}
   />
 )
 const HIDDEN = layout.panel.height * 1.4
@@ -225,7 +249,13 @@ function slideReaction() {
 
 describe('CorrectionScreen with a clock', () => {
   it('draws no background, and mounts the board and the lines hidden, so they have drawn when the transition ends', () => {
-    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    render(
+      <CorrectionScreen
+        session={capturing(okResult({ 0: given }), { clock: clock(1.5) })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
     expect(style('correction-screen').backgroundColor).toBeUndefined()
     expect(style('correction-board').opacity).toBe(0)
     expect(style('correction-lines').opacity).toBe(0)
@@ -234,10 +264,9 @@ describe('CorrectionScreen with a clock', () => {
   it('shows everything at the end of the transition', () => {
     render(
       <CorrectionScreen
-        result={okResult({ 0: { ...given, confidence: 0.2 }, 80: entry })}
+        session={capturing(okResult({ 0: { ...given, confidence: 0.2 }, 80: entry }), { clock: clock(1.5) })}
         layout={layout}
         onRetake={jest.fn()}
-        clock={clock(1.5)}
       />,
     )
     expect(style('correction-cell-0').opacity).toBe(1)
@@ -249,10 +278,9 @@ describe('CorrectionScreen with a clock', () => {
   it('hides everything at the start', () => {
     render(
       <CorrectionScreen
-        result={okResult({ 0: { ...given, confidence: 0.2 } })}
+        session={capturing(okResult({ 0: { ...given, confidence: 0.2 } }), { clock: clock(0) })}
         layout={layout}
         onRetake={jest.fn()}
-        clock={clock(0)}
       />,
     )
     expect(style('correction-cell-0').opacity).toBe(0)
@@ -293,7 +321,11 @@ describe('CorrectionScreen with a clock', () => {
 
   it('keeps the failure panel down before the results gate', () => {
     render(
-      <CorrectionScreen result={{ ok: false, reason: 'x' }} layout={layout} onRetake={jest.fn()} clock={clock(0.5)} />,
+      <CorrectionScreen
+        session={capturing({ ok: false, reason: 'x' }, { clock: clock(0.5) })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
     )
     expect(style('correction-panel').transform).toEqual([{ translateY: HIDDEN }])
   })
@@ -301,24 +333,26 @@ describe('CorrectionScreen with a clock', () => {
   it('raises each digit 3 pt while it fades in', () => {
     const result = okResult({ 0: given })
     const { rerender } = render(
-      <CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0)} />,
+      <CorrectionScreen session={capturing(result, { clock: clock(0) })} layout={layout} onRetake={jest.fn()} />,
     )
     expect(style('correction-cell-0').transform).toEqual([{ translateY: 3 }])
     const alpha = digitAlpha(0.6, 0, 0, false)
-    rerender(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(0.6)} />)
+    rerender(
+      <CorrectionScreen session={capturing(result, { clock: clock(0.6) })} layout={layout} onRetake={jest.fn()} />,
+    )
     expect(style('correction-cell-0').transform[0].translateY).toBeCloseTo((1 - alpha) * 3, 12)
-    rerender(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    rerender(
+      <CorrectionScreen session={capturing(result, { clock: clock(1.5) })} layout={layout} onRetake={jest.fn()} />,
+    )
     expect(style('correction-cell-0').transform).toEqual([{ translateY: 0 }])
   })
 })
 
 const late = (t: number, at: number) => (
   <CorrectionScreen
-    result={okResult({ 0: { ...given, confidence: 0.2 } })}
+    session={capturing(okResult({ 0: { ...given, confidence: 0.2 } }), { clock: clock(t), resultsAt: clock(at) })}
     layout={layout}
     onRetake={jest.fn()}
-    clock={clock(t)}
-    resultsAt={clock(at)}
   />
 )
 
@@ -349,7 +383,7 @@ describe('CorrectionScreen with late results', () => {
 })
 
 const press = (testID: string) => fireEvent.press(screen.getByTestId(testID))
-const ui = (result: RecogniseResult) => <CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} />
+const ui = (result: CaptureResult) => <CorrectionScreen session={review(result)} layout={layout} onRetake={jest.fn()} />
 const shaky = (digit: number, confidence: number, second = 1) =>
   ({ digit, kind: 'printed', confidence, second }) as const
 
@@ -490,7 +524,13 @@ describe('CorrectionScreen check flow', () => {
   })
 
   it('keeps the cells inert during the transition', () => {
-    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    render(
+      <CorrectionScreen
+        session={capturing(okResult({ 0: given }), { clock: clock(1.5) })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
     expect(screen.getByTestId('correction-press-0').props.accessibilityState).toMatchObject({ disabled: true })
     press('correction-press-0')
     expect(screen.queryByTestId('correction-check')).toBeNull()
@@ -499,10 +539,9 @@ describe('CorrectionScreen check flow', () => {
   it('shows no conflict mark during the transition', () => {
     render(
       <CorrectionScreen
-        result={okResult({ 0: given, 8: given })}
+        session={capturing(okResult({ 0: given, 8: given }), { clock: clock(1.5) })}
         layout={layout}
         onRetake={jest.fn()}
-        clock={clock(1.5)}
       />,
     )
     expect(screen.queryByTestId('correction-fill-0')).toBeNull()
@@ -531,7 +570,7 @@ const firstOpen = puzzle.givens.findIndex((digit) => digit === 0)
 const wrongDigit = ((puzzle.solution[firstOpen] ?? 0) % 9) + 1
 
 /** A recognised result with every given of `givens` printed, and `over` on top. */
-function scanOf(givens: readonly number[], over: { [n: number]: Partial<CellResult> } = {}): RecogniseResult {
+function scanOf(givens: readonly number[], over: { [n: number]: Partial<CellResult> } = {}): CaptureResult {
   const printed: { [n: number]: Partial<CellResult> } = {}
   givens.forEach((digit, n) => {
     if (digit !== 0) printed[n] = { digit, kind: 'printed', confidence: 1 }
@@ -539,8 +578,8 @@ function scanOf(givens: readonly number[], over: { [n: number]: Partial<CellResu
   return okResult({ ...printed, ...over })
 }
 
-const playUi = (result: RecogniseResult, onPlay = jest.fn<void, [ScannedStart]>()) => {
-  render(<CorrectionScreen result={result} layout={layout} onRetake={jest.fn()} onPlay={onPlay} />)
+const playUi = (result: CaptureResult, onPlay = jest.fn<void, [ScannedStart]>()) => {
+  render(<CorrectionScreen session={review(result)} layout={layout} onRetake={jest.fn()} onPlay={onPlay} />)
   return onPlay
 }
 const playOn = () => screen.getByTestId('play').props.accessibilityState.disabled === false
@@ -610,18 +649,17 @@ describe('CorrectionScreen play gate', () => {
   })
 
   it('keeps Play off without onPlay', () => {
-    render(<CorrectionScreen result={scanOf(puzzle.givens)} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(scanOf(puzzle.givens))} layout={layout} onRetake={jest.fn()} />)
     expect(playOn()).toBe(false)
   })
 
   it('does not check the givens during the transition', () => {
     render(
       <CorrectionScreen
-        result={scanOf(puzzle.givens)}
+        session={capturing(scanOf(puzzle.givens), { clock: clock(1.5) })}
         layout={layout}
         onRetake={jest.fn()}
         onPlay={jest.fn()}
-        clock={clock(1.5)}
       />,
     )
     expect(playOn()).toBe(false)
@@ -654,14 +692,16 @@ describe('CorrectionScreen play gate', () => {
   })
 })
 
-const withPhoto = (): RecogniseResult =>
-  ({ ...(okResult({ 0: given, 1: shaky(3, 0.85) }) as object), photoPath: '/tmp/photo.jpg' }) as RecogniseResult
+const withPhoto = (): CaptureResult => ({
+  ...(okResult({ 0: given, 1: shaky(3, 0.85) }) as CaptureOk),
+  photoPath: '/tmp/photo.jpg',
+})
 
 const devUi = (onSave?: (looks: readonly unknown[]) => Promise<boolean>, result = withPhoto()) => {
   const onPlay = jest.fn()
   render(
     <CorrectionScreen
-      result={result}
+      session={review(result)}
       layout={layout}
       onRetake={jest.fn()}
       onPlay={onPlay}
@@ -681,7 +721,9 @@ describe('CorrectionScreen dev menu', () => {
   })
 
   it('has no wrench during the transition', () => {
-    render(<CorrectionScreen result={withPhoto()} layout={layout} onRetake={jest.fn()} clock={clock(1.5)} />)
+    render(
+      <CorrectionScreen session={capturing(withPhoto(), { clock: clock(1.5) })} layout={layout} onRetake={jest.fn()} />,
+    )
     expect(screen.queryByTestId('dev-open')).toBeNull()
   })
 
@@ -771,14 +813,14 @@ describe('CorrectionScreen in the colourways', () => {
   it('shows the large title and the panel edge of Bordeaux', () => {
     inTheme(bordeaux)
     const big = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 34)
-    render(<CorrectionScreen result={okResult()} layout={big} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult())} layout={big} onRetake={jest.fn()} />)
     expect(screen.getByTestId('decoration-opart-waves')).toBeTruthy()
     expect(screen.getAllByText('Check the scan')).toHaveLength(1)
   })
 
   it('sizes the digits from the type scale of the theme: the serif given larger than the sans entry', () => {
     inTheme(bordeaux)
-    render(<CorrectionScreen result={okResult({ 0: given, 1: entry })} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult({ 0: given, 1: entry }))} layout={layout} onRetake={jest.fn()} />)
     const givenSize = style('correction-cell-0').fontSize
     const entrySize = style('correction-cell-1').fontSize
     expect(givenSize / entrySize).toBeCloseTo(bordeaux.type.given.scale / bordeaux.type.entry.scale, 6)
@@ -799,7 +841,7 @@ const fullScan = (wrong?: { cell: number; digit: number }) => {
 
 describe('CorrectionScreen with a full grid', () => {
   it('offers Check, and no Play or Solve', () => {
-    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
+    render(<CorrectionScreen session={review(fullScan())} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
     expect(screen.getByText('Grid is full')).toBeTruthy()
     expect(screen.getByTestId('verify')).toBeTruthy()
     expect(screen.queryByTestId('play')).toBeNull()
@@ -807,7 +849,7 @@ describe('CorrectionScreen with a full grid', () => {
   })
 
   it('shows Solved, the wave and the buttons when the grid is right', () => {
-    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onHome={jest.fn()} />)
+    render(<CorrectionScreen session={review(fullScan())} layout={layout} onRetake={jest.fn()} onHome={jest.fn()} />)
     fireEvent.press(screen.getByTestId('verify'))
     expect(screen.getByText('Solved')).toBeTruthy()
     expect(screen.getByTestId('scan-another')).toBeTruthy()
@@ -817,7 +859,7 @@ describe('CorrectionScreen with a full grid', () => {
   it('marks a wrong entry with the fill and the hint, and keeps its digit', () => {
     render(
       <CorrectionScreen
-        result={fullScan({ cell: firstOpen, digit: wrongDigit })}
+        session={review(fullScan({ cell: firstOpen, digit: wrongDigit }))}
         layout={layout}
         onRetake={jest.fn()}
       />,
@@ -832,7 +874,7 @@ describe('CorrectionScreen with a full grid', () => {
   it('marks no cell before the player taps Check', () => {
     render(
       <CorrectionScreen
-        result={fullScan({ cell: firstOpen, digit: wrongDigit })}
+        session={review(fullScan({ cell: firstOpen, digit: wrongDigit }))}
         layout={layout}
         onRetake={jest.fn()}
       />,
@@ -844,7 +886,7 @@ describe('CorrectionScreen with a full grid', () => {
   it('keeps the marks while the player opens a wrong cell, and solves when the player fixes it', () => {
     render(
       <CorrectionScreen
-        result={fullScan({ cell: firstOpen, digit: wrongDigit })}
+        session={review(fullScan({ cell: firstOpen, digit: wrongDigit }))}
         layout={layout}
         onRetake={jest.fn()}
       />,
@@ -857,7 +899,7 @@ describe('CorrectionScreen with a full grid', () => {
   })
 
   it('plays the success haptic once when the grid turns solved', async () => {
-    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(fullScan())} layout={layout} onRetake={jest.fn()} />)
     jest.mocked(Haptics.notificationAsync).mockClear()
     fireEvent.press(screen.getByTestId('verify'))
     await waitFor(() =>
@@ -867,7 +909,7 @@ describe('CorrectionScreen with a full grid', () => {
   })
 
   it('does not replay the success haptic when the player opens and closes a cell of a solved grid', async () => {
-    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(fullScan())} layout={layout} onRetake={jest.fn()} />)
     jest.mocked(Haptics.notificationAsync).mockClear()
     fireEvent.press(screen.getByTestId('verify'))
     await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1))
@@ -878,7 +920,7 @@ describe('CorrectionScreen with a full grid', () => {
   })
 
   it('brings Play and Solve back when an edit empties a cell', () => {
-    render(<CorrectionScreen result={fullScan()} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
+    render(<CorrectionScreen session={review(fullScan())} layout={layout} onRetake={jest.fn()} onPlay={jest.fn()} />)
     fireEvent.press(screen.getByTestId('verify'))
     press(`correction-press-${firstOpen}`)
     press('correction-clear')
@@ -887,7 +929,7 @@ describe('CorrectionScreen with a full grid', () => {
   })
 
   it('offers no Check for a grid that is not full', () => {
-    render(<CorrectionScreen result={okResult({ 0: given })} layout={layout} onRetake={jest.fn()} />)
+    render(<CorrectionScreen session={review(okResult({ 0: given }))} layout={layout} onRetake={jest.fn()} />)
     expect(screen.queryByTestId('verify')).toBeNull()
   })
 })
