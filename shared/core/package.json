@@ -9,6 +9,8 @@
   },
   "scripts": {
     "test": "vitest run",
+    "bench": "vitest bench --run",
+    "technique-coverage": "vitest run --config vitest.coverage.config.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
