@@ -142,7 +142,9 @@ export function useCorrectionSession(
   const start = gate?.ok ? gate.start : null
   const block = gate !== null && !gate.ok ? gate.block : null
   const canPlay = start !== null && exits.onPlay !== undefined
-  const level = useMemo(() => (start === null ? null : scannedLevel(start.givens)), [start])
+  // The gate makes a new start each time a cell opens or closes. Keyed on the givens, the grade runs once per grid.
+  const givensKey = start === null ? null : start.givens.join('')
+  const level = useMemo(() => (givensKey === null ? null : scannedLevel(Array.from(givensKey, Number))), [givensKey])
 
   // The grid is full with or without a conflict. It does not depend on the open cell: the marks stay while the player fixes a wrong
   // cell in the check sheet.
