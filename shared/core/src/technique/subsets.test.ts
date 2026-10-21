@@ -57,6 +57,27 @@ describe('findNakedSubsets', () => {
     ])
   })
 
+  it('removes the quad digits from the rest of a row', () => {
+    const candidates = withDigits(empty, { 54: [1, 2], 57: [2, 3], 60: [3, 4], 62: [1, 4] })
+    expect(findNakedSubsets(candidates, board, 4)).toEqual([
+      {
+        technique: 'nakedQuad',
+        placements: [],
+        eliminations: elimination([55, 56, 58, 59, 61], [1, 2, 3, 4]),
+        units: [6],
+        pattern: [54, 57, 60, 62],
+        support: [],
+        digits: [1, 2, 3, 4],
+      },
+    ])
+  })
+
+  it('does not report a quad that holds a triple', () => {
+    const candidates = withDigits(empty, { 54: [1, 2], 57: [1, 3], 60: [2, 3], 62: [3, 4] })
+    expect(findNakedSubsets(candidates, board, 4)).toEqual([])
+    expect(findNakedSubsets(candidates, board, 3)).toHaveLength(1)
+  })
+
   it('does not report a triple that holds a pair', () => {
     const candidates = withDigits(empty, { 0: [1, 2], 4: [1, 2], 8: [1, 2, 3] })
     expect(findNakedSubsets(candidates, board, 3)).toEqual([])
@@ -121,6 +142,28 @@ describe('findHiddenSubsets', () => {
         digits: [1, 2, 3],
       },
     ])
+  })
+
+  it('removes the other digits from the cells of a hidden quad', () => {
+    const candidates = struck(empty, [8, 26, 44, 62, 80], [6, 7, 8, 9])
+    expect(findHiddenSubsets(candidates, board, 4)).toEqual([
+      {
+        technique: 'hiddenQuad',
+        placements: [],
+        eliminations: elimination([17, 35, 53, 71], [1, 2, 3, 4, 5]),
+        units: [17],
+        pattern: [17, 35, 53, 71],
+        support: [],
+        digits: [6, 7, 8, 9],
+      },
+    ])
+  })
+
+  it('does not report a quad that holds a hidden triple', () => {
+    const candidates = struck(empty, [8, 26, 44, 62, 80], [6, 7, 8, 9])
+    const stripped = struck(candidates, [71], [6, 7, 8])
+    expect(findHiddenSubsets(stripped, board, 4)).toEqual([])
+    expect(findHiddenSubsets(stripped, board, 3)).toHaveLength(1)
   })
 
   it('does not report a triple that holds a hidden pair', () => {

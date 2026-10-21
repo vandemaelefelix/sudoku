@@ -4,8 +4,9 @@ import { generate, LEVELS } from '../generator'
 import { createRandom, shuffled } from '../random'
 import { computeCandidates } from './candidates'
 import { nextSteps } from './nextSteps'
-import { TECHNIQUE_ORDER } from './order'
+import { TECHNIQUE_ORDER, TIER_1_ORDER } from './order'
 import { playThrough } from './playThrough'
+import { expectWellFormed } from './stepChecks'
 import { boardWith, struck } from './testKit'
 import type { Candidates, Step } from './types'
 
@@ -31,9 +32,7 @@ function checkStep(step: Step, before: readonly number[], candidates: Candidates
   }
   const keys = step.eliminations.map(({ cell, digit }) => cell * 10 + digit)
   expect(isSortedAndUnique(keys)).toBe(true)
-  expect(isSortedAndUnique(step.pattern)).toBe(true)
-  expect(isSortedAndUnique(step.support)).toBe(true)
-  expect(isSortedAndUnique(step.digits)).toBe(true)
+  expectWellFormed(step)
 }
 
 describe('TECHNIQUE_ORDER', () => {
@@ -41,6 +40,32 @@ describe('TECHNIQUE_ORDER', () => {
     const weights = TECHNIQUE_ORDER.map((rank) => rank.weight)
     const increases = weights.map((weight, i) => i === 0 || weight >= weights[i - 1]!)
     expect(increases.every(Boolean)).toBe(true)
+  })
+
+  it('lists the tier 2 techniques after the tier 1 techniques of the same weight', () => {
+    expect(TECHNIQUE_ORDER.map((rank) => rank.technique)).toEqual([
+      'fullHouse',
+      'hiddenSingle',
+      'hiddenSingle',
+      'nakedSingle',
+      'pointing',
+      'boxLine',
+      'nakedPair',
+      'xWing',
+      'hiddenPair',
+      'nakedTriple',
+      'swordfish',
+      'hiddenTriple',
+      'skyscraper',
+      'twoStringKite',
+      'xyWing',
+      'xyzWing',
+      'wWing',
+      'nakedQuad',
+      'jellyfish',
+      'hiddenQuad',
+    ])
+    expect(TIER_1_ORDER).toHaveLength(10)
   })
 
   it('names a hidden single in a box before one in a row or column', () => {
@@ -56,6 +81,12 @@ describe('nextSteps', () => {
     const steps = nextSteps(pointing, board)
     expect(steps.map((step) => step.technique)).toEqual(['hiddenSingle'])
     expect(steps[0]!.placements).toEqual([{ cell: 20, digit: 1 }])
+  })
+
+  it('searches only the ranks that the caller gives', () => {
+    const run = playThrough(generate('expert', 1).givens, TIER_1_ORDER)
+    const { board, candidates } = run.final
+    expect(nextSteps(candidates, board, TIER_1_ORDER)).toEqual([])
   })
 
   it('finds nothing on an empty board', () => {

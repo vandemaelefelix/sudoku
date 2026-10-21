@@ -12,8 +12,8 @@ type Golden = {
   steps: Step[]
 }
 
-// Each position comes from a generated puzzle, played with the tier 1 steps. Each step was checked
-// by hand against the definition of its technique. No easier technique applies in the position.
+// Each position comes from a generated puzzle, played with the steps of the technique solver. Each step
+// was checked by hand against the definition of its technique. No easier technique applies in the position.
 const GOLDEN: Golden[] = [
   {
     name: 'full house: the last cell of column 1',
@@ -186,6 +186,138 @@ const GOLDEN: Golden[] = [
         pattern: [45, 47, 53],
         support: [],
         digits: [5, 7, 8],
+      },
+    ],
+  },
+  {
+    name: 'X-wing in two rows',
+    board: '037214098049078031810309047386421759090830104401900380104780903008093410963142875',
+    steps: [
+      {
+        technique: 'xWing',
+        placements: [],
+        eliminations: [{ cell: 50, digit: 6 }],
+        units: [4, 6, 14, 16],
+        pattern: [41, 43, 59, 61],
+        support: [],
+        digits: [6],
+      },
+    ],
+  },
+  {
+    name: 'swordfish in three rows',
+    board: '010045000003912480204070015002100640009703100100004070320000704860430001000200030',
+    struck: { 2: [7], 3: [6], 47: [5], 72: [5, 7], 73: [5, 7], 74: [5], 76: [8, 9], 77: [6, 8, 9], 78: [9], 80: [9] },
+    steps: [
+      {
+        technique: 'swordfish',
+        placements: [],
+        eliminations: [
+          { cell: 0, digit: 6 },
+          { cell: 8, digit: 6 },
+          { cell: 49, digit: 6 },
+          { cell: 58, digit: 6 },
+        ],
+        units: [1, 4, 8, 9, 13, 17],
+        pattern: [9, 17, 36, 40, 76, 80],
+        support: [],
+        digits: [6],
+      },
+    ],
+  },
+  {
+    name: 'two skyscrapers that share a strong link',
+    board: '971634005286175943534080617710060438860341700493708061347016000609803174108497306',
+    steps: [
+      {
+        technique: 'skyscraper',
+        placements: [],
+        eliminations: [{ cell: 49, digit: 5 }],
+        units: [12, 15],
+        pattern: [30, 51, 57, 60],
+        support: [],
+        digits: [5],
+      },
+      {
+        technique: 'skyscraper',
+        placements: [],
+        eliminations: [{ cell: 57, digit: 5 }],
+        units: [13, 15],
+        pattern: [49, 51, 60, 67],
+        support: [],
+        digits: [5],
+      },
+    ],
+  },
+  {
+    name: 'two-string kite',
+    board: '680000092104090076309060015798326541413975268562004739940600123206000984831249657',
+    steps: [
+      {
+        technique: 'twoStringKite',
+        placements: [],
+        eliminations: [{ cell: 23, digit: 7 }],
+        units: [6, 10, 24],
+        pattern: [19, 56, 59, 64],
+        support: [],
+        digits: [7],
+      },
+    ],
+  },
+  {
+    name: 'XY-wing',
+    board: '580016430014853620060700185248135796190460058056000014875621943431579862629300571',
+    steps: [
+      {
+        technique: 'xyWing',
+        placements: [],
+        eliminations: [{ cell: 23, digit: 2 }],
+        units: [11, 4],
+        pattern: [38, 20, 41],
+        support: [],
+        digits: [2, 3, 7],
+      },
+    ],
+  },
+  {
+    name: 'XYZ-wing',
+    board: '382659004617384005500721836450017003000008001000536400800003007905102048060805000',
+    steps: [
+      {
+        technique: 'xyzWing',
+        placements: [],
+        eliminations: [{ cell: 45, digit: 2 }],
+        units: [21, 5],
+        pattern: [46, 36, 53],
+        support: [],
+        digits: [2, 7, 9],
+      },
+    ],
+  },
+  {
+    name: 'two W-wings',
+    board: '051087003300000702040300150572000316000726495694135827020903504000000271405070030',
+    steps: [
+      {
+        technique: 'wWing',
+        placements: [],
+        eliminations: [{ cell: 18, digit: 8 }],
+        units: [0, 20, 9],
+        pattern: [26, 63, 6, 0],
+        support: [],
+        digits: [8, 9],
+      },
+      {
+        technique: 'wWing',
+        placements: [],
+        eliminations: [
+          { cell: 3, digit: 2 },
+          { cell: 18, digit: 2 },
+        ],
+        units: [20, 0, 2],
+        pattern: [0, 23, 6, 26],
+        support: [],
+        digits: [2, 9],
       },
     ],
   },

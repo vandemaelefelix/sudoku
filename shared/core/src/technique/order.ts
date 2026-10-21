@@ -1,4 +1,4 @@
-import type { Step, TechniqueRank } from './types'
+import type { Step, TechniqueId, TechniqueRank } from './types'
 
 /**
  * The order in which a person finds the techniques, with the difficulty rating of each one in Sudoku
@@ -13,10 +13,35 @@ export const TECHNIQUE_ORDER: readonly TechniqueRank[] = [
   { technique: 'pointing', weight: 2.6 },
   { technique: 'boxLine', weight: 2.8 },
   { technique: 'nakedPair', weight: 3.0 },
+  { technique: 'xWing', weight: 3.2 },
   { technique: 'hiddenPair', weight: 3.4 },
   { technique: 'nakedTriple', weight: 3.6 },
+  { technique: 'swordfish', weight: 3.8 },
   { technique: 'hiddenTriple', weight: 4.0 },
+  { technique: 'skyscraper', weight: 4.0 },
+  { technique: 'twoStringKite', weight: 4.1 },
+  { technique: 'xyWing', weight: 4.2 },
+  { technique: 'xyzWing', weight: 4.4 },
+  { technique: 'wWing', weight: 4.4 },
+  { technique: 'nakedQuad', weight: 5.0 },
+  { technique: 'jellyfish', weight: 5.2 },
+  { technique: 'hiddenQuad', weight: 5.4 },
 ]
+
+const TIER_1: ReadonlySet<TechniqueId> = new Set([
+  'fullHouse',
+  'hiddenSingle',
+  'nakedSingle',
+  'pointing',
+  'boxLine',
+  'nakedPair',
+  'nakedTriple',
+  'hiddenPair',
+  'hiddenTriple',
+])
+
+/** The ranks of the tier 1 techniques, in the order of `TECHNIQUE_ORDER`. */
+export const TIER_1_ORDER: readonly TechniqueRank[] = TECHNIQUE_ORDER.filter((rank) => TIER_1.has(rank.technique))
 
 /** The rating of the rank that finds the step. A hidden single in a box has its own rank. */
 export function stepWeight(step: Step): number {

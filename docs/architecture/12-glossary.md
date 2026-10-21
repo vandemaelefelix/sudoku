@@ -30,7 +30,7 @@ status: DRAFT
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
 | Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
-| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques. The hint and the grading will use it (ADR-011, ADR-032) |
+| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques and the tier 2 techniques: quads, fish, single-digit patterns and wings. The hint and the grading will use it (ADR-011, ADR-032) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
@@ -121,6 +121,13 @@ status: DRAFT
 | Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
 | Hint | A coach for one step. It shows where to look, names the technique, explains it and then shows the answer. It counts once, when it shows the answer (ADR-032) |
 | Technique | A named way to solve a step, such as hidden single or X-wing. The technique solver knows it (ADR-032) |
+| Fish | A technique on one digit. Some base lines (rows or columns) hold the digit in the same number of cover lines only. The digit then leaves the cover lines outside the base lines. Two lines make an X-wing, three a swordfish and four a jellyfish |
+| Wing | A technique with two pincer cells that link through a pivot cell or a strong link. One of the pincers must hold a shared digit. The digit leaves the cells that see both pincers. For the XYZ-wing, the cells must also see the pivot. The XY-wing, XYZ-wing and W-wing are wings |
+| Pivot | The cell of an XY-wing or XYZ-wing that sees both pincers. It holds two digits (XY-wing) or three digits (XYZ-wing) |
+| Pincer | One of the two cells of a wing that hold the shared digit between them. A pincer has two digits |
+| Base line | A row or column of a fish. The fish digit has two cells or more in it, and no more than the size of the fish |
+| Cover line | A column of a fish with base rows, or a row of a fish with base columns. The fish digit leaves the cells of a cover line outside the base lines |
+| Strong link | Two cells of a unit that are the only cells for a digit in that unit. Exactly one of them holds the digit. Skyscraper, two-string kite and W-wing use it |
 | Hint plan | The steps that one hint shows, from the board to a placed digit. It has at most 6 steps |
 | Rung | One level of detail in a step: look, technique, why or answer |
 | Hint card | The card that replaces the keypad while the player reads a hint. It shows one rung |
