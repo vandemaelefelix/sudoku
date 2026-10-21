@@ -30,7 +30,7 @@ status: DRAFT
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
 | Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
-| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques and the tier 2 techniques: quads, fish, single-digit patterns and wings. It also knows colouring, the unique rectangle and chains. The hint and the grading will use it (ADR-011, ADR-032) |
+| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques and the tier 2 techniques: quads, fish, single-digit patterns and wings. It also knows colouring, the unique rectangle and chains. The grading uses it, and the hint will (ADR-011, ADR-032) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
@@ -152,7 +152,11 @@ status: DRAFT
 | Lost hold | The 400 ms between the third mistake and the rise of the game over sheet, so the player sees the shake and the third dot |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
-| Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level |
+| Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level. The grade of a puzzle sets it, when the generator and the scanner use `grade()` (amendment 2026-10-21). Until then the number of givens sets it |
+| Technique level | The level of a technique: easy, medium, hard or expert. `TECHNIQUE_LEVEL` holds it. The technique level of the hardest technique that a solve uses is the level of the puzzle. Not the tier of ADR-032, which groups techniques for the hint rollout (ADR-011) |
+| Choice | The mean value of the first 25 moves of a solve in rounds. A round fills every cell that a single can fill, all at once. It counts one move per cell, with the number of cells of the round as value. A step that is not a single counts one move with the value 0. A low choice means that the next cell is hard to find (ADR-011) |
+| Grade | The result of `grade(givens)`: the level (or `beyond`), the hardest technique, the score, the choice and the number of steps. The puzzle must have exactly one solution (ADR-011) |
+| Score | The sum of the weights of the steps of a grade, in Sudoku Explainer points. It orders puzzles inside a level. The level does not use it (ADR-011) |
 | Game status | The state of a game: playing, paused, lost or won. Only a playing game accepts moves, and only a playing game counts time |
 | Undo step | The entries and notes before one move. Undo restores the last undo step. It does not restore the mistake count |
 | Completion | What one move completed: rows, columns, boxes, complete numbers or the whole grid. A pulse shows it |
