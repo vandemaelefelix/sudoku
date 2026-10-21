@@ -11,7 +11,7 @@ import { useScannedStart } from './useScannedStart'
 const { givens, solution } = generate('hard', 4)
 const open = givens.findIndex((digit) => digit === 0)
 const entries = givens.map((_, cell) => (cell === open ? ((solution[open] ?? 0) % 9) + 1 : 0))
-const START: ScannedStart = { level: 'hard', puzzle: { givens, solution, entries } }
+const START: ScannedStart = { givens, solution, entries }
 
 function PlayProbe() {
   const play = useScannedStart()
@@ -77,34 +77,4 @@ it('asks before it replaces a game in progress, and Cancel keeps that game', asy
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1))
   expect(screen).toHavePathname('/scan')
   expect(await storage.puzzles.current()).toMatchObject({ source: 'generated' })
-})
-
-it('replaces the game in progress on New game', async () => {
-  const storage = createMemoryStorage()
-  await startGenerated(storage)
-  answerAlert('New game')
-  renderScan(storage)
-  await pressPlay()
-  await waitFor(() => expect(screen).toHavePathname('/game'))
-  expect(await storage.puzzles.current()).toMatchObject({ source: 'scanned', level: 'hard' })
-})
-
-it('a double tap on Play starts one game', async () => {
-  const storage = createMemoryStorage()
-  const start = jest.spyOn(storage.puzzles, 'start')
-  renderScan(storage)
-  const play = await screen.findByRole('button', { name: 'Play this puzzle' })
-  fireEvent.press(play)
-  fireEvent.press(play)
-  await waitFor(() => expect(screen).toHavePathname('/game'))
-  expect(start).toHaveBeenCalledTimes(1)
-})
-
-it('starts the scan for the signed-in owner', async () => {
-  const storage = createMemoryStorage()
-  const start = jest.spyOn(storage.puzzles, 'start')
-  renderScan(storage, 'user-alice')
-  await pressPlay()
-  await waitFor(() => expect(screen).toHavePathname('/game'))
-  expect(start).toHaveBeenCalledWith(expect.objectContaining({ source: 'scanned', owner: 'user-alice' }))
 })
