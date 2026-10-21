@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import type { AssistName, Assists } from '@/game/constants/assists.constants'
-import { createAssistsStore } from '@/game/utils/assists.utils'
+import { ASSISTS_SETTING } from '@/game/utils/assists.utils'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { devLog, errorMessage } from '@/utils/log.utils'
+import { createSettingStore } from '@/settings/settingStore'
 
 // One store for the app: the Settings screen and the game grid must read the same assists.
-const assistsStore = createAssistsStore(kvSettings)
+const assistsStore = createSettingStore(kvSettings, ASSISTS_SETTING)
 
 function setAssist(name: AssistName, on: boolean): void {
-  assistsStore.set(name, on).catch((error: unknown) => devLog('assists', `assists not saved: ${errorMessage(error)}`))
+  assistsStore.trySet({ ...assistsStore.get(), [name]: on })
 }
 
 /** The saved assists. A change reaches every reader at once. setAssist keeps its identity. */

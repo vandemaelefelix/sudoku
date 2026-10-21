@@ -118,6 +118,7 @@ status: DRAFT
 | Pulse | The short wave of colour that spreads from a cell when a correct number completes a row, column, box, number or the whole grid. A haptic tap goes with it |
 | Haptic | One named vibration of the app: tick, tap, thud, soft, success, warning or error. Each name has one meaning. `src/utils/haptics.utils.ts` lists them |
 | Haptics switch | The Settings switch that turns every haptic of the app on or off. It is on by default |
+| Setting store | `src/settings/settingStore.ts`. One store holds one saved setting: the value in memory, the save through `SettingsRepository`, the listeners and the default. A setting gives it a key, a parser and a serializer. Assists, the haptics switch, the scanned switch and the sharing switch use it (ADR-012) |
 | Cell mark | The short effect of the last move on one cell: a shake for a mistake, a glow for a hint and a flash for an undo |
 | Lost hold | The 400 ms between the third mistake and the rise of the game over sheet, so the player sees the shake and the third dot |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |
