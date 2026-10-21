@@ -1,5 +1,6 @@
 import { createGame, type Game } from '@sudoku/core'
 import { sampleStart } from '@/game/utils/sample.utils'
+import { formatTime } from '@/stats/utils/format.utils'
 import { finishView, formatPuzzleNumber, type FinishInfo } from './finish.utils'
 
 // 09:00 UTC is 12 October in every time zone from UTC-9 to UTC+14.
@@ -74,4 +75,14 @@ describe('finishView', () => {
     const old = { ...GENERATED, seed: null }
     expect(finishView(board(), 900_000, old, FINISHED_AT).source).toBe('Generated puzzle')
   })
+
+  it.each([0, 999, 59_600, 59_999, 60_000, 741_000, 6_000_000])(
+    'shows %i ms as the stats screen shows it',
+    (playedMs) => {
+      const first = { ...GENERATED, bestBeforeMs: null }
+      const view = finishView(board(), playedMs, first, FINISHED_AT)
+      expect(view.time).toBe(formatTime(playedMs))
+      expect(view.best).toBe(formatTime(playedMs))
+    },
+  )
 })

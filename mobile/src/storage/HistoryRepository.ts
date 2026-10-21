@@ -166,6 +166,7 @@ export function createSqliteHistoryRepository(
       return rows.map(entryOf)
     },
     async bestTimes(owner) {
+      // The WHERE clause is countsForBestTime in SQL (ADR-023). The contract suite keeps both equal.
       const rows = await db.getAllAsync<{ level: Level; best: number }>(
         `SELECT level, MIN(played_ms) AS best FROM game_history
           WHERE result = 'won' AND hints_used = 0 AND source = 'generated' AND deleted_at IS NULL AND owner_id IS ?

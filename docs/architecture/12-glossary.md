@@ -136,6 +136,8 @@ status: DRAFT
 | Game in progress | The one game that the app saves after every move, so the player can resume it. Starting a new game discards it (ADR-012) |
 | History | The list of won, lost and abandoned games: level, source, result, time played, mistakes, hints and date (ADR-012) |
 | Best time | The shortest time played of a won generated game without hints, at one level (ADR-012) |
+| Counted game | A won generated game without hints. Only a counted game gives the best time and the average time. `countsForBestTime` in `@sudoku/core` is the one rule, and the SQL repeats it (ADR-023) |
+| Clock format | Minutes and seconds of a time played, for example `04:12`. It rounds down to whole seconds, like the timer. `formatClock` in `@sudoku/core` writes it for the timer, the finish card and the stats screen (ADR-023) |
 | Home screen | The first screen of the app. It lists the levels, offers Continue for the game in progress, and links to Scan and Settings |
 | Continue | The home screen button that resumes the game in progress at its last move, with its time played |
 | Route | One screen that the app can show, at one path, such as `/game`. A file in `src/app/` defines it (ADR-016) |

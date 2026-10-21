@@ -125,6 +125,18 @@ again. The game in progress stays. The stats screen shows a "Reset stats" button
 - The backend design needs a stat that the row conventions cannot give.
 - The developer wants a verified leaderboard. Then write an ADR for the move log.
 
+## Amendment 2026-10-21: one counted-game rule and one clock format
+
+- `@sudoku/core` owns the rule for the best time and the average time: `countsForBestTime`. A counted game is a
+  won generated game without hints. The in-memory fakes and the finish card call it.
+- The SQL keeps its own copy of the rule (decision 3). The contract test builds the expected best time and
+  average time from `list()` and `countsForBestTime`, and compares them with the SQL result.
+- `formatClock` in `@sudoku/core` is the one time format. It rounds **down** to whole seconds. The timer on the
+  game screen already rounded down, and a time never shows a second that has not passed. The finish card
+  and the stats screen both use it. The stats screen rounded to the nearest second before, so 59 999 ms read
+  `01:00` there and `00:59` on the finish card. It now reads `00:59` in both places.
+- The decisions above stay.
+
 ## Amendment 2026-10-15: the owner in the filter
 
 [ADR-028](adr-028-history-sync.md) makes decision 6 concrete. `StatsFilter` gets

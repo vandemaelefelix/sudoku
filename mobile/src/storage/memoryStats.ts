@@ -1,4 +1,4 @@
-import { computeStreak, LEVELS } from '@sudoku/core'
+import { computeStreak, countsForBestTime, LEVELS } from '@sudoku/core'
 import type { LevelSummary, StatsFilter, StatsRepository } from './StatsRepository'
 import type { HistoryEntry, Level, StorageDeps } from './storage.types'
 
@@ -14,9 +14,7 @@ function summarize(entries: readonly HistoryEntry[], level: Level | null, filter
   const rows = counted(entries, filter).filter((entry) => level === null || entry.level === level)
   const won = rows.filter((entry) => entry.result === 'won')
   const finished = rows.filter((entry) => entry.result === 'won' || entry.result === 'lost')
-  const best = won
-    .filter((entry) => entry.hintsUsed === 0 && entry.source === 'generated')
-    .map((entry) => entry.playedMs)
+  const best = won.filter(countsForBestTime).map((entry) => entry.playedMs)
   return {
     played: finished.length,
     won: won.length,
