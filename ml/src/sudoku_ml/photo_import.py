@@ -3,7 +3,6 @@ each (ADR-018). The import adds a `pending` row to `ml/dataset/sudoku-photos.csv
 of the labelling page then checks each sudoku photo."""
 
 import argparse
-import csv
 import json
 import shutil
 import sys
@@ -12,59 +11,18 @@ from pathlib import Path
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.flatten import load_upright
 from sudoku_ml.grid_detect import find_grid
-from sudoku_ml.manifest import RESTORE, csv_text, pixel_id, warn_unreadable, write_atomic
-
-SOURCES = ("phone", "web", "wicht", "openverse", "commons", "lexski", "app-scan")
-LICENCES = (
-    "none",
-    "own",
-    "unverified",
-    "cc0",
-    "pdm",
-    "by",
-    "by-sa",
-    "by-nc",
-    "by-nc-sa",
-    "by-nd",
-    "by-nc-nd",
-    "player-contributed",
+from sudoku_ml.manifest import warn_unreadable
+from sudoku_ml.tables import (
+    LICENCES,
+    PHOTO_SOURCES,
+    PHOTO_SUFFIXES,
+    PhotoRow,
+    pixel_id,
+    read_photos,
+    stem_of,
+    write_atomic,
+    write_photos,
 )
-PHOTO_FIELDS = ["photo_id", "file", "source", "licence", "attribution", "status", "corners"]
-PHOTO_STATUSES = ("pending", "accepted", "rejected", "too-few-cells", "legacy")
-PHOTO_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp", ".heic")
-
-
-def format_corners(corners: list[list[float]]) -> str:
-    """4 [x, y] pairs (TL, TR, BR, BL) → `x1 y1 x2 y2 x3 y3 x4 y4`, one decimal."""
-    return " ".join(f"{value:.1f}" for point in corners for value in point)
-
-
-def parse_corners(text: str) -> list[list[float]]:
-    """The inverse of format_corners. Raises ValueError unless there are 8 numbers."""
-    values = [float(v) for v in text.split()]
-    if len(values) != 8:
-        raise ValueError(f"corners need 8 numbers, not {len(values)}")
-    return [values[i : i + 2] for i in range(0, 8, 2)]
-
-
-def read_photos(path: Path) -> list[dict[str, str]]:
-    """The rows of sudoku-photos.csv in file order: the import order. Raises ValueError when the
-    file does not parse."""
-    if not path.exists():
-        return []
-    try:
-        with path.open(newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle, strict=True)
-            if reader.fieldnames != PHOTO_FIELDS:
-                raise ValueError(f"the header is not {','.join(PHOTO_FIELDS)}")
-            return [{f: row[f] or "" for f in PHOTO_FIELDS} for row in reader]
-    except (OSError, csv.Error, UnicodeDecodeError, ValueError) as error:
-        raise ValueError(f"{path.name} cannot be read ({error}). {RESTORE}") from error
-
-
-def write_photos(path: Path, rows: list[dict[str, str]]) -> None:
-    """Replace the file in one step. The rows keep their order, so an import appends rows."""
-    write_atomic(path, csv_text(PHOTO_FIELDS, rows))
 
 
 def read_detections(path: Path) -> dict[str, dict]:
@@ -119,7 +77,7 @@ def import_folder(
     """Copy each new photo of `folder` (not its subfolders) and store its proposed outline."""
     sources = _scraper_sources(folder)
     rows = read_photos(paths.photos_csv)
-    known = {r["photo_id"] for r in rows}
+    known = {r.photo_id for r in rows}
     detections = read_detections(paths.detections)
     counts = dict.fromkeys(("imported", "already", "unreadable", "no_source"), 0)
     for path in sorted(folder.iterdir()):
@@ -130,7 +88,7 @@ def import_folder(
             "licence": licence or "",
             "attribution": "",
         }
-        if found["source"] not in SOURCES or found["licence"] not in LICENCES:
+        if found["source"] not in PHOTO_SOURCES or found["licence"] not in LICENCES:
             print(f"skip {path.name}: no known source and licence", file=sys.stderr)
             counts["no_source"] += 1
             continue
@@ -144,12 +102,20 @@ def import_folder(
             counts["already"] += 1
             continue
         paths.photos.mkdir(parents=True, exist_ok=True)
-        stored = paths.photos / f"{photo_id[:16]}{path.suffix.lower()}"
+        stored = paths.photos / f"{stem_of(photo_id)}{path.suffix.lower()}"
         shutil.copy2(path, stored)
         rgb = load_upright(stored)
         detections[photo_id] = detect_outline(rgb)
         rows.append(
-            {"photo_id": photo_id, "file": stored.name, **found, "status": "pending", "corners": ""}
+            PhotoRow(
+                photo_id,
+                stored.name,
+                found["source"],
+                found["licence"],
+                found["attribution"],
+                "pending",
+                "",
+            )
         )
         known.add(photo_id)
         counts["imported"] += 1
@@ -162,7 +128,7 @@ def import_folder(
 def main(argv: list[str], paths: DataPaths | None = None) -> int:
     parser = argparse.ArgumentParser(prog="just import-photos")
     parser.add_argument("folder", type=Path)
-    parser.add_argument("--source", choices=SOURCES)
+    parser.add_argument("--source", choices=PHOTO_SOURCES)
     parser.add_argument("--licence", choices=LICENCES)
     args = parser.parse_args(argv)
     paths = paths or DataPaths.under()

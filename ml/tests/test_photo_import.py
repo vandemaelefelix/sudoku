@@ -6,13 +6,12 @@ import pytest
 from photos import grid_photo, save_photo
 
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.manifest import pixel_id
-from sudoku_ml.photo_import import (
+from sudoku_ml.photo_import import import_folder, main, read_detections
+from sudoku_ml.tables import (
+    PhotoRow,
     format_corners,
-    import_folder,
-    main,
     parse_corners,
-    read_detections,
+    pixel_id,
     read_photos,
     write_photos,
 )
@@ -32,17 +31,9 @@ def test_a_folder_of_photos_is_copied_listed_and_detected(tmp_path: Path):
     assert counts == {"imported": 2, "already": 0, "unreadable": 0, "no_source": 0}
     rows = read_photos(paths.photos_csv)
     first_id = pixel_id(first)
-    assert rows[0] == {
-        "photo_id": first_id,
-        "file": f"{first_id[:16]}.png",
-        "source": "phone",
-        "licence": "own",
-        "attribution": "",
-        "status": "pending",
-        "corners": "",
-    }
+    assert rows[0] == PhotoRow(first_id, f"{first_id[:16]}.png", "phone", "own", "", "pending", "")
     assert (paths.photos / f"{first_id[:16]}.png").read_bytes() == first.read_bytes()
-    assert rows[1]["file"].endswith(".png")
+    assert rows[1].file.endswith(".png")
     detection = read_detections(paths.detections)[first_id]
     assert detection["reason"] == "full grid" and len(detection["corners"]) == 4
     assert (detection["width"], detection["height"]) == (1000, 800)
@@ -72,8 +63,8 @@ def test_the_scraper_manifest_in_the_parent_gives_source_licence_and_attribution
     paths = paths_in(tmp_path)
     import_folder(out / "handwritten", paths, source=None, licence=None)
     row = read_photos(paths.photos_csv)[0]
-    assert (row["source"], row["licence"]) == ("openverse", "by-nc")
-    assert row["attribution"] == "Photo by someone, CC BY-NC"
+    assert (row.source, row.licence) == ("openverse", "by-nc")
+    assert row.attribution == "Photo by someone, CC BY-NC"
 
 
 def test_a_photo_without_source_or_licence_is_skipped(tmp_path: Path):
@@ -95,20 +86,9 @@ def test_an_unreadable_file_is_counted_and_skipped(tmp_path: Path):
 
 def test_rows_keep_the_import_order_and_unix_line_ends(tmp_path: Path):
     paths = paths_in(tmp_path)
-    rows = [
-        {
-            "photo_id": i * 64,
-            "file": f"{i}.jpg",
-            "source": "phone",
-            "licence": "none",
-            "attribution": "",
-            "status": "legacy",
-            "corners": "",
-        }
-        for i in "ba"
-    ]
+    rows = [PhotoRow(i * 64, f"{i}.jpg", "phone", "none", "", "legacy", "") for i in "ba"]
     write_photos(paths.photos_csv, rows)
-    assert [r["photo_id"][0] for r in read_photos(paths.photos_csv)] == ["b", "a"]
+    assert [r.photo_id[0] for r in read_photos(paths.photos_csv)] == ["b", "a"]
     text = paths.photos_csv.read_bytes()
     assert b"\r" not in text
     assert text.splitlines()[0] == b"photo_id,file,source,licence,attribution,status,corners"
@@ -153,8 +133,8 @@ def test_a_heic_photo_is_imported(tmp_path: Path):
     paths = paths_in(tmp_path)
     assert import_folder(tmp_path / "in", paths, source="phone", licence="own")["imported"] == 1
     row = read_photos(paths.photos_csv)[0]
-    assert row["file"].endswith(".heic")
-    assert read_detections(paths.detections)[row["photo_id"]]["reason"] == "full grid"
+    assert row.file.endswith(".heic")
+    assert read_detections(paths.detections)[row.photo_id]["reason"] == "full grid"
 
 
 def test_the_cli_refuses_an_unknown_source(tmp_path: Path):

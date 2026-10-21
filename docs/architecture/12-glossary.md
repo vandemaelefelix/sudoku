@@ -21,6 +21,7 @@ status: DRAFT
 | Fixture runner | A screen in development builds that runs the real scanner on fixture photos (ADR-010) |
 | Holdout | The fixture split that is not looked at while training, only scored at promote (ADR-007) |
 | Near-duplicate group | Cells with almost the same image, found by a difference hash. The split keeps a group in one set, so near-twins do not leak between training and validation |
+| Test split | The cells that the model never trains on. `split_cells` in `ml/src/sudoku_ml/dataset.py` computes it. Training and the Check screen both call it, so they use the same cells. It leaves out the cells with the label source `app-unedited` and keeps the cells of one scan photo together |
 | Reference pair | A synthetic cell image in `shared/fixtures/preprocess/` with its expected 32 × 32 model input. Python and the app both test against it |
 | Temperature | A number that divides the digit logits before the softmax. Fitted on the validation set so that the confidence matches the accuracy |
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
@@ -41,6 +42,7 @@ status: DRAFT
 | Lock latch | The JS-thread latch that lets the first of the shutter and the automatic lock-on start the scan. It refuses the second. It lives in the lock-on tracker module. The capture session uses it |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label. For the real cells: `ml/dataset/cells.csv` (ADR-018) |
+| Dataset tables | `ml/src/sudoku_ml/tables.py`. It is the only module that opens `cells.csv` and `sudoku-photos.csv`. It owns the typed rows, the validated readers and writers, the pixel id and the atomic write (ADR-018) |
 | Notes | Small pencil marks in a cell. In a scan: a kind, loaded as an empty cell. In the game: the candidate numbers that the player sets in notes mode |
 | Per-cell flattening | Flattening each cell from its own four intersections, which corrects curved pages piece by piece |
 | Promote | `just promote-model`: the only way a trained model reaches the app (ADR-007). Until M3, Install is the one exception (ADR-007). |

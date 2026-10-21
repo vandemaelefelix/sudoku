@@ -7,27 +7,27 @@ from pathlib import Path
 import pytest
 from test_label_store import Clock, build
 
-from sudoku_ml.dataset import read_ids
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_import import read_detections
+from sudoku_ml.tables import read_cells
 
 
 def test_the_manifest_is_written_through_a_part_file(tmp_path: Path):
     paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
     write_cells_manifest(paths)
     assert not list(paths.cells_csv.parent.glob("*.part"))
-    assert len(read_ids(paths.cells_csv)) == 1
+    assert len(read_cells(paths.cells_csv)) == 1
 
 
 @pytest.mark.parametrize("bad", ["a" * 30, "g" * 64, "", "A" * 64])
-def test_read_ids_refuses_an_id_that_is_not_64_hex(tmp_path: Path, bad: str):
+def test_read_cells_refuses_an_id_that_is_not_64_hex(tmp_path: Path, bad: str):
     manifest = tmp_path / "cells.csv"
     manifest.write_text(
         f"cell_id,digit,kind,photo_id,row,col,label_source\n{'a' * 64},7,,,,,\n{bad},7,,,,,\n"
     )
-    with pytest.raises(ValueError, match=r"cells.csv line 3"):
-        read_ids(manifest)
+    with pytest.raises(ValueError, match=r"cells.csv cannot be read \(line 3"):
+        read_cells(manifest)
 
 
 def test_a_cut_off_manifest_stops_the_store_and_the_rewrite(tmp_path: Path):

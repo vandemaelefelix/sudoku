@@ -6,9 +6,9 @@ import torch
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
-from sudoku_ml.manifest import pixel_id
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.prelabel import main, write_prelabels
+from sudoku_ml.tables import pixel_id
 
 
 def make_run(root: Path) -> Path:
