@@ -1,4 +1,4 @@
-import { createGame, hint, place, select, tick, type Game } from '@sudoku/core'
+import { countsForBestTime, createGame, hint, place, select, tick, type Game } from '@sudoku/core'
 import type { GameStorage } from './gameStorage.types'
 import type { HistoryRecord, Level, PuzzleSource, StorageDeps } from './storage.types'
 
@@ -854,6 +854,37 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       await finish('generated', wonGame(60_000))
       await finish('scanned', wonGame(20_000))
       await expect(storage.history.bestTimes(null)).resolves.toEqual({ easy: 60_000 })
+    })
+
+    it('counts the best and the average time by countsForBestTime', async () => {
+      await finishGame(storage, 'easy', wonGame(90_000))
+      await finishGame(storage, 'easy', wonGame(60_000))
+      await finishGame(storage, 'easy', wonWithHint(10_000))
+      await finishGame(storage, 'easy', wonWithMistake(70_000))
+      await finishGame(storage, 'easy', wonGame(20_000), 'scanned')
+      await finishGame(storage, 'easy', lostGame(5_000))
+      await finishGame(storage, 'hard', wonWithHint(30_000))
+      await finishGame(storage, 'hard', wonGame(200_000))
+      const { id } = await storage.puzzles.start({ level: 'hard', source: 'generated', game: newGame(), owner: null })
+      await storage.puzzles.save(id, movedGame(1_000), null)
+      await storage.puzzles.start({ level: 'hard', source: 'generated', game: newGame(), owner: null })
+
+      const entries = await storage.history.list(null)
+      const best = await storage.history.bestTimes(null)
+      const levels = ['easy', 'medium', 'hard'] as const
+      const summaries = await Promise.all(levels.map((level) => storage.stats.summary(level, WITH_SCANNED)))
+      for (const [index, level] of levels.entries()) {
+        const times = entries
+          .filter((entry) => entry.level === level && countsForBestTime(entry))
+          .map((entry) => entry.playedMs)
+        const summary = summaries[index]
+        expect(best[level] ?? null).toBe(times.length === 0 ? null : Math.min(...times))
+        expect(summary?.bestMs).toBe(best[level] ?? null)
+        expect(summary?.averageMs).toBe(
+          times.length === 0 ? null : times.reduce((sum, time) => sum + time, 0) / times.length,
+        )
+      }
+      expect(best).toEqual({ easy: 60_000, hard: 200_000 })
     })
 
     it('runs the next task after a task that failed', async () => {
