@@ -120,7 +120,6 @@ status: DRAFT
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
 | Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
 | Hint | A coach for one step. It shows where to look, names the technique, explains it and then shows the answer. It counts once, when it shows the answer (ADR-032) |
-| Candidate | A digit that can still go in an empty cell. `@sudoku/core` derives it from the givens and the entries, never from the notes |
 | Technique | A named way to solve a step, such as hidden single or X-wing. The technique solver knows it (ADR-032) |
 | Hint plan | The steps that one hint shows, from the board to a placed digit. It has at most 6 steps |
 | Rung | One level of detail in a step: look, technique, why or answer |
