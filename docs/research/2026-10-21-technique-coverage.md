@@ -1,13 +1,13 @@
-# Research: the tier 1 and tier 2 techniques, their ratings and their coverage
+# Research: the techniques of the solver, their ratings and their coverage
 
-Date: 2026-10-21. Done for the technique solver in `shared/core/src/technique/`. The numbers come from
+Date: 2026-10-21. Done for the technique solver in `shared/core/src/technique/`. It covers tier 1, tier 2 and the full solver (colouring, unique rectangle and chains). The numbers come from
 `just technique-coverage`. The decisions that follow from this record are in the epic "hints that
 teach" and in ADR-032.
 
 Two questions:
 
 1. How difficult is each technique, and in which order does a person find them?
-2. How many generated puzzles do the tier 1 techniques, and then the tier 1 and tier 2 techniques, solve to the end?
+2. How many generated puzzles do the tier 1 techniques, then tier 1 and tier 2, then the full solver, solve to the end?
 
 ## 1. Ratings and order
 
@@ -33,9 +33,13 @@ into `TECHNIQUE_ORDER`. A test checks that the ratings never decrease down the t
 | 15 | XY-wing | 4.2 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 16 | XYZ-wing | 4.4 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 17 | W-wing | 4.4 | None. Sudoku Explainer has no rating for the W-wing. The solver uses the weight of the XYZ-wing, because the W-wing needs a strong link and two cells that match, which a person finds about as late | Low. A choice, not a fact |
-| 18 | Naked quad | 5.0 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
-| 19 | Jellyfish | 5.2 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
-| 20 | Hidden quad | 5.4 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
+| 18 | Unique rectangle (type 1) | 4.5 | Sudoku Explainer rating of the unique rectangle and unique loop, as agreed for #201 | Medium. Not re-read in the source in this session |
+| 19 | Simple colouring | 4.6 | None. Sudoku Explainer has no rating for colouring: it counts it as a single-digit X-cycle, which rates 6.5. The solver puts it just after the unique rectangle. Colouring needs only strong links and one conflict check. It is easier than a general X-chain, which can mix weak links in any unit. It finds more than a skyscraper or kite, which rate 4.0 and 4.1 | Low. A choice, not a fact |
+| 20 | Naked quad | 5.0 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
+| 21 | Jellyfish | 5.2 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
+| 22 | Hidden quad | 5.4 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
+| 23 | X-chain | 6.5 | Sudoku Explainer rating, the base of the X-cycle (the "chain" family), as agreed for #201. The solver adds no extra for the length | Low. We found no verified named rating. The solver uses 6.6, chosen just above the X-chain |
+| 24 | XY-chain | 6.6 | Sudoku Explainer rating, the base of the forcing chain, as agreed for #201. The solver adds no extra for the length | Medium. Not re-read in the source in this session |
 
 - The epic research note gave the same numbers from memory. This check agrees with the ratings that rows 7 to 12 name.
 - The naked quad, the hidden quad and the jellyfish have no golden test. Generated puzzles never reach them. Their finder tests and the fuzz test cover them.
@@ -48,6 +52,7 @@ into `TECHNIQUE_ORDER`. A test checks that the ratings never decrease down the t
   source code, and I read only those numbers.
 - I read no code for its logic. I copied no code. A rating number is a fact, not code.
 - The finders follow the technique definitions, not any code.
+- The unique rectangle is valid only for a puzzle with exactly one solution. `nextSteps` and `playThrough` run it only when the caller passes `{ unique: true }`. Every puzzle of this record has one solution, so the full solver column runs with it.
 
 ## 2. Coverage
 
@@ -117,6 +122,36 @@ What this shows:
 - The next technique to add is a chain. The XY-chain generalises the XY-wing and the W-wing. The X-chain and simple
   colouring generalise the skyscraper and the two-string kite. This is a judgement from the usage above. It is not
   measured. The unique rectangle is the other candidate, and no tier 2 technique covers it.
+
+### Full solver coverage
+
+The same puzzles, solved with the full solver: tier 1, tier 2, simple colouring, the unique rectangle (type 1), the
+X-chain and the XY-chain, easiest first. A chain has at most 12 cells. The solves run with `unique: true`.
+The tier 1 and tier 2 columns repeat the numbers above. The run takes about 21 s on a Mac.
+
+| Level | Puzzles | Tier 1 solved | Tier 2 solved | Full solver solved | Stuck | Steps for a solved puzzle (mean, largest) | Empty cells left when stuck (mean) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| easy | 1000 | 99.7 % | 100.0 % | 100.0 % | 0 | 41.0, 43 | - |
+| medium | 1000 | 97.3 % | 99.8 % | 100.0 % | 0 | 47.1, 53 | - |
+| hard | 1000 | 85.4 % | 94.9 % | 98.1 % | 19 | 52.8, 69 | 38.1 |
+| expert | 1000 | 67.9 % | 83.0 % | 90.5 % | 95 | 58.2, 77 | 42.3 |
+
+Solved puzzles that use each added technique at least once:
+
+| Level | Unique rectangle | Simple colouring | X-chain | XY-chain |
+| --- | --- | --- | --- | --- |
+| easy | 0 | 0 | 0 | 0 |
+| medium | 1 | 0 | 1 | 1 |
+| hard | 6 | 1 | 9 | 25 |
+| expert | 17 | 5 | 13 | 55 |
+
+What this shows:
+
+- The full solver lifts expert from 83.0 % to 90.5 %. This meets the 90 % goal of #197. Hard reaches 98.1 %, medium 100.0 %.
+- The XY-chain does most of the work (55 expert puzzles). It generalises the XY-wing and the W-wing.
+- Simple colouring is rare (5 expert puzzles). The skyscraper, the kite and the chains find most of its steps first.
+- The 95 stuck expert puzzles need a technique that the solver does not have, such as forcing chains, longer chains or the other unique rectangle types.
+- The time of one `nextSteps` call stays under 5 ms. The slowest call in the bench set takes about 1.1 ms. A whole solve of 100 generated puzzles takes at most about 3 ms.
 
 ## 3. Sources
 

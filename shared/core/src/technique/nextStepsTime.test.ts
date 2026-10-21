@@ -8,10 +8,10 @@ const LIMIT_MS = 25
 
 it('finds the next steps of every position of the bench set within the limit', async ({ annotate }) => {
   const positions = benchPositions()
-  for (const { board, candidates } of positions) nextSteps(candidates, board)
+  for (const { board, candidates } of positions) nextSteps(candidates, board, undefined, { unique: true })
   const times = positions.map(({ board, candidates }) => {
     const start = performance.now()
-    nextSteps(candidates, board)
+    nextSteps(candidates, board, undefined, { unique: true })
     return performance.now() - start
   })
   const slowest = Math.max(...times)

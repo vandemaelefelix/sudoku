@@ -114,4 +114,18 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
 
 Point 12 lists the jellyfish as tier 3. The solver now has it in tier 2. One fish finder covers the sizes 2
 to 4, so the jellyfish costs no extra code. It never fired in 4 000 generated puzzles, so hints rarely meet it.
-Tier 3 keeps simple colouring, unique rectangle, BUG+1 and chains.
+Tier 3 keeps simple colouring, unique rectangle, BUG+1 and chains (see the amendment below for the solver).
+
+## Amendment 2026-10-21: the solver knows four tier 3 techniques
+
+Point 12 keeps simple colouring, unique rectangle and chains out of scope as tier 3. The solver now finds
+simple colouring, unique rectangle type 1, the X-chain and the XY-chain. The hint text for them is not built yet.
+Until it is, the hint plan treats them as tier 3. When only a tier 3 technique applies, the plan uses the fallback of point 9.
+The card reveals the empty cell with the fewest candidates. Point 4 does not change.
+
+The step contract of point 13 gains two optional fields. `links` holds the cells of a chain in order.
+`groups` holds the two colour groups of simple colouring. The unique rectangle is only valid when the puzzle has one solution.
+The solver needs the option `unique: true` for it. The hint plan passes `unique: true` for a game puzzle.
+A game puzzle always has exactly one solution. Generated puzzles have one. A scanned puzzle has one when it passes the play gate.
+BUG+1 stays out of scope.
+[ADR-032](../adr/adr-032-hints-that-teach.md) records the decision.

@@ -8,7 +8,7 @@ const positions = benchPositions()
 
 function timeOf({ board, candidates }: (typeof positions)[number]): number {
   const start = performance.now()
-  nextSteps(candidates, board)
+  nextSteps(candidates, board, undefined, { unique: true })
   return performance.now() - start
 }
 
@@ -17,10 +17,10 @@ test('one nextSteps call takes under 5 ms at every position of the bench set', a
   const slowest = positions.reduce((worst, position) => (timeOf(position) > timeOf(worst) ? position : worst))
 
   const oneCall = bench('the slowest position', () => {
-    nextSteps(slowest.candidates, slowest.board)
+    nextSteps(slowest.candidates, slowest.board, undefined, { unique: true })
   })
   const allCalls = bench(`all ${positions.length} positions, time for each call`, () => {
-    for (const { board, candidates } of positions) nextSteps(candidates, board)
+    for (const { board, candidates } of positions) nextSteps(candidates, board, undefined, { unique: true })
   })
   const storage = await bench.compare(oneCall, allCalls)
 
