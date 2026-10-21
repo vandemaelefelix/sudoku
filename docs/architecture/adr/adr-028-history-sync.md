@@ -283,3 +283,34 @@ amendment "delete the account" of [ADR-027](adr-027-backend-platform.md). The ap
    clears the sync state and signs out. It sets the owner to null for the rest of the session and clears the Keychain
    owner cache, also when the sign-out fails. A failed sign-out is tried again, without a message, at the next start.
 7. **Offline or a failure changes nothing.** The app shows a message. The sync runs again. The player can try again.
+
+## Amendment 2026-10-21: the history repository applies a sync page
+
+The rules of decisions 3 to 8 stay. They now sit behind `HistoryRepository`, so the sync run does not
+sequence them. The interface is in the amendment of the same date in
+[ADR-012](adr-012-local-persistence.md).
+
+1. **One page, one transaction.** `applySyncPage` replaces `markPushed`, `upsertRemote` and the cursor save of the run.
+   - It marks the pushed entries. It marks only the entries that the request sent and the server accepted. It
+     marks only the rows that still have the sent `updatedAt` (decision 4).
+   - It writes the downloaded entries by the rule of `upsertRemote` (decision 4).
+   - It saves the cursor with its owner.
+   - A failure other than a bad entry writes nothing. The cursor and the pushed marks stay as they were. The next
+     run sends the same entries. The server accepts them again (decision 5).
+2. **A bad entry is dropped inside the repository.** An entry that breaks the sync contract, or a CHECK of the
+   database, is dropped and logged. It never blocks the cursor. SQLite aborts only the statement that breaks a
+   CHECK, so the transaction goes on with the next entry. The run no longer reads error text.
+3. **The waiting list sits behind the repository.** `nextBatch` reads the oldest entries of the owner and keeps
+   those that meet the sync contract. It reads up to 1000 rows to find one batch. The limit of version 1 is the
+   same as before: more than 900 invalid entries at the head block the valid ones.
+4. **The run goes on while the server takes entries.** `applySyncPage` tells the run if it took an entry and
+   the waiting list still holds entries. The run stops when the server takes none (accepted ids).
+5. **Adopt is one operation.** `adoptable` counts the entries to offer. It gives 0 after the answer.
+   `answerAdopt` saves the answer and, on yes, gives the entries the owner, in one transaction.
+6. **The owner delete is one operation.** `deleteOwner` deletes the rows of the owner and the sync state of the
+   owner, in one transaction. The 410 flow and the delete-account flow call only this.
+7. **A change means a written entry.** The run reports a change when a downloaded entry was new or newer. The
+   run reported a change before for every downloaded entry that it did not send in the same run. An entry that the
+   overlap sends again, and an echo of a pushed entry, are no change now.
+8. **What the run keeps.** The run keeps the network, the 401 retry, the cursor reset, the rounds, the pause
+   and the single-flight rule (the amendment "the sync in the app").

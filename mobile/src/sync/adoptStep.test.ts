@@ -9,21 +9,26 @@ beforeEach(() => {
 })
 
 function step(ask: () => Promise<boolean>) {
-  return runAdoptStep({ history: storage.history, state: storage.sync, owner: ALICE, ask })
+  return runAdoptStep({ history: storage.history, owner: ALICE, ask })
 }
 
 it('does not ask when no game lacks an owner, and does not remember it', async () => {
   const ask = jest.fn(async () => true)
   await step(ask)
   expect(ask).not.toHaveBeenCalled()
-  await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(false)
+  await finishGame(storage, null)
+  await step(ask)
+  expect(ask).toHaveBeenCalledTimes(1)
 })
 
 it('adopts the games on yes and remembers the answer', async () => {
   const id = await finishGame(storage, null)
   await step(async () => true)
   await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id }])
-  await expect(storage.sync.adoptAsked(ALICE)).resolves.toBe(true)
+  const ask = jest.fn(async () => true)
+  await finishGame(storage, null)
+  await step(ask)
+  expect(ask).not.toHaveBeenCalled()
 })
 
 it('leaves the games without an owner on no, and does not ask again', async () => {

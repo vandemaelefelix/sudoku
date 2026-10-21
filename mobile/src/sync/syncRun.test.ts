@@ -1,10 +1,9 @@
 import type { SyncRequest } from '@sudoku/sync-contract'
-import type { GameStorage } from '@/storage'
-import { BATCH_SIZE, MAX_ROUNDS } from './constants/sync.constants'
+import { toWireEntry, type GameStorage } from '@/storage'
+import { MAX_ROUNDS } from './constants/sync.constants'
 import { runSync } from './syncRun'
 import { ALICE, BOB, createTestStorage, fakeServer, finishGame, noSleep, scriptedApi, uuid } from './syncTestKit'
 import type { SyncApiResult, SyncSession } from './sync.types'
-import { toWireEntry } from './wireEntry'
 import type { SyncApi } from './syncApi'
 
 let storage: GameStorage
@@ -33,6 +32,8 @@ function run(api: SyncApi, session = sessionOf(ALICE), history = storage.history
   })
 }
 
+const waitingIds = async () => (await storage.history.nextBatch(ALICE)).map((record) => record.id)
+
 const OK_API = () => scriptedApi([OK()]).api
 
 const OK = (
@@ -49,7 +50,7 @@ describe('push', () => {
     await expect(run(server.api)).resolves.toMatchObject({ result: 'synced' })
     expect(server.requests).toHaveLength(1)
     expect(server.requests[0]?.entries).toMatchObject([{ id, schemaVersion: 1 }])
-    await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+    await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
     await expect(storage.sync.syncedAt(ALICE)).resolves.toBe('2026-10-15T12:00:00.000Z')
   })
 
@@ -57,15 +58,14 @@ describe('push', () => {
     const ids = [await finishGame(storage, ALICE), await finishGame(storage, ALICE), await finishGame(storage, ALICE)]
     const { api } = scriptedApi([OK({ acceptedIds: [ids[0]!, ids[2]!] })])
     await run(api)
-    const left = await storage.history.pending(ALICE, 10)
-    expect(left.map((record) => record.id)).toEqual([ids[1]])
+    expect(await waitingIds()).toEqual([ids[1]])
   })
 
   it('ignores an accepted id that it did not send', async () => {
     const id = await finishGame(storage, ALICE)
     const { api } = scriptedApi([OK({ acceptedIds: [uuid(999)] })])
     await run(api)
-    expect((await storage.history.pending(ALICE, 10)).map((record) => record.id)).toEqual([id])
+    expect(await waitingIds()).toEqual([id])
   })
 
   it('keeps an entry that changed during the request on the waiting list', async () => {
@@ -79,8 +79,7 @@ describe('push', () => {
     ])
     await run(api)
     expect(requests[1]?.entries).toMatchObject([{ id, deletedAt: expect.any(String) }])
-    const left = await storage.history.pending(ALICE, 10)
-    expect(left).toMatchObject([{ id, deletedAt: expect.any(String) }])
+    await expect(storage.history.nextBatch(ALICE)).resolves.toMatchObject([{ id, deletedAt: expect.any(String) }])
   })
 
   it('sends 250 waiting entries in batches of 100, 100 and 50', async () => {
@@ -91,7 +90,7 @@ describe('push', () => {
     const server = fakeServer()
     await expect(run(server.api)).resolves.toMatchObject({ result: 'synced' })
     expect(server.requests.map((request) => request.entries.length)).toEqual([100, 100, 50])
-    await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
+    await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
   })
 
   it('stops when the server accepts nothing, as at the daily cap', async () => {
@@ -99,7 +98,7 @@ describe('push', () => {
     const server = fakeServer({ cap: 0 })
     await expect(run(server.api)).resolves.toMatchObject({ result: 'synced' })
     expect(server.requests).toHaveLength(1)
-    expect((await storage.history.pending(ALICE, 10)).map((record) => record.id)).toEqual(ids)
+    expect(await waitingIds()).toEqual(ids)
   })
 
   it('goes on while the server takes part of the list', async () => {
@@ -110,17 +109,7 @@ describe('push', () => {
     const server = fakeServer({ cap: 2 })
     await run(server.api)
     expect(server.requests.map((request) => request.entries.length)).toEqual([5, 3, 1])
-    await expect(storage.history.pending(ALICE, 10)).resolves.toEqual([])
-  })
-
-  it('leaves a local entry that breaks the contract out of the request', async () => {
-    await finishGame(storage, ALICE)
-    const records = await storage.history.pending(ALICE, 10)
-    const broken = { ...records[0]!, id: 'not-a-uuid' }
-    const history = { ...storage.history, pending: async () => [broken, ...records] }
-    const server = fakeServer()
-    await run(server.api, sessionOf(ALICE), history)
-    expect(server.requests[0]?.entries.map((entry) => entry.id)).toEqual(records.map((record) => record.id))
+    await expect(storage.history.hasWaiting(ALICE)).resolves.toBe(false)
   })
 })
 
@@ -141,43 +130,17 @@ describe('pull', () => {
   it('reads every page while more is true and saves the cursor after each page', async () => {
     const server = fakeServer({ pageSize: 2 })
     server.stores.set(ALICE, await Promise.all([1, 2, 3, 4, 5].map(async (n) => toWireEntry(await remoteRecord(n)))))
-    const saved = jest.spyOn(storage.sync, 'saveCursor')
+    const applied = jest.spyOn(storage.history, 'applySyncPage')
     await expect(run(server.api)).resolves.toMatchObject({ result: 'synced', changed: true })
     expect(server.requests.map((request) => request.cursor)).toEqual([null, '2', '4'])
-    expect(saved.mock.calls.map(([, cursor]) => cursor)).toEqual(['2', '4', '5'])
+    expect(applied.mock.calls.map(([page]) => page.cursor)).toEqual(['2', '4', '5'])
     await expect(storage.history.list(ALICE)).resolves.toHaveLength(5)
   })
 
-  it('drops a change that breaks the contract, stores the rest and moves the cursor', async () => {
-    const good = toWireEntry(await remoteRecord(1))
-    const bad = { ...toWireEntry(await remoteRecord(2)), level: 'insane' }
-    const { api } = scriptedApi([OK({ changes: [bad, good], cursor: 'c1' })])
-    await run(api)
-    await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: uuid(1) }])
-    await expect(storage.sync.cursor(ALICE)).resolves.toBe('c1')
-  })
-
-  it('stores the rest when the database refuses one entry', async () => {
-    const good = toWireEntry(await remoteRecord(1))
-    const refused = toWireEntry(await remoteRecord(2))
-    const real = storage.history.upsertRemote.bind(storage.history)
+  it('fails and keeps the cursor when the repository cannot apply the page', async () => {
     const history = {
       ...storage.history,
-      upsertRemote: async (records: Parameters<typeof real>[0], owner: string) => {
-        if (records.some((record) => record.id === refused.id)) throw new Error('CHECK constraint failed: played_ms')
-        return real(records, owner)
-      },
-    }
-    const { api } = scriptedApi([OK({ changes: [refused, good], cursor: 'c1' })])
-    await expect(run(api, sessionOf(ALICE), history)).resolves.toMatchObject({ result: 'synced' })
-    await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id: uuid(1) }])
-    await expect(storage.sync.cursor(ALICE)).resolves.toBe('c1')
-  })
-
-  it('fails and keeps the cursor when the database fails for another reason', async () => {
-    const history = {
-      ...storage.history,
-      upsertRemote: async () => {
+      applySyncPage: async () => {
         throw new Error('disk I/O error')
       },
     }
@@ -219,10 +182,11 @@ describe('pull', () => {
 describe('a session that ends late', () => {
   it('does not say synced when the session ends while the page is stored', async () => {
     let current = true
-    const save = storage.sync.saveCursor.bind(storage.sync)
-    jest.spyOn(storage.sync, 'saveCursor').mockImplementation(async (owner, cursor) => {
-      await save(owner, cursor)
+    const apply = storage.history.applySyncPage.bind(storage.history)
+    jest.spyOn(storage.history, 'applySyncPage').mockImplementation(async (page) => {
+      const result = await apply(page)
       current = false
+      return result
     })
     const session = sessionOf(ALICE, { isCurrent: () => current })
     await expect(run(OK_API(), session)).resolves.toMatchObject({ result: 'stopped' })
@@ -266,21 +230,6 @@ describe('a 401', () => {
   })
 })
 
-describe('invalid entries at the head of the waiting list', () => {
-  it('does not block the valid entries behind them', async () => {
-    await finishGame(storage, ALICE)
-    const [record] = await storage.history.pending(ALICE, 10)
-    const broken = Array.from({ length: BATCH_SIZE + 5 }, (_, n) => ({ ...record!, id: `bad-${n}` }))
-    const history = {
-      ...storage.history,
-      pending: async (_owner: string, limit: number) => [...broken, record!].slice(0, limit),
-    }
-    const server = fakeServer()
-    await run(server.api, sessionOf(ALICE), history)
-    expect(server.requests[0]?.entries.map((entry) => entry.id)).toEqual([record!.id])
-  })
-})
-
 describe('failure', () => {
   it.each<SyncApiResult>([
     { kind: 'offline' },
@@ -292,7 +241,7 @@ describe('failure', () => {
     const id = await finishGame(storage, ALICE)
     await storage.sync.saveCursor(ALICE, 'keep')
     await expect(run(scriptedApi([answer]).api)).resolves.toMatchObject({ result: 'failed' })
-    expect((await storage.history.pending(ALICE, 10)).map((record) => record.id)).toEqual([id])
+    expect(await waitingIds()).toEqual([id])
     await expect(storage.sync.cursor(ALICE)).resolves.toBe('keep')
     await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()
   })

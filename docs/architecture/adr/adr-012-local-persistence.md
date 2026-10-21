@@ -101,3 +101,30 @@ The time played is saved with each move. Time after the last move and before the
   saves, because the Jest adapter and the phone have no busy timeout.
 
 The other points stay.
+
+## Amendment 2026-10-21: the sync operations of the history repository
+
+[ADR-028](adr-028-history-sync.md) has the sync rules. This amendment changes the interface that carries them. The
+sync rules and the table layout stay.
+
+- `HistoryRepository` no longer has one method for each SQL statement of the sync. `pending`, `markPushed`,
+  `upsertRemote`, `adoptUnowned` and `countUnowned` are gone. Each operation below is one transaction.
+
+  | Operation | What it does |
+  | --- | --- |
+  | `nextBatch(owner)` | Reads the waiting list. It gives at most one request of entries that meet the sync contract |
+  | `hasWaiting(owner)` | Says if the waiting list holds an entry, valid or not |
+  | `applySyncPage(page)` | Marks the pushed entries, writes the downloaded entries and saves the cursor, all or none |
+  | `adoptable(owner)` | Counts the live entries without an owner. It gives 0 after the owner answered the adopt prompt |
+  | `answerAdopt(owner, accepted)` | Saves the answer. On yes it gives the live entries without an owner to the owner |
+  | `deleteOwner(owner)` | Deletes the rows of the owner and the sync state of the owner |
+
+- Every one of these writes goes through the shared write queue and `withExclusiveTransactionAsync`. A caller
+  never sequences two repository calls to get one change.
+- `SyncStateRepository` keeps the cursor and the time of the last run. It loses `adoptAsked`, `markAdoptAsked`
+  and `clear`. The history repository writes those keys of `sync_state` in its own transactions.
+- The history repository checks each entry with the zod schema of `shared/sync-contract/`. The check is part of
+  the repository, so `src/storage/` imports `@sudoku/sync-contract`. `wireEntry.ts` moved from `src/sync/` to
+  `src/storage/`. A test keeps `HistoryRecord` and the contract equal.
+- The in-memory fake shares one table of sync state between its history and its sync state. It passes the same
+  contract tests as the SQLite repositories.

@@ -1,14 +1,8 @@
-/** The same value as MAX_ENTRIES_PER_SYNC of the sync contract. A test keeps the two equal. */
-export const BATCH_SIZE = 100
-
 /** One run ends after this many requests. The next trigger continues from the saved cursor. */
 export const MAX_ROUNDS = 20
 
 /** After a run that reached the most rounds, the service starts at most this many more runs at once. */
 export const MAX_FOLLOW_UP_RUNS = 5
-
-/** The most entries that the run reads from the waiting list to find one batch of valid entries. */
-export const MAX_PENDING_SCAN = 1_000
 
 /** The API throttle is 1 request per second with a burst of 10 (ADR-027). From this round, a pause keeps a full pull under it. */
 export const PAUSE_AFTER_ROUND = 8
