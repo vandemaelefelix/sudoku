@@ -19,8 +19,11 @@ export type SettingStore<T> = {
   /** Reads the saved value on the first call, then the same value until a change. useSyncExternalStore compares snapshots by identity. */
   get(): T
   subscribe(listener: () => void): () => void
-  /** Changes the value in memory and tells the listeners first. Then it saves. A failed save rejects. Does nothing for the same value. */
-  set(value: T): Promise<void>
+  /**
+   * Changes the value in memory and tells the listeners first. Then it saves. A failed save rejects.
+   * Does nothing for the same value, unless `retrySave` is true: then it saves again, so a save that failed can succeed later.
+   */
+  set(value: T, options?: { retrySave?: boolean }): Promise<void>
   /** Like `set`, but a failed save is logged and not thrown. The value stays in memory for this session. */
   trySet(value: T): void
 }
@@ -44,9 +47,12 @@ export function createSettingStore<T>(settings: SettingsRepository, definition: 
     }
     return current.value
   }
-  const set = async (value: T): Promise<void> => {
+  const set = async (value: T, options?: { retrySave?: boolean }): Promise<void> => {
     const text = serialize(value)
-    if (text === serialize(get())) return
+    if (text === serialize(get())) {
+      if (options?.retrySave) await settings.set(key, text)
+      return
+    }
     current = { value }
     for (const listener of listeners) listener()
     await settings.set(key, text)

@@ -56,7 +56,8 @@ export function createNoticeStore(settings: SettingsRepository): NoticeStore {
     },
     async markSeen() {
       due = false
-      const saving = seen.set(true)
+      // retrySave: a first save may have failed, and the notice must not show again after the next launch.
+      const saving = seen.set(true, { retrySave: true })
       notify()
       await saving
     },
