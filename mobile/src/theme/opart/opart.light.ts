@@ -60,8 +60,9 @@ export function lightLook(p: OpartPalette): Look {
       grid: { frame: colors.lineStrong, boxLine: colors.lineStrong, cellLine: colors.line },
       cell: {
         fill: colors.surface,
-        peer: p.tint050,
-        same: p.tint175,
+        peer: p.tint100,
+        same: p.tint200,
+        // Lighter than the same-number cells, so its notes in muted text pass. The accent ring marks it.
         selected: p.tint150,
         conflictFill: colors.dangerSurface,
         ring: colors.accent,
@@ -70,7 +71,7 @@ export function lightLook(p: OpartPalette): Look {
         conflict: colors.danger,
         conflictHatch: null,
         note: colors.textMuted,
-        selectedRingWidth: 0,
+        selectedRingWidth: 2,
       },
       key: { fill: p.tint100, digit: colors.text, noteDigit: colors.accent },
       // Boxy toggle: an accent track with a white thumb when on, an outlined track with an accent thumb when off.

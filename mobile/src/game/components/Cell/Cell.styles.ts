@@ -8,7 +8,7 @@ export const styles = StyleSheet.create((theme) => ({
   peer: { backgroundColor: theme.components.cell.peer },
   same: { backgroundColor: theme.components.cell.same },
   conflict: { backgroundColor: theme.components.cell.conflictFill },
-  // In Colour the selected cell also has a ring (ADR-026). In Light selectedRingWidth is 0.
+  // The selected cell has a fill and a ring in both looks (ADR-026).
   selected: {
     backgroundColor: theme.components.cell.selected,
     borderWidth: theme.components.cell.selectedRingWidth,
