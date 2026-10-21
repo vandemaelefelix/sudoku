@@ -120,6 +120,23 @@ describe('the clock', () => {
     expect(playedMs(session)).toBe(1000)
   })
 
+  it('reports nothing on a pause while the clock does not run', () => {
+    const session = createGameSession(sampleStart())
+    session.attach(null)()
+    jest.advanceTimersByTime(500)
+    session.actions.pause()
+    expect(playedMs(session)).toBe(0)
+  })
+
+  it('runs once after a detach and an attach again', () => {
+    const { session, detach } = running()
+    jest.advanceTimersByTime(1000)
+    detach()
+    session.attach(null)
+    jest.advanceTimersByTime(2000)
+    expect(playedMs(session)).toBe(3000)
+  })
+
   it('runs without a save', () => {
     const session = createGameSession(sampleStart())
     session.attach(null)
@@ -145,6 +162,15 @@ describe('the app leaves the foreground', () => {
     session.actions.select(40)
     session.background()
     expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'paused', playedMs: 1700, selected: 40 }))
+  })
+
+  it('counts the time once when it detaches after the pause', () => {
+    const { session, save, detach } = running()
+    jest.advanceTimersByTime(2500)
+    session.background()
+    detach()
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(playedMs(session)).toBe(2500)
   })
 
   it('stays paused until the player resumes', () => {
@@ -221,6 +247,22 @@ describe('the saves', () => {
     session.actions.digit(4)
     detach()
     expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves once and counts the time once when an attach follows a detach', () => {
+    const first = jest.fn<void, [Game]>()
+    const second = jest.fn<void, [Game]>()
+    const session = createGameSession(sampleStart())
+    const detach = session.attach(first)
+    jest.advanceTimersByTime(1000)
+    detach()
+    session.attach(second)
+    jest.advanceTimersByTime(1000)
+    session.actions.select(OPEN)
+    session.actions.digit(4)
+    expect(playedMs(session)).toBe(2000)
+    expect(first).toHaveBeenCalledTimes(1)
+    expect(second).toHaveBeenCalledTimes(1)
   })
 
   it('saves nothing without a save', () => {

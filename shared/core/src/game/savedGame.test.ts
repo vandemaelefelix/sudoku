@@ -154,7 +154,7 @@ describe('needsSave', () => {
     expect(needsSave(game, act(game))).toBe(true)
   })
 
-  it('decides for every field that the save stores', () => {
+  it('stores exactly the fields of a game, so needsSave sees every stored field', () => {
     // A field that the save stores and that needsSave does not know would never trigger a write.
     const game = gameInProgress()
     const stored = Object.keys(toSavedGame(game)).filter((field) => field !== 'version')

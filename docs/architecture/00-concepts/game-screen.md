@@ -141,7 +141,13 @@ When the app leaves the foreground, the session does these steps in this order:
 2. It pauses the game.
 3. It saves the paused game with the exact time played. The save is one write.
 
-The hook `useGameSession` adds the one `AppState` listener of the game. It also runs the clock while the screen shows, and it saves the game when the screen closes (QR-11). The three contexts of `GameProvider` split the session by how often it changes: the actions never change, the state changes on a move, and the time changes once a second.
+The hook `useGameSession` adds the one `AppState` listener of the game. It runs the clock while the screen shows. It saves the game when the screen closes (QR-11).
+
+The three contexts of `GameProvider` split the session by how often it changes:
+
+- The actions never change.
+- The state changes on a move.
+- The time changes once a second.
 
 ### Settings
 
