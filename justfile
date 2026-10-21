@@ -27,6 +27,14 @@ test-ts:
     node --test 'tools/delete-scans/*.test.mjs'
     node --test 'backend/infra/*.test.ts'
 
+# Time nextSteps on the bench set. The target is under 5 ms for one call
+bench-core:
+    pnpm --filter @sudoku/core bench
+
+# Measure how many generated puzzles the tier 1 techniques solve. It takes minutes and prints Markdown tables
+technique-coverage:
+    pnpm --filter @sudoku/core technique-coverage
+
 # The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
 dynamodb_image := "amazon/dynamodb-local:3.3.1"
 dynamodb_port := env("DYNAMODB_PORT", "8000")

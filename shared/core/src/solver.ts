@@ -1,23 +1,12 @@
+import { bitCount } from './bits'
 import type { Grid } from './types'
+import { BOX_OF, COL_OF, ROW_OF } from './units'
 
 /** count 2 means two or more: the search stops at the second solution. */
 export type SolveResult = { count: 0 } | { count: 1; solution: Grid } | { count: 2 }
 
 const CELLS = 81
 const ALL_DIGITS = 0b11_1111_1110
-
-const ROW_OF: readonly number[] = Array.from({ length: CELLS }, (_, cell) => Math.floor(cell / 9))
-const COL_OF: readonly number[] = Array.from({ length: CELLS }, (_, cell) => cell % 9)
-const BOX_OF: readonly number[] = Array.from(
-  { length: CELLS },
-  (_, cell) => Math.floor(cell / 27) * 3 + Math.floor((cell % 9) / 3),
-)
-
-function bitCount(mask: number): number {
-  let count = 0
-  for (let rest = mask; rest !== 0; rest &= rest - 1) count++
-  return count
-}
 
 /**
  * Backtracking solver of ADR-011. Bit d of a mask stands for digit d.

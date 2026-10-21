@@ -12,10 +12,32 @@ export const BOXES: readonly (readonly number[])[] = NINE.map((box) => {
   return NINE.map((k) => (top + Math.floor(k / 3)) * 9 + left + (k % 3))
 })
 
+/** Unit indices: rows 0 to 8, columns 9 to 17, boxes 18 to 26. */
+export const UNITS: readonly (readonly number[])[] = [...ROWS, ...COLUMNS, ...BOXES]
+
+export type UnitKind = 'row' | 'column' | 'box'
+
+export function unitKindOf(unit: number): UnitKind {
+  if (unit < 9) return 'row'
+  return unit < 18 ? 'column' : 'box'
+}
+
 const CELLS = Array.from({ length: GRID_CELLS }, (_, cell) => cell)
 
-const PEERS: readonly (readonly number[])[] = CELLS.map((cell) => {
-  const units = [ROWS, COLUMNS, BOXES].flatMap((all) => all.filter((unit) => unit.includes(cell)))
+export const ROW_OF: readonly number[] = CELLS.map((cell) => Math.floor(cell / 9))
+export const COL_OF: readonly number[] = CELLS.map((cell) => cell % 9)
+export const BOX_OF: readonly number[] = CELLS.map((cell) => Math.floor(cell / 27) * 3 + Math.floor((cell % 9) / 3))
+
+/** For each cell: the unit indices of its row, its column and its box, in this order. */
+export const UNITS_OF: readonly (readonly [number, number, number])[] = CELLS.map((cell) => [
+  ROW_OF[cell]!,
+  9 + COL_OF[cell]!,
+  18 + BOX_OF[cell]!,
+])
+
+/** For each cell: the 20 other cells in its row, column and box, sorted. */
+export const PEERS: readonly (readonly number[])[] = CELLS.map((cell) => {
+  const units = UNITS_OF[cell]!.map((unit) => UNITS[unit]!)
   return CELLS.filter((other) => other !== cell && units.some((unit) => unit.includes(other)))
 })
 
