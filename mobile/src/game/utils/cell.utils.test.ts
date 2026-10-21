@@ -1,5 +1,6 @@
 import { DEFAULT_ASSISTS } from '@/game/constants/assists.constants'
-import { cellViews } from './cell.utils'
+import { forestColour } from '@/theme/themes/forest'
+import { cellViews, displayFill } from './cell.utils'
 import { reduceSession, startSession, type SessionAction } from './session.utils'
 import { sampleStart } from './sample.utils'
 
@@ -63,4 +64,17 @@ it('hides every digit and note while the game is paused', () => {
     DEFAULT_ASSISTS,
   )
   for (const view of views) expect(view).toMatchObject({ digit: 0, notes: '', fill: 'plain', ring: false })
+})
+
+it('gives a display fill the colours of the fill keys of the cell styles', () => {
+  const colours = forestColour.components.cell
+  expect(displayFill(colours, 'plain')).toEqual({ backgroundColor: colours.fill })
+  expect(displayFill(colours, 'peer')).toEqual({ backgroundColor: colours.peer })
+  expect(displayFill(colours, 'same')).toEqual({ backgroundColor: colours.same })
+  expect(displayFill(colours, 'conflict')).toEqual({ backgroundColor: colours.conflictFill })
+  expect(displayFill(colours, 'selected')).toEqual({
+    backgroundColor: colours.selected,
+    borderWidth: colours.selectedRingWidth,
+    borderColor: colours.ring,
+  })
 })

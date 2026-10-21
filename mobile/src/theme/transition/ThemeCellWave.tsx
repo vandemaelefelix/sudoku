@@ -1,12 +1,13 @@
 import type { SkImage } from '@shopify/react-native-skia'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, useWindowDimensions, View } from 'react-native'
 import { Easing, ReduceMotion, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated'
+import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import { SplashCells } from '@/splash/components/SplashCells'
 import { SPLASH_GROUND } from '@/theme/splash.colors'
 import { THEMES } from '@/theme/themes/registry'
-import { TRANSITION_MS } from './transition.constants'
+import { RENDER_WAIT_MS, TRANSITION_MS } from './transition.constants'
 import { splashMs } from './transition.utils'
 import type { ThemeTarget } from './useThemeTransition'
 
@@ -22,7 +23,7 @@ type ThemeCellWaveProps = {
    * a decoration over the picture, and the Light accent is the colour of the colourway on white (ADR-026).
    */
   target: ThemeTarget
-  /** Called once, when the picture is on screen. The theme switches under it. The clock of the wave starts then. */
+  /** Called once, when the picture is on screen. The theme switches under it. The clock of the wave starts when the screens show the new theme. */
   onSwitch(): void
   onDone(): void
 }
@@ -35,27 +36,48 @@ type ThemeCellWaveProps = {
  */
 export function ThemeCellWave({ image, target, onSwitch, onDone }: ThemeCellWaveProps) {
   const { width, height } = useWindowDimensions()
+  const { rt } = useUnistyles()
   const clock = useSharedValue(0)
-  const started = useRef(false)
+  const laidOut = useRef(false)
+  const running = useRef(false)
+  // The theme name before the switch. Null until the switch.
+  const [themeBefore, setThemeBefore] = useState<string | null>(null)
   const { accent, line } = THEMES[target.name].colors
+
+  const run = () => {
+    if (running.current) return
+    running.current = true
+    clock.set(
+      withTiming(
+        TRANSITION_MS,
+        { duration: TRANSITION_MS, easing: Easing.linear, reduceMotion: ReduceMotion.Never },
+        (finished) => {
+          if (finished) scheduleOnRN(onDone)
+        },
+      ),
+    )
+  }
 
   // The first layout means the picture is on screen, so the theme can switch under it. One more frame is enough for Skia.
   const onLayout = () => {
-    if (started.current) return
-    started.current = true
+    if (laidOut.current) return
+    laidOut.current = true
     requestAnimationFrame(() => {
+      setThemeBefore(rt.themeName ?? '')
       onSwitch()
-      clock.set(
-        withTiming(
-          TRANSITION_MS,
-          { duration: TRANSITION_MS, easing: Easing.linear, reduceMotion: ReduceMotion.Never },
-          (finished) => {
-            if (finished) scheduleOnRN(onDone)
-          },
-        ),
-      )
     })
   }
+
+  // Unistyles tells the hooks of the new theme on a later tick, and a Skia surface redraws only when its hook renders.
+  // The wave starts after the render that follows the new theme, and one frame for Skia, so it reveals no old colour.
+  const themeNow = rt.themeName
+  useEffect(() => {
+    if (themeBefore === null) return
+    const fallback = setTimeout(run, RENDER_WAIT_MS)
+    if (themeNow !== themeBefore) requestAnimationFrame(run)
+    return () => clearTimeout(fallback)
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- run reads only refs and stable props
+  }, [themeBefore, themeNow])
 
   const exit = useDerivedValue(() => splashMs(clock.get()))
 
