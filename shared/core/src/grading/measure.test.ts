@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { fullGrid, generateWithTarget } from '../generator'
+import { fullGrid, generateWithTarget, LEVELS, type Level } from '../generator'
 import { createRandom, shuffled } from '../random'
 import { solve } from '../solver'
+import { TECHNIQUE_ORDER } from '../technique/order'
+import { playThrough } from '../technique/playThrough'
 import type { Grid } from '../types'
 import { grade, type Grade } from './grade'
 import { TECHNIQUE_LEVEL } from './levels'
@@ -48,6 +50,9 @@ const sortedBy = (rows: readonly Row[], pick: (row: Row) => number): number[] =>
 
 const fixed = (value: number, digits = 1): string => value.toFixed(digits)
 
+// One expression for every share, so that the same quantity prints the same value in every table.
+const percent = (part: number, total: number): string => fixed((100 * part) / total)
+
 const isSingle = (row: Row): boolean => row.hardest !== null && TECHNIQUE_LEVEL[row.hardest] === 'easy'
 
 function report(rows: Record<string, Row[]>): string {
@@ -61,7 +66,7 @@ function report(rows: Record<string, Row[]>): string {
   )
   for (const [name, set] of Object.entries(rows)) {
     const mean = set.reduce((sum, row) => sum + row.givens, 0) / set.length
-    const shares = levels.map((level) => fixed((100 * set.filter((row) => row.level === level).length) / set.length))
+    const shares = levels.map((level) => percent(set.filter((row) => row.level === level).length, set.length))
     out.push(`| ${name} | ${set.length} | ${fixed(mean)} | ${shares.join(' | ')} |`)
   }
   out.push('', '## Hardest technique (percent of puzzles)', '')
@@ -71,7 +76,7 @@ function report(rows: Record<string, Row[]>): string {
     const text: string[] = []
     while (counts.size > 0) {
       const [id, n] = [...counts].reduce((best, entry) => (entry[1] > best[1] ? entry : best))
-      text.push(`${id} ${fixed((100 * n) / set.length)}`)
+      text.push(`${id} ${percent(n, set.length)}`)
       counts.delete(id)
     }
     out.push(`- ${name}: ${text.join(', ')}`)
@@ -102,7 +107,7 @@ function report(rows: Record<string, Row[]>): string {
   )
   for (const t of [6, 8, 10, 12, 14, 16, 17, 18, 19, 20, 21, 22, 24]) {
     const shares = Object.values(rows).map((set) =>
-      fixed((100 * set.filter((row) => isSingle(row) && row.choice >= t).length) / set.length),
+      percent(set.filter((row) => isSingle(row) && row.choice >= t).length, set.length),
     )
     out.push(`| ${t} | ${shares.join(' | ')} |`)
   }
@@ -147,10 +152,43 @@ function report(rows: Record<string, Row[]>): string {
   for (const [name, set] of Object.entries(rows)) {
     const meanMs = set.reduce((sum, row) => sum + row.gradeMs + row.generateMs, 0) / set.length
     for (const level of levels.slice(0, 4)) {
-      const share = set.filter((row) => row.level === level).length / set.length
-      if (share === 0) continue
-      out.push(`| ${name} | ${level} | ${fixed(100 * share)} | ${fixed(1 / share)} | ${fixed(meanMs / share, 1)} |`)
+      const count = set.filter((row) => row.level === level).length
+      if (count === 0) continue
+      const share = count / set.length
+      out.push(
+        `| ${name} | ${level} | ${percent(count, set.length)} | ${fixed(1 / share)} | ${fixed(meanMs / share, 1)} |`,
+      )
     }
+  }
+  return out.join('\n')
+}
+
+const rank = (level: Level): number => LEVELS.indexOf(level)
+
+/** Grades with the hint order and compares with the grade order. Both solves use the unique option, as `grade` does. */
+function orderReport(rows: Record<string, Row[]>): string {
+  const out = [
+    '## Hint order against grade order',
+    '',
+    '| set | both solve | hint order finds a higher hardest level | hint order solves, grade order is beyond | grade order solves, hint order is beyond |',
+    '| --- | --- | --- | --- | --- |',
+  ]
+  for (const [name, set] of Object.entries(rows)) {
+    let both = 0
+    let higher = 0
+    let hintOnly = 0
+    let gradeOnly = 0
+    for (const row of set) {
+      const hint = playThrough(row.puzzle.split('').map(Number), TECHNIQUE_ORDER, { unique: true })
+      const gradeSolved = row.level !== 'beyond'
+      if (hint.solved && gradeSolved) {
+        both++
+        const top = Math.max(-1, ...hint.steps.map((step) => rank(TECHNIQUE_LEVEL[step.technique])))
+        if (row.hardest !== null && top > rank(TECHNIQUE_LEVEL[row.hardest])) higher++
+      } else if (hint.solved) hintOnly++
+      else if (gradeSolved) gradeOnly++
+    }
+    out.push(`| ${name} | ${both} | ${higher} | ${hintOnly} | ${gradeOnly} |`)
   }
   return out.join('\n')
 }
@@ -220,7 +258,7 @@ describe.runIf(env.MEASURE_GRADES)('measure grades', () => {
       }
       rows[target === 'minimal' ? 'minimal' : `${target} givens`] = set
     }
-    const text = `${report(rows)}\n\n${symmetryReport(rows)}`
+    const text = `${report(rows)}\n\n${orderReport(rows)}\n\n${symmetryReport(rows)}`
     console.log(text)
     expect(Object.keys(rows)).toHaveLength(TARGETS.length)
   })

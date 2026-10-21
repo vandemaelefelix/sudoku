@@ -142,6 +142,37 @@ switch to `grade()` in their own issues. Until then the app still sets the level
   (`stepWeight`). The score is the sum of the weights of all steps. For example, a hidden single
   in a box weighs 1.2, a naked single 2.3, pointing 2.6, X-wing 3.2 and XY-chain 6.6. The score
   does not set the level.
+
+  The weights are the Sudoku Explainer ratings in `TECHNIQUE_ORDER`. The table lists the 24 ranks
+  of the 23 techniques. The hidden single has one rank for a box and one for a row or a column.
+
+  | Technique | Technique level | Weight |
+  | --- | --- | --- |
+  | Full house | easy | 1.0 |
+  | Hidden single (box) | easy | 1.2 |
+  | Hidden single (row or column) | easy | 1.5 |
+  | Naked single | easy | 2.3 |
+  | Pointing | medium | 2.6 |
+  | Box-line reduction | medium | 2.8 |
+  | Naked pair | medium | 3.0 |
+  | X-wing | hard | 3.2 |
+  | Hidden pair | medium | 3.4 |
+  | Naked triple | medium | 3.6 |
+  | Swordfish | hard | 3.8 |
+  | Hidden triple | medium | 4.0 |
+  | Skyscraper | hard | 4.0 |
+  | Two-string kite | hard | 4.1 |
+  | XY-wing | hard | 4.2 |
+  | XYZ-wing | hard | 4.4 |
+  | W-wing | hard | 4.4 |
+  | Unique rectangle | expert | 4.5 |
+  | Simple colouring | expert | 4.6 |
+  | Naked quad | hard | 5.0 |
+  | Jellyfish | hard | 5.2 |
+  | Hidden quad | hard | 5.4 |
+  | X-chain | expert | 6.5 |
+  | XY-chain | expert | 6.6 |
+
 - **Choice.** The solve runs in rounds. A round fills every empty cell that a full house, a
   hidden single or a naked single can fill, all at once. It counts one move per cell, and each
   move has the number of cells of its round as its value. When no single applies, the round

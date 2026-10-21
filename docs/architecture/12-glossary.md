@@ -154,6 +154,7 @@ status: DRAFT
 | Finish card | The card that shows a solved puzzle: level, time, a small grid, mistakes, hints, best time, source and date |
 | Level | The difficulty of a puzzle: easy, medium, hard or expert. ADR-011 decides how a puzzle gets its level. The grade of a puzzle sets it, when the generator and the scanner use `grade()` (amendment 2026-10-21). Until then the number of givens sets it |
 | Technique level | The level of a technique: easy, medium, hard or expert. `TECHNIQUE_LEVEL` holds it. The technique level of the hardest technique that a solve uses is the level of the puzzle. Not the tier of ADR-032, which groups techniques for the hint rollout (ADR-011) |
+| Tier | A group of techniques in the hint rollout of ADR-032: tier 1, tier 2 and tier 3. A tier is not a level. The place of a technique in the difficulty scale is its technique level (ADR-011, ADR-032) |
 | Choice | The mean value of the first 25 moves of a solve in rounds. A round fills every cell that a single can fill, all at once. It counts one move per cell, with the number of cells of the round as value. A step that is not a single counts one move with the value 0. A low choice means that the next cell is hard to find (ADR-011) |
 | Grade | The result of `grade(givens)`: the level (or `beyond`), the hardest technique, the score, the choice and the number of steps. The puzzle must have exactly one solution (ADR-011) |
 | Score | The sum of the weights of the steps of a grade, in Sudoku Explainer points. It orders puzzles inside a level. The level does not use it (ADR-011) |

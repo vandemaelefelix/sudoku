@@ -48,9 +48,20 @@ pair (3.4) and the hidden triple (4.0). A solve in that order can use an X-wing 
 pair also solves the puzzle. The puzzle would then grade hard. `GRADE_ORDER` tries every medium
 technique before the first hard one. Hints keep `TECHNIQUE_ORDER`.
 
-The effect is small. Of the puzzles that both orders solve, the hint order finds a harder
-hardest technique in 0 of 1 999 (34 givens), 1 of 1 954 (29 givens) and 3 of 1 810 (25 givens).
-No puzzle that the hint order solves is `beyond` in the grade order.
+The effect is small. `measure.test.ts` grades every puzzle with `TECHNIQUE_ORDER` and compares the
+result with the grade. The table counts the puzzles that both orders solve. It then counts those
+where the hint order finds a hardest technique of a higher level. It also counts the puzzles that
+only one of the two orders solves.
+
+| set | both solve | hint order finds a higher hardest level | hint order solves, grade order is `beyond` | grade order solves, hint order is `beyond` |
+| --- | --- | --- | --- | --- |
+| 40 givens | 2000 | 0 | 0 | 0 |
+| 34 givens | 1999 | 0 | 0 | 0 |
+| 29 givens | 1954 | 1 | 0 | 0 |
+| 25 givens | 1810 | 3 | 0 | 0 |
+| minimal | 1722 | 6 | 0 | 0 |
+
+The hint order finds a harder level in 10 of 7 485 puzzles. Both orders solve the same puzzles.
 
 ## 2. Level shares
 
@@ -140,8 +151,11 @@ Choice: `EASY_MIN_CHOICE = 19`.
 
 - At 19, 53 % of the 40-givens puzzles are easy. The median choice of this set is 19.2, so 19
   keeps the top half.
-- Any threshold above 8 makes more than 95 % of the minimal singles-only puzzles medium. At 19
-  all of them are medium.
+- At T = 10, 99 % of the minimal singles-only puzzles are medium. At T = 8 it is 92 %. Derived:
+  the singles-only minimal puzzles are 828 of 2 000, that is 41.4 % of the set. The easy share
+  of the set divided by 41.4 % is the easy share of those puzzles: 3.3 / 41.4 = 8 % at T = 8,
+  and 0.3 / 41.4 = 0.7 % at T = 10. So the first T of the table with more than 95 % medium is
+  10. At 19 all of them are medium.
 - Easy puzzles come from about 40 givens and more. At 34 givens only 6 % are easy. This is
   close to the v1 rule (easy is 40 givens). Medium then holds the singles-only puzzles from
   about 34 to 25 givens, and the puzzles that need pointing, box-line reduction or a subset.
@@ -181,8 +195,8 @@ singles-only puzzle.
 | minimal | beyond | 278 | 22.4 | 35.1 | 55.3 | 83.3 |
 
 The singles-only scores are 45 to 70. Each added step of pointing adds 2.6 and the steps around
-it. Hard and expert puzzles reach 60 to 170. The scores do not set a level. The issue "Not in this
-epic" keeps stars inside a level for later.
+it. Hard and expert puzzles reach 60 to 170. The scores do not set a level. Stars inside a level are
+not part of this work. They can use the score later.
 
 ## 6. Time
 
@@ -240,23 +254,24 @@ Mac) divided by the yield. The yield is measured.
 
 | Target | Level | Yield % | Attempts | Expected time (ms) |
 | --- | --- | --- | --- | --- |
-| 40 givens | easy | 53.0 | 1.9 | 1.6 |
-| 40 givens | medium | 46.8 | 2.1 | 1.8 |
-| 34 givens | easy | 6.2 | 16.3 | 16.4 |
-| 34 givens | medium | 91.3 | 1.1 | 1.1 |
-| 34 givens | hard | 2.1 | 47.6 | 48.0 |
-| 34 givens | expert | 0.4 | 250.0 | 252.1 |
-| 29 givens | medium | 85.9 | 1.2 | 1.9 |
-| 29 givens | hard | 8.6 | 11.7 | 19.2 |
-| 29 givens | expert | 3.3 | 30.3 | 49.7 |
+| 40 givens | easy | 53.0 | 1.9 | 1.7 |
+| 40 givens | medium | 46.8 | 2.1 | 1.9 |
+| 40 givens | hard | 0.1 | 666.7 | 587.0 |
+| 34 givens | easy | 6.2 | 16.3 | 17.7 |
+| 34 givens | medium | 91.3 | 1.1 | 1.2 |
+| 34 givens | hard | 2.1 | 47.6 | 51.7 |
+| 34 givens | expert | 0.4 | 250.0 | 271.5 |
+| 29 givens | medium | 85.8 | 1.2 | 2.0 |
+| 29 givens | hard | 8.6 | 11.7 | 19.8 |
+| 29 givens | expert | 3.3 | 30.3 | 51.3 |
 | 25 givens | medium | 68.3 | 1.5 | 6.8 |
-| 25 givens | hard | 14.9 | 6.7 | 31.0 |
-| 25 givens | expert | 7.2 | 13.8 | 63.8 |
-| minimal | medium | 60.4 | 1.7 | 11.0 |
-| minimal | hard | 16.7 | 6.0 | 39.7 |
-| minimal | expert | 9.0 | 11.0 | 73.3 |
+| 25 givens | hard | 14.9 | 6.7 | 31.3 |
+| 25 givens | expert | 7.3 | 13.8 | 64.4 |
+| minimal | medium | 60.4 | 1.7 | 10.7 |
+| minimal | hard | 16.7 | 6.0 | 38.8 |
+| minimal | expert | 9.1 | 11.0 | 71.5 |
 
-Rows with a yield below 0.1 % are left out (40 givens hard, 0.1 %: 550 ms).
+The table leaves out the rows with a yield of 0 %. A hard puzzle at 40 givens has a yield of 0.1 %.
 
 - Easy: aim at 40 givens. It needs about 2 attempts and 2 ms. Easy at 34 givens needs 16
   attempts.
@@ -267,7 +282,7 @@ Rows with a yield below 0.1 % are left out (40 givens hard, 0.1 %: 550 ms).
   above.
 - The expected times are far below the 2 s of QR-12. The worst case is the p99 of the number of
   attempts. Derived, with independent attempts: p99 attempts = ln 0.01 / ln (1 - yield). For hard
-  at 25 givens this is 29 attempts, about 130 ms. For expert at 25 givens it is 62 attempts,
+  at 25 givens this is 29 attempts, about 130 ms. For expert at 25 givens it is 61 attempts,
   about 280 ms. For expert on minimal puzzles it is 49 attempts, about 320 ms. These are Mac
   numbers. The pool of ADR-011 point 4 is not needed on these numbers if the iPhone is within 5
   times of the Mac. #202 measures on the iPhone and proposes an issue if the pool must return.

@@ -8,7 +8,7 @@ import { findFullHouses, findHiddenSingles, findNakedSingles } from '../techniqu
 import type { Candidates, Step, TechniqueId } from '../technique/types'
 import { GRADE_ORDER, TECHNIQUE_LEVEL } from './levels'
 
-/** The choice counts this many moves. Pelanek's dependency metric uses 20 to 30. */
+/** The choice counts this many moves (ADR-011, amendment 2026-10-21). */
 export const CHOICE_MOVES = 25
 
 /**
