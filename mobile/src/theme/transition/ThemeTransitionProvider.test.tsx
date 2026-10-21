@@ -65,9 +65,15 @@ function endTheWave() {
   })
 }
 
-/** The first layout of the overlay means its picture is on screen. The switch waits one more frame. */
+/**
+ * The first layout of the overlay means its picture is on screen. The switch waits one more frame. The mock theme never
+ * changes, so the wave starts after its longest wait for the new theme, a timer of the second pass.
+ */
 function layOut() {
   fireEvent(screen.getByTestId('theme-cell-wave'), 'layout')
+  act(() => {
+    jest.runAllTimers()
+  })
   act(() => {
     jest.runAllTimers()
   })

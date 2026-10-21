@@ -82,6 +82,8 @@ The other themes make the app larger and harder to keep:
       over every screen at full strength. The player sees no change at that moment.
     - The theme switches under the picture, after the first layout of the overlay and one frame.
       The new theme is live under the overlay before the wave starts.
+    - The wave starts when the screens have rendered the new theme, and one frame later. A Skia surface
+      takes the new colours only in that render. The wave waits 250 ms at most.
     - The wave is the splash exit, sped up. It rises from the bottom row to the top row. Each cell
       has its own delay, as in ADR-024. The wave passes once.
     - Before its peak, a cell grows to solid. The cell is the ground colour with the tint of the new

@@ -1,5 +1,6 @@
 import { isWrong, valueAt, type Game } from '@sudoku/core'
 import type { Assists } from '@/game/constants/assists.constants'
+import type { Theme } from '@/theme/theme.types'
 import { boxOf, columnOf, rowOf } from './grid.utils'
 
 export type CellFill = 'plain' | 'peer' | 'same' | 'conflict' | 'selected'
@@ -46,4 +47,26 @@ export function cellViews(game: Game, assists: Assists): CellView[] {
       ring: cell === selected && !assists.selectedCell,
     }
   })
+}
+
+type CellColours = Theme['components']['cell']
+
+/** The fill of a display cell, as plain values. The same colours as the fill keys of the cell styles. */
+export function displayFill(colours: CellColours, fill: CellFill) {
+  switch (fill) {
+    case 'plain':
+      return { backgroundColor: colours.fill }
+    case 'peer':
+      return { backgroundColor: colours.peer }
+    case 'same':
+      return { backgroundColor: colours.same }
+    case 'conflict':
+      return { backgroundColor: colours.conflictFill }
+    case 'selected':
+      return {
+        backgroundColor: colours.selected,
+        borderWidth: colours.selectedRingWidth,
+        borderColor: colours.ring,
+      }
+  }
 }

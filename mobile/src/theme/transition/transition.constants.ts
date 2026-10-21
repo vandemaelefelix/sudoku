@@ -7,3 +7,6 @@ export const TRANSITION_MS = 700
 
 /** Splash milliseconds that pass in one real millisecond. */
 export const SPLASH_SPEED = EXIT_END_MS / TRANSITION_MS
+
+/** The longest wait for the screens to render the new theme before the wave starts anyway. */
+export const RENDER_WAIT_MS = 250
