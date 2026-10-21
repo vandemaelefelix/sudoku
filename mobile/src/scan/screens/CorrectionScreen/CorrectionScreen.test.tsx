@@ -562,10 +562,9 @@ describe('CorrectionScreen play gate', () => {
     expect(onPlay).toHaveBeenCalledTimes(1)
     expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium)
     const start = onPlay.mock.calls[0]![0]
-    expect(start.level).toBe('hard')
-    expect(start.puzzle.givens).toEqual(puzzle.givens)
-    expect(start.puzzle.solution).toEqual(puzzle.solution)
-    expect(start.puzzle.entries[firstOpen]).toBe(wrongDigit)
+    expect(start.givens).toEqual(puzzle.givens)
+    expect(start.solution).toEqual(puzzle.solution)
+    expect(start.entries[firstOpen]).toBe(wrongDigit)
   })
 
   it('keeps Play on with uncertain cells', () => {

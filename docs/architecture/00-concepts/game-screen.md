@@ -100,6 +100,8 @@ two haptics, so two taps never blur together.
 - After the third mistake, the **lost hold** keeps the board in view for 400 ms. Then the game over
   sheet rises.
 - Try this puzzle again and New puzzle let the sheet or the card sink before the new game shows.
+- Try this puzzle again is a new game in progress with the same puzzle, a new id and the same seed. The lost game stays in the history.
+- Every screen starts a game through the puzzle start. It asks before it replaces a game in progress. The game over sheet and the finish card do not ask, because their game is over.
 - With Reduce Motion on, the fades stay. The slides, the scales and the shake go.
 - The **haptics switch** in Settings turns every haptic off. Reduce Motion does not stop haptics.
 

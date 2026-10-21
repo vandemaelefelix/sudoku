@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
-import { createGame, toSavedGame, type Game } from '@sudoku/core'
+import { toSavedGame, type Game } from '@sudoku/core'
 import { SLOW_SAVE_MS } from '@/game/constants/save.constants'
 import { GameSaveContext } from '@/game/hooks/useGameSession'
+import { usePuzzleStart } from '@/game/hooks/usePuzzleStart'
 import { GameScreen } from '@/game/screens/GameScreen'
 import type { FinishInfo } from '@/game/utils/finish.utils'
 import { createSaveQueue } from '@/game/utils/save.utils'
-import { newGeneratedGame } from '@/game/utils/start.utils'
-import type { BestTimes, PuzzleSource, SavedProgress } from '@/storage'
+import type { BestTimes, SavedProgress } from '@/storage'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { useOwner } from '@/storage/hooks/useOwner'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
@@ -32,6 +32,7 @@ export function PlayScreen() {
   const router = useRouter()
   const { puzzles, history } = useGameStorage()
   const owner = useOwner()
+  const puzzleStart = usePuzzleStart()
   const [progress, setProgress] = useState<SavedProgress | null>(() => puzzles.peek() ?? null)
   const [best, setBest] = useState<BestTimes | null>(null)
 
@@ -99,34 +100,27 @@ export function PlayScreen() {
   // Each restart is a new game in progress with a new id: save() moved a lost game to the history,
   // so the store ignores later saves under the old id. A failed start keeps the old screen.
   // The best times are read after the start: start() runs after that save, so they include the finished game.
-  const restartWith = useCallback(
-    async (source: PuzzleSource, make: (current: SavedProgress) => { game: Game; seed: number | null }) => {
-      if (progress === null) return
+  const show = useCallback(
+    async (started: SavedProgress | null) => {
+      if (started === null) return
+      setProgress(started)
       try {
-        const { game, seed } = make(progress)
-        const started = await puzzles.start({ level: progress.level, source, seed, game, owner })
-        setProgress(started)
         setBest(await history.bestTimes(owner))
       } catch (error) {
-        devWarn('storage', `The game does not start: ${errorMessage(error)}`)
+        devWarn('storage', `The best times do not load: ${errorMessage(error)}`)
       }
     },
-    [puzzles, history, progress, owner],
+    [history, owner],
   )
 
   // The promises let the sheet rise again when the start fails.
-  const newPuzzle = useCallback(
-    () => restartWith('generated', (current) => newGeneratedGame(current.level, Math.random)),
-    [restartWith],
-  )
+  const newPuzzle = useCallback(async () => {
+    if (progress !== null) await show(await puzzleStart.newPuzzle(progress))
+  }, [puzzleStart, show, progress])
 
   const retry = useCallback(async () => {
-    if (progress === null) return
-    await restartWith(progress.source, ({ game, seed }) => ({
-      game: createGame({ givens: game.givens, solution: game.solution, entries: game.startEntries }),
-      seed,
-    }))
-  }, [restartWith, progress])
+    if (progress !== null) await show(await puzzleStart.retry(progress))
+  }, [puzzleStart, show, progress])
 
   // Without the best times, the screen shows no finish card: the card compares against the best time before this game.
   const finish = useMemo<FinishInfo | undefined>(

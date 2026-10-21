@@ -58,7 +58,7 @@ afterEach(() => {
 })
 
 function renderScreen() {
-  render(<GameScreen start={sampleStart()} onBack={jest.fn()} />)
+  render(<GameScreen start={sampleStart()} onBack={jest.fn()} onRetry={jest.fn()} />)
   fireEvent(screen.getByTestId('board'), 'layout', { nativeEvent: { layout: { width: 358, height: 358 } } })
   mockRenders.grid = 0
   mockRenders.cell = 0

@@ -142,6 +142,8 @@ status: DRAFT
 | Route file | A file in `src/app/` that renders one screen from a feature folder and nothing else (ADR-016) |
 | Native stack | The stack of screens that uses the iOS screen stack: the push animation and the swipe back. Expo Router gives it (ADR-016) |
 | Game session | One game in progress, as plain TypeScript without React: `createGameSession` in `mobile/src/game/utils/gameSession.utils.ts`. It owns the session reducer, the clock, the pause when the app leaves the foreground and the save snapshot. `useGameSession` reads it and gives it the one `AppState` listener |
+| Puzzle start | The one way to start a game, as plain TypeScript without React: `createPuzzleStart` in `mobile/src/game/utils/puzzleStart.utils.ts`. It owns the busy guard, the Replace question, the seed, the level of a scanned grid, the start in the right order and the retry. The home, scan and game screens call it through `usePuzzleStart` and keep only their navigation |
+| Retry | Try this puzzle again on the game over sheet. It starts the same puzzle from its first state as a new game in progress, with a new id and the same seed. The lost game stays one history entry |
 | Save queue | The queue in front of `PuzzleRepository.save`. One write runs at a time, and only the newest game waits |
 | Pause layer | The layer over the grid while a game is paused. It says "Paused" and "Tap to resume". It hides every digit and note |
 | Correction pad | The edit pad on the correction screen: a Given and Entry switch, the keys 1 to 9 and Clear |
