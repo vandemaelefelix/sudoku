@@ -307,7 +307,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
                 <CorrectionSummary
                   toCheck={correction.toCheck}
                   conflictCount={correction.conflictCount}
-                  level={LEVEL_NAMES[correction.level]}
+                  level={correction.level === null ? '' : LEVEL_NAMES[correction.level]}
                   blockText={blockText}
                   canPlay={correction.canPlay}
                   animate={!clock && motion}

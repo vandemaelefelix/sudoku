@@ -121,10 +121,10 @@ describe('CorrectionScreen in review', () => {
     expect(screen.getByText('2 cells to check')).toBeTruthy()
   })
 
-  it('shows the title, the level and a disabled Play button', () => {
+  it('shows the title, no level and a disabled Play button', () => {
     render(<CorrectionScreen session={review(okResult())} layout={layout} onRetake={jest.fn()} />)
     expect(screen.getByText('Check the scan')).toBeTruthy()
-    expect(screen.getByTestId('correction-level')).toHaveTextContent('Expert')
+    expect(screen.getByTestId('correction-level').props.children).toBe('')
     expect(screen.getByTestId('play').props.accessibilityState).toMatchObject({ disabled: true })
     expect(style('play-fade').opacity).toBe(cobalt.opacity.disabled)
   })
