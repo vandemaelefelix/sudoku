@@ -71,7 +71,13 @@ export function ScanFlow() {
       {...(scene > 0 ? { entering: FadeIn.duration(fade).easing(easeOut).reduceMotion(ReduceMotion.Never) } : {})}
       exiting={FadeOut.duration(fade).easing(easeOut).reduceMotion(ReduceMotion.Never)}
     >
-      <CameraScreen layout={layout} onDone={done} onRetake={retake} {...(reviewProps ? { review: reviewProps } : {})} />
+      <CameraScreen
+        layout={layout}
+        onDone={done}
+        onRetake={retake}
+        onClose={home}
+        {...(reviewProps ? { review: reviewProps } : {})}
+      />
     </Animated.View>
   )
 }
