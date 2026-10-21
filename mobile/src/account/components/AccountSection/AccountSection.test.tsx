@@ -3,9 +3,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { Alert, type AlertButton } from 'react-native'
 import { OwnerContext } from '@/storage/hooks/useOwner'
-import { GameStorageContext } from '@/storage/hooks/useGameStorage'
-import { SyncControlContext, type SyncControl } from '@/sync/hooks/useSyncControl'
+import { AccountLifecycleContext } from '@/account/hooks/useAccountLifecycle'
+import { createAccountLifecycle } from '@/account/accountLifecycle'
+import { memoryOwnerCache } from '@/account/accountTestKit'
 import type { DeleteAccountResult } from '@/sync/sync.types'
+import type { AccountApi } from '@/sync/syncApi'
 import { ALICE, createTestStorage, finishGame } from '@/sync/syncTestKit'
 import { AccountContext, UNCONFIGURED_ACCOUNT, type Account } from '@/account/hooks/useAccount'
 import { AccountSection } from './AccountSection'
@@ -107,12 +109,7 @@ const DELETE_MESSAGE =
 async function setup(result: DeleteAccountResult | Promise<DeleteAccountResult>, { withControl = true } = {}) {
   const storage = createTestStorage()
   await finishGame(storage, ALICE)
-  const control: SyncControl = {
-    deleteAccount: jest.fn(async () => result),
-    stop: jest.fn(async () => undefined),
-    pause: jest.fn(async () => undefined),
-    resume: jest.fn(),
-  }
+  const control: AccountApi = { deleteAccount: jest.fn(async () => result) }
   const signOut = jest.fn(async () => true)
   const account: Account = {
     ...UNCONFIGURED_ACCOUNT,
@@ -122,13 +119,19 @@ async function setup(result: DeleteAccountResult | Promise<DeleteAccountResult>,
     markDeleted: jest.fn(),
     getApiToken: jest.fn(async () => 'token'),
   }
+  const lifecycle = createAccountLifecycle({
+    account,
+    api: withControl ? control : null,
+    sync: { pause: async () => undefined, stop: async () => undefined, resume: () => undefined },
+    history: storage.history,
+    ownerCache: memoryOwnerCache(ALICE),
+    sleep: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  })
   render(<AccountSection onSignIn={jest.fn()} />, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <AccountContext value={account}>
         <OwnerContext value={ALICE}>
-          <GameStorageContext value={storage}>
-            <SyncControlContext value={withControl ? control : null}>{children}</SyncControlContext>
-          </GameStorageContext>
+          <AccountLifecycleContext value={lifecycle}>{children}</AccountLifecycleContext>
         </OwnerContext>
       </AccountContext>
     ),
