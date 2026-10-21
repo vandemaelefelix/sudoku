@@ -12,9 +12,8 @@ type Golden = {
   steps: Step[]
 }
 
-// Each position comes from a generated puzzle, played with the tier 1 steps. A second program
-// checked each step against the unique solution and found no easier technique in the position.
-// The steps were also checked by hand against the definition of the technique.
+// Each position comes from a generated puzzle, played with the tier 1 steps. Each step was checked
+// by hand against the definition of its technique. No easier technique applies in the position.
 const GOLDEN: Golden[] = [
   {
     name: 'full house: the last cell of column 1',

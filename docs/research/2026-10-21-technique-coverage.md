@@ -31,9 +31,12 @@ into `TECHNIQUE_ORDER`. A test checks that the ratings never decrease down the t
 - SukakuExplainer is a fork of Sudoku Explainer. It adds an optional "revised rating": naked single 1.6,
   hidden pair 2.9, hidden triple 3.8. The solver uses the original ratings, so the order stays the
   order of Sudoku Explainer.
-- The SukakuExplainer README and the HoDoKu pages that I fetched have no per-technique ratings. I read
-  the rating constants in the `getDifficulty` methods of the five hint classes. A rating is a number, not
-  code. I copied no code.
+- The weights are the Sudoku Explainer ratings.
+- The SukakuExplainer README and the HoDoKu pages that I fetched have no per-technique ratings. So I
+  read the rating numbers in the `getDifficulty` methods of five SukakuExplainer hint classes. That is
+  source code, and I read only those numbers.
+- I read no code for its logic. I copied no code. A rating number is a fact, not code.
+- The finders follow the technique definitions, not any code.
 
 ## 2. Coverage
 
@@ -75,10 +78,13 @@ What this shows:
 
 ## 3. Sources
 
-- HoDoKu (GPL-3.0), the technique pages: definitions of the techniques. No code read, none copied.
-- SudokuWiki, the strategy pages: definitions of the techniques. No code read, none copied.
-- SukakuExplainer (LGPL-2.1), the `getDifficulty` methods of five hint classes: the ratings in section 1.
+- HoDoKu (GPL-3.0) and SudokuWiki: the technique definitions, as the research note of the epic gives them. I read no code of either, and copied none.
+- SukakuExplainer (LGPL-2.1), the `getDifficulty` methods of five hint classes: only the rating numbers of section 1. I read no logic and copied no code.
 - The research note of the epic "hints that teach": the first list of techniques and tiers.
-- The golden positions of the tests are generated puzzles, not grids from these sites. A second program, written
-  in Python from the definitions, checked each step against the unique solution. It also found no easier
-  technique in each position. I checked each step by hand as well.
+- The golden positions of the tests are generated puzzles, played with the tier 1 steps. They are not grids
+  from HoDoKu or SudokuWiki.
+- I checked each golden step by hand against the definition of its technique.
+- A one-off Python program, written from the definitions, also checked each step against the unique
+  solution and looked for an easier technique in each position. The repository does not keep this program.
+- I did NOT load the golden positions into the SudokuWiki solver or into HoDoKu. Both are interactive
+  tools, and no tool in this environment could drive them. A reviewer can do this check by hand.
