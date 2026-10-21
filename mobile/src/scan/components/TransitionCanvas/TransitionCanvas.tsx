@@ -1,20 +1,12 @@
-import {
-  Canvas,
-  FillType,
-  Picture,
-  Skia,
-  createPicture,
-  type SkCanvas,
-  type SkImage,
-  type SkPath,
-} from '@shopify/react-native-skia'
+import { Canvas, FillType, Picture, Skia, createPicture, type SkCanvas, type SkPath } from '@shopify/react-native-skia'
 import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
 import type { Theme } from '@/theme/theme.types'
 import { drawGridLines, gridLineStyle } from '@/scan/utils/correction.utils'
-import { type CaptureFrame, insetUnit, photoMatrix } from '@/scan/utils/transition.utils'
+import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
+import { insetUnit, photoMatrix } from '@/scan/utils/transition.utils'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { unitToQuad } from '@/utils/homography.utils'
 
@@ -43,25 +35,21 @@ function makePaints(theme: Theme) {
 
 /**
  * The layers under the dots: the photo, the background and the cell area with its grid lines, in the colours of the theme.
- * image: the upright photo, or null. The owner sets it to null on the UI thread before it disposes the image. locked: the grid at lock-on, normalised to the upright frame, or null.
- * crossFade: no warp; the photo stays in place under the preview cover mapping and every layer fades (Reduce Motion).
- * side: the side of the grid square of the correction screen, in points.
+ * session: the capture session. It gives the moving grid, the upright photo (its owner sets it to null on the UI thread before it
+ * disposes the image), the grid at lock-on and the cross-fade flag. In the cross-fade the photo stays in place under the preview
+ * cover mapping and every layer fades (Reduce Motion).
+ * view: the size of the camera view in points. side: the side of the grid square of the correction screen, in points.
  */
 export function TransitionCanvas({
-  capture,
+  session,
   view,
-  image,
-  locked,
-  crossFade,
   side,
 }: {
-  capture: SharedValue<CaptureFrame | null>
+  session: Pick<CaptureSession, 'captureFrame' | 'image' | 'quad' | 'crossFade'>
   view: SharedValue<ViewSize>
-  image: SharedValue<SkImage | null>
-  locked: Quad | null
-  crossFade: boolean
   side: number
 }) {
+  const { captureFrame: capture, image, quad: locked, crossFade } = session
   const { theme } = useUnistyles()
   // New paints and line colours on a theme change remake the derived picture (ADR-015, point 10).
   const paints = useMemo(() => makePaints(theme), [theme])

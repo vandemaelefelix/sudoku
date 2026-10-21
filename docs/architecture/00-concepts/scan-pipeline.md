@@ -49,7 +49,7 @@ flowchart LR
 | Grid detection | Frame processor (ADR-002) | ≤ 15 ms per frame | On a frame downscaled to about 640 px. Returns `null` when no plausible quad is found |
 | Corner smoothing | Scan UI, UI thread | negligible | A filter over recent frames, so the dots do not jitter. Tuned in the walking skeleton |
 | Live overlay | Scan UI, UI thread | ≤ 4 ms per frame for the scene and one effect | The active effect draws from the scene, which the engine computes once per frame from the smoothed corners. The default effect is Gathering dots. A development build switches effects with the dev pill (ADR-014). See the [effect lab design](../../superpowers/specs/2026-10-11-effect-lab-design.md) |
-| Lock-on | Scan UI, UI thread | — | The lock-on tracker owns the rule (`src/scan/utils/lockOn.utils.ts`). The engine gives it the grid of each frame. The scene and the effects get only the lock-on progress and the lock time. The tracker fires once, in the frame of lock-on. A shutter press can come in the same moment, so the lock latch starts the scan for the first source only. Automatic: the same grid stays in view for `LOCK_DWELL` = 1.0 s, and the phone does not clearly move (ADR-019). A clear move is a drift above `DRIFT_LIMIT` = 150 pt/s. The drift is the largest net corner move over the last `DRIFT_WINDOW` = 0.3 s, measured in every frame. Noise and tremor cancel over the window, a pan does not. Lock-on happens only when the user means it. (1) The scene is older than `WARMUP` = 1.0 s. A Retake starts a new scene, so the warm-up runs again. (2) The grid is at least `MIN_GRID_WIDTH` = 0.35 of the view width (the mean of the top and bottom edges). A big grid stays big down to 0.32 (`GRID_WIDTH_HYSTERESIS` = 0.03). The dwell counts from the latest of the found time, the last clear move, the end of the warm-up and the time the grid became big enough. The lock-on progress resets when the grid is lost, found again or jumps. The gathered dots show the progress: they settle and brighten. A shutter button captures at any time. The steady values drive the overlay only. A hand-held iPhone gave a median step speed of 28.8 pt/s, so steady failed as a lock-on rule (issue #72). The other values are as built, to tune on the device. See the [capture flow design](../../superpowers/specs/2026-10-11-capture-flow-design.md) |
+| Lock-on | Scan UI, UI thread | — | The lock-on tracker owns the rule (`src/scan/utils/lockOn.utils.ts`). The engine gives it the grid of each frame. The scene and the effects get only the lock-on progress and the lock time. The tracker fires once, in the frame of lock-on. A shutter press can come in the same moment, so the lock latch of the capture session starts the scan for the first source only. Automatic: the same grid stays in view for `LOCK_DWELL` = 1.0 s, and the phone does not clearly move (ADR-019). A clear move is a drift above `DRIFT_LIMIT` = 150 pt/s. The drift is the largest net corner move over the last `DRIFT_WINDOW` = 0.3 s, measured in every frame. Noise and tremor cancel over the window, a pan does not. Lock-on happens only when the user means it. (1) The scene is older than `WARMUP` = 1.0 s. A Retake starts a new scene, so the warm-up runs again. (2) The grid is at least `MIN_GRID_WIDTH` = 0.35 of the view width (the mean of the top and bottom edges). A big grid stays big down to 0.32 (`GRID_WIDTH_HYSTERESIS` = 0.03). The dwell counts from the latest of the found time, the last clear move, the end of the warm-up and the time the grid became big enough. The lock-on progress resets when the grid is lost, found again or jumps. The gathered dots show the progress: they settle and brighten. A shutter button captures at any time. The steady values drive the overlay only. A hand-held iPhone gave a median step speed of 28.8 pt/s, so steady failed as a lock-on rule (issue #72). The other values are as built, to tune on the device. See the [capture flow design](../../superpowers/specs/2026-10-11-capture-flow-design.md) |
 | Rough flatten | scanner, on capture | ≤ 30 ms | Perspective transform from the 4 corners to a square, 576 × 576 px. The app computes the homography in TypeScript, because fast-opencv 1.0.1 cannot fill a `Point2fVector` (ADR-002). Measured on the iPhone 17 Pro: 129 to 137 ms |
 | Intersections | scanner, on capture | ≤ 50 ms | Classical first: search each of the 100 expected points in a small window. fast-opencv has no `cornerSubPix`, so the refinement is our own code. An ML keypoint model replaces this only if book pages need it (F-12) |
 | Per-cell flatten | scanner, on capture | ≤ 30 ms | 81 small perspective transforms. Falls back to the rough flatten for a cell whose intersections were not found |
@@ -74,6 +74,32 @@ Lock-on, or a shutter press, starts the transition at once. The photo flattens i
 The grid lines grow through the gathered dots. The digits appear. A clock on the UI thread drives
 every layer. `recognise()` still supplies the flattened image, the 100 intersections and the 81
 results. See the [capture flow design](../../superpowers/specs/2026-10-11-capture-flow-design.md).
+
+### The capture session
+
+One module, the capture session (`useCaptureSession`), owns the state from lock-on to the review. It holds the capture attempt
+and its generation, the two gates, the transition clock, the plan with the cross-fade rule, the phase and the photo image.
+The camera screen, the overlay, the transition canvas and the correction screen read the session. They do not pass clock
+values to each other.
+
+```mermaid
+stateDiagram-v2
+    [*] --> live
+    live --> capturing: the lock latch accepts the first lock-on or shutter press
+    capturing --> review: the clock ends with an ok result
+    capturing --> capturing: a failure keeps the results gate closed
+```
+
+| Rule | What the session does |
+| --- | --- |
+| One attempt | The lock latch refuses a second start. A Retake mounts a new camera screen, so a new session starts |
+| Stale attempt | An unmount makes the attempt stale. A stale attempt writes no state. It disposes an image that arrives late |
+| Image lifetime | The UI thread lets go of the photo image first. The JS thread disposes it after that |
+| Flat image | The session does not dispose the flattened grid image. It has no dispose call and goes with the result. A canvas that is still leaving may draw it |
+| Gates | The session opens the photo gate and the results gate from the attempt. The clock writes the arrival time of the results once |
+| Plan | The plan changes with the layout, the locked grid and the cross-fade rule. The clock publishes the frame again when the plan changes |
+| Clock order | The overlay calls `stepClock` first in each UI frame. The step publishes the frame that the overlay then draws |
+| Result | The session turns the flattened grid into a Skia image, and keeps the photo file. The scanner result has neither |
 
 ### Gates
 
@@ -111,7 +137,7 @@ out with the preview mapping. The correction screen fades in over 0.3 s once bot
 
 ### The end
 
-At the end the phase becomes `review`. The `CorrectionScreen` of the transition stays mounted and
+At the end the phase of the capture session becomes `review`. The `CorrectionScreen` of the transition stays mounted and
 becomes the static screen. The camera and the transition layers unmount. A new Skia canvas is blank
 until a later display frame. The board and the lines therefore mount hidden with the transition, and
 the end only shows them. Retake remounts the camera screen. The overlay gets a new scene, so the

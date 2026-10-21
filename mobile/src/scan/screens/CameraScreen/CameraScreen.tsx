@@ -6,7 +6,6 @@ import Animated, {
   ReduceMotion,
   useAnimatedReaction,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
 } from 'react-native-reanimated'
 import {
@@ -18,7 +17,6 @@ import {
 } from 'react-native-vision-camera'
 import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
-import type { RecogniseResult } from '@/scanner'
 import { kvSettings } from '@/settings/SettingsRepository'
 import { type CameraBlock, CameraPermission } from '@/scan/components/CameraPermission'
 import { CloseButton } from '@/scan/components/CloseButton'
@@ -26,11 +24,11 @@ import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { EffectPicker } from '@/scan/effects/components/EffectPicker'
 import { DEFAULT_INDEX } from '@/scan/effects/registry'
-import { useCapture } from '@/scan/hooks/useCapture'
-import { useCaptureTransition } from '@/scan/hooks/useCaptureTransition'
+import { useCaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
 import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
-import type { CorrectionLayout } from '@/scan/utils/correction.utils'
+import type { CaptureResult } from '@/scan/utils/captureResult.utils'
+import type { CellLook, CorrectionLayout } from '@/scan/utils/correction.utils'
 import type { ViewSize } from '@/utils/geometry.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
@@ -38,26 +36,32 @@ import { DARK_BAR_DIM, FLASH_PEAK } from './CameraScreen.constants'
 import { styles } from './CameraScreen.styles'
 
 /**
- * The live camera, from lock-on the capture transition, and after it the static correction screen.
- * layout: the correction screen layout that the transition ends on. onDone: called once when the transition ends, with an ok result.
- * onRetake: the parent mounts a new CameraScreen, so the scene, its lock-on latch and the transition start new. It gets the result
- * that the player leaves, so the parent can delete its photo.
- * onClose: the close button before the capture. The correction screen has its own exits.
- * review: set by the parent after onDone. The correction screen of the transition stays mounted and becomes the static screen, so
- * its Skia canvases have drawn before they show. The camera and the transition layers unmount.
+ * The live camera, from lock-on the capture transition, and after it the static correction screen. The capture session holds the
+ * state of all three: every layer reads it.
+ * layout: the correction screen layout that the transition ends on. onClose: the close button before the capture. The correction
+ * screen has its own exits.
+ * onRetake: the parent mounts a new CameraScreen, so the capture session, the scene, its lock-on latch and the transition start new.
+ * It gets the result that the player leaves, so the parent can delete its photo.
+ * onExit and onSave get the result of the scan with the looks of the player. The correction screen of the transition stays mounted
+ * and becomes the static screen at the end, so its Skia canvases have drawn before they show. The camera and the transition layers
+ * unmount.
  */
 export function CameraScreen({
   layout,
-  onDone,
   onRetake,
+  onPlay,
+  onHome,
   onClose,
-  review,
+  onExit,
+  onSave,
 }: {
   layout: CorrectionLayout
-  onDone: (result: RecogniseResult) => void
-  onRetake: (result: RecogniseResult | null) => void
+  onRetake: (result: CaptureResult | null) => void
+  onPlay: NonNullable<CorrectionProps['onPlay']>
+  onHome: () => void
   onClose: () => void
-  review?: Pick<CorrectionProps, 'onPlay' | 'onSave' | 'onExit' | 'onHome'>
+  onExit: (result: CaptureResult | null, looks: readonly CellLook[]) => void
+  onSave?: (result: CaptureResult | null, looks: readonly CellLook[]) => Promise<boolean>
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
@@ -69,11 +73,9 @@ export function CameraScreen({
     // 'speed' throws on a device without it (VisionCamera, PhotoOutputOptions).
     qualityPrioritization: device?.supportsSpeedQualityPrioritization === true ? 'speed' : 'balanced',
   })
-  const { state, capture, sharedImage } = useCapture(photoOutput)
-  const reduceMotion = useReducedMotion()
   const { frameOutput, detection, outline, frameQuad } = useFrameTracking(viewSize)
-  const { startCapture, capturing, crossFade, clock, waiting, resultsAt, captureFrame, stepClock } =
-    useCaptureTransition({ state, capture, layout, onDone, detection, viewSize, reduceMotion })
+  const session = useCaptureSession({ photoOutput, layout, detection, viewSize })
+  const { phase, result, captureFrame } = session
   const { theme } = useUnistyles()
   // True once the theme background covers the camera: the bar then takes the theme style, not the light style over the camera.
   const [darkBar, setDarkBar] = useState(false)
@@ -112,44 +114,30 @@ export function CameraScreen({
         viewSize.set({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })
       }}
     >
-      <StatusBar style={darkBar || review ? theme.statusBar : 'light'} />
+      <StatusBar style={darkBar || phase === 'review' ? theme.statusBar : 'light'} />
       {/* When the photo draws, the camera stops. The photo covers the last preview frame. */}
-      {!review && (
+      {phase !== 'review' && (
         <Camera
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={isActive && capturing?.image == null}
+          isActive={isActive && !session.photoShown}
           outputs={[frameOutput, photoOutput]}
           orientationSource="interface"
         />
       )}
-      {capturing != null && !review && (
-        <TransitionCanvas
-          capture={captureFrame}
-          view={viewSize}
-          image={sharedImage}
-          locked={capturing.quad}
-          crossFade={crossFade}
-          side={layout.grid.width}
-        />
+      {phase === 'capturing' && <TransitionCanvas session={session} view={viewSize} side={layout.grid.width} />}
+      {phase !== 'review' && (
+        <EffectCanvas outline={outline} view={viewSize} effect={effect} frameQuad={frameQuad} session={session} />
       )}
-      {!review && (
-        <EffectCanvas
-          outline={outline}
-          view={viewSize}
-          effect={effect}
-          frameQuad={frameQuad}
-          onLock={startCapture}
-          capture={captureFrame}
-          beforeFrame={stepClock}
-        />
-      )}
-      {capturing != null ? (
+      {phase !== 'live' ? (
         <CorrectionScreen
-          result={capturing.result}
+          session={session}
           layout={layout}
-          onRetake={() => onRetake(capturing.result)}
-          {...(review ?? { clock, reduceMotion: crossFade, waiting, resultsAt })}
+          onRetake={() => onRetake(result)}
+          onPlay={onPlay}
+          onHome={onHome}
+          onExit={(looks) => onExit(result, looks)}
+          {...(onSave ? { onSave: (looks: readonly CellLook[]) => onSave(result, looks) } : {})}
         />
       ) : (
         <>
@@ -163,7 +151,7 @@ export function CameraScreen({
               accessibilityRole="button"
               accessibilityLabel="Take photo"
               style={({ pressed }) => [styles.shutter, pressed && pressedStyles.pressed]}
-              onPress={() => startCapture(frameQuad.get(), 'shutter')}
+              onPress={() => session.startCapture(frameQuad.get(), 'shutter')}
             />
           </Animated.View>
           <Animated.View
@@ -176,7 +164,7 @@ export function CameraScreen({
           {__DEV__ ? <EffectPicker effect={effect} settings={kvSettings} /> : null}
         </>
       )}
-      {capturing != null && !review && (
+      {phase === 'capturing' && (
         <Animated.View testID="capture-flash" pointerEvents="none" style={[styles.flash, flashStyle]} />
       )}
     </View>

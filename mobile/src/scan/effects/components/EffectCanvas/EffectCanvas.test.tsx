@@ -1,7 +1,8 @@
 import { createPicture, Skia } from '@shopify/react-native-skia'
 import { render, screen } from '@testing-library/react-native'
 import { type SharedValue, useFrameCallback, useReducedMotion } from 'react-native-reanimated'
-import { transitionAt, type CaptureFrame } from '@/scan/utils/transition.utils'
+import type { CaptureFrame, CaptureSession } from '@/scan/hooks/useCaptureSession'
+import { transitionAt } from '@/scan/utils/transition.utils'
 import { EffectCanvas } from './EffectCanvas'
 import * as engine from '@/scan/effects/engine'
 import * as drawKit from '@/scan/effects/kit'
@@ -110,13 +111,23 @@ function lastFrame() {
   return canvas
 }
 
+/** The part of the capture session that the overlay reads. */
+function sessionOf(over: Partial<Pick<CaptureSession, 'startCapture' | 'stepClock' | 'captureFrame'>> = {}) {
+  return {
+    startCapture: jest.fn(),
+    stepClock: jest.fn(),
+    captureFrame: constant<CaptureFrame | null>(null),
+    ...over,
+  }
+}
+
 function renderCanvas(view: ViewSize, effect = DEFAULT_INDEX, outline: Quad | null = null) {
   const props = {
     outline: shared(outline),
     view: shared(view),
     effect: shared(effect),
     frameQuad: shared<Quad | null>(null),
-    onLock: jest.fn(),
+    session: sessionOf(),
   }
   render(<EffectCanvas {...props} />)
   return props
@@ -268,25 +279,25 @@ describe('lock-on', () => {
     { x: 0.8, y: 0.65 },
     { x: 0.2, y: 0.65 },
   ]
-  it('calls onLock once, with the normalised quad, when the scene locks on', async () => {
+  it('starts the capture once, with the normalised quad and the automatic source, when the scene locks on', async () => {
     // Three seconds of frames make the development frame-rate log fire.
     const log = jest.spyOn(console, 'log').mockImplementation(() => {})
-    const onLock = jest.fn()
+    const startCapture = jest.fn()
     render(
       <EffectCanvas
         outline={fresh(grid)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(NORMALISED)}
-        onLock={onLock}
+        session={sessionOf({ startCapture })}
       />,
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
     for (let ms = 0; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
     // The worklets mock runs scheduleOnRN in a microtask.
     await new Promise((resolve) => setImmediate(resolve))
-    expect(onLock).toHaveBeenCalledTimes(1)
-    expect(onLock).toHaveBeenCalledWith(NORMALISED)
+    expect(startCapture).toHaveBeenCalledTimes(1)
+    expect(startCapture).toHaveBeenCalledWith(NORMALISED, 'auto')
     log.mockRestore()
   })
 })
@@ -303,7 +314,7 @@ describe('the lock log', () => {
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
-        onLock={jest.fn()}
+        session={sessionOf()}
       />,
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
@@ -318,23 +329,23 @@ describe('the lock log', () => {
     log.mockRestore()
   })
 
-  it('logs that onLock is not called when the scene locks on without a frame quad', async () => {
+  it('logs that the capture does not start when the scene locks on without a frame quad', async () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {})
-    const onLock = jest.fn()
+    const startCapture = jest.fn()
     render(
       <EffectCanvas
         outline={fresh(grid)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
-        onLock={onLock}
+        session={sessionOf({ startCapture })}
       />,
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
     for (let ms = 0; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
     await new Promise((resolve) => setImmediate(resolve))
-    expect(onLock).not.toHaveBeenCalled()
-    expect(lockLines(log)).toContain('[lock] locked, but frameQuad is null: onLock not called')
+    expect(startCapture).not.toHaveBeenCalled()
+    expect(lockLines(log)).toContain('[lock] locked, but frameQuad is null: startCapture not called')
     log.mockRestore()
   })
 
@@ -347,8 +358,7 @@ describe('the lock log', () => {
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
-        onLock={jest.fn()}
-        capture={value}
+        session={sessionOf({ captureFrame: value })}
       />,
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
@@ -367,48 +377,45 @@ describe('the lock log', () => {
 // The spy comes before render: the frame worklet captures advanceCapture when it is created.
 const advanceCaptureSpy = () => jest.spyOn(engine, 'advanceCapture')
 
-describe('beforeFrame', () => {
+describe('the clock step', () => {
   it('runs first in each frame, with the timestamp in milliseconds, before the overlay reads the capture', () => {
     const order: string[] = []
-    const capture = shared<CaptureFrame | null>(null)
-    const read = capture.get
-    Object.assign(capture, {
+    const captureFrame = shared<CaptureFrame | null>(null)
+    const read = captureFrame.get
+    Object.assign(captureFrame, {
       get: () => {
         order.push('capture')
         return read()
       },
     })
-    const beforeFrame = jest.fn(() => order.push('clock'))
+    const stepClock = jest.fn(() => order.push('clock'))
     render(
       <EffectCanvas
         outline={shared<Quad | null>(grid)}
         view={shared(VIEW)}
         effect={shared(DEFAULT_INDEX)}
         frameQuad={shared<Quad | null>(null)}
-        onLock={jest.fn()}
-        capture={capture}
-        beforeFrame={beforeFrame}
+        session={sessionOf({ captureFrame, stepClock })}
       />,
     )
     tick(2)
-    expect(beforeFrame).toHaveBeenCalledWith(2000)
+    expect(stepClock).toHaveBeenCalledWith(2000)
     expect(order.slice(0, 2)).toEqual(['clock', 'capture'])
   })
 
   it('runs before the view has a size', () => {
-    const beforeFrame = jest.fn()
+    const stepClock = jest.fn()
     render(
       <EffectCanvas
         outline={shared<Quad | null>(null)}
         view={shared({ width: 0, height: 0 })}
         effect={shared(DEFAULT_INDEX)}
         frameQuad={shared<Quad | null>(null)}
-        onLock={jest.fn()}
-        beforeFrame={beforeFrame}
+        session={sessionOf({ stepClock })}
       />,
     )
     tick(1)
-    expect(beforeFrame).toHaveBeenCalledTimes(1)
+    expect(stepClock).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -420,10 +427,10 @@ describe('the capture phase', () => {
     { x: 16, y: 490 },
   ]
 
-  it('rides the capture quad and never calls onLock while capture is set', async () => {
+  it('rides the capture quad and never starts a capture while the session has a frame', async () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {})
     const capture = advanceCaptureSpy()
-    const onLock = jest.fn()
+    const startCapture = jest.fn()
     const channels = transitionAt(0.2, false)
     const value = shared<CaptureFrame | null>(null)
     render(
@@ -432,8 +439,7 @@ describe('the capture phase', () => {
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(grid)}
-        onLock={onLock}
-        capture={value}
+        session={sessionOf({ startCapture, captureFrame: value })}
       />,
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
@@ -441,7 +447,7 @@ describe('the capture phase', () => {
     Object.assign(value, { value: { quad: flat, grid: flat, channels } })
     for (let ms = 1000 / 60; ms <= 3000; ms += 1000 / 60) callback({ timestamp: ms } as never)
     await new Promise((resolve) => setImmediate(resolve))
-    expect(onLock).not.toHaveBeenCalled()
+    expect(startCapture).not.toHaveBeenCalled()
     expect(capture).toHaveBeenCalled()
     const [, , quad, , passed] = capture.mock.calls.at(-1)!
     expect(quad).toBe(flat)
@@ -450,7 +456,7 @@ describe('the capture phase', () => {
     log.mockRestore()
   })
 
-  it('runs the live phase while capture is null', () => {
+  it('runs the live phase while the session has no frame', () => {
     const capture = advanceCaptureSpy()
     render(
       <EffectCanvas
@@ -458,8 +464,7 @@ describe('the capture phase', () => {
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
-        onLock={jest.fn()}
-        capture={constant<CaptureFrame | null>(null)}
+        session={sessionOf()}
       />,
     )
     tick(1)

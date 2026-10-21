@@ -2,7 +2,8 @@ import { createPicture, type SkImage } from '@shopify/react-native-skia'
 import { render, screen } from '@testing-library/react-native'
 import { useSharedValue } from 'react-native-reanimated'
 import { TransitionCanvas } from './TransitionCanvas'
-import { type CaptureFrame, transitionAt } from '@/scan/utils/transition.utils'
+import type { CaptureFrame } from '@/scan/hooks/useCaptureSession'
+import { transitionAt } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
 
 const QUAD: Quad = [
@@ -13,7 +14,7 @@ const QUAD: Quad = [
 ]
 
 function Harness({ crossFade }: { crossFade: boolean }) {
-  const capture = useSharedValue<CaptureFrame | null>({
+  const captureFrame = useSharedValue<CaptureFrame | null>({
     quad: QUAD,
     grid: QUAD,
     channels: transitionAt(0.4, crossFade),
@@ -21,21 +22,13 @@ function Harness({ crossFade }: { crossFade: boolean }) {
   })
   const image = useSharedValue<SkImage | null>({ width: () => 900, height: () => 1600 } as unknown as SkImage)
   const view = useSharedValue({ width: 402, height: 874 })
-  return (
-    <TransitionCanvas
-      capture={capture}
-      view={view}
-      image={image}
-      locked={[
-        { x: 0.2, y: 0.2 },
-        { x: 0.8, y: 0.2 },
-        { x: 0.8, y: 0.8 },
-        { x: 0.2, y: 0.8 },
-      ]}
-      crossFade={crossFade}
-      side={320}
-    />
-  )
+  const locked: Quad = [
+    { x: 0.2, y: 0.2 },
+    { x: 0.8, y: 0.2 },
+    { x: 0.8, y: 0.8 },
+    { x: 0.2, y: 0.8 },
+  ]
+  return <TransitionCanvas session={{ captureFrame, image, quad: locked, crossFade }} view={view} side={320} />
 }
 
 beforeEach(() => jest.clearAllMocks())

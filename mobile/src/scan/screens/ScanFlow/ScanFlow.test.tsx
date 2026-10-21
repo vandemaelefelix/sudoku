@@ -1,17 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import type { RecogniseResult } from '@/scanner'
+import { act, render } from '@testing-library/react-native'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
-import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
-import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { ScanFlow } from './ScanFlow'
-import { useCapture } from '@/scan/hooks/useCapture'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
+import type { CaptureResult } from '@/scan/utils/captureResult.utils'
 import type { CellLook } from '@/scan/utils/correction.utils'
 
-jest.mock('@/scanner', () => ({ ...jest.requireActual('@/scanner'), useGridDetector: jest.fn(() => undefined) }))
-jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
-jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: () => null }))
-jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: () => null }))
 const mockDismissTo = jest.fn()
 jest.mock('expo-router', () => ({ useRouter: () => ({ dismissTo: mockDismissTo }) }))
 jest.mock('@/scan/hooks/useScannedStart', () => ({ useScannedStart: jest.fn() }))
@@ -25,9 +18,9 @@ jest.mock('@/scanShare/useScanShare', () => ({
 }))
 
 const mockMounts: number[] = []
-jest.mock('@/scan/effects/components/EffectCanvas', () => ({
-  EffectCanvas: jest.fn(() => {
-    // Counts mounts, so a test sees a new canvas with a new engine.
+jest.mock('@/scan/screens/CameraScreen', () => ({
+  CameraScreen: jest.fn(() => {
+    // Counts mounts, so a test sees a new camera screen, and with it a new capture session.
     jest.requireActual('react').useEffect(() => {
       mockMounts.push(mockMounts.length)
     }, [])
@@ -35,19 +28,7 @@ jest.mock('@/scan/effects/components/EffectCanvas', () => ({
   }),
 }))
 
-// The real screens render, and the mocks record their props.
-jest.mock('@/scan/screens/CameraScreen', () => {
-  const { createElement } = jest.requireActual('react')
-  const actual = jest.requireActual('@/scan/screens/CameraScreen')
-  return { CameraScreen: jest.fn((props: object) => createElement(actual.CameraScreen, props)) }
-})
-jest.mock('@/scan/screens/CorrectionScreen', () => {
-  const { createElement } = jest.requireActual('react')
-  const actual = jest.requireActual('@/scan/screens/CorrectionScreen')
-  return { CorrectionScreen: jest.fn((props: object) => createElement(actual.CorrectionScreen, props)) }
-})
-
-const OK: RecogniseResult = {
+const OK: CaptureResult = {
   ok: true,
   cells: [],
   quad: [
@@ -60,145 +41,89 @@ const OK: RecogniseResult = {
   cornerOffset: 0,
   timings: { imageMs: 1, detectMs: 1, flattenMs: 1, classifyMs: 1 },
 }
-
-function givenPhase(state: ReturnType<typeof useCapture>['state']) {
-  jest.mocked(useCapture).mockReturnValue({
-    state,
-    capture: jest.fn(),
-    sharedImage: { value: null } as unknown as ReturnType<typeof useCapture>['sharedImage'],
-  })
-}
-
-function lastCanvas() {
-  return jest.mocked(EffectCanvas).mock.calls.at(-1)![0]
-}
-
+const WITH_PHOTO: CaptureResult = { ...OK, photoPath: '/tmp/photo.jpg' }
 const mockPlay = jest.fn()
+
+function camera() {
+  return jest.mocked(CameraScreen).mock.calls.at(-1)![0]
+}
 
 beforeEach(() => {
   jest.clearAllMocks()
   jest.mocked(useScannedStart).mockReturnValue(mockPlay)
   mockMounts.length = 0
-  givenPhase({ phase: 'live' })
 })
 
-it('starts live on the camera', () => {
+it('starts with one camera screen, and gives it the correction layout', () => {
   render(<ScanFlow />)
-  expect(screen.getByTestId('camera-screen')).toBeTruthy()
   expect(mockMounts).toHaveLength(1)
+  expect(camera().layout.grid.width).toBeGreaterThan(0)
 })
 
 it('hands the close button to the router, as a dismiss to the home route', () => {
   render(<ScanFlow />)
-  fireEvent.press(screen.getByTestId('scan-close'))
+  camera().onClose()
   expect(mockDismissTo).toHaveBeenCalledWith('/')
 })
 
-/** Renders the flow at the end of a transition with an ok result, and finishes it. */
-function finishTransition() {
-  givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result: OK })
+it('mounts a new camera screen on Retake, so the capture session starts new', () => {
   render(<ScanFlow />)
-  const transition = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
-  const shown = screen.getByTestId('correction-screen')
-  const effectRenders = jest.mocked(EffectCanvas).mock.calls.length
-  act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(OK))
-  return { transition, shown, effectRenders }
-}
-
-it('keeps the correction screen of the transition as the static screen, so no new canvas mounts', () => {
-  const { transition, shown } = finishTransition()
-  expect(transition.clock).toBeDefined()
-  expect(screen.getByTestId('correction-screen')).toBe(shown)
-  const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
-  expect(props.result).toBe(OK)
-  expect(props.clock).toBeUndefined()
-  expect(props.layout).toEqual(jest.mocked(CameraScreen).mock.calls.at(-1)![0].layout)
-})
-
-it('unmounts the camera layers in the review', () => {
-  const { effectRenders } = finishTransition()
-  expect(jest.mocked(EffectCanvas).mock.calls).toHaveLength(effectRenders)
-  expect(screen.queryByTestId('capture-flash')).toBeNull()
-})
-
-it('goes back live with a new scene on Retake from the review', () => {
-  finishTransition()
-  givenPhase({ phase: 'live' })
-  fireEvent.press(screen.getByTestId('retake'))
-  expect(screen.getByTestId('camera-screen')).toBeTruthy()
+  act(() => camera().onRetake(null))
   expect(mockMounts).toHaveLength(2)
-  expect(lastCanvas().capture!.value).toBeNull()
 })
 
-it('mounts a new camera screen and a new effect canvas on Retake from the transition', () => {
-  givenPhase({
-    phase: 'capturing',
-    quad: null,
-    image: null,
-    imageFailed: false,
-    result: { ok: false, reason: 'no grid' },
-  })
+it('hands Play to the scanned start, and Home to the router as a dismiss to the home route', () => {
   render(<ScanFlow />)
-  const before = lastCanvas()
-  givenPhase({ phase: 'live' })
-  fireEvent.press(screen.getByTestId('retake'))
-  expect(mockMounts).toHaveLength(2)
-  expect(lastCanvas().capture).not.toBe(before.capture)
-  expect(lastCanvas().capture!.value).toBeNull()
+  expect(camera().onPlay).toBe(mockPlay)
+  camera().onHome()
+  expect(mockDismissTo).toHaveBeenCalledWith('/')
 })
 
-it('hands Save of the review to the correction store, and keeps Play, in a development build', () => {
-  finishTransition()
-  const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
-  expect(props.onPlay).toBeDefined()
+it('hands Save to the correction store, in a development build', () => {
+  render(<ScanFlow />)
   const looks = [] as CellLook[]
-  props.onSave!(looks)
+  camera().onSave!(OK, looks)
   expect(mockSave).toHaveBeenCalledWith(OK, looks)
-  expect(mockPlay).not.toHaveBeenCalled()
 })
 
-it('hands Home of the review to the router, as a dismiss to the home route', () => {
-  finishTransition()
-  const props = jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
-  props.onHome!()
-  expect(mockDismissTo).toHaveBeenCalledWith('/')
-})
+describe('in a release build', () => {
+  const dev = __DEV__
+  beforeEach(() => Object.assign(globalThis, { __DEV__: false }))
+  afterEach(() => Object.assign(globalThis, { __DEV__: dev }))
 
-function reviewWith(result: RecogniseResult) {
-  givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result })
-  render(<ScanFlow />)
-  act(() => jest.mocked(CameraScreen).mock.calls.at(-1)![0].onDone(result))
-  givenPhase({ phase: 'live' })
-}
+  it('has no Save', () => {
+    render(<ScanFlow />)
+    expect(camera().onSave).toBeUndefined()
+  })
+})
 
 describe('the photo of a scan that the player drops', () => {
-  const WITH_PHOTO = { ...OK, photoPath: '/tmp/photo.jpg' } as RecogniseResult
-
-  it('is deleted on Retake from the review', () => {
-    reviewWith(WITH_PHOTO)
-    fireEvent.press(screen.getByTestId('retake'))
+  it('is deleted on Retake', () => {
+    render(<ScanFlow />)
+    act(() => camera().onRetake(WITH_PHOTO))
     expect(mockDiscard).toHaveBeenCalledWith('/tmp/photo.jpg')
     expect(mockEnqueue).not.toHaveBeenCalled()
   })
 
-  it('is deleted on Retake from the capture transition', () => {
-    givenPhase({ phase: 'capturing', quad: null, image: null, imageFailed: false, result: WITH_PHOTO })
+  it('needs no delete when the result has no photo, or no result came', () => {
     render(<ScanFlow />)
-    givenPhase({ phase: 'live' })
-    fireEvent.press(screen.getByTestId('retake'))
-    expect(mockDiscard).toHaveBeenCalledWith('/tmp/photo.jpg')
-  })
-
-  it('needs no delete when the result has no photo', () => {
-    reviewWith(OK)
-    fireEvent.press(screen.getByTestId('retake'))
+    act(() => camera().onRetake(OK))
+    act(() => camera().onRetake({ ok: false, reason: 'no grid' }))
+    act(() => camera().onRetake(null))
     expect(mockDiscard).not.toHaveBeenCalled()
   })
 
-  it('is not deleted here when the player plays, because the queue step deletes it', () => {
-    reviewWith(WITH_PHOTO)
-    jest.mocked(CorrectionScreen).mock.calls.at(-1)![0].onExit!([] as CellLook[])
+  it('is not deleted here when the player leaves, because the queue step deletes it', () => {
+    render(<ScanFlow />)
+    camera().onExit(WITH_PHOTO, [] as CellLook[])
     expect(mockEnqueue).toHaveBeenCalledWith('/tmp/photo.jpg', WITH_PHOTO, [])
     expect(mockDiscard).not.toHaveBeenCalled()
+  })
+
+  it('does not join the upload queue without an ok result', () => {
+    render(<ScanFlow />)
+    camera().onExit(null, [] as CellLook[])
+    camera().onExit({ ok: false, reason: 'no grid' }, [] as CellLook[])
+    expect(mockEnqueue).not.toHaveBeenCalled()
   })
 })
