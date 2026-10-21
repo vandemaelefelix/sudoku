@@ -5,7 +5,9 @@ describe('formatTime', () => {
   it.each([
     [272_000, '04:32'],
     [0, '00:00'],
-    [59_600, '01:00'],
+    [59_600, '00:59'],
+    [59_999, '00:59'],
+    [60_000, '01:00'],
     [6_000_000, '100:00'],
   ])('writes %p ms as %p', (ms, text) => {
     expect(formatTime(ms)).toBe(text)
@@ -21,6 +23,7 @@ describe('timeWords', () => {
     expect(timeWords(272_000)).toBe('4 minutes 32 seconds')
     expect(timeWords(61_000)).toBe('1 minute 1 second')
     expect(timeWords(30_000)).toBe('30 seconds')
+    expect(timeWords(59_999)).toBe('59 seconds')
   })
 })
 

@@ -1,4 +1,4 @@
-import { fromSavedGame, hasMoves, toSavedGame, type SavedGame } from '@sudoku/core'
+import { countsForBestTime, fromSavedGame, hasMoves, toSavedGame, type SavedGame } from '@sudoku/core'
 import type { BestTimes, HistoryRepository } from './HistoryRepository'
 import { createMemoryStatsRepository } from './memoryStats'
 import { createMemorySyncStateRepository } from './SyncStateRepository'
@@ -170,8 +170,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       const best: BestTimes = {}
       for (const entry of visible(owner)) {
         const time = best[entry.level]
-        const counts = entry.result === 'won' && entry.source === 'generated' && entry.hintsUsed === 0
-        if (counts && (time === undefined || entry.playedMs < time)) {
+        if (countsForBestTime(entry) && (time === undefined || entry.playedMs < time)) {
           best[entry.level] = entry.playedMs
         }
       }
