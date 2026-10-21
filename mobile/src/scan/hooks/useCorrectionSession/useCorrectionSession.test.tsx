@@ -1,9 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
-import { type Digit, generate } from '@sudoku/core'
+import { type Digit, generate, peersOf } from '@sudoku/core'
 import type { CellResult } from '@/scanner'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
+import { levelOf } from '@/game/utils/start.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
@@ -58,6 +59,8 @@ function session(capture: Capture, exits: Partial<CorrectionExits> = {}) {
 
 const puzzle = generate('hard', 5)
 const firstOpen = puzzle.givens.findIndex((digit) => digit === 0)
+// A digit that a given in a peer of the first open cell already holds, so that the digit there is a conflict.
+const clashDigit = puzzle.givens[peersOf(firstOpen).find((n) => puzzle.givens[n] !== 0)!]!
 const wrongDigit = (((puzzle.solution[firstOpen] ?? 0) % 9) + 1) as Digit
 
 /** A recognised result with every given of `givens` printed, and `over` on top. */
@@ -177,7 +180,7 @@ describe('the play gate', () => {
     expect(result.current.block).toBeNull()
     expect(result.current.canPlay).toBe(true)
     expect(result.current.canSolve).toBe(true)
-    expect(result.current.level).toBe('hard')
+    expect(result.current.level).toBe(levelOf(puzzle.givens))
     act(() => result.current.actions.play())
     expect(mockPlay).toHaveBeenCalledWith('thud')
     expect(onPlay).toHaveBeenCalledTimes(1)
@@ -239,9 +242,9 @@ describe('the play gate', () => {
   })
 
   it('follows an edit: a fixed conflict opens the gate', () => {
-    const scan = scanOf(puzzle.givens, { [firstOpen]: { digit: 1, kind: 'printed', confidence: 1 } })
+    const scan = scanOf(puzzle.givens, { [firstOpen]: { digit: clashDigit, kind: 'printed', confidence: 1 } })
     const { result } = session(review(scan), { onPlay: jest.fn() })
-    const clash = puzzle.givens.findIndex((digit, n) => n !== firstOpen && digit === 1)
+    const clash = puzzle.givens.findIndex((digit, n) => n !== firstOpen && digit === clashDigit)
     expect(clash).toBeGreaterThanOrEqual(0)
     expect(result.current.block).not.toBeNull()
     act(() => result.current.actions.select(firstOpen))
@@ -354,7 +357,7 @@ describe('the haptic cues', () => {
   })
 
   it('plays success when the last check makes the puzzle playable, and not for the first summary', () => {
-    const scan = scanOf(puzzle.givens, { [firstOpen]: { digit: 1, kind: 'printed', confidence: 1 } })
+    const scan = scanOf(puzzle.givens, { [firstOpen]: { digit: clashDigit, kind: 'printed', confidence: 1 } })
     const { result } = session(review(scan), { onPlay: jest.fn() })
     expect(mockPlay).not.toHaveBeenCalled()
     act(() => result.current.actions.select(firstOpen))
