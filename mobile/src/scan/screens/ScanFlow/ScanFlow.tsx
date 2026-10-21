@@ -7,9 +7,10 @@ import { useUnistyles } from 'react-native-unistyles'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
 import type { CaptureResult } from '@/scan/utils/captureResult.utils'
-import { correctionLayout, type CellLook } from '@/scan/utils/correction.utils'
+import { correctionLayout } from '@/scan/utils/correction.utils'
 import { saveScanCorrection } from '@/scan/utils/correctionStore'
 import { useScanShare } from '@/scanShare/useScanShare'
+import type { FinalGrid } from '@/utils/finalGrid.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { styles } from './ScanFlow.styles'
 
@@ -41,8 +42,8 @@ export function ScanFlow() {
 
   // The player leaves the correction screen by any route except Retake. The scan is final then, so it joins the upload queue.
   const exit = useCallback(
-    (result: CaptureResult | null, looks: readonly CellLook[]) => {
-      if (result?.ok) void enqueueScan(result.photoPath, result, looks)
+    (result: CaptureResult | null, finalGrid: FinalGrid) => {
+      if (result?.ok) void enqueueScan(result.photoPath, result, finalGrid)
     },
     [enqueueScan],
   )

@@ -128,6 +128,15 @@ export function advanceClock(t: number, dt: number, gates: Gates, reduceMotion: 
   return Math.min(t + Math.max(0, dt), limit)
 }
 
+/**
+ * True when the clock has reached the results gate, with Reduce Motion at any value, and without a clock (the review phase).
+ * A failure keeps the gate closed, so the failure panel and its haptic use this instead of the clock ramp.
+ */
+export function resultsGateReached(clockValue: number | undefined, reduceMotion: boolean): boolean {
+  'worklet'
+  return clockValue === undefined || reduceMotion || clockValue >= GATE_RESULTS - 1e-6
+}
+
 /** Maps photo pixels (photoWidth × photoHeight, upright) to view points so that the normalised locked quad lands on screenQuad. */
 export function photoMatrix(photoWidth: number, photoHeight: number, locked: Quad, screenQuad: Quad): number[] | null {
   'worklet'

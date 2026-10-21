@@ -1,6 +1,6 @@
 import { validateScanRecord } from '@sudoku/scan-contract'
 import type { CellResult } from '@/scanner'
-import type { CellLook } from '@/scan/utils/correction.utils'
+import type { FinalCell, FinalGrid } from '@/utils/finalGrid.utils'
 import { buildRecord } from './buildRecord'
 
 const UUID_A = '7f3a91c2-0000-4000-8000-000000000001'
@@ -26,11 +26,9 @@ const CELL: CellResult = {
   digitProbs: probs(10, 5),
   kindProbs: probs(4, 1),
 }
-const GIVEN: CellLook = { digit: '5', style: 'given', uncertain: false }
+const KEPT: FinalCell = { digit: 5, kind: 'printed', digitCorrected: false, kindCorrected: false }
 
-function input(
-  overrides: { cells?: readonly CellResult[]; looks?: readonly CellLook[]; corners?: [number, number][] } = {},
-) {
+function input(overrides: { cells?: readonly CellResult[]; finalGrid?: FinalGrid; corners?: [number, number][] } = {}) {
   return {
     scanId: UUID_A,
     contributorId: UUID_B,
@@ -38,7 +36,7 @@ function input(
     modelVersion: '2.0.0',
     corners: CORNERS,
     cells: Array.from({ length: 81 }, () => CELL),
-    looks: Array.from({ length: 81 }, () => GIVEN),
+    finalGrid: Array.from({ length: 81 }, () => KEPT),
     ...overrides,
   }
 }
@@ -52,26 +50,28 @@ it('builds a record that passes the contract, with edited false when the player 
 })
 
 it('sets edited on the cells the player changed, and the final digit and kind', () => {
-  const looks = Array.from({ length: 81 }, (_, n) =>
-    n === 3
-      ? ({ digit: '7', style: 'entry', uncertain: false } as CellLook)
-      : n === 4
-        ? ({ digit: '', style: 'empty', uncertain: false } as CellLook)
-        : GIVEN,
-  )
-  const record = buildRecord(input({ looks }))
+  const finalGrid = Array.from({ length: 81 }, (_, n): FinalCell => {
+    if (n === 3) return { digit: 7, kind: 'handwritten', digitCorrected: true, kindCorrected: true }
+    if (n === 4) return { digit: 0, kind: 'none', digitCorrected: true, kindCorrected: true }
+    if (n === 5) return { digit: 5, kind: 'handwritten', digitCorrected: false, kindCorrected: true }
+    return KEPT
+  })
+  const record = buildRecord(input({ finalGrid }))
   expect(record?.cells[3]).toMatchObject({ edited: true, finalDigit: 7, finalKind: 2 })
   expect(record?.cells[4]).toMatchObject({ edited: true, finalDigit: 0, finalKind: 0 })
-  expect(record?.cells.filter((cell) => cell.edited)).toHaveLength(2)
+  expect(record?.cells[5]).toMatchObject({ edited: true, finalDigit: 5, finalKind: 2 })
+  expect(record?.cells.filter((cell) => cell.edited)).toHaveLength(3)
 })
 
-it('does not count an invalid model pair as an edit when the player leaves the cell alone', () => {
-  // Digit 0 with kind printed shows as an empty cell. Leaving it empty is no correction.
-  const odd: CellResult = { ...CELL, digit: 0, kind: 'printed', validPair: false, digitProbs: probs(10, 0) }
-  const empty: CellLook = { digit: '', style: 'empty', uncertain: true }
-  const cells = Array.from({ length: 81 }, (_, n) => (n === 0 ? odd : CELL))
-  const looks = Array.from({ length: 81 }, (_, n) => (n === 0 ? empty : GIVEN))
-  expect(buildRecord(input({ cells, looks }))?.cells[0]?.edited).toBe(false)
+it('keeps a pencil-marked cell as kind notes, not as an edit', () => {
+  const finalGrid = Array.from({ length: 81 }, (_, n): FinalCell =>
+    n === 0 ? { digit: 0, kind: 'notes', digitCorrected: false, kindCorrected: false } : KEPT,
+  )
+  expect(buildRecord(input({ finalGrid }))?.cells[0]).toMatchObject({ edited: false, finalDigit: 0, finalKind: 3 })
+})
+
+it('returns null when the final grid is short of a cell', () => {
+  expect(buildRecord(input({ finalGrid: [KEPT] }))).toBeNull()
 })
 
 it('returns null when a cell has no probabilities', () => {

@@ -72,6 +72,13 @@ must also accept a signed-out player.
     player, for app functionality. "Data Not Collected" no longer holds. The exact label values are fixed before the
     first submission.
 
+## Amendment: scanShare and the scan UI (2026-10-21)
+
+- `src/scanShare/` does not import the scan UI (`src/scan/`). Code that both use lives in `src/utils/` or `src/components/`.
+- The scan UI builds the final grid of a scan once (`finalGrid`). It hands the `FinalGrid` type of `src/utils/` to scanShare.
+  The upload record and the development scan log both read it.
+- `just boundaries` checks the rule: `adr-030-scanshare-does-not-use-scan`. The upload record format does not change.
+
 ## Consequences
 
 - SUD-02 is weaker. The privacy policy and the notice carry the promise instead.
