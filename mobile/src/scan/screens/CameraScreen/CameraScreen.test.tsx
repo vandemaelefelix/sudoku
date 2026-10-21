@@ -53,9 +53,10 @@ const onDone = jest.fn()
 /** The start of the digit sweep in the timeline. */
 const SWEEP_START = 0.55
 const onRetake = jest.fn()
+const onClose = jest.fn()
 
 function props() {
-  return { layout: LAYOUT, onDone, onRetake }
+  return { layout: LAYOUT, onDone, onRetake, onClose }
 }
 
 function givenPhase(state: ReturnType<typeof useCapture>['state']) {
@@ -170,6 +171,28 @@ describe('CameraScreen', () => {
     device.mockReturnValue(undefined)
     render(<CameraScreen {...props()} />)
     expect(screen.getByTestId('camera-missing')).toBeTruthy()
+  })
+
+  it('closes the scan from the live camera', () => {
+    givenPermission('authorized')
+    render(<CameraScreen {...props()} />)
+    fireEvent.press(screen.getByTestId('scan-close'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['not-determined', 'denied'] as const)('closes the scan from the message screen, permission %s', (status) => {
+    givenPermission(status)
+    render(<CameraScreen {...props()} />)
+    fireEvent.press(screen.getByTestId('scan-close'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the scan when the phone has no back camera', () => {
+    givenPermission('authorized')
+    device.mockReturnValue(undefined)
+    render(<CameraScreen {...props()} />)
+    fireEvent.press(screen.getByTestId('scan-close'))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('logs the frame rate once per second', async () => {
@@ -400,13 +423,14 @@ describe('capture', () => {
     expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light)
   })
 
-  it('renders the transition layers and hides the shutter and the effect lab', () => {
+  it('renders the transition layers and hides the shutter, the close button and the effect lab', () => {
     lockOn(quad, { quad, image: null, result: null })
     expect(screen.getByTestId('camera')).toBeTruthy()
     expect(jest.mocked(TransitionCanvas)).toHaveBeenCalled()
     expect(screen.getByTestId('correction-screen')).toBeTruthy()
     expect(screen.getByTestId('capture-flash')).toBeTruthy()
     expect(screen.queryByTestId('shutter')).toBeNull()
+    expect(screen.queryByTestId('scan-close')).toBeNull()
     effectPicker.mockClear()
     lockOn(quad, { quad, image: null, result: null })
     expect(effectPicker).not.toHaveBeenCalled()
