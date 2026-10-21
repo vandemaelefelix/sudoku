@@ -21,6 +21,7 @@ describe('@sudoku/core', () => {
       'valueAt',
       'toSavedGame',
       'fromSavedGame',
+      'needsSave',
     ]) {
       expect(typeof exported[name]).toBe('function')
     }

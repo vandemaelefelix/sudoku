@@ -1,7 +1,8 @@
 import { useMemo, type ReactNode } from 'react'
 import type { Game } from '@sudoku/core'
-import { GameActionsContext, type GameActions } from '@/game/hooks/useGameActions'
+import { GameActionsContext } from '@/game/hooks/useGameActions'
 import { GameStateContext, type GameState } from '@/game/hooks/useGameState'
+import type { GameActions } from '@/game/utils/gameSession.utils'
 
 const ignore = () => undefined
 
