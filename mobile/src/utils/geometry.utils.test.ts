@@ -1,4 +1,4 @@
-import { lerpQuad, type Quad, rectQuad } from './geometry.utils'
+import { largestCornerStep, lerpQuad, type Quad, rectQuad } from './geometry.utils'
 
 const trapezoid: Quad = [
   { x: 120, y: 80 },
@@ -26,5 +26,18 @@ describe('lerpQuad', () => {
 describe('rectQuad', () => {
   it('lists the corners clockwise from the top left', () => {
     expect(rectQuad({ x: 16, y: 134, width: 370, height: 370 })).toEqual(board)
+  })
+})
+
+describe('largestCornerStep', () => {
+  it('is 0 for the same corners', () => {
+    expect(largestCornerStep(board, board)).toBe(0)
+  })
+
+  it('gives the longest corner move, whichever corner it is', () => {
+    const moved = lerpQuad(board, board, 0)
+    moved[2] = { x: board[2].x + 3, y: board[2].y + 4 }
+    expect(largestCornerStep(moved, board)).toBe(5)
+    expect(largestCornerStep(board, moved)).toBe(5)
   })
 })

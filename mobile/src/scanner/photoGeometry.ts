@@ -1,4 +1,4 @@
-import type { Rect, Point, Quad } from '@/utils/geometry.utils'
+import { largestCornerStep, type Rect, type Point, type Quad } from '@/utils/geometry.utils'
 
 /** The long side of the downscaled photo for the corner search. The live detector uses 640 too (DETECT_HEIGHT). */
 export const DETECT_LONG_SIDE = 640
@@ -57,9 +57,8 @@ export function fromCrop(quad: Quad, rect: Rect, width: number, height: number):
 export function cornerOffset(a: Quad, b: Quad, width: number, height: number): number {
   'worklet'
   const distance = (p: Point, q: Point): number => Math.hypot((q.x - p.x) * width, (q.y - p.y) * height)
-  const [a0, a1, a2, a3] = a
+  const toPixels = (quad: Quad): Quad => quad.map((p) => ({ x: p.x * width, y: p.y * height })) as Quad
   const [b0, b1, b2, b3] = b
   const sides = distance(b0, b1) + distance(b1, b2) + distance(b2, b3) + distance(b3, b0)
-  const largest = Math.max(0, distance(b0, a0), distance(b1, a1), distance(b2, a2), distance(b3, a3))
-  return largest / (sides / 4)
+  return largestCornerStep(toPixels(a), toPixels(b)) / (sides / 4)
 }

@@ -49,6 +49,18 @@ reasoning.
    on the expo-sqlite key-value store (ADR-012).
 7. A release build has no pill, reads no setting and runs `DEFAULT_EFFECT` (Gathering dots) only.
 
+## Amendment: the lock-on tracker beside the scene (2026-10-21)
+
+The lock-on rule of ADR-019 does not live in the scene. The scene held the drift, the dwell and the warm-up, so every effect could read them.
+
+- The lock-on tracker (`src/scan/utils/lockOn.utils.ts`) owns the drift window, the dwell, the warm-up, the minimum grid size and the one-shot lock.
+- The engine runs it after `stepScene`. It gives the tracker the grid, the found event and the time.
+- The engine copies two values to the scene: `lockProgress` and `lockedAt`. An effect reads only these two.
+- From lock-on, the scene keeps the locked quad. The tracker fires once, in the frame of lock-on.
+- The lock latch (same file) lets the first of the shutter and the automatic lock-on start the scan.
+
+Decision 1 and decision 2 stay. An effect still reads the scene and never changes it.
+
 ## Consequences
 
 - To add an effect, add a folder in `src/scan/effects/` and one line in `effects/registry.ts`. To
@@ -58,7 +70,7 @@ reasoning.
   every SkSL source with CanvasKit, so most compile errors fail `just test-ts`.
 - The saved choice is a key-value pair, not a row. The row rules of ADR-012 (UUID keys,
   timestamps, soft delete) are for data that may sync. A development setting does not sync.
-- Lock-on does not exist yet. Each effect shows its lock-on reaction in the steady state.
+- Lock-on does not exist yet. Each effect shows its lock-on reaction in the steady state. The amendment of 2026-10-21 and ADR-019 replace this.
 - The other 17 effects of the prototype can come later without a change to the engine.
 
 ## Reassessment Triggers

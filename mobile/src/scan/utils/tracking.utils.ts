@@ -1,4 +1,4 @@
-import type { Point, Quad } from '@/utils/geometry.utils'
+import { largestCornerStep, type Point, type Quad } from '@/utils/geometry.utils'
 import { MAX_GAP, MIN_CUTOFF, BETA, DERIVATIVE_CUTOFF, HOLD, JITTER_WINDOW } from '@/scan/constants/tracking.constants'
 
 // Counts camera frames in windows of at least one second. Runs as a worklet on the camera thread.
@@ -106,15 +106,7 @@ export function trackJitter(
   if (quad == null || window.previous == null || timestamp < window.last || timestamp - window.last > MAX_GAP) {
     return { window: { start: timestamp, last: timestamp, previous: quad, maxStep: 0, frames: 0 }, report: null }
   }
-  const [q0, q1, q2, q3] = quad
-  const [p0, p1, p2, p3] = window.previous
-  const step = Math.max(
-    0,
-    Math.hypot(q0.x - p0.x, q0.y - p0.y),
-    Math.hypot(q1.x - p1.x, q1.y - p1.y),
-    Math.hypot(q2.x - p2.x, q2.y - p2.y),
-    Math.hypot(q3.x - p3.x, q3.y - p3.y),
-  )
+  const step = largestCornerStep(quad, window.previous)
   const maxStep = Math.max(window.maxStep, step)
   const frames = window.frames + 1
   const seconds = timestamp - window.start
