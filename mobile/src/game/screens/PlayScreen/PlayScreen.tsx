@@ -100,7 +100,6 @@ export function PlayScreen() {
   // Each restart is a new game in progress with a new id: save() moved a lost game to the history,
   // so the store ignores later saves under the old id. A failed start keeps the old screen.
   // The best times are read after the start: start() runs after that save, so they include the finished game.
-  // The promises let the sheet rise again when the start fails.
   const show = useCallback(
     async (started: SavedProgress | null) => {
       if (started === null) return
@@ -114,6 +113,7 @@ export function PlayScreen() {
     [history, owner],
   )
 
+  // The promises let the sheet rise again when the start fails.
   const newPuzzle = useCallback(async () => {
     if (progress !== null) await show(await puzzleStart.newPuzzle(progress))
   }, [puzzleStart, show, progress])

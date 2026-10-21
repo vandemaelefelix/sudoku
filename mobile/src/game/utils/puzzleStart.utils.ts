@@ -61,7 +61,12 @@ export function createPuzzleStart({
       }
       const starting = puzzles.start({ ...make(), owner })
       // The game screen opens on peek() while the write runs, so the caller can navigate at once.
-      opened?.()
+      try {
+        opened?.()
+      } catch (error) {
+        // The game did start. A failed navigation is not a failed start, so the start still resolves.
+        devWarn('navigation', `The game screen does not open: ${errorMessage(error)}`)
+      }
       return await starting
     } catch (error) {
       devWarn('storage', `The game does not start: ${errorMessage(error)}`)
