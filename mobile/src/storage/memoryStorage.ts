@@ -1,8 +1,8 @@
 import { countsForBestTime, fromSavedGame, hasMoves, toSavedGame, type SavedGame } from '@sudoku/core'
 import type { BestTimes, HistoryRepository } from './HistoryRepository'
 import { createMemoryStatsRepository } from './memoryStats'
-import { createMemorySyncStateRepository } from './SyncStateRepository'
-import { adoptKey, CURSOR, CURSOR_OWNER, syncedKey } from './syncStateSql'
+import { createMemorySyncStateRepository, forgetMemoryOwnerState, writeMemoryCursor } from './SyncStateRepository'
+import { adoptKey } from './syncStateSql'
 import { readWaitingBatch } from './waitingBatch'
 import { parseChanges } from './wireEntry'
 import { withChangeNotice } from './changeNotice'
@@ -168,8 +168,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
           row.pushedAt = record.updatedAt
         }
       }
-      state.set(CURSOR, cursor)
-      state.set(CURSOR_OWNER, owner)
+      writeMemoryCursor(state, owner, cursor)
       return { changed, pushAgain: pushed.length > 0 && rows.some((row) => row.owner === owner && isPending(row)) }
     },
     async adoptable(owner) {
@@ -185,12 +184,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       for (let index = rows.length - 1; index >= 0; index -= 1) {
         if (rows[index]?.owner === owner) rows.splice(index, 1)
       }
-      state.delete(syncedKey(owner))
-      state.delete(adoptKey(owner))
-      if (state.get(CURSOR_OWNER) === owner) {
-        state.delete(CURSOR)
-        state.delete(CURSOR_OWNER)
-      }
+      forgetMemoryOwnerState(state, owner)
     },
     async list(owner) {
       return visible(owner)
