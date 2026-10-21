@@ -7,13 +7,11 @@ export type OpartPalette = {
   entry: string
   /** The digit a player types in the Colour appearance: a light tint of the hue, for the dark page (ADR-026). */
   colourEntry: string
-  /** The accent mixed with white: 300 is the strongest tint, 050 the faintest. */
+  /** The accent mixed with white: 300 is the strongest tint, 100 the faintest. */
   tint300: string
   tint200: string
-  tint175: string
   tint150: string
   tint100: string
-  tint050: string
   danger: string
   dangerSurface: string
   warning: string

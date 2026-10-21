@@ -6,6 +6,7 @@ import type { OpartPalette } from './opart.types'
 
 // PostScript names of the bundled files in assets/fonts (ADR-021).
 const SERIF = 'InstrumentSerif-Regular'
+const SERIF_ITALIC = 'InstrumentSerif-Italic'
 const SANS = 'InstrumentSans-Regular'
 const SANS_MEDIUM = 'InstrumentSans-Medium'
 const SANS_SEMIBOLD = 'InstrumentSans-SemiBold'
@@ -43,7 +44,8 @@ export function buildOpartTheme(
       button: role(SANS_SEMIBOLD, '600', 15, 0.02),
       timer: role(MONO, '500', 15),
       given: role(SERIF, '400', 27),
-      entry: role(SANS_MEDIUM, '500', 21),
+      // The italic of the given face: one family on the grid. The style, not only the colour, marks a typed digit.
+      entry: role(SERIF_ITALIC, '400', 28),
       note: role(SANS_MEDIUM, '500', 11),
       key: role(SERIF, '400', 30),
       keyNote: role(SANS_SEMIBOLD, '600', 20),

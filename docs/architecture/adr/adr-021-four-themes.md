@@ -141,3 +141,11 @@ The stats card (ADR-023) shows 4 wavy lines in Op-art, across a white card. The 
    The height of the band is `size.panelEdge`. A theme with `size.panelEdge` of 0 draws nothing.
 2. **A component token group, `components.summary`.** It holds `border`, `borderWidth`, `radius`, `rule` and `ruleWidth`. The stats card, the empty state of a level and the strong rules of the stats screen (the table header and the chart base) read it. The lines between the sections use the thin `colors.line`, so they do not crowd the sections. `radius` equals `components.button.radius` in all four themes.
 3. **A component token group, `components.tabs`.** It holds `track` and `selected`, the colours of the tab bar of the stats screen. The values equal `components.segmented` in all four themes. A component reads only its own group (apps/mobile/AGENTS.md, Theme, rule 4), so the tab bar does not borrow the group of the theme picker.
+
+## Amendment 2026-10-21: one family on the grid
+
+A given used Instrument Serif and a typed digit used Instrument Sans Medium. The two families clashed on the grid (#163).
+
+1. **A typed digit uses Instrument Serif Italic.** The `entry` role of Op-art is `InstrumentSerif-Italic`, weight 400, at 28 points. The upright reads as print and the italic reads as a hand. So the style, not only the colour, tells a typed digit from a given.
+2. **A fifth Op-art file.** `InstrumentSerif-Italic.ttf` joins the bundled fonts. It uses the licence file of Instrument Serif. A change of the font list needs a new development build.
+3. **Notes stay in Instrument Sans Medium.** A serif italic at 11 points is hard to read.
