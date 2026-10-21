@@ -7,6 +7,7 @@ describe('formatTime', () => {
     [0, '00:00'],
     [59_600, '00:59'],
     [59_999, '00:59'],
+    [60_000, '01:00'],
     [6_000_000, '100:00'],
   ])('writes %p ms as %p', (ms, text) => {
     expect(formatTime(ms)).toBe(text)
