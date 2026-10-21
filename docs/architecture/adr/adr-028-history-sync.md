@@ -314,3 +314,33 @@ sequence them. The interface is in the amendment of the same date in
    overlap sends again, and an echo of a pushed entry, are no change now.
 8. **What the run keeps.** The run keeps the network, the 401 retry, the cursor reset, the rounds, the pause
    and the single-flight rule (the amendment "the sync in the app").
+
+## Amendment 2026-10-21: one account lifecycle
+
+The rules of the amendments "the sync in the app" and "delete the account" stay. They now sit in one module,
+`createAccountLifecycle` in `src/account/accountLifecycle.ts`. The React code only reads the status and calls it.
+
+1. **One module owns the delete order.** `deleteAccount(owner)` pauses the sync, asks the server, stops the sync,
+   cleans up, clears the owner cache and marks the account deleted. A failed or offline answer resumes the sync.
+   `useDeleteAccount` checks the status and the owner, then calls it.
+2. **One module owns the 410 reaction.** `onAccountDeleted(owner)` runs the same cleanup as the delete flow: the
+   entries and the sync state of the owner (`deleteOwner`), then the sign-out, then one alert.
+3. **The cleanup runs once for each owner.** The lifecycle keeps the first call and gives the same result to a
+   second call. The record lives in the lifecycle, not in the module, so a test starts clean. A failed cleanup is
+   forgotten, so the next call tries again.
+4. **The lost answer lasts as long as one open delete screen.** The lifecycle keeps the record of the owner. It
+   forgets the record when the Settings section goes away, on a sign-out, and after a delete. This is the lifetime
+   of the old hook. A 401 or a missing token after a lost attempt for the same owner counts as a delete (decision 5
+   of the amendment "delete the account"). A timed-out delete cannot wipe the phone later in the session.
+5. **The delete flow reads the real sign-out result.** The old flow assumed a good sign-out when it did not see the
+   call. This happened in two cases. A 410 cleanup came first. Or `deleteOwner` failed and the flow signed out
+   in the catch. In both cases the flow now sets the pending sign-out when the sign-out failed.
+6. **Clerk sits behind `ClerkAdapter`.** The adapter has `getApiToken` and `signOut`. Both never throw. `@clerk/expo`
+   is the real adapter. A test gives a fake. The lifecycle also gets the sync (`pause`, `stop`, `resume`), the
+   account API, the history repository and the owner cache as arguments, so one test drives a whole delete with fakes.
+7. **The owner cache sits behind `OwnerCache`.** The Keychain is the real adapter. A test gives a memory one.
+   The lifecycle clears the owner cache and sets the pending sign-out. `resumePendingSignOut` signs out again at the next start.
+   `AccountProvider` reads the cache at the start and writes the owner of the session. It keeps the flag that
+   makes the status `signedOut` after a delete.
+8. **`createAppSync` joins the two.** It builds the sync service and the lifecycle in `src/sync/`. The service gives
+   410 to the lifecycle. The lifecycle gives `pause`, `stop` and `resume` to the delete flow.

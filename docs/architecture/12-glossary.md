@@ -181,6 +181,9 @@ status: DRAFT
 | Splash overlay | The view at the top of `RootLayout` that draws the splash animation over the app. It passes every touch to the screen below (ADR-024) |
 | Account | A Clerk account of a player. Optional: a player who is signed out plays as normal and nothing uploads (ADR-027) |
 | Account section | The last section of Settings. Signed out, it offers "Sign in". Signed in, it shows the email and "Sign out". A build without a publishable key does not show it |
+| Account lifecycle | `createAccountLifecycle` in `src/account/accountLifecycle.ts`. It owns the delete order, the lost answer, the reaction to 410 and the owner cache. The React code only calls it (ADR-028) |
+| Clerk adapter | `ClerkAdapter` in `src/account/utils/`. It gives a token and a sign-out. `@clerk/expo` is the real one. A test gives a fake (ADR-028) |
+| Owner cache | `OwnerCache`: the Keychain items for the cached owner and for the pending sign-out. A test uses a memory one (ADR-028) |
 | Sign-in screen | The route `sign-in` (email, password and Google) or `sign-up` (create an account). The email code is a step inside each screen, not a route |
 | Email code | The 6-digit code that Clerk sends to the email. Sign-up needs it to prove the email. Sign-in needs it on a new device (client trust) |
 | Publishable key | The public Clerk key (`pk_test_…` or `pk_live_…`) that names the Clerk instance. It is in `app.config.ts` for the development variant. It grants no access |
