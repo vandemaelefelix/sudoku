@@ -80,6 +80,7 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
     | 2 | XY-wing, XYZ-wing, W-wing | Pattern cells, support digit, struck candidates |
 
     Tier 3 is not in scope: simple colouring, unique rectangle, BUG+1, jellyfish and chains.
+    The jellyfish moved to tier 2 (see the amendment of 2026-10-21 below).
 13. **The step contract.** The technique solver returns a `Step` with these fields:
     `technique`, `placements`, `eliminations`, `units`, `pattern`, `support` and `digits`.
     `digits` holds the digits of a pair or a triple. The hint plan and the highlight code read
@@ -108,3 +109,9 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
 - Players use rungs 1 to 3 to find the answer, and then claim a best time. Count rung 3.
 - A hint that needs more than 6 steps is common. Raise the limit or add tier 3 techniques.
 - The grading by technique changes the order of the techniques.
+
+## Amendment 2026-10-21: the jellyfish is tier 2
+
+Point 12 lists the jellyfish as tier 3. The solver now has it in tier 2. One fish finder covers the sizes 2
+to 4, so the jellyfish costs no extra code. It never fired in 4 000 generated puzzles, so hints rarely meet it.
+Tier 3 keeps simple colouring, unique rectangle, BUG+1 and chains.

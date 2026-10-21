@@ -28,8 +28,8 @@ into `TECHNIQUE_ORDER`. A test checks that the ratings never decrease down the t
 | 10 | Naked triple | 3.6 | SukakuExplainer, `NakedSetHint` | High |
 | 11 | Swordfish | 3.8 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 12 | Hidden triple | 4.0 | SukakuExplainer, `HiddenSetHint`, the original rating | High |
-| 13 | Skyscraper | 4.0 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
-| 14 | Two-string kite | 4.1 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
+| 13 | Skyscraper | 4.0 | None that we verified. Sudoku Explainer rates the turbot-fish family (skyscraper, kite) between 4.0 and 4.2, by link type. The solver uses 4.0 as a chosen weight | Low. A choice, not a fact |
+| 14 | Two-string kite | 4.1 | None that we verified. Sudoku Explainer rates the turbot-fish family (skyscraper, kite) between 4.0 and 4.2, by link type. The solver uses 4.1 as a chosen weight | Low. A choice, not a fact |
 | 15 | XY-wing | 4.2 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 16 | XYZ-wing | 4.4 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 17 | W-wing | 4.4 | None. Sudoku Explainer has no rating for the W-wing. The solver uses the weight of the XYZ-wing, because the W-wing needs a strong link and two cells that match, which a person finds about as late | Low. A choice, not a fact |
@@ -37,7 +37,8 @@ into `TECHNIQUE_ORDER`. A test checks that the ratings never decrease down the t
 | 19 | Jellyfish | 5.2 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 20 | Hidden quad | 5.4 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 
-- The epic research note gave the same numbers from memory. This check agrees with all of them.
+- The epic research note gave the same numbers from memory. This check agrees with the ratings that rows 7 to 12 name.
+- The naked quad, the hidden quad and the jellyfish have no golden test. Generated puzzles never reach them. Their finder tests and the fuzz test cover them.
 - SukakuExplainer is a fork of Sudoku Explainer. It adds an optional "revised rating": naked single 1.6,
   hidden pair 2.9, hidden triple 3.8. The solver uses the original ratings, so the order stays the
   order of Sudoku Explainer.

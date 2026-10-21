@@ -52,7 +52,7 @@ describe('technique fuzz', () => {
         for (const step of steps) {
           count++
           expect(step.technique).toBe(rank.technique)
-          expectWellFormed(step)
+          expectWellFormed(step, candidates)
           expect(step.placements.length + step.eliminations.length).toBeGreaterThan(0)
           for (const { cell, digit } of step.placements) {
             expect(board[cell]).toBe(0)

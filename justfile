@@ -31,7 +31,7 @@ test-ts:
 bench-core:
     pnpm --filter @sudoku/core bench
 
-# Measure how many generated puzzles the tier 1 techniques solve. It takes minutes and prints Markdown tables
+# Measure how many generated puzzles the techniques of the solver solve. It takes minutes and prints Markdown tables
 technique-coverage:
     pnpm --filter @sudoku/core technique-coverage
 
