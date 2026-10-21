@@ -6,10 +6,16 @@ import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
 import { countFrame, EMPTY_WINDOW } from '@/scan/utils/tracking.utils'
 import type { CaptureFrame } from '@/scan/utils/transition.utils'
-import { advance, advanceCapture, type Engine } from '@/scan/effects/engine'
+import {
+  advance,
+  advanceCapture,
+  type Engine,
+  formatLockReport,
+  type LockReport,
+  lockReport,
+} from '@/scan/effects/engine'
 import { DEFAULT_EFFECT, EFFECTS, effectAt } from '@/scan/effects/registry'
 import { makeDrawKit } from '@/scan/effects/kit'
-import { formatLockReport, type LockReport, lockReport } from '@/scan/effects/scene'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { devLog } from '@/utils/log.utils'
 import { LOCK_LOG_INTERVAL } from './EffectCanvas.constants'
@@ -89,8 +95,8 @@ export function EffectCanvas({
     }, true)
     const now = engine.get()
     if (now == null) return
-    // lockedAt equals t only in the frame of lock-on, so the quad crosses to the JS thread once.
-    if (captured == null && now.scene.lockedAt === t) {
+    // The tracker fires in the frame of lock-on only, so the quad crosses to the JS thread once.
+    if (captured == null && now.lockOn.fired) {
       const locked = frameQuad.get()
       if (locked != null) scheduleOnRN(onLock, locked)
       else if (__DEV__) scheduleOnRN(logLockWithoutQuad)
@@ -99,7 +105,7 @@ export function EffectCanvas({
       const last = lockLoggedAt.get()
       if (last < 0 || t - last >= LOCK_LOG_INTERVAL) {
         lockLoggedAt.set(t)
-        scheduleOnRN(logLock, lockReport(now.scene))
+        scheduleOnRN(logLock, lockReport(now))
       }
     }
     picture.set(

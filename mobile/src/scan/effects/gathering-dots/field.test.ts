@@ -1,7 +1,9 @@
 import { type Channels, transitionAt } from '@/scan/utils/transition.utils'
 import { intersections, isBoxCorner, pushOutside } from '@/scan/effects/common/geometry'
 import { spreadStep } from '@/scan/effects/common/spread'
+import { trackLock } from '@/scan/effects/engine'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
+import { createLockOn, type LockOn } from '@/scan/utils/lockOn.utils'
 import { createField, selectSpreadDots, spreadHomes, stepField, type FieldState } from './field'
 import type { Quad } from '@/utils/geometry.utils'
 import { invert, project, unitToQuad } from '@/utils/homography.utils'
@@ -31,13 +33,13 @@ function itemAt<T>(items: readonly T[], index: number): T {
 
 const VIEW = { width: 402, height: 874 }
 
-type World = { scene: Scene; field: FieldState }
+type World = { scene: Scene; field: FieldState; lockOn: LockOn }
 
 /** lockOn: false keeps the scene in its warm-up forever, so it never locks on and follows every move of the grid. */
 function world(lockOn = true): World {
-  const scene = createScene(VIEW)
-  if (!lockOn) scene.startedAt = Number.POSITIVE_INFINITY
-  return { scene, field: createField(VIEW) }
+  const tracker = createLockOn()
+  if (!lockOn) tracker.startedAt = Number.POSITIVE_INFINITY
+  return { scene: createScene(VIEW), field: createField(VIEW), lockOn: tracker }
 }
 
 function gridAt(x: number, y: number, size = 300): Quad {
@@ -55,9 +57,10 @@ function detection(quad: Quad | null): Quad | null {
   return [{ ...quad[0] }, { ...quad[1] }, { ...quad[2] }, { ...quad[3] }]
 }
 
-/** One frame: the scene first, then the field, as the engine does it. */
+/** One frame: the scene, the lock-on tracker, then the field, as the engine does it. */
 function frame(w: World, quad: Quad | null, t: number, reduce = false) {
   stepScene(w.scene, quad, t, reduce)
+  trackLock(w.lockOn, w.scene)
   stepField(w.field, w.scene)
   return w
 }
@@ -131,7 +134,7 @@ describe('stepField', () => {
     const grid = gridAt(50, 300)
     const scene = createScene(VIEW)
     for (let t = 0; t <= 1; t += 1 / 60) stepScene(scene, detection(grid), t, false)
-    const w = { scene, field: createField(VIEW) }
+    const w = { scene, field: createField(VIEW), lockOn: createLockOn() }
     frame(w, detection(grid), 1 + 1 / 60)
     expect(w.scene.event).toBe('none')
     expect(gathered(w)).toHaveLength(100)
