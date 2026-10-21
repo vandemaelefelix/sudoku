@@ -197,16 +197,27 @@ def _cell_row(record: dict[str, str]) -> CellRow:
 
 def read_cells(path: Path) -> dict[str, CellRow]:
     """Full cell id → its row, in file order. A missing file is empty. Raises ValueError when
-    the file does not parse or a row breaks the rules of the columns."""
-    return {row.cell_id: row for row in _read(path, CELL_FIELDS, _cell_row)}
+    the file does not parse, a row breaks the rules of the columns or an id is twice."""
+    found: dict[str, CellRow] = {}
+    for row in _read(path, CELL_FIELDS, _cell_row):
+        if row.cell_id in found:
+            raise ValueError(
+                f"{path.name} cannot be read ({stem_of(row.cell_id)} is twice). {RESTORE}"
+            )
+        found[row.cell_id] = row
+    return found
 
 
 def write_cells(path: Path, rows: Iterable[CellRow]) -> None:
     """Replace the file in one step. The rows are sorted by digit, then id. Raises ValueError,
-    before it writes, for a row that the reader would refuse."""
+    before it writes, for a row that the reader would refuse or an id that is twice."""
     columns = []
+    seen: set[str] = set()
     for row in rows:
         _check_cell_id(row.cell_id)
+        if row.cell_id in seen:
+            raise ValueError(f"{stem_of(row.cell_id)} is twice in the rows of cells.csv")
+        seen.add(row.cell_id)
         _check_kind(row.kind or "")
         _check_label_source(row.label_source)
         source = ("", "", "")

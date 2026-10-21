@@ -126,3 +126,22 @@ def test_one_pixel_id_for_a_file_and_for_an_array(tmp_path: Path):
     pixels = np.random.default_rng(0).integers(0, 256, (9, 7, 3), dtype=np.uint8)
     Image.fromarray(pixels).save(tmp_path / "cell.png")
     assert pixel_id(tmp_path / "cell.png") == pixel_id_of(pixels)
+
+
+def test_the_pixel_id_is_pinned_to_a_digest(tmp_path: Path):
+    # Computed with the `_cell_id` of pull_scans before the refactor: sha256 of "3x2" and the bytes.
+    pixels = (np.arange(18, dtype=np.uint8) * 7).reshape(2, 3, 3)
+    expected = "9757064244d34babcd5bf17f975cde266e5660f73599a598594ea049305164d9"
+    assert pixel_id_of(pixels) == expected
+    Image.fromarray(pixels).save(tmp_path / "cell.png")
+    assert pixel_id(tmp_path / "cell.png") == expected
+
+
+def test_a_table_with_an_id_twice_is_refused_by_the_reader_and_the_writer(tmp_path: Path):
+    path = tmp_path / "cells.csv"
+    path.write_text(HEADER + f"{A},7,,,,,\n{A},7,,,,,\n")
+    with pytest.raises(ValueError, match="is twice"):
+        read_cells(path)
+    with pytest.raises(ValueError, match="is twice"):
+        write_cells(tmp_path / "out.csv", [CellRow(A, "7", None, None)] * 2)
+    assert not (tmp_path / "out.csv").exists()
