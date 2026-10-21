@@ -3,6 +3,7 @@ import Storage from 'expo-sqlite/kv-store'
 import type { ReactNode } from 'react'
 import { Appearance } from 'react-native'
 import { UnistylesRuntime } from 'react-native-unistyles'
+import { INDICATOR_MS } from '@/settings/components/SegmentedControl'
 import { APPEARANCE_PREFERENCE_KEY, THEME_PREFERENCE_KEY } from '@/theme/preference'
 import { resetThemeSession } from '@/theme/session'
 import { ThemeTransitionContext, type ThemeTarget } from '@/theme/transition/useThemeTransition'
@@ -71,17 +72,17 @@ describe('with the cell wave', () => {
   function wrapper({ children }: { children: ReactNode }) {
     return <ThemeTransitionContext value={{ start }}>{children}</ThemeTransitionContext>
   }
-  const start = jest.fn<boolean, [ThemeTarget, () => void]>()
+  const start = jest.fn<void, [ThemeTarget, () => void, number?]>()
 
   beforeEach(() => start.mockReset())
 
   it('hands the wave the combined theme and applies it only when the wave says so', async () => {
     const covers: (() => void)[] = []
-    start.mockImplementation((_target, apply) => (covers.push(apply), true))
+    start.mockImplementation((_target, apply) => void covers.push(apply))
     const setTheme = jest.spyOn(UnistylesRuntime, 'setTheme')
     const { result } = renderHook(() => useThemePreference(), { wrapper })
     await act(async () => result.current.choose('bordeaux'))
-    expect(start).toHaveBeenCalledWith({ name: 'bordeaux', appearance: 'light' }, expect.any(Function))
+    expect(start).toHaveBeenCalledWith({ name: 'bordeaux', appearance: 'light' }, expect.any(Function), INDICATOR_MS)
     expect(result.current.preference).toBe('bordeaux')
     expect(setTheme).not.toHaveBeenCalled()
     await act(async () => covers[0]?.())
@@ -91,26 +92,17 @@ describe('with the cell wave', () => {
 
   it('plays the same wave when only the appearance changes, to the combined theme', async () => {
     const setTheme = jest.spyOn(UnistylesRuntime, 'setTheme')
-    start.mockImplementation((_target, apply) => (apply(), true))
+    start.mockImplementation((_target, apply) => apply())
     const { result } = renderHook(() => useThemePreference(), { wrapper })
     await act(async () => result.current.choose('forest'))
     start.mockClear()
     await act(async () => result.current.chooseAppearance('colour'))
-    expect(start).toHaveBeenCalledWith({ name: 'forest', appearance: 'colour' }, expect.any(Function))
+    expect(start).toHaveBeenCalledWith({ name: 'forest', appearance: 'colour' }, expect.any(Function), INDICATOR_MS)
     expect(setTheme).toHaveBeenLastCalledWith('forest-colour')
     expect(Storage.setItemAsync).toHaveBeenLastCalledWith(APPEARANCE_PREFERENCE_KEY, 'colour')
   })
 
-  it('changes nothing when the wave refuses a choice', async () => {
-    start.mockReturnValue(false)
-    const { result } = renderHook(() => useThemePreference(), { wrapper })
-    await act(async () => result.current.choose('forest'))
-    await act(async () => result.current.chooseAppearance('colour'))
-    expect(result.current.preference).toBe('cobalt')
-    expect(result.current.appearance).toBe('light')
-  })
-
-  it('plays no wave for the combination that is already on', async () => {
+  it('hands the wave nothing when the choice is the one already made', async () => {
     const { result } = renderHook(() => useThemePreference(), { wrapper })
     await act(async () => result.current.choose('cobalt'))
     await act(async () => result.current.chooseAppearance('light'))
@@ -120,32 +112,39 @@ describe('with the cell wave', () => {
   describe('Auto', () => {
     it('resolves Auto with a dark system to the Colour theme', async () => {
       jest.spyOn(Appearance, 'getColorScheme').mockReturnValue('dark')
-      start.mockReturnValue(true)
+      start.mockImplementation(() => undefined)
       const { result } = renderHook(() => useThemePreference(), { wrapper })
       await act(async () => result.current.chooseAppearance('auto'))
-      expect(start).toHaveBeenCalledWith({ name: 'cobalt', appearance: 'colour' }, expect.any(Function))
+      expect(start).toHaveBeenCalledWith({ name: 'cobalt', appearance: 'colour' }, expect.any(Function), INDICATOR_MS)
       expect(result.current.appearance).toBe('auto')
     })
 
-    it('plays no wave from Auto to Light while the system is light, because the look stays the same', async () => {
+    it('hands Auto to Light to the wave as the same look while the system is light, and saves it', async () => {
       jest.spyOn(Appearance, 'getColorScheme').mockReturnValue('light')
-      start.mockImplementation((_target, apply) => (apply(), true))
+      start.mockImplementation((_target, apply) => apply())
       const { result } = renderHook(() => useThemePreference(), { wrapper })
       await act(async () => result.current.chooseAppearance('auto'))
-      expect(start).not.toHaveBeenCalled()
       await act(async () => result.current.chooseAppearance('light'))
-      expect(start).not.toHaveBeenCalled()
+      expect(start).toHaveBeenLastCalledWith(
+        { name: 'cobalt', appearance: 'light' },
+        expect.any(Function),
+        INDICATOR_MS,
+      )
       expect(Storage.setItemAsync).toHaveBeenLastCalledWith(APPEARANCE_PREFERENCE_KEY, 'light')
     })
 
     it('keeps Auto for a colourway change and applies the look of the system', async () => {
       jest.spyOn(Appearance, 'getColorScheme').mockReturnValue('dark')
       const setTheme = jest.spyOn(UnistylesRuntime, 'setTheme')
-      start.mockImplementation((_target, apply) => (apply(), true))
+      start.mockImplementation((_target, apply) => apply())
       const { result } = renderHook(() => useThemePreference(), { wrapper })
       await act(async () => result.current.chooseAppearance('auto'))
       await act(async () => result.current.choose('forest'))
-      expect(start).toHaveBeenLastCalledWith({ name: 'forest', appearance: 'colour' }, expect.any(Function))
+      expect(start).toHaveBeenLastCalledWith(
+        { name: 'forest', appearance: 'colour' },
+        expect.any(Function),
+        INDICATOR_MS,
+      )
       expect(setTheme).toHaveBeenLastCalledWith('forest-colour')
     })
   })
