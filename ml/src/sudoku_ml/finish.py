@@ -7,8 +7,9 @@ import json
 from sudoku_ml.data_check import check_data, format_report
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
-from sudoku_ml.photo_import import read_detections, read_photos, write_detections
+from sudoku_ml.photo_import import read_detections, write_detections
 from sudoku_ml.status import write_status
+from sudoku_ml.tables import read_photos
 
 PROBLEMS_SHOWN = 5
 
@@ -52,7 +53,7 @@ def finish(store: LabelStore) -> dict:
     store.groups = {}
     detections = read_detections(paths.detections)
     if detections:
-        pending = {r["photo_id"] for r in read_photos(paths.photos_csv) if r["status"] == "pending"}
+        pending = {r.photo_id for r in read_photos(paths.photos_csv) if r.status == "pending"}
         kept = {k: v for k, v in detections.items() if k in pending}
         if not kept:
             paths.detections.unlink()

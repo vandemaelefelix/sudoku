@@ -3,8 +3,6 @@ row in `sudoku-photos.csv` and 81 cell images in `<images>/cells/`, with the lab
 `app-edited` or `app-unedited`. The record is checked against shared/scan-contract/ (SUD-07)."""
 
 import argparse
-import csv
-import hashlib
 import json
 import sys
 from decimal import Decimal
@@ -18,20 +16,24 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, is_valid_pair
 from sudoku_ml.data_paths import REPO_ROOT, DataPaths
 from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright, slice_cells, warp_grid
-from sudoku_ml.manifest import (
-    CELL_FIELDS,
+from sudoku_ml.tables import (
+    APP_SCAN,
     NO_KIND_FOLDERS,
-    csv_text,
+    CellRow,
+    PhotoRow,
+    format_corners,
     pixel_id,
-    read_cells_table,
-    write_atomic,
+    pixel_id_of,
+    read_cells,
+    read_photos,
+    stem_of,
+    write_cells,
+    write_photos,
 )
-from sudoku_ml.photo_import import format_corners, read_photos, write_photos
 
 SCHEMA = REPO_ROOT / "shared" / "scan-contract" / "scan-record.schema.json"
 FIXTURE_RECORDS = REPO_ROOT / "shared" / "fixtures" / "scan-records"
 PROFILE = "sudoku"  # the personal AWS account only (ADR-027)
-SOURCE = "app-scan"
 LICENCE = "player-contributed"
 SUM_TOLERANCE = 1e-3
 
@@ -87,13 +89,6 @@ def fixture_scan_ids() -> set[str]:
     return ids
 
 
-def _cell_id(image: np.ndarray) -> str:
-    """The pixel id of manifest.pixel_id, for an RGB array."""
-    digest = hashlib.sha256(f"{image.shape[1]}x{image.shape[0]}".encode())
-    digest.update(image.tobytes())
-    return digest.hexdigest()
-
-
 def _write_image(image: np.ndarray, path: Path, tmp: Path) -> None:
     """Cut outside cells/, then rename: a stop never leaves a misnamed cell (ADR-009)."""
     tmp.parent.mkdir(parents=True, exist_ok=True)
@@ -112,60 +107,48 @@ def _store_photo(jpeg: bytes, paths: DataPaths, scan_id: str) -> tuple[str, Path
         part.unlink(missing_ok=True)
         raise ValueError(f"the photo cannot be read ({error})") from error
     paths.photos.mkdir(parents=True, exist_ok=True)
-    stored = paths.photos / f"{photo_id[:16]}.jpg"
+    stored = paths.photos / f"{stem_of(photo_id)}.jpg"
     part.replace(stored)
     return photo_id, stored
 
 
-def _cell_rows(record: dict, photo_id: str, flat_cells: list[np.ndarray]):
-    """The new cells of one scan: (row of cells.csv, image, folder). A cell with an impossible
-    digit and kind pair is left out."""
+def _cell_rows(
+    record: dict, photo_id: str, flat_cells: list[np.ndarray]
+) -> list[tuple[CellRow, np.ndarray]]:
+    """The new cells of one scan: (row of cells.csv, image). A cell with an impossible digit and
+    kind pair is left out."""
     rows = []
     for index, (cell, image) in enumerate(zip(record["cells"], flat_cells, strict=True)):
         digit, kind = DIGIT_CLASSES[cell["finalDigit"]], KIND_CLASSES[cell["finalKind"]]
         if not is_valid_pair(digit, kind):
             continue
-        cell_id = _cell_id(image)
-        row = [
-            cell_id,
+        row = CellRow(
+            pixel_id_of(image),
             digit,
-            "" if digit in NO_KIND_FOLDERS else kind,
-            photo_id,
-            str(index // GRID_CELLS),
-            str(index % GRID_CELLS),
+            None if digit in NO_KIND_FOLDERS else kind,
+            (photo_id, index // GRID_CELLS, index % GRID_CELLS),
             "app-edited" if cell["edited"] else "app-unedited",
-        ]
+        )
         rows.append((row, image))
     return rows
 
 
-def _add_cells(paths: DataPaths, rows: list[tuple[list[str], np.ndarray]]) -> int:
+def _add_cells(paths: DataPaths, rows: list[tuple[CellRow, np.ndarray]]) -> int:
     """Write the images, then add the rows to cells.csv. Returns the number of new rows."""
-    known = read_cells_table(paths.cells_csv)
+    table = read_cells(paths.cells_csv)
     on_disk = {p.stem for p in paths.cells.glob("*/*.png")}
-    table = [[r[f] for f in CELL_FIELDS] for r in _raw_rows(paths)]
-    added, seen = 0, set(known)
+    added = 0
     for row, image in rows:
-        cell_id = row[0]
-        if cell_id in seen:
+        if row.cell_id in table:
             continue
-        seen.add(cell_id)
-        stem = cell_id[:16]
-        if stem not in on_disk:
-            target = paths.cells / row[1] / f"{stem}.png"
-            _write_image(image, target, paths.tmp / f"{stem}.png")
-        table.append(row)
+        name = stem_of(row.cell_id)
+        if name not in on_disk:
+            target = paths.cells / row.digit / f"{name}.png"
+            _write_image(image, target, paths.tmp / f"{name}.png")
+        table[row.cell_id] = row
         added += 1
-    table.sort(key=lambda r: (r[1], r[0]))
-    write_atomic(paths.cells_csv, csv_text(CELL_FIELDS, table))
+    write_cells(paths.cells_csv, table.values())
     return added
-
-
-def _raw_rows(paths: DataPaths) -> list[dict[str, str]]:
-    if not paths.cells_csv.exists():
-        return []
-    with paths.cells_csv.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle, strict=True))
 
 
 def _pull_one(item: dict, paths: DataPaths, bucket: ScanBucket, report: dict) -> bool:
@@ -196,19 +179,11 @@ def _pull_one(item: dict, paths: DataPaths, bucket: ScanBucket, report: dict) ->
     photos = read_photos(paths.photos_csv)
     cells = _cell_rows(record, photo_id, slice_cells(warp_grid(rgb, pixels)))
     report["cells"] += _add_cells(paths, cells)
-    if any(p["photo_id"] == photo_id for p in photos):
+    if any(p.photo_id == photo_id for p in photos):
         report["already_pulled"] += 1
         return True
     photos.append(
-        {
-            "photo_id": photo_id,
-            "file": stored.name,
-            "source": SOURCE,
-            "licence": LICENCE,
-            "attribution": "",
-            "status": "accepted",
-            "corners": format_corners(pixels),
-        }
+        PhotoRow(photo_id, stored.name, APP_SCAN, LICENCE, "", "accepted", format_corners(pixels))
     )
     write_photos(paths.photos_csv, photos)
     report["pulled"] += 1

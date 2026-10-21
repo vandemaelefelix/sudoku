@@ -10,10 +10,11 @@ from PIL import Image
 import sudoku_ml.train as train_module
 from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND, kind_index
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.dataset import load_cells, read_kinds
+from sudoku_ml.dataset import load_cells
 from sudoku_ml.fixtures import FIXTURE_SEED
 from sudoku_ml.journal import Line, append_records
-from sudoku_ml.manifest import pixel_id, write_cells_manifest
+from sudoku_ml.manifest import write_cells_manifest
+from sudoku_ml.tables import pixel_id, read_cells
 from sudoku_ml.train import (
     expected_calibration_error,
     fit_temperature,
@@ -155,8 +156,8 @@ def test_real_run_reads_the_cells_table_in_the_new_format(tmp_path: Path):
     )
     write_cells_manifest(data)
     data.journal.unlink()
-    assert read_kinds(data.cells_csv)[sevens[0][:16]] == "printed"
-    samples = load_cells(data.cells, data.cells_csv)
+    assert read_cells(data.cells_csv)[sevens[0]].kind == "printed"
+    samples = load_cells(data)
     assert sum(s.kind == kind_index("printed") for s in samples) == 12
     config = load_config(smoke_config(tmp_path, real_cells=True))
     run = train(config, data, artifacts_dir=tmp_path / "out")

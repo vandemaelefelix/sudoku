@@ -10,12 +10,10 @@ import torch
 from PIL import Image
 
 from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
-from sudoku_ml.dataset import read_ids
-from sudoku_ml.manifest import write_atomic
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import BT601, preprocess_cell, to_cell_image
+from sudoku_ml.tables import DIGIT_FOLDERS, read_cells, stem_of, write_atomic
 
-DIGIT_FOLDERS = tuple(str(d) for d in range(1, 10))
 # The model sees grayscale. Pen colour separates handwriting from print in most real cells.
 COLOUR_WEIGHT = 0.5
 _LUMA = np.array(BT601, dtype=np.float32)
@@ -104,7 +102,7 @@ def write_groups(data: DataPaths, run: Path, k: int = 30, seed: int = 0) -> int:
     grouped cells."""
     model = CellClassifier()
     model.load_state_dict(torch.load(run / "model.pt", map_location="cpu"))
-    ids = read_ids(data.cells_csv)
+    ids = {stem_of(cell_id): cell_id for cell_id in read_cells(data.cells_csv)}
     cells_dir = data.cells
     folders: dict[str, list[dict]] = {}
     for folder in DIGIT_FOLDERS:

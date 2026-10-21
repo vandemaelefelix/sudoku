@@ -8,8 +8,8 @@ from test_label_store import Clock
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.finish import finish
 from sudoku_ml.label_store import LabelStore
-from sudoku_ml.photo_import import read_photos
 from sudoku_ml.status import read_last_finish
+from sudoku_ml.tables import read_photos
 
 
 def tree(paths: DataPaths) -> dict[str, int]:
@@ -111,7 +111,7 @@ def test_after_finish_the_kinds_and_sources_come_from_the_table(tmp_path: Path):
 def test_finish_drops_the_detections_of_decided_photos_only(tmp_path: Path):
     paths = with_derived(tmp_path)
     pending = json.loads(paths.detections.read_text())
-    decided = next(r["photo_id"] for r in read_photos(paths.photos_csv) if r["status"] != "pending")
+    decided = next(r.photo_id for r in read_photos(paths.photos_csv) if r.status != "pending")
     stale = {"corners": [], "lines": [], "reason": "", "width": 1, "height": 1}
     paths.detections.write_text(json.dumps({**pending, decided: stale}))
     result = finish(LabelStore(paths, Clock()))

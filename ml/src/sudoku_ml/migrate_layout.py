@@ -19,8 +19,19 @@ from pathlib import Path
 
 from sudoku_ml.data_check import check_data, format_report
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.manifest import CELL_FIELDS, NO_KIND_FOLDERS, csv_text, pixel_id, write_atomic
-from sudoku_ml.photo_import import PHOTO_FIELDS, PHOTO_SUFFIXES, format_corners, parse_corners
+from sudoku_ml.tables import (
+    NO_KIND_FOLDERS,
+    PHOTO_SUFFIXES,
+    CellRow,
+    PhotoRow,
+    format_corners,
+    parse_cell_source,
+    parse_corners,
+    pixel_id,
+    stem_of,
+    write_cells,
+    write_photos,
+)
 
 OLD_DECISIONS = ("accepted", "rejected", "too-few-cells", "legacy")
 EXAMPLES = 10
@@ -29,8 +40,8 @@ REVIEW_NOTE = "Open Review items are closed by this migration. Run just suspects
 
 @dataclass
 class Plan:
-    cells: list[list] = field(default_factory=list)  # rows of cells.csv, sorted
-    photos: list[dict[str, str]] = field(default_factory=list)  # in the old order
+    cells: list[CellRow] = field(default_factory=list)
+    photos: list[PhotoRow] = field(default_factory=list)  # in the old order
     notes: list[str] = field(default_factory=list)  # facts for the person, not problems
 
 
@@ -88,7 +99,9 @@ def _sources(path: Path) -> dict[str, tuple[str, str, str]]:
     for row in _old_rows(path):
         source = (row["photo"], row["row"], row["col"])
         if sources.get(row["cell"], source) != source:
-            raise ValueError(f"cell {row['cell'][:16]} has two different sources in {path.name}")
+            raise ValueError(
+                f"cell {stem_of(row['cell'])} has two different sources in {path.name}"
+            )
         sources[row["cell"]] = source
     return sources
 
@@ -119,12 +132,12 @@ def _cells(datasets: Path, plan: Plan, prefer_log: bool) -> None:
                 mismatches.append((cell_id, digit, kind, from_log))
                 if prefer_log:
                     kind = from_log
-        plan.cells.append([cell_id, digit, kind, *sources.get(cell_id, ("", "", ""))])
+        source = parse_cell_source(*sources.get(cell_id, ("", "", "")))
+        plan.cells.append(CellRow(cell_id, digit, kind or None, source))
         listed.add(cell_id)
-    plan.cells.sort(key=lambda r: (r[1], r[0]))
     if mismatches and not prefer_log:
         examples = "; ".join(
-            f"{c[:16]} in {d}/: table {k or '(none)'}, log {lg or '(none)'}"
+            f"{stem_of(c)} in {d}/: table {k or '(none)'}, log {lg or '(none)'}"
             for c, d, k, lg in mismatches[:EXAMPLES]
         )
         raise ValueError(
@@ -139,7 +152,7 @@ def _cells(datasets: Path, plan: Plan, prefer_log: bool) -> None:
     if dropped:
         plan.notes.append(
             f"{len(dropped)} rows of cell-origins.csv name no cell of cells.csv, "
-            f"e.g. {dropped[0][:16]}. They are not migrated."
+            f"e.g. {stem_of(dropped[0])}. They are not migrated."
         )
 
 
@@ -157,7 +170,7 @@ def _photos(datasets: Path, plan: Plan) -> None:
         # The old Photos screen offered every photo without a decision: it was pending.
         status = decision["decision"] if decision else "pending"
         if decision and status not in OLD_DECISIONS:
-            raise ValueError(f"photo {row['id'][:16]}: unknown decision {status!r}")
+            raise ValueError(f"photo {stem_of(row['id'])}: unknown decision {status!r}")
         pending += status == "pending"
         corners = ""
         if status == "accepted":
@@ -165,17 +178,17 @@ def _photos(datasets: Path, plan: Plan) -> None:
                 corners = format_corners(decision.get("corners"))
                 parse_corners(corners)
             except (TypeError, ValueError):
-                no_corners.append(row["id"][:16])
+                no_corners.append(stem_of(row["id"]))
         plan.photos.append(
-            {
-                "photo_id": row["id"],
-                "file": row["file"],
-                "source": row["origin"],
-                "licence": row.get("licence") or "none",
-                "attribution": row.get("attribution") or "",
-                "status": status,
-                "corners": corners,
-            }
+            PhotoRow(
+                row["id"],
+                row["file"],
+                row["origin"],
+                row.get("licence") or "none",
+                row.get("attribution") or "",
+                status,
+                corners,
+            )
         )
     if no_corners:
         raise ValueError(
@@ -263,17 +276,18 @@ def verify_copies(source: Path, target: Path, files: list[Path], ids: dict[str, 
             continue
         actual = pixel_id(copy)
         expected = ids.get(copy.stem)
-        if (expected and actual != expected) or actual[:16] != copy.stem:
-            problems.append(f"{copy} has the pixel id {actual[:16]}, not {copy.stem}")
+        if (expected and actual != expected) or stem_of(actual) != copy.stem:
+            problems.append(f"{copy} has the pixel id {stem_of(actual)}, not {copy.stem}")
     return problems
 
 
 def _summary(plan: Plan, paths: DataPaths, old: Path) -> list[str]:
-    statuses = Counter(p["status"] for p in plan.photos)
-    digits = Counter(r[1] for r in plan.cells)
+    statuses = Counter(p.status for p in plan.photos)
+    digits = Counter(r.digit for r in plan.cells)
+    linked = sum(r.source is not None for r in plan.cells)
     return [
         f"From {old}",
-        f"Cells: {len(plan.cells)} rows, {sum(bool(r[3]) for r in plan.cells)} with a source. "
+        f"Cells: {len(plan.cells)} rows, {linked} with a source. "
         + ", ".join(f"{d} {n}" for d, n in sorted(digits.items())),
         f"Sudoku photos: {len(plan.photos)} rows. "
         + ", ".join(f"{s} {n}" for s, n in sorted(statuses.items())),
@@ -321,13 +335,13 @@ def apply(plan: Plan, paths: DataPaths, old: Path, force: bool) -> int:
     except ValueError as error:
         print(f"Refused: {error}. Remove the copy before the next run.", file=sys.stderr)
         return 1
-    write_atomic(paths.cells_csv, csv_text(CELL_FIELDS, plan.cells))
-    write_atomic(paths.photos_csv, csv_text(PHOTO_FIELDS, plan.photos))
+    write_cells(paths.cells_csv, plan.cells)
+    write_photos(paths.photos_csv, plan.photos)
     old_checks = old / "datasets" / "kind-check.jsonl"
     if old_checks.exists() and not paths.kind_checks.exists():
         shutil.copy2(old_checks, paths.kind_checks)
-    cell_ids = {r[0][:16]: r[0] for r in plan.cells}
-    photo_ids = {p["photo_id"][:16]: p["photo_id"] for p in plan.photos}
+    cell_ids = {stem_of(r.cell_id): r.cell_id for r in plan.cells}
+    photo_ids = {stem_of(p.photo_id): p.photo_id for p in plan.photos}
     old_photo_files = [
         p for p in sorted(old_photos.glob("*")) if p.suffix.lower() in PHOTO_SUFFIXES
     ]

@@ -10,10 +10,9 @@ from PIL import Image
 
 from sudoku_ml.data_check import check_data
 from sudoku_ml.data_paths import REPO_ROOT, DataPaths
-from sudoku_ml.dataset import group_ids, load_cells, split_by_group
-from sudoku_ml.manifest import read_cells_table
-from sudoku_ml.photo_import import read_photos
+from sudoku_ml.dataset import load_cells, read_real_cells, split_cells
 from sudoku_ml.pull_scans import main, pull_scans
+from sudoku_ml.tables import read_cells, read_photos
 
 FIXTURES = REPO_ROOT / "shared" / "fixtures" / "scan-records"
 SCAN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -100,19 +99,19 @@ def test_one_scan_makes_one_photo_row_and_81_cells(paths: DataPaths):
     report = pull_scans(paths, table, bucket)
     assert report["pulled"] == 1 and report["cells"] == 81
     [photo] = read_photos(paths.photos_csv)
-    assert (photo["source"], photo["licence"], photo["status"]) == (
+    assert (photo.source, photo.licence, photo.status) == (
         "app-scan",
         "player-contributed",
         "accepted",
     )
-    assert len(photo["corners"].split()) == 8
-    assert (paths.photos / photo["file"]).is_file()
-    rows = read_cells_table(paths.cells_csv)
+    assert len(photo.corners.split()) == 8
+    assert (paths.photos / photo.file).is_file()
+    rows = read_cells(paths.cells_csv)
     assert len(rows) == 81 == len(list(paths.cells.glob("*/*.png")))
     sources = {r.label_source for r in rows.values()}
     assert sources == {"app-edited", "app-unedited"}
     assert sum(r.label_source == "app-edited" for r in rows.values()) == 1
-    assert all(r.source and r.source[0] == photo["photo_id"] for r in rows.values())
+    assert all(r.source and r.source[0] == photo.photo_id for r in rows.values())
     assert table.pending() == []
     assert check_data(paths)["problems"] == []
 
@@ -121,7 +120,7 @@ def test_the_folder_and_kind_of_a_cell_are_the_final_answer(paths: DataPaths):
     changed = record(SCAN_A)
     changed["cells"][0] = {**changed["cells"][0], "finalDigit": 7, "finalKind": 2, "edited": True}
     pull_scans(paths, FakeTable([changed]), FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1)}))
-    rows = read_cells_table(paths.cells_csv)
+    rows = read_cells(paths.cells_csv)
     first = next(r for r in rows.values() if r.source[1:] == (0, 0))
     assert (first.digit, first.kind, first.label_source) == ("7", "handwritten", "app-edited")
     empties = [r for r in rows.values() if r.digit == "empty"]
@@ -161,7 +160,7 @@ def test_a_stopped_run_is_finished_by_the_next_one(paths: DataPaths):
     report = pull_scans(paths, FakeTable(table.items), bucket)
     assert report["already_pulled"] == 1 and report["pulled"] == 0
     assert len(read_photos(paths.photos_csv)) == 1
-    assert len(read_cells_table(paths.cells_csv)) == 81
+    assert len(read_cells(paths.cells_csv)) == 81
 
 
 def test_an_invalid_record_is_reported_and_left_pending(paths: DataPaths):
@@ -201,19 +200,18 @@ def test_unedited_scan_cells_are_left_out_of_training_by_default(paths: DataPath
         FakeTable([record(SCAN_A, edited_cells=(0, 1))]),
         FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1)}),
     )
-    assert len(load_cells(paths.cells, paths.cells_csv)) == 2
-    assert len(load_cells(paths.cells, paths.cells_csv, include_unedited=True)) == 81
+    assert len(load_cells(paths)) == 2
+    assert len(load_cells(paths, include_unedited=True)) == 81
 
 
 def test_the_cells_of_one_scan_stay_on_one_side_of_the_split(paths: DataPaths):
     items = [record(SCAN_A), record(SCAN_B, scanId=SCAN_B)]
     bucket = FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1), f"scans/{SCAN_B}.jpg": jpeg(2)})
     pull_scans(paths, FakeTable(items), bucket)
-    samples = load_cells(paths.cells, paths.cells_csv, include_unedited=True)
-    groups = group_ids(samples)
-    sides = split_by_group(groups, (0.5, 0.25, 0.25), seed=3)
-    for photo in {s.photo for s in samples}:
-        owners = {k for k, side in enumerate(sides) for i in side if samples[i].photo == photo}
+    cells = read_real_cells(paths)
+    sides = split_cells(cells, (0.5, 0.25, 0.25), seed=3, include_unedited=True)
+    for photo in {c.sample.photo for c in cells}:
+        owners = {k for k, side in enumerate(sides) for c in side if c.sample.photo == photo}
         assert len(owners) == 1
 
 
