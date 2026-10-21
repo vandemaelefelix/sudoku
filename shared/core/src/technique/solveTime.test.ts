@@ -18,7 +18,8 @@ it('solves 100 generated puzzles with all techniques within the limit (30 ms tar
       playThrough(givens)
       return performance.now() - start
     })
-    .toSorted((a, b) => a - b)
+    // oxlint-disable-next-line unicorn/no-array-sort -- sorts the fresh array of this map, and the es2022 lib has no toSorted
+    .sort((a, b) => a - b)
   const slowest = times.at(-1)!
   const median = times[times.length >> 1]!
   await annotate(
