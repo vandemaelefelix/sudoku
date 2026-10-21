@@ -9,9 +9,10 @@ from PIL import Image
 
 from sudoku_ml.data_check import check_data, format_report, main
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.manifest import pixel_id, write_cells_manifest
+from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import import_folder
+from sudoku_ml.tables import pixel_id
 
 FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 

@@ -6,13 +6,8 @@ from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import Line, append_records, read_journal
-from sudoku_ml.manifest import (
-    CELL_FIELDS,
-    pixel_id,
-    read_cells_table,
-    repair_and_write,
-    write_cells_manifest,
-)
+from sudoku_ml.manifest import repair_and_write, write_cells_manifest
+from sudoku_ml.tables import CELL_FIELDS, pixel_id, read_cells
 
 PHOTO = "f" * 64
 
@@ -117,7 +112,7 @@ def test_the_table_is_the_base_after_the_journal_is_gone(paths: DataPaths):
     paths.journal.unlink()
     write_cells_manifest(paths)
     assert rows(paths.cells_csv) == [row(seven, "7", "printed", PHOTO, 0, 1, "verified")]
-    table = read_cells_table(paths.cells_csv)
+    table = read_cells(paths.cells_csv)
     assert table[seven].kind == "printed" and table[seven].source == (PHOTO, 0, 1)
 
 
@@ -168,7 +163,7 @@ def test_a_bad_source_does_not_parse(paths: DataPaths, source: str):
         f"cell_id,digit,kind,photo_id,row,col,label_source\n{'a' * 64},7,,{source},\n"
     )
     with pytest.raises(ValueError, match="line 2"):
-        read_cells_table(paths.cells_csv)
+        read_cells(paths.cells_csv)
 
 
 def test_repair_drops_the_kind_of_a_cell_that_left_the_digit_folders(paths: DataPaths):

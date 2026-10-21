@@ -4,25 +4,24 @@ import numpy as np
 from PIL import Image
 
 from sudoku_ml.contract import UNKNOWN_KIND, kind_index
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import (
     cell_paths,
     dhash,
     group_ids,
     load_cells,
-    read_ids,
-    read_kinds,
     split_by_group,
     stack,
 )
 from sudoku_ml.synthetic import Sample
 
 
-def cell_tree(tmp_path: Path) -> Path:
-    cells = tmp_path / "cells"
+def cell_tree(tmp_path: Path) -> DataPaths:
+    data = DataPaths.under(tmp_path / "data", tmp_path)
     for label, colour in [("3", 10), ("empty", 200), ("unlabeled", 50), ("7", 30)]:
-        (cells / label).mkdir(parents=True)
-        Image.new("RGB", (71, 71), (colour,) * 3).save(cells / label / f"{colour:016x}.png")
-    return cells
+        (data.cells / label).mkdir(parents=True)
+        Image.new("RGB", (71, 71), (colour,) * 3).save(data.cells / label / f"{colour:016x}.png")
+    return data
 
 
 def pattern(seed: int) -> np.ndarray:
@@ -38,7 +37,7 @@ def test_cells_are_resized_and_labelled(tmp_path: Path):
 
 def test_unlabeled_is_never_loaded_and_missing_folder_is_empty(tmp_path: Path):
     assert len(load_cells(cell_tree(tmp_path))) == 3
-    assert load_cells(tmp_path / "nothing") == []
+    assert load_cells(DataPaths.under(tmp_path / "x", tmp_path / "nothing")) == []
 
 
 def test_kind_is_unknown_except_for_empty_cells(tmp_path: Path):
@@ -84,6 +83,7 @@ def test_stack_shapes():
 
 
 def write_manifest(path: Path, rows: list[tuple[str, str, str]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "cell_id,digit,kind,photo_id,row,col,label_source\n"
         + "".join(f"{i},{lab},{k},,,,\n" for i, lab, k in rows)
@@ -91,28 +91,19 @@ def write_manifest(path: Path, rows: list[tuple[str, str, str]]) -> None:
 
 
 def test_kinds_come_from_the_manifest(tmp_path: Path):
-    cells = cell_tree(tmp_path)
+    data = cell_tree(tmp_path)
     three, seven = f"{10:016x}" + "0" * 48, f"{30:016x}" + "0" * 48
-    manifest = tmp_path / "cells.csv"
-    write_manifest(manifest, [(three, "3", "handwritten"), (seven, "7", "unsure")])
-    kinds = {s.digit: s.kind for s in load_cells(cells, manifest)}
+    write_manifest(data.cells_csv, [(three, "3", "handwritten"), (seven, "7", "unsure")])
+    kinds = {s.digit: s.kind for s in load_cells(data)}
     assert kinds == {0: kind_index("none"), 3: kind_index("handwritten"), 7: UNKNOWN_KIND}
 
 
 def test_a_digit_cell_missing_from_the_manifest_has_no_kind(tmp_path: Path):
-    cells = cell_tree(tmp_path)
-    manifest = tmp_path / "cells.csv"
-    write_manifest(manifest, [])
-    assert {s.digit: s.kind for s in load_cells(cells, manifest)}[3] == UNKNOWN_KIND
-
-
-def test_ids_and_kinds_are_keyed_by_the_file_stem(tmp_path: Path):
-    manifest = tmp_path / "cells.csv"
-    write_manifest(manifest, [("ab" * 32, "3", "printed")])
-    assert read_ids(manifest) == {"ab" * 8: "ab" * 32}
-    assert read_kinds(manifest) == {"ab" * 8: "printed"}
+    data = cell_tree(tmp_path)
+    write_manifest(data.cells_csv, [])
+    assert {s.digit: s.kind for s in load_cells(data)}[3] == UNKNOWN_KIND
 
 
 def test_cell_paths_follow_the_load_order(tmp_path: Path):
-    cells = cell_tree(tmp_path)
-    assert [p.parent.name for p in cell_paths(cells)] == ["empty", "3", "7"]
+    data = cell_tree(tmp_path)
+    assert [p.parent.name for p in cell_paths(data.cells)] == ["empty", "3", "7"]

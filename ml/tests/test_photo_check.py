@@ -13,7 +13,8 @@ from sudoku_ml.flatten import load_upright, warp_grid
 from sudoku_ml.journal import current_sources, read_journal
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_check import MIN_CELLS, PhotoCheck, clear_temp
-from sudoku_ml.photo_import import import_folder, read_photos
+from sudoku_ml.photo_import import import_folder
+from sudoku_ml.tables import read_photos
 
 FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 
@@ -56,8 +57,8 @@ def test_accepting_a_full_grid_cuts_81_cells_and_records_them(tmp_path: Path):
     assert {s[0][:16] for s in sources.values()} == {stem}
     assert all(0 <= r < 9 and 0 <= c < 9 for _, r, c in sources.values())
     row = read_photos(paths.photos_csv)[0]
-    assert row["status"] == "accepted"
-    assert row["corners"] == "200.0 100.0 740.0 100.0 740.0 640.0 200.0 640.0"
+    assert row.status == "accepted"
+    assert row.corners == "200.0 100.0 740.0 100.0 740.0 640.0 200.0 640.0"
     assert check.pending() == [] and check.next() is None
 
 
@@ -84,16 +85,14 @@ def test_too_few_cells_inside_the_photo_cuts_nothing(tmp_path: Path):
     assert check.usable(stem, far) < MIN_CELLS
     assert check.accept(stem, far)["decision"] == "too-few-cells"
     assert unlabeled(paths) == []
-    assert [(r["status"], r["corners"]) for r in read_photos(paths.photos_csv)] == [
-        ("too-few-cells", "")
-    ]
+    assert [(r.status, r.corners) for r in read_photos(paths.photos_csv)] == [("too-few-cells", "")]
 
 
 def test_a_rejected_photo_cuts_nothing_and_leaves_the_queue(tmp_path: Path):
     check, paths, stem = checked(tmp_path, grid_photo())
     check.reject(stem)
     assert unlabeled(paths) == [] and check.pending() == []
-    assert read_photos(paths.photos_csv)[0]["status"] == "rejected"
+    assert read_photos(paths.photos_csv)[0].status == "rejected"
     assert not paths.journal.exists()
 
 

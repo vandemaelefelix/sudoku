@@ -9,11 +9,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.dataset import cell_paths, dhash, group_ids, split_by_group
+from sudoku_ml.dataset import dhash, read_real_cells, split_cells
 from sudoku_ml.journal import (
     KINDS,
     Line,
@@ -35,22 +34,18 @@ from sudoku_ml.manifest import (
     base_kinds,
     base_sources,
     check_image_store,
-    pixel_id,
-    read_cells_table,
     repair_lines,
     warn_unreadable,
 )
-from sudoku_ml.preprocess import to_cell_image
 from sudoku_ml.relabel import move_cells
 from sudoku_ml.status import read_last_finish
-from sudoku_ml.synthetic import Sample
+from sudoku_ml.tables import DIGIT_FOLDERS, pixel_id, read_cells, stem_of
 
 SCREEN_SIZE = 50
 DIGIT_SCREEN_SIZE = 100
 ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
 DIGIT_KINDS = ("handwritten", "all")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
-DIGIT_FOLDERS = tuple(str(d) for d in range(1, 10))
 _LABELLED = ("printed", "handwritten")
 PREDICTED = ("printed", "handwritten", "other")
 
@@ -95,18 +90,18 @@ class LabelStore:
         """Raises ValueError when cells.csv does not parse, or when the image store is missing
         or wrong: cells.csv holds the finished kinds and sources, so the store refuses to start
         without it (ADR-018)."""
-        table = read_cells_table(self.paths.cells_csv)
+        table = read_cells(self.paths.cells_csv)
         check_image_store(self.paths, table)
         self._base_kinds, self._base_sources = base_kinds(table), base_sources(table)
-        listed = {cell[:16]: cell for cell in table}
+        listed = {stem_of(cell): cell for cell in table}
         self._stem_ids = {**listed, **self._registered}
         self.folder: dict[str, str] = {}
         for path in self.paths.cells.glob("*/*.png"):
             if path.stem not in self._stem_ids:
                 # A stop before the manifest rewrite leaves cells that cells.csv does not list.
                 cell_id = pixel_id(path)
-                if cell_id[:16] != path.stem:
-                    raise ValueError(f"{path} is not named after its pixels ({cell_id[:16]})")
+                if stem_of(cell_id) != path.stem:
+                    raise ValueError(f"{path} is not named after its pixels ({stem_of(cell_id)})")
                 self._stem_ids[path.stem] = cell_id
             self.folder[self._stem_ids[path.stem]] = path.parent.name
         self.lines = read_journal(self.paths.journal)
@@ -146,7 +141,7 @@ class LabelStore:
     def _apply_digits(self, lines: list[Line]) -> None:
         # One move_cells call: it reads every cell folder once, and 16k cells make that slow.
         wanted = {
-            line.cell[:16]: line.new
+            stem_of(line.cell): line.new
             for line in lines
             if line.field == "digit" and line.old != line.new
         }
@@ -249,7 +244,7 @@ class LabelStore:
             "cells": [
                 {
                     "id": c,
-                    "stem": c[:16],
+                    "stem": stem_of(c),
                     "kind": kinds.get(c),
                     "start": kinds.get(c) or (self._guess(pre[c]) if predicted else start),
                     "least_sure": bool(sure[c] <= cutoff),
@@ -291,9 +286,9 @@ class LabelStore:
         for entry in entries:
             cell, kind = entry["id"], entry["kind"]
             if kind not in KINDS:
-                raise ValueError(f"{cell[:16]}: unknown kind {kind!r}")
+                raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
             if self.folder.get(cell) not in DIGIT_FOLDERS:
-                raise ValueError(f"{cell[:16]}: not in a digit folder")
+                raise ValueError(f"{stem_of(cell)}: not in a digit folder")
             old = kinds.get(cell)
             if old != kind or screen == "review":
                 lines.append(Line(t, self.session, action, cell, "kind", old, kind, screen))
@@ -337,8 +332,8 @@ class LabelStore:
     def register(self, cell_ids: list[str]) -> None:
         """Make new cells in unlabeled/ known. Ctrl-C rewrites cells.csv with them later."""
         for cell in cell_ids:
-            self._registered[cell[:16]] = cell
-            self._stem_ids[cell[:16]] = cell
+            self._registered[stem_of(cell)] = cell
+            self._stem_ids[stem_of(cell)] = cell
             self.folder[cell] = "unlabeled"
 
     def _prelabels(self) -> dict[str, dict]:
@@ -377,7 +372,7 @@ class LabelStore:
             "digit": digit,
             "kinds": kinds,
             "cells": [
-                {"id": c, "stem": c[:16], "p": pre[c]["p"]} for c in members[:DIGIT_SCREEN_SIZE]
+                {"id": c, "stem": stem_of(c), "p": pre[c]["p"]} for c in members[:DIGIT_SCREEN_SIZE]
             ],
             "left": len(members),
             "counts": {d: counts[d] for d in DIGIT_CLASSES},
@@ -392,9 +387,9 @@ class LabelStore:
         for entry in entries:
             cell, label = entry["id"], entry["digit"]
             if label not in ASSIGNABLE:
-                raise ValueError(f"{cell[:16]}: unknown label {label!r}")
+                raise ValueError(f"{stem_of(cell)}: unknown label {label!r}")
             if self.folder.get(cell) != "unlabeled":
-                raise ValueError(f"{cell[:16]}: not in unlabeled")
+                raise ValueError(f"{stem_of(cell)}: not in unlabeled")
             lines.append(Line(t, self.session, action, cell, "digit", "unlabeled", label, screen))
         self._apply_digits(lines)
         self._write(lines)
@@ -406,20 +401,19 @@ class LabelStore:
         """Near-duplicate pairs inside one folder, and the ids in the test split. Slow: reads
         every cell once, then caches."""
         if self._dups is None:
-            paths = cell_paths(self.paths.cells)
-            images = [to_cell_image(np.asarray(Image.open(p).convert("RGB"))) for p in paths]
-            ids = [self._stem_ids[p.stem] for p in paths]
-            folders = np.array([p.parent.name for p in paths])
-            hashes = np.array([dhash(image) for image in images], dtype=np.uint64)
+            cells = read_real_cells(self.paths)
+            ids = [self._stem_ids[c.path.stem] for c in cells]
+            folders = np.array([c.path.parent.name for c in cells])
+            hashes = np.array([dhash(c.sample.image) for c in cells], dtype=np.uint64)
             pairs = []
             for i in range(len(ids) - 1):
                 distance = np.bitwise_count(hashes[i + 1 :] ^ hashes[i])
                 close = (distance <= NEAR_DUPLICATE_BITS) & (folders[i + 1 :] == folders[i])
                 pairs += [(ids[i], ids[j]) for j in np.nonzero(close)[0] + i + 1]
-            groups = group_ids([Sample(image, 0, 0) for image in images])
             config = tomllib.loads(self.paths.config.read_text())
-            _, _, test = split_by_group(groups, tuple(config["split"]), config["seed"])
-            self._dups = (pairs, {ids[i] for i in test})
+            _, _, test = split_cells(cells, tuple(config["split"]), config["seed"])
+            test_ids = {self._stem_ids[c.path.stem] for c in test}
+            self._dups = (pairs, test_ids)
         return self._dups
 
     def _model_items(self, current) -> list:
@@ -451,7 +445,7 @@ class LabelStore:
                 (item.cell, item.field),
                 {
                     "id": item.cell,
-                    "stem": item.cell[:16],
+                    "stem": stem_of(item.cell),
                     "field": item.field,
                     "folder": self.folder[item.cell],
                     "kind": kinds.get(item.cell),
@@ -491,7 +485,7 @@ class LabelStore:
                 "error": f"Only {error.count} cells have a label that is 7 days old or older. "
                 f"The check needs {n}. A finished kind counts as old enough."
             }
-        return {"cells": [{"id": c, "stem": c[:16]} for c in cells]}
+        return {"cells": [{"id": c, "stem": stem_of(c)} for c in cells]}
 
     def check_answer(self, answers: list[dict]) -> dict:
         self._refresh()
@@ -501,12 +495,12 @@ class LabelStore:
         for answer in answers:
             cell, value = answer["id"], answer["answer"]
             if cell in checked:
-                raise ValueError(f"{cell[:16]}: already checked")
+                raise ValueError(f"{stem_of(cell)}: already checked")
             checked.add(cell)
             if value not in KINDS:
-                raise ValueError(f"{cell[:16]}: unknown kind {value!r}")
+                raise ValueError(f"{stem_of(cell)}: unknown kind {value!r}")
             if kinds.get(cell) not in _LABELLED:
-                raise ValueError(f"{cell[:16]}: has no printed or handwritten label")
+                raise ValueError(f"{stem_of(cell)}: has no printed or handwritten label")
             records.append(CheckLine(t, self.session, cell, kinds[cell], value))
         append_records(self.paths.kind_checks, records)
         self.checks.extend(records)

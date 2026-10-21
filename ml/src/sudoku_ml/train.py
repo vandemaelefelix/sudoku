@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from sudoku_ml.augment import augment
 from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, UNKNOWN_KIND, kind_index
 from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
-from sudoku_ml.dataset import group_ids, load_cells, split_by_group, stack
+from sudoku_ml.dataset import read_real_cells, split_cells, stack, training_cells
 from sudoku_ml.fixtures import FIXTURE_SEED
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.model import CellClassifier
@@ -162,7 +162,8 @@ def train(
         missing = [c for c in DIGIT_CLASSES if not (cells_dir / c).is_dir()]
         if missing:
             raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
-        real = load_cells(cells_dir, data.cells_csv, config.app_unedited)
+        cells = read_real_cells(data)
+        real = [c.sample for c in training_cells(cells, config.app_unedited)]
         if not real:
             raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
@@ -172,11 +173,14 @@ def train(
     synthetic_val = generate(max(2, config.synthetic_per_class // 10), config.seed + 1, fonts)
 
     if real:
-        train_idx, val_idx, test_idx = split_by_group(
-            group_ids(real), tuple(config.split), config.seed
+        train_cells, val_cells, test_cells = split_cells(
+            cells, tuple(config.split), config.seed, config.app_unedited
         )
-        real_train = [real[i] for i in train_idx]
-        eval_sets = {"val": [real[i] for i in val_idx], "test": [real[i] for i in test_idx]}
+        real_train = [c.sample for c in train_cells]
+        eval_sets = {
+            "val": [c.sample for c in val_cells],
+            "test": [c.sample for c in test_cells],
+        }
     else:
         real_train, eval_sets = [], {"val": synthetic_val, "test": synthetic_val}
 
