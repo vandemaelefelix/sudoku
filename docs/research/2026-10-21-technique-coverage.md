@@ -38,7 +38,7 @@ into `TECHNIQUE_ORDER`. A test checks that the ratings never decrease down the t
 | 20 | Naked quad | 5.0 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 21 | Jellyfish | 5.2 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
 | 22 | Hidden quad | 5.4 | Sudoku Explainer rating, as agreed for #200 | Medium. Not re-read in the source in this session |
-| 23 | X-chain | 6.5 | Sudoku Explainer rating, the base of the X-cycle (the "chain" family), as agreed for #201. The solver adds no extra for the length | Medium. Not re-read in the source in this session |
+| 23 | X-chain | 6.5 | Sudoku Explainer rating, the base of the X-cycle (the "chain" family), as agreed for #201. The solver adds no extra for the length | Low. We found no verified named rating. The solver uses 6.6, chosen just above the X-chain |
 | 24 | XY-chain | 6.6 | Sudoku Explainer rating, the base of the forcing chain, as agreed for #201. The solver adds no extra for the length | Medium. Not re-read in the source in this session |
 
 - The epic research note gave the same numbers from memory. This check agrees with the ratings that rows 7 to 12 name.
