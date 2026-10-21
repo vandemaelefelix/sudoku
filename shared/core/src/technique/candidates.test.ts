@@ -24,10 +24,11 @@ describe('computeCandidates', () => {
     const candidates = computeCandidates(board)
     const withoutFive = ALL & ~(1 << 4)
     const peers = new Set([36, 37, 38, 39, 41, 42, 43, 44, 4, 13, 22, 31, 49, 58, 67, 76, 30, 31, 32, 48, 49, 50])
-    for (let cell = 0; cell < 81; cell++) {
-      if (cell === 40) continue
-      expect(candidates[cell], `cell ${cell}`).toBe(peers.has(cell) ? withoutFive : ALL)
-    }
+    const expected = Array.from({ length: 81 }, (_, cell) => {
+      if (cell === 40) return 0
+      return peers.has(cell) ? withoutFive : ALL
+    })
+    expect(candidates).toEqual(Uint16Array.from(expected))
   })
 
   it('sets bit d - 1 for digit d', () => {
