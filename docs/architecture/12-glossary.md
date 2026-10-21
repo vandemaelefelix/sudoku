@@ -30,7 +30,7 @@ status: DRAFT
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
 | Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
-| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques and the tier 2 techniques: quads, fish, single-digit patterns and wings. The hint and the grading will use it (ADR-011, ADR-032) |
+| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques and the tier 2 techniques: quads, fish, single-digit patterns and wings. It also knows colouring, the unique rectangle and chains. The hint and the grading will use it (ADR-011, ADR-032) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
@@ -127,7 +127,11 @@ status: DRAFT
 | Pincer | One of the two cells of a wing that hold the shared digit between them. A pincer has two digits |
 | Base line | A row or column of a fish. The fish digit has two cells or more in it, and no more than the size of the fish |
 | Cover line | A column of a fish with base rows, or a row of a fish with base columns. The fish digit leaves the cells of a cover line outside the base lines |
-| Strong link | Two cells of a unit that are the only cells for a digit in that unit. Exactly one of them holds the digit. Skyscraper, two-string kite and W-wing use it |
+| Strong link | Two cells of a unit that are the only cells for a digit in that unit. Exactly one of them holds the digit. Skyscraper, two-string kite, W-wing, colouring and the X-chain use it |
+| Weak link | Two cells of a unit that both hold the digit as a candidate. At most one of them holds the digit in the solution. The X-chain uses it between two strong links |
+| Chain | A technique on a line of links. The digit leaves the cells that see both ends. The solver limits a chain to 12 cells and finds the shortest chains first. The X-chain uses one digit. It alternates strong links and weak links, and starts and ends with a strong link. The XY-chain joins cells with two digits. Each next cell shares a digit with the cell before it. The last cell holds the digit that the step removes, if the first cell does not |
+| Colouring | A technique on one digit. The strong links of the digit join cells into a group. Two colours split the group, and exactly one colour holds the digit. If two cells of one colour see each other (colour wrap), the digit leaves that colour. If a cell sees both colours (colour trap), the digit leaves that cell |
+| Unique rectangle | A technique for a puzzle with exactly one solution. Four cells lie in two rows, two columns and two boxes. Three of them hold the same two digits only. The fourth cell loses both digits, or the puzzle would have two solutions. The solver runs it only when the caller says that the puzzle has one solution (`unique: true`) |
 | Hint plan | The steps that one hint shows, from the board to a placed digit. It has at most 6 steps |
 | Rung | One level of detail in a step: look, technique, why or answer |
 | Hint card | The card that replaces the keypad while the player reads a hint. It shows one rung |
@@ -263,6 +267,6 @@ status: DRAFT
 | Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
 | Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
 | Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |
-| Step | One use of a technique. It lists the placements, the eliminations, the units, the pattern cells and the support cells |
+| Step | One use of a technique. It lists the placements, the eliminations, the units, the pattern cells and the support cells. A chain step also lists its links. A colouring step also lists its two colour groups |
 | Pattern cell | A cell that forms the technique in a step, such as one cell of a naked pair |
 | Support cell | A cell with a digit on the board that causes a step, such as the cell that blocks a digit in a hidden single |

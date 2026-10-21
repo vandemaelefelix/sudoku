@@ -61,11 +61,21 @@ describe('TECHNIQUE_ORDER', () => {
       'xyWing',
       'xyzWing',
       'wWing',
+      'uniqueRectangle',
+      'simpleColouring',
       'nakedQuad',
       'jellyfish',
       'hiddenQuad',
+      'xChain',
+      'xyChain',
     ])
     expect(TIER_1_ORDER).toHaveLength(10)
+  })
+
+  it('marks only the unique rectangle as valid for a puzzle with one solution', () => {
+    expect(TECHNIQUE_ORDER.filter((rank) => rank.needsUnique).map((rank) => rank.technique)).toEqual([
+      'uniqueRectangle',
+    ])
   })
 
   it('names a hidden single in a box before one in a row or column', () => {
@@ -87,6 +97,14 @@ describe('nextSteps', () => {
     const run = playThrough(generate('expert', 1).givens, TIER_1_ORDER)
     const { board, candidates } = run.final
     expect(nextSteps(candidates, board, TIER_1_ORDER)).toEqual([])
+  })
+
+  it('never plays the unique rectangle unless the caller says that the puzzle has one solution', () => {
+    const { givens } = generate('expert', 99)
+    const without = playThrough(givens)
+    const withUnique = playThrough(givens, undefined, { unique: true })
+    expect(without.steps.some((step) => step.technique === 'uniqueRectangle')).toBe(false)
+    expect(withUnique.steps.some((step) => step.technique === 'uniqueRectangle')).toBe(true)
   })
 
   it('finds nothing on an empty board', () => {
@@ -133,10 +151,10 @@ describe('every step of every position never contradicts the unique solution', (
         const board = [...puzzle.givens]
         const empty = board.flatMap((digit, index) => (digit === 0 ? [index] : []))
         for (const cell of shuffled(empty, random).slice(0, fill)) board[cell] = puzzle.solution[cell]!
-        const run = playThrough(board)
+        const run = playThrough(board, undefined, { unique: true })
         let checked = 0
         for (const { board: before, candidates } of run.positions) {
-          for (const step of nextSteps(candidates, before)) {
+          for (const step of nextSteps(candidates, before, undefined, { unique: true })) {
             checkStep(step, before, candidates, puzzle.solution)
             checked++
           }

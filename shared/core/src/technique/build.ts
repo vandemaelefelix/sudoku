@@ -2,6 +2,8 @@ import type { Digit } from '../game/types'
 import { sortedUnique } from './masks'
 import type { CellDigit, Step } from './types'
 
+type Structure = Pick<Step, 'links' | 'groups'>
+
 export function placementStep(
   technique: 'fullHouse' | 'hiddenSingle' | 'nakedSingle',
   cell: number,
@@ -27,6 +29,7 @@ export function eliminationStep(
   pattern: readonly number[],
   digits: readonly Digit[],
   eliminations: readonly CellDigit[],
+  structure: Structure = {},
 ): Step {
   // oxlint-disable-next-line unicorn/no-array-sort -- sorts a fresh copy, and the es2022 lib has no toSorted
   const sorted = [...eliminations].sort((a, b) => a.cell - b.cell || a.digit - b.digit)
@@ -38,5 +41,6 @@ export function eliminationStep(
     pattern,
     support: [],
     digits,
+    ...structure,
   }
 }

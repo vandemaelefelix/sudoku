@@ -9,6 +9,8 @@ type Golden = {
   board: string
   /** Candidates that earlier steps of the same solve removed. Key: cell. Value: digits. */
   struck?: Record<number, number[]>
+  /** True when the puzzle has one solution. Every generated puzzle has one. */
+  unique?: boolean
   steps: Step[]
 }
 
@@ -321,15 +323,185 @@ const GOLDEN: Golden[] = [
       },
     ],
   },
+  {
+    name: 'simple colouring: colour trap',
+    board: '241390670700201900390000102172800596639527814854009327420950761900002450517406209',
+    struck: { 11: [8], 22: [8], 67: [3, 8] },
+    steps: [
+      {
+        technique: 'simpleColouring',
+        placements: [],
+        eliminations: [{ cell: 17, digit: 8 }],
+        units: [13, 8, 25, 26, 6],
+        pattern: [13, 56, 59, 71, 76, 79],
+        support: [],
+        digits: [8],
+        groups: [
+          [13, 59, 79],
+          [56, 71, 76],
+        ],
+      },
+    ],
+  },
+  {
+    name: 'simple colouring: colour wrap',
+    board: '086039124123000690940126380312967548869200731000000269290000806631098402008602913',
+    struck: { 12: [5, 7], 13: [4, 5], 48: [4, 5], 49: [4, 5], 50: [4, 5], 57: [5, 7], 58: [5], 59: [4, 5] },
+    steps: [
+      {
+        technique: 'simpleColouring',
+        placements: [],
+        eliminations: [
+          { cell: 3, digit: 5 },
+          { cell: 17, digit: 5 },
+          { cell: 20, digit: 5 },
+          { cell: 41, digit: 5 },
+          { cell: 56, digit: 5 },
+          { cell: 70, digit: 5 },
+          { cell: 76, digit: 5 },
+        ],
+        units: [0, 18, 12, 19, 2, 7, 25, 1, 14, 17, 20, 16, 26, 13, 4, 22, 6],
+        pattern: [0, 3, 14, 17, 20, 26, 40, 41, 56, 61, 66, 70, 76],
+        support: [],
+        digits: [5],
+        groups: [
+          [0, 14, 26, 40, 61, 66],
+          [3, 17, 20, 41, 56, 70, 76],
+        ],
+      },
+      {
+        technique: 'simpleColouring',
+        placements: [],
+        eliminations: [{ cell: 56, digit: 7 }],
+        units: [0, 18, 12, 19, 2, 7, 1, 17, 20, 16, 26],
+        pattern: [0, 3, 13, 17, 20, 26, 61, 66, 70],
+        support: [],
+        digits: [7],
+        groups: [
+          [0, 13, 26, 61, 66],
+          [3, 17, 20, 70],
+        ],
+      },
+    ],
+  },
+  {
+    name: 'X-chain of three links',
+    board: '036000702209000500100002800391754268000920004020803900012405089050000420000208000',
+    struck: { 71: [6], 76: [6], 80: [6] },
+    steps: [
+      {
+        technique: 'xChain',
+        placements: [],
+        eliminations: [{ cell: 76, digit: 1 }],
+        units: [22, 4, 15],
+        pattern: [41, 42, 49, 78],
+        support: [],
+        digits: [1],
+        links: [
+          { from: 49, to: 41, digit: 1, strong: true },
+          { from: 41, to: 42, digit: 1, strong: false },
+          { from: 42, to: 78, digit: 1, strong: true },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'X-chain of five links',
+    board: '100090502059132074000060109700900403000004205405321700516843927980000041047019050',
+    struck: { 32: [8], 34: [8], 43: [6, 8] },
+    steps: [
+      {
+        technique: 'xChain',
+        placements: [],
+        eliminations: [{ cell: 34, digit: 6 }],
+        units: [0, 18, 9, 4, 22],
+        pattern: [1, 7, 9, 32, 36, 39],
+        support: [],
+        digits: [6],
+        links: [
+          { from: 7, to: 1, digit: 6, strong: true },
+          { from: 1, to: 9, digit: 6, strong: false },
+          { from: 9, to: 36, digit: 6, strong: true },
+          { from: 36, to: 39, digit: 6, strong: false },
+          { from: 39, to: 32, digit: 6, strong: true },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'XY-chain of six cells',
+    board: '193002087264000093785930042916327854478659231352000769039200478041003926027090315',
+    steps: [
+      {
+        technique: 'xyChain',
+        placements: [],
+        eliminations: [{ cell: 77, digit: 6 }],
+        units: [2, 15, 0, 12, 8],
+        pattern: [3, 6, 23, 24, 72, 75],
+        support: [],
+        digits: [6, 1, 4, 5, 8],
+        links: [
+          { from: 23, to: 24, digit: 1, strong: false },
+          { from: 24, to: 6, digit: 6, strong: false },
+          { from: 6, to: 3, digit: 5, strong: false },
+          { from: 3, to: 75, digit: 4, strong: false },
+          { from: 75, to: 72, digit: 8, strong: false },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'XY-chain with two eliminations',
+    board: '005490320009600540001503967950042106100065209700918435080179654590830712017250893',
+    steps: [
+      {
+        technique: 'xyChain',
+        placements: [],
+        eliminations: [
+          { cell: 29, digit: 3 },
+          { cell: 38, digit: 3 },
+        ],
+        units: [10, 5, 11],
+        pattern: [19, 37, 46, 47, 56],
+        support: [],
+        digits: [3, 2, 4, 6],
+        links: [
+          { from: 37, to: 19, digit: 4, strong: false },
+          { from: 19, to: 46, digit: 2, strong: false },
+          { from: 46, to: 47, digit: 6, strong: false },
+          { from: 47, to: 56, digit: 2, strong: false },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'unique rectangle',
+    board: '050000604760549210400000500070050936005003027020000051516300749200796185987415362',
+    unique: true,
+    steps: [
+      {
+        technique: 'uniqueRectangle',
+        placements: [],
+        eliminations: [
+          { cell: 20, digit: 3 },
+          { cell: 20, digit: 8 },
+        ],
+        units: [18, 20],
+        pattern: [11, 17, 20, 26],
+        support: [],
+        digits: [3, 8],
+      },
+    ],
+  },
 ]
 
 describe('nextSteps on golden positions', () => {
-  it.for(GOLDEN)('finds the $name', ({ board, struck, steps }) => {
+  it.for(GOLDEN)('finds the $name', ({ board, struck, steps, unique }) => {
     const cells = boardFromString(board)
     let candidates = computeCandidates(cells)
     for (const [cell, digits] of Object.entries(struck ?? {})) {
       candidates = strike(candidates, [Number(cell)], digits)
     }
-    expect(nextSteps(candidates, cells)).toEqual(steps)
+    expect(nextSteps(candidates, cells, undefined, { unique })).toEqual(steps)
   })
 })

@@ -12,10 +12,14 @@ function check(condition: boolean, rule: string, step: Step): void {
 
 const WINGS: ReadonlySet<Step['technique']> = new Set(['xyWing', 'xyzWing', 'wWing'])
 
-/** Wings list the pivot first and the removed digit first. Every other list is sorted. Throws for a step that breaks a rule. */
+/**
+ * Wings list the pivot first and the removed digit first. An XY-chain lists the removed digit first.
+ * Every other list is sorted. The two colour groups are sorted too. Throws for a step that breaks a rule.
+ */
 export function expectWellFormed(step: Step, candidates?: Candidates): void {
-  const unordered = WINGS.has(step.technique)
-  if (unordered) {
+  const unorderedPattern = WINGS.has(step.technique)
+  const unorderedDigits = unorderedPattern || step.technique === 'xyChain'
+  if (unorderedPattern) {
     for (const { digit } of step.eliminations) check(digit === step.digits[0], 'a wing removes its first digit', step)
     if (candidates && step.technique !== 'wWing') {
       const pivotSize = bitCount(candidates[step.pattern[0]!]!)
@@ -29,12 +33,11 @@ export function expectWellFormed(step: Step, candidates?: Candidates): void {
     'a unit is from 0 to 26',
     step,
   )
-  if (unordered) {
-    check(new Set(step.pattern).size === step.pattern.length, 'the pattern cells are unique', step)
-    check(new Set(step.digits).size === step.digits.length, 'the digits are unique', step)
-  } else {
-    check(isSortedAndUnique(step.pattern), 'the pattern cells are sorted', step)
-    check(isSortedAndUnique(step.digits), 'the digits are sorted', step)
-  }
+  if (unorderedPattern) check(new Set(step.pattern).size === step.pattern.length, 'the pattern cells are unique', step)
+  else check(isSortedAndUnique(step.pattern), 'the pattern cells are sorted', step)
+  if (unorderedDigits) check(new Set(step.digits).size === step.digits.length, 'the digits are unique', step)
+  else check(isSortedAndUnique(step.digits), 'the digits are sorted', step)
   check(isSortedAndUnique(step.support), 'the support cells are sorted', step)
+  for (const group of step.groups ?? []) check(isSortedAndUnique(group), 'a colour group is sorted', step)
+  for (const link of step.links ?? []) check(step.pattern.includes(link.from), 'a link starts at a pattern cell', step)
 }
