@@ -141,6 +141,7 @@ status: DRAFT
 | Route | One screen that the app can show, at one path, such as `/game`. A file in `src/app/` defines it (ADR-016) |
 | Route file | A file in `src/app/` that renders one screen from a feature folder and nothing else (ADR-016) |
 | Native stack | The stack of screens that uses the iOS screen stack: the push animation and the swipe back. Expo Router gives it (ADR-016) |
+| Game session | One game in progress, as plain TypeScript without React: `createGameSession` in `mobile/src/game/utils/gameSession.utils.ts`. It owns the session reducer, the clock, the pause when the app leaves the foreground and the save snapshot. `useGameSession` reads it and gives it the one `AppState` listener |
 | Save queue | The queue in front of `PuzzleRepository.save`. One write runs at a time, and only the newest game waits |
 | Pause layer | The layer over the grid while a game is paused. It says "Paused" and "Tap to resume". It hides every digit and note |
 | Correction pad | The edit pad on the correction screen: a Given and Entry switch, the keys 1 to 9 and Clear |

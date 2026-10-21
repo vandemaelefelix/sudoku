@@ -23,6 +23,35 @@ export type SavedGame = {
 
 const STATUSES: readonly GameStatus[] = ['playing', 'paused', 'lost', 'won']
 
+/**
+ * Every Game field, with whether a change of it asks for a save while the game runs. The type makes a new
+ * Game field fail the typecheck here until someone decides. The selected cell must stay free of writes
+ * and the time is saved when the app leaves (QR-11), so neither triggers a save.
+ */
+const SAVE_TRIGGER: Record<keyof Game, boolean> = {
+  givens: true,
+  solution: true,
+  entries: true,
+  startEntries: true,
+  notes: true,
+  selected: false,
+  mistakes: true,
+  hintsUsed: true,
+  playedMs: false,
+  status: true,
+  undoSteps: true,
+}
+
+const TRIGGER_FIELDS = (Object.keys(SAVE_TRIGGER) as (keyof Game)[]).filter((field) => SAVE_TRIGGER[field])
+
+/**
+ * True when `next` differs from `previous` in data that a resume needs and that cannot wait for the app to
+ * leave. The check compares by identity: an action that changes nothing returns the same field.
+ */
+export function needsSave(previous: Game, next: Game): boolean {
+  return TRIGGER_FIELDS.some((field) => previous[field] !== next[field])
+}
+
 export function toSavedGame(game: Game): SavedGame {
   return {
     version: SAVED_GAME_VERSION,

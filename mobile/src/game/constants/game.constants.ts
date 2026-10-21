@@ -3,3 +3,9 @@ export const SAMPLE_GIVENS = '53007000060019500009800006080006000340080300170002
 
 /** How often the clock reports the elapsed time, in milliseconds. */
 export const CLOCK_INTERVAL_MS = 1000
+
+/**
+ * The most time that one clock report counts, in milliseconds. iOS can suspend JavaScript before
+ * the pause on AppState stops the clock. The first report after the return then holds the suspended time.
+ */
+export const MAX_ELAPSED_MS = 2 * CLOCK_INTERVAL_MS

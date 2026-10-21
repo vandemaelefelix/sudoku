@@ -1,2 +1,2 @@
-export { useGameSession } from './useGameSession'
-export type { GameSession } from './useGameSession'
+export { GameSaveContext, useGameSession } from './useGameSession'
+export type { GameSessionView } from './useGameSession'

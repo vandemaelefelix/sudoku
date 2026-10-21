@@ -1,7 +1,9 @@
 import { act, renderHook } from '@testing-library/react-native'
+import type { ReactNode } from 'react'
 import { AppState, type AppStateStatus } from 'react-native'
+import type { Game } from '@sudoku/core'
 import { sampleStart } from '@/game/utils/sample.utils'
-import { useGameSession } from './useGameSession'
+import { GameSaveContext, useGameSession } from './useGameSession'
 
 beforeEach(() => jest.useFakeTimers())
 afterEach(() => {
@@ -9,39 +11,24 @@ afterEach(() => {
   jest.useRealTimers()
 })
 
-it('plays a number through its actions and records the move', () => {
+function captureAppState() {
+  const listeners: ((state: AppStateStatus) => void)[] = []
+  const remove = jest.fn()
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
+    listeners.push(handler as (state: AppStateStatus) => void)
+    return { remove }
+  })
+  return { listeners, remove }
+}
+
+it('shows the time played and the board to its readers', () => {
   const { result } = renderHook(() => useGameSession(sampleStart()))
   act(() => result.current.actions.select(2))
   act(() => result.current.actions.digit(4))
+  act(() => jest.advanceTimersByTime(2000))
   expect(result.current.state.board.entries[2]).toBe(4)
   expect(result.current.state.move).toMatchObject({ kind: 'number' })
-})
-
-it('counts the time played while playing, and not while paused', () => {
-  const { result } = renderHook(() => useGameSession(sampleStart()))
-  act(() => jest.advanceTimersByTime(2000))
   expect(result.current.playedMs).toBe(2000)
-  act(() => result.current.actions.pause())
-  act(() => jest.advanceTimersByTime(5000))
-  expect(result.current.playedMs).toBe(2000)
-})
-
-it('counts the time since the last clock report when the player pauses', () => {
-  const { result } = renderHook(() => useGameSession(sampleStart()))
-  act(() => jest.advanceTimersByTime(2500))
-  act(() => result.current.actions.pause())
-  expect(result.current.playedMs).toBe(2500)
-})
-
-it('keeps the play time over many short plays between pauses', () => {
-  const { result } = renderHook(() => useGameSession(sampleStart()))
-  for (let round = 0; round < 60; round += 1) {
-    act(() => jest.advanceTimersByTime(900))
-    act(() => result.current.actions.pause())
-    act(() => jest.advanceTimersByTime(100))
-    act(() => result.current.actions.resume())
-  }
-  expect(result.current.playedMs).toBe(54_000)
 })
 
 it('keeps the same state object on a clock tick', () => {
@@ -60,54 +47,89 @@ it('keeps the same actions object between renders', () => {
   expect(result.current.actions).toBe(first)
 })
 
-function captureAppState() {
-  const listener = { change: (_state: AppStateStatus) => undefined as void }
-  const remove = jest.fn()
-  jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
-    listener.change = handler as (state: AppStateStatus) => void
-    return { remove }
-  })
-  return { listener, remove }
-}
-
 it.each<AppStateStatus>(['inactive', 'background'])('pauses the game when the app becomes %s', (state) => {
-  const { listener } = captureAppState()
+  const { listeners } = captureAppState()
   const { result } = renderHook(() => useGameSession(sampleStart()))
   act(() => jest.advanceTimersByTime(2000))
-  act(() => listener.change(state))
+  act(() => listeners.forEach((listener) => listener(state)))
   expect(result.current.state.board.status).toBe('paused')
   act(() => jest.advanceTimersByTime(60_000))
   expect(result.current.playedMs).toBe(2000)
 })
 
-it('keeps the play time when the app flips between active and inactive', () => {
-  const { listener } = captureAppState()
+it('keeps the game paused when the app comes back, until the player resumes', () => {
+  const { listeners } = captureAppState()
   const { result } = renderHook(() => useGameSession(sampleStart()))
-  for (let round = 0; round < 10; round += 1) {
-    act(() => jest.advanceTimersByTime(700))
-    act(() => listener.change('inactive'))
-    act(() => listener.change('active'))
-    act(() => result.current.actions.resume())
-  }
-  expect(result.current.playedMs).toBe(7000)
-})
-
-it('stays paused when the app comes back, until the player resumes', () => {
-  const { listener } = captureAppState()
-  const { result } = renderHook(() => useGameSession(sampleStart()))
-  act(() => listener.change('background'))
-  act(() => listener.change('active'))
+  act(() => listeners.forEach((listener) => listener('background')))
+  act(() => listeners.forEach((listener) => listener('active')))
   act(() => jest.advanceTimersByTime(5000))
   expect(result.current.state.board.status).toBe('paused')
-  expect(result.current.playedMs).toBe(0)
   act(() => result.current.actions.resume())
   act(() => jest.advanceTimersByTime(1000))
   expect(result.current.playedMs).toBe(1000)
 })
 
-it('stops the AppState subscription on unmount', () => {
-  const { remove } = captureAppState()
-  const { unmount } = renderHook(() => useGameSession(sampleStart()))
+it('adds one AppState listener, and removes it on unmount', () => {
+  const { listeners, remove } = captureAppState()
+  const { unmount } = renderHook(() => useGameSession(sampleStart()), {
+    wrapper: ({ children }: { children: ReactNode }) => <GameSaveContext value={jest.fn()}>{children}</GameSaveContext>,
+  })
+  expect(listeners).toHaveLength(1)
   unmount()
   expect(remove).toHaveBeenCalledTimes(1)
+})
+
+function setup() {
+  const save = jest.fn<void, [Game]>()
+  const wrapper = ({ children }: { children: ReactNode }) => <GameSaveContext value={save}>{children}</GameSaveContext>
+  return { save, ...renderHook(() => useGameSession(sampleStart()), { wrapper }) }
+}
+
+describe('with a save from the play screen', () => {
+  it('saves the game after a move, and not after a selection or a tick', () => {
+    const { save, result } = setup()
+    act(() => result.current.actions.select(2))
+    act(() => jest.advanceTimersByTime(2000))
+    expect(save).not.toHaveBeenCalled()
+    act(() => result.current.actions.digit(4))
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves the time played when the screen closes', () => {
+    const { save, unmount } = setup()
+    act(() => jest.advanceTimersByTime(7000))
+    unmount()
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ playedMs: 7000 }))
+  })
+
+  it('saves the paused game with the exact time played, once, when the app leaves the foreground', () => {
+    const { listeners } = captureAppState()
+    const { save } = setup()
+    act(() => jest.advanceTimersByTime(2500))
+    act(() => listeners.forEach((listener) => listener('background')))
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'paused', playedMs: 2500 }))
+  })
+
+  it('saves nothing when the app comes back to the foreground', () => {
+    const { listeners } = captureAppState()
+    const { save } = setup()
+    act(() => listeners.forEach((listener) => listener('background')))
+    act(() => listeners.forEach((listener) => listener('active')))
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('counts the time once when the save function changes', () => {
+    const first = jest.fn<void, [Game]>()
+    const second = jest.fn<void, [Game]>()
+    let current = first
+    const { result, rerender } = renderHook(() => useGameSession(sampleStart()), {
+      wrapper: ({ children }: { children: ReactNode }) => <GameSaveContext value={current}>{children}</GameSaveContext>,
+    })
+    act(() => jest.advanceTimersByTime(1000))
+    current = second
+    rerender({})
+    act(() => jest.advanceTimersByTime(2000))
+    expect(result.current.playedMs).toBe(3000)
+  })
 })

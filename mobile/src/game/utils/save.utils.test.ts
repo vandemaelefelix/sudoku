@@ -1,5 +1,5 @@
-import { createGame, pause, place, select, tick, toggleNote, type Digit, type Game } from '@sudoku/core'
-import { createSaveQueue, needsSave } from './save.utils'
+import { createGame, place, select, type Digit, type Game } from '@sudoku/core'
+import { createSaveQueue } from './save.utils'
 import { sampleStart } from './sample.utils'
 
 // Cell 2 is empty in the canvas puzzle. Its solution is 4.
@@ -7,28 +7,6 @@ const OPEN = 2
 const fresh = () => createGame(sampleStart())
 /** Three wrong numbers end the game. */
 const lostGame = () => [1, 2, 3].reduce((game, digit) => place(game, digit as Digit).game, select(fresh(), OPEN))
-
-describe('needsSave', () => {
-  it('a selection alone does not need a save', () => {
-    const game = fresh()
-    expect(needsSave(game, select(game, OPEN))).toBe(false)
-  })
-
-  it('a clock tick alone does not need a save', () => {
-    const game = fresh()
-    expect(needsSave(game, tick(game, 1000))).toBe(false)
-  })
-
-  it.each([
-    ['a number', (game: Game) => place(select(game, OPEN), 4).game],
-    ['a wrong number', (game: Game) => place(select(game, OPEN), 5).game],
-    ['a note', (game: Game) => toggleNote(select(game, OPEN), 3).game],
-    ['a pause', (game: Game) => pause(game)],
-  ])('%s needs a save', (_name, act) => {
-    const game = fresh()
-    expect(needsSave(game, act(game))).toBe(true)
-  })
-})
 
 function deferredWrites() {
   const writes: { game: Game; finish: () => void; fail: (error: Error) => void }[] = []
