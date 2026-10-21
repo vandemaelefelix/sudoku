@@ -63,7 +63,7 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
     top-left box".
 11. **Five highlight roles.** Each role is a shape plus a colour: focus unit, pattern cell,
     support digit, struck candidate and target cell.
-12. **Techniques.** Tier 1 comes first (#193). Tier 2 follows (#197).
+12. **Techniques.** The tier 1 techniques come first. The tier 2 techniques follow.
 
     | Tier | Technique | Highlights |
     | --- | --- | --- |
@@ -84,7 +84,11 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
     `technique`, `placements`, `eliminations`, `units`, `pattern`, `support` and `digits`.
     `digits` holds the digits of a pair or a triple. The hint plan and the highlight code read
     only these fields.
-14. **Clean-room code.** The developer reads HoDoKu (GPL) and SudokuWiki for the logic only.
+14. **An open hint ends in these cases:** the player fills the answer or places the target
+    digit, closes the card, taps Undo, pauses, changes the board so that the plan is stale, or
+    the game ends. Undo never changes the hints used. A counted answer stays counted. A pause
+    ends the hint. The game does not save a hint in progress.
+15. **Clean-room code.** The developer reads HoDoKu (GPL) and SudokuWiki for the logic only.
     The code copies nothing from them.
 
 `@sudoku/core` holds the solver and the hint plan (SUD-04). The screen only draws them.
@@ -95,7 +99,7 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
   the old meaning: one cell filled.
 - The best time and the flawless win become easier to reach, because rungs 1 to 3 are free.
 - The solver must be deterministic, so Vitest can pin the hint of a given board.
-- The v1 random hint stays until the hint card ships (#196).
+- The v1 random hint stays until the hint card ships.
 - Every technique needs a text for four rungs and a set of highlights. Tier 2 adds code, not design.
 
 ## Reassessment Triggers
@@ -103,4 +107,4 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
 - Players tap "Show answer" in most hints. Rethink the rungs.
 - Players use rungs 1 to 3 to find the answer, and then claim a best time. Count rung 3.
 - A hint that needs more than 6 steps is common. Raise the limit or add tier 3 techniques.
-- The grading by technique (#53) changes the order of the techniques.
+- The grading by technique changes the order of the techniques.

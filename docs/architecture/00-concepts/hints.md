@@ -10,7 +10,9 @@ concept: hints
 The Hint tool must coach. A hint that only gives a digit teaches nothing. A good hint shows
 where to look, names the technique and explains it. The digit comes last. The player can stop at
 any rung and find the digit alone. This serves the learning goal of the project (F-07, quality
-goal 5). All rules live in `@sudoku/core` (SUD-04). The screen only draws them.
+goal 5).
+
+All rules live in `@sudoku/core` (SUD-04). The screen only draws them.
 [ADR-032](../adr/adr-032-hints-that-teach.md) records the decision.
 
 ## What
@@ -65,10 +67,12 @@ The technique table, with the roles of each technique, is in ADR-032 decision 12
 
 ### Special cases
 
-- **A wrong entry.** The hint starts with one card: "Erase it first". The player erases the
-  entry. Then the player taps Hint again. This card does not count.
-- **The fallback.** When no technique fits, the card says so. It reveals the empty cell with the
-  fewest candidates. This hint counts once.
+- **A wrong entry.** The hint starts with one card: "Erase it first". The card has two
+  buttons. "Erase it" erases the entry and ends the hint. Close ends the hint and leaves the
+  entry. The player taps Hint again for the real hint. This card does not count.
+- **The fallback.** The planner decides it before the card opens. It applies when no technique
+  fits, or when no placement appears within 6 steps. The card says so. It reveals the empty cell
+  with the fewest candidates. This hint counts once, when the fallback card shows.
 
 ### The count rule
 
@@ -77,11 +81,12 @@ A game counts a hint only when it shows an answer. `hintsUsed` then means "answe
 | Event | Counts |
 | --- | --- |
 | Rung 1, 2 or 3 | No |
-| The answer rung shows | Once |
+| The answer rung opens | Once |
 | The player taps "Fill it" | Once |
 | The fallback shows | Once |
 | The "Erase it first" card | No |
 | The same answer again in one game session | No |
+| Undo after a counted answer | The count stays |
 
 Hints have no limit and no price. Nothing about them is tracked or sent (SUD-02).
 
@@ -91,8 +96,9 @@ Hints have no limit and no price. Nothing about them is tracked or sent (SUD-02)
 stateDiagram-v2
     [*] --> Erase: Hint, an entry is wrong
     [*] --> Look: Hint
-    [*] --> Fallback: Hint, no technique fits
-    Erase --> [*]: the player erases the entry
+    [*] --> Fallback: Hint, the planner finds no plan
+    Erase --> [*]: Erase it
+    Erase --> [*]: Close
     Look --> Technique: Next
     Technique --> Why: Next
     Why --> Answer: Next
@@ -103,26 +109,42 @@ stateDiagram-v2
     Technique --> Strip: I'll do it
     Why --> Strip: I'll do it
     Strip --> Look: strip tapped
-    Answer --> [*]: Fill it, counts once
-    Strip --> [*]: the player places the target digit
+    Answer --> Look: Next step, an elimination step
+    Answer --> [*]: Fill it, a placement step
     Strip --> Look: elimination applied, next step
-    Fallback --> [*]: the cell is revealed, counts once
-    Look --> [*]: Close
-    Technique --> [*]: Close
-    Why --> [*]: Close
-    Answer --> [*]: Close, counts once
-    Strip --> [*]: Close
+    Strip --> [*]: the player places the target digit
+    Fallback --> [*]: Fill it
+    Erase --> [*]: Undo
+    Look --> [*]: Close or Undo
+    Technique --> [*]: Close or Undo
+    Why --> [*]: Close or Undo
+    Answer --> [*]: Close or Undo
+    Strip --> [*]: Close or Undo
+    Fallback --> [*]: Close or Undo
 ```
 
 Look, Technique, Why and Answer show the hint card. Strip shows the hint strip. A tap on the strip
 returns the card at the rung where the player left it.
 
+A hint ends in these cases:
 
-- A pause keeps the hint open. The timer stops.
-- When the player changes the board so that the plan is stale, the hint closes. A new Hint
+- **Fill it, or the target digit placed.** The hint ends at a placed digit.
+- **Close.** The player closes the card or the strip.
+- **Undo.** Undo ends an open hint. Undo never changes the hints used, as it never changes the
+  mistakes. A counted answer stays counted.
+- **A pause.** A pause ends the hint. The game does not save a hint in progress. A new Hint
   builds a new plan.
-- When the player places the target digit alone, the hint closes. It counts only if the answer
-  rung was shown.
+- **A stale plan.** The player changes the board so that the plan no longer fits. The hint
+  ends. A new Hint builds a new plan.
+- **The game ends.** A lost or won game ends the hint.
+
+Counting happens when the Answer rung opens, when the player taps "Fill it", and when the
+fallback card shows. Close never counts. If the player places the target digit alone, the hint
+counts only if the Answer rung was open.
+
+An elimination step has no placement. At its Answer rung, "Next step" opens the Look rung of the
+next step. The plan has at most 6 steps. If no placement appears within 6 steps, the planner
+makes the fallback card before the hint opens.
 
 ## Open questions
 
