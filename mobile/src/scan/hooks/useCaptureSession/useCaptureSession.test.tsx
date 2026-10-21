@@ -68,7 +68,7 @@ function shared<T>(value: T) {
 }
 
 /** The photo and the result wait until the test settles them, so the test controls the order. */
-function setup({ aspect = FRAME_ASPECT }: { aspect?: number } = {}) {
+function setup({ aspect = FRAME_ASPECT, view = VIEW }: { aspect?: number; view?: typeof VIEW } = {}) {
   const photo = { width: 4224, height: 2376, orientation: 'right', dispose: jest.fn() } as unknown as Photo
   const output = { capturePhoto: jest.fn(async () => photo) }
   const image = deferred<SkImage>()
@@ -77,7 +77,7 @@ function setup({ aspect = FRAME_ASPECT }: { aspect?: number } = {}) {
   jest.mocked(createScanner).mockResolvedValue({ recognise })
   jest.mocked(photoToSkImage).mockReturnValue(image.promise)
   const detection = shared({ quad: null, timestamp: 0, aspect })
-  const viewSize = shared(VIEW)
+  const viewSize = shared(view)
   const hook = renderHook(() => useCaptureSession({ photoOutput: output, layout: LAYOUT, detection, viewSize }))
   return {
     hook,
@@ -163,6 +163,16 @@ describe('the capture attempt', () => {
     await giveResult()
     expect(recognise).toHaveBeenCalledWith(photo, null)
     expect(session()).toMatchObject({ quad: null, crossFade: true })
+  })
+
+  it('cross-fades when the locked grid has no place in the view, and still recognises with the quad', async () => {
+    // The view has no size yet, so the quad cannot map to view points.
+    const { session, recognise, photo, start, giveImage, giveResult } = setup({ view: { width: 0, height: 0 } })
+    await start()
+    await giveImage()
+    await giveResult()
+    expect(recognise).toHaveBeenCalledWith(photo, QUAD)
+    expect(session()).toMatchObject({ quad: QUAD, crossFade: true })
   })
 
   it('keeps the image null and still gives the result when the conversion fails', async () => {

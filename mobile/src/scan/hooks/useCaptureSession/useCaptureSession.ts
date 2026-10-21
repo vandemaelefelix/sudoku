@@ -121,7 +121,10 @@ function reduce(attempt: Attempt, change: Change): Attempt {
 
 // Without a locked grid or a photo, nothing can flatten (scan-pipeline concept).
 function crossFadeOf(attempt: Attempt, reduceMotion: boolean): boolean {
-  return attempt.phase !== 'live' && (reduceMotion || attempt.quad == null || attempt.imageFailed)
+  return (
+    attempt.phase !== 'live' &&
+    (reduceMotion || attempt.quad == null || attempt.lockedView == null || attempt.imageFailed)
+  )
 }
 
 function gatesOf(attempt: Attempt): Gates {

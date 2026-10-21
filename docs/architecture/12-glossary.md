@@ -69,7 +69,7 @@ status: DRAFT
 | Scanned puzzle | A puzzle loaded from a scan. Its source is scanned. Its level is the level of the nearest givens target (ADR-011) |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
 | Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
-| Capture session | The module that owns the state from lock-on to the review: the capture attempt, the transition gates, the transition clock, the plan, the phase and the photo image. The screens and canvases of the scan read it. `useCaptureSession` |
+| Capture session | The module that owns the state from lock-on to the review: the capture attempt, the transition gates, the transition clock, the plan, the phase and the photo image. It disposes the photo image. The flattened grid image has no dispose call: it goes with the result. The screens and canvases of the scan read it. `useCaptureSession` |
 | Capture result | The scanner result plus what the scan UI adds to an ok result: the flattened grid as a Skia image and the photo file. `src/scan/utils/captureResult.utils.ts` |
 | Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, and when the photo conversion fails |
 | Install (model) | `just install-model <run>`: copies an exported run into the app without the promote gate. M0 only (ADR-007) |
