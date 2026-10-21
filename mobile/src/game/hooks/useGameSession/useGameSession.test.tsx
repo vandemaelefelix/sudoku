@@ -110,4 +110,26 @@ describe('with a save from the play screen', () => {
     expect(save).toHaveBeenCalledTimes(1)
     expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'paused', playedMs: 2500 }))
   })
+
+  it('saves nothing when the app comes back to the foreground', () => {
+    const { listeners } = captureAppState()
+    const { save } = setup()
+    act(() => listeners.forEach((listener) => listener('background')))
+    act(() => listeners.forEach((listener) => listener('active')))
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('counts the time once when the save function changes', () => {
+    const first = jest.fn<void, [Game]>()
+    const second = jest.fn<void, [Game]>()
+    let current = first
+    const { result, rerender } = renderHook(() => useGameSession(sampleStart()), {
+      wrapper: ({ children }: { children: ReactNode }) => <GameSaveContext value={current}>{children}</GameSaveContext>,
+    })
+    act(() => jest.advanceTimersByTime(1000))
+    current = second
+    rerender({})
+    act(() => jest.advanceTimersByTime(2000))
+    expect(result.current.playedMs).toBe(3000)
+  })
 })
