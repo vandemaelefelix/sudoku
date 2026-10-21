@@ -3,7 +3,7 @@ import { GRID_CELLS } from './grid'
 import { createRandom, shuffled } from './random'
 import { solve } from './solver'
 import type { Grid } from './types'
-import { BOXES } from './units'
+import { BOX_OF, COL_OF, ROW_OF } from './units'
 
 export type Level = 'easy' | 'medium' | 'hard' | 'expert'
 
@@ -30,8 +30,6 @@ export type Puzzle = {
 const CELLS = GRID_CELLS
 const CELL_ORDER = Array.from({ length: CELLS }, (_, cell) => cell)
 
-const BOX_OF = Array.from({ length: CELLS }, (_, cell) => BOXES.findIndex((box) => box.includes(cell)))
-
 function givensCount(grid: readonly number[]): number {
   return grid.filter((digit) => digit !== 0).length
 }
@@ -45,8 +43,8 @@ export function fullGrid(random: () => number): Grid {
 
   function fill(cell: number): boolean {
     if (cell === CELLS) return true
-    const row = Math.floor(cell / 9)
-    const col = cell % 9
+    const row = ROW_OF[cell]!
+    const col = COL_OF[cell]!
     const box = BOX_OF[cell]!
     for (const digit of shuffled(DIGITS, random)) {
       const bit = 1 << digit
