@@ -11,11 +11,11 @@ it('solves 100 generated puzzles with all techniques within the limit (30 ms tar
   annotate,
 }) => {
   const puzzles = LEVELS.flatMap((level) => Array.from({ length: PER_LEVEL }, (_, i) => generate(level, i + 1).givens))
-  for (const givens of puzzles.slice(0, 4)) playThrough(givens)
+  for (const givens of puzzles.slice(0, 4)) playThrough(givens, undefined, { unique: true })
   const times = puzzles
     .map((givens) => {
       const start = performance.now()
-      playThrough(givens)
+      playThrough(givens, undefined, { unique: true })
       return performance.now() - start
     })
     // oxlint-disable-next-line unicorn/no-array-sort -- sorts the fresh array of this map, and the es2022 lib has no toSorted
