@@ -1,6 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system'
-import type { RecogniseResult } from '@/scanner'
 import { devWarn, errorMessage } from '@/utils/log.utils'
+import type { CaptureResult } from './captureResult.utils'
 import type { CellLook } from './correction.utils'
 import { buildScanRecord } from './correctionLog.utils'
 
@@ -15,7 +15,7 @@ function fileUri(path: string): string {
  * cells were cut from) and scan.json. The files stay on the phone until the developer copies them (SUD-02). Returns false, and never
  * throws, when the scan cannot be saved: the screen shows that.
  */
-export async function saveScanCorrection(result: RecogniseResult | null, looks: readonly CellLook[]): Promise<boolean> {
+export async function saveScanCorrection(result: CaptureResult | null, looks: readonly CellLook[]): Promise<boolean> {
   try {
     if (result == null || !result.ok || result.photoPath == null) return false
     const savedAt = new Date().toISOString()

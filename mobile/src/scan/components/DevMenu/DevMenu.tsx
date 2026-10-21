@@ -1,22 +1,20 @@
 import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import type { RecogniseResult } from '@/scanner'
 import { Icon } from '@/game/components/Icon'
 import { Toggle } from '@/settings/components/Toggle'
 import { PanelButton } from '@/scan/components/PanelButton'
 import { ScanInspector, ScanTabs } from '@/scan/components/ScanInspector'
 import { ThresholdSlider } from '@/scan/components/ThresholdSlider'
 import { THRESHOLD_RANGE } from '@/scan/constants/correction.constants'
+import type { CaptureOk } from '@/scan/utils/captureResult.utils'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 import { SAVE_TEXT, SHEET_PADDING, VIEWER_HEIGHT, type SaveState } from './DevMenu.constants'
 import { styles } from './DevMenu.styles'
 
-type OkResult = Extract<RecogniseResult, { ok: true }>
-
 type DevMenuProps = {
   visible: boolean
   onClose(): void
-  result: OkResult
+  result: CaptureOk
   view: InspectorView
   onView(view: InspectorView): void
   labelKinds: boolean

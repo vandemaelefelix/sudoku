@@ -9,13 +9,11 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
 import type { Digit } from '@sudoku/core'
-import type { RecogniseResult } from '@/scanner'
 import { LEVEL_NAMES } from '@/constants/level.constants'
 import { Icon } from '@/game/components/Icon'
 import { levelOf } from '@/game/utils/start.utils'
@@ -24,6 +22,7 @@ import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
 import { CorrectionSummary, type FullGridPanel } from '@/scan/components/CorrectionSummary'
 import { DevMenu, type SaveState } from '@/scan/components/DevMenu'
 import { PanelButton } from '@/scan/components/PanelButton'
+import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useCorrectionEdits } from '@/scan/hooks/useCorrectionEdits'
 import { useScanExit } from '@/scan/hooks/useScanExit'
 import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
@@ -61,10 +60,14 @@ import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { PANEL_PADDING, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 
 export type CorrectionProps = {
-  result: RecogniseResult | null
+  /**
+   * The capture session. In the capturing phase the clock drives every layer and the results may be null. In the review phase
+   * everything shows and the player can edit.
+   */
+  session: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'waiting' | 'resultsAt'>
   layout: CorrectionLayout
   onRetake: (looks: readonly CellLook[]) => void
-  /** Play this puzzle. Without it, the button stays off: the transition shows the panel but cannot start a game. */
+  /** Play this puzzle. Without it, the button stays off. */
   onPlay?: (start: ScannedStart, looks: readonly CellLook[]) => void
   /** Save the scan with the corrections (development builds). With it, the dev menu shows Save. */
   onSave?: (looks: readonly CellLook[]) => Promise<boolean>
@@ -72,32 +75,20 @@ export type CorrectionProps = {
   onExit?: (looks: readonly CellLook[]) => void
   /** Home, on the solved panel. */
   onHome?: (() => void) | undefined
-  /** The transition clock. Without it, everything shows (the review phase). */
-  clock?: SharedValue<number>
-  reduceMotion?: boolean
-  /** True while the results gate holds longer than SPINNER_DELAY. */
-  waiting?: SharedValue<boolean>
-  /** The clock value when the results gate opened, or -1 before (see sweepShift). */
-  resultsAt?: SharedValue<number>
 }
 
 // The old content fades out while the new content rises in, so a change of state reads as one motion.
 const SWAP_OUT = FadeOut.duration(SWAP_OUT_MS).easing(easeOut)
 const PANEL_RESIZE = LinearTransition.duration(PANEL_RESIZE_MS).easing(easeOut)
 
-export function CorrectionScreen({
-  result,
-  layout,
-  onRetake,
-  onPlay,
-  onSave,
-  onExit,
-  onHome,
-  clock,
-  reduceMotion = false,
-  waiting,
-  resultsAt,
-}: CorrectionProps) {
+export function CorrectionScreen({ session, layout, onRetake, onPlay, onSave, onExit, onHome }: CorrectionProps) {
+  const { result } = session
+  // The transition clock exists until the review. In the review, every layer shows and nothing waits.
+  const transition = session.phase === 'review' ? null : session
+  const clock = transition?.clock
+  const reduceMotion = transition?.crossFade ?? false
+  const waiting = transition?.waiting
+  const resultsAt = transition?.resultsAt
   const { theme } = useUnistyles()
   const { bottom } = useSafeAreaInsets()
   const systemReduceMotion = useReducedMotion()

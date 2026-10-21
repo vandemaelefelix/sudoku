@@ -1,7 +1,7 @@
 import { Canvas, Circle, Image as SkiaImage, Line, Rect as SkiaRect, useImage, vec } from '@shopify/react-native-skia'
 import { Text } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
-import type { RecogniseResult } from '@/scanner'
+import type { CaptureOk } from '@/scan/utils/captureResult.utils'
 import { FLAT_SIDE } from '@/scan/utils/flatImage.utils'
 import { cornerLabel, fitRect, MODEL_CROP, projectGrid, quadInRect } from '@/scan/utils/inspector.utils'
 import type { Quad, Rect } from '@/utils/geometry.utils'
@@ -9,14 +9,12 @@ import { BAR_HEIGHT, DOT_RADIUS, EDGE_WIDTH, LINE_WIDTH } from './ScanInspector.
 import { styles } from './ScanInspector.styles'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
 
-type OkResult = Extract<RecogniseResult, { ok: true }>
-
 function fileUri(path: string | undefined): string | null {
   return path == null ? null : `file://${path.replace(/^file:\/\//, '')}`
 }
 
 /** threshold: the ring threshold. A cell below it shows its bar in the warning colour on the Cells tab. */
-type Props = { view: InspectorView; result: OkResult; region: Rect; threshold: number }
+type Props = { view: InspectorView; result: CaptureOk; region: Rect; threshold: number }
 
 /** Development view of a scan: what the detection found, how the grid is cut and what the model read. Draws inside `region`. */
 export function ScanInspector({ view, result, region, threshold }: Props) {

@@ -1,40 +1,29 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import * as Haptics from 'expo-haptics'
 import { AppState, Linking } from 'react-native'
-import { useCameraDevice, useCameraPermission, useFrameOutput } from 'react-native-vision-camera'
+import { useCameraDevice, useCameraPermission, useFrameOutput, usePhotoOutput } from 'react-native-vision-camera'
 import { useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import type { SkImage } from '@shopify/react-native-skia'
 import { kvSettings } from '@/settings/SettingsRepository'
-import { type GridDetector, type RecogniseResult, useGridDetector } from '@/scanner'
-import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
+import { createScanner, type RecogniseResult } from '@/scanner'
 import { CameraScreen } from './CameraScreen'
-import { CorrectionScreen } from '@/scan/screens/CorrectionScreen'
 import { correctionLayout } from '@/scan/utils/correction.utils'
-import * as frameRate from '@/scan/utils/tracking.utils'
 import { DEFAULT_INDEX } from '@/scan/effects/registry'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { EffectPicker } from '@/scan/effects/components/EffectPicker'
-import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
-import { useCapture } from '@/scan/hooks/useCapture'
+import { photoToSkImage } from '@/scan/utils/photoImage.utils'
 import type { Quad } from '@/utils/geometry.utils'
-import { GATE_PHOTO, GATE_RESULTS, REDUCED_END, TRANSITION_END } from '@/scan/constants/transition.constants'
 
 jest.mock('@/scanner', () => ({
   ...jest.requireActual('@/scanner'),
   useGridDetector: jest.fn(() => undefined),
+  // The model never loads, unless a test gives a scanner.
+  createScanner: jest.fn(() => new Promise(() => undefined)),
 }))
+jest.mock('@/scan/utils/photoImage.utils', () => ({ photoToSkImage: jest.fn() }))
+jest.mock('@/scan/utils/photoFile', () => ({ saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg') }))
 
 jest.mock('@/scan/effects/components/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
 jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: jest.fn(() => null) }))
-jest.mock('@/scan/hooks/useCapture', () => ({ useCapture: jest.fn() }))
-jest.mock('@/scan/components/TransitionCanvas', () => ({ TransitionCanvas: jest.fn(() => null) }))
-// The real screen renders, and the mock records its props (the clock, the waiting flag, Reduce Motion).
-jest.mock('@/scan/screens/CorrectionScreen', () => {
-  const { createElement } = jest.requireActual('react')
-  const actual = jest.requireActual('@/scan/screens/CorrectionScreen')
-  return { CorrectionScreen: jest.fn((screenProps: object) => createElement(actual.CorrectionScreen, screenProps)) }
-})
-
 jest.mock('expo-status-bar', () => {
   const { View } = jest.requireActual('react-native')
   return {
@@ -45,22 +34,16 @@ jest.mock('expo-status-bar', () => {
 const permission = jest.mocked(useCameraPermission)
 const device = jest.mocked(useCameraDevice)
 const frameOutput = jest.mocked(useFrameOutput)
-const captureHook = jest.mocked(useCapture)
-const capture = jest.fn()
-const sharedImage = { value: null } as unknown as ReturnType<typeof useCapture>['sharedImage']
 const LAYOUT = correctionLayout({ width: 402, height: 874 }, { top: 0, bottom: 0, left: 0, right: 0 })
-const onDone = jest.fn()
-/** The start of the digit sweep in the timeline. */
-const SWEEP_START = 0.55
 const onRetake = jest.fn()
+const onPlay = jest.fn()
+const onHome = jest.fn()
+const onExit = jest.fn()
 const onClose = jest.fn()
+const onSave = jest.fn(async () => true)
 
 function props() {
-  return { layout: LAYOUT, onDone, onRetake, onClose }
-}
-
-function givenPhase(state: ReturnType<typeof useCapture>['state']) {
-  captureHook.mockReturnValue({ state, capture, sharedImage })
+  return { layout: LAYOUT, onRetake, onPlay, onHome, onClose, onExit, onSave }
 }
 
 function givenPermission(status: 'authorized' | 'denied' | 'not-determined') {
@@ -92,7 +75,6 @@ function frameAt(timestamp: number, dispose: () => void = jest.fn()): FakeFrame 
   return { timestamp, width: 1920, height: 1080, orientation: 'right', dispose }
 }
 
-const detector = jest.mocked(useGridDetector)
 const reaction = jest.mocked(useAnimatedReaction)
 const effectCanvas = jest.mocked(EffectCanvas)
 const effectPicker = jest.mocked(EffectPicker)
@@ -104,22 +86,8 @@ const quad: Quad = [
   { x: 0.2, y: 0.8 },
 ]
 
-/**
- * The last render's detection reaction: its input (the published detection) and its handler. Each render registers it in
- * useFrameTracking, before the status bar reaction of the screen.
- */
-function lastReaction() {
-  const [prepare, react] = reaction.mock.calls.at(-2)! as unknown as [
-    () => FrameDetection | null,
-    (current: FrameDetection | null) => void,
-  ]
-  return { prepare, react }
-}
-
 beforeEach(() => {
   jest.clearAllMocks()
-  detector.mockReturnValue(undefined)
-  givenPhase({ phase: 'live' })
   device.mockReturnValue({ id: 'back' } as unknown as ReturnType<typeof useCameraDevice>)
 })
 
@@ -195,31 +163,6 @@ describe('CameraScreen', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('logs the frame rate once per second', async () => {
-    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
-    givenPermission('authorized')
-    render(<CameraScreen {...props()} />)
-    const handle = onFrame()
-    const disposers = Array.from({ length: 31 }, () => jest.fn())
-    disposers.forEach((dispose, i) => handle(frameAt(100 + i / 30, dispose)))
-    await Promise.resolve()
-    expect(log).toHaveBeenCalledWith('[camera] 30.0 fps, detection 0.0 ms')
-    disposers.forEach((dispose) => expect(dispose).toHaveBeenCalledTimes(1))
-    log.mockRestore()
-  })
-
-  it('releases every frame, also when counting fails', () => {
-    givenPermission('authorized')
-    // The spy comes before render: the worklet captures countFrame when it is created.
-    jest.spyOn(frameRate, 'countFrame').mockImplementation(() => {
-      throw new Error('count failed')
-    })
-    render(<CameraScreen {...props()} />)
-    const dispose = jest.fn()
-    expect(() => onFrame()(frameAt(1, dispose))).toThrow('count failed')
-    expect(dispose).toHaveBeenCalledTimes(1)
-  })
-
   it('pauses the camera when the app is not active', () => {
     const listener: { change: (state: string) => void } = { change: () => undefined }
     const remove = jest.fn()
@@ -239,69 +182,6 @@ describe('CameraScreen', () => {
     expect(remove).toHaveBeenCalledTimes(1)
   })
 
-  it('publishes the detection of every frame for the UI thread', () => {
-    givenPermission('authorized')
-    const detectGrid = jest.fn(() => ({ quad, score: 0.36 }))
-    detector.mockReturnValue(detectGrid as unknown as GridDetector)
-    render(<CameraScreen {...props()} />)
-    const frame = frameAt(5)
-    onFrame()(frame)
-    expect(detectGrid).toHaveBeenCalledWith(frame)
-    expect(lastReaction().prepare()).toEqual({ quad, timestamp: 5, aspect: 1080 / 1920 })
-  })
-
-  it('publishes an empty detection while the detector loads', () => {
-    givenPermission('authorized')
-    detector.mockReturnValue(undefined)
-    render(<CameraScreen {...props()} />)
-    onFrame()(frameAt(5))
-    expect(lastReaction().prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920 })
-  })
-
-  it('publishes an empty detection and disposes the frame when detection fails', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
-    givenPermission('authorized')
-    detector.mockReturnValue((() => {
-      throw new Error('detect failed')
-    }) as unknown as GridDetector)
-    render(<CameraScreen {...props()} />)
-    const dispose = jest.fn()
-    expect(() => onFrame()(frameAt(5, dispose))).not.toThrow()
-    expect(lastReaction().prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920 })
-    expect(dispose).toHaveBeenCalledTimes(1)
-    onFrame()(frameAt(6))
-    await Promise.resolve()
-    expect(warn).toHaveBeenCalledTimes(1)
-  })
-
-  it('turns a detection into an outline in view points', () => {
-    givenPermission('authorized')
-    render(<CameraScreen {...props()} />)
-    fireEvent(screen.getByTestId('camera-screen'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
-    })
-    lastReaction().react({ quad, timestamp: 5, aspect: 0.5625 })
-    const shown = effectCanvas.mock.calls.at(-1)![0].outline.value
-    expect(shown).toEqual([
-      { x: 72, y: 128 },
-      { x: 288, y: 128 },
-      { x: 288, y: 512 },
-      { x: 72, y: 512 },
-    ])
-  })
-
-  it('removes the outline when the grid is gone for longer than the hold time', () => {
-    givenPermission('authorized')
-    render(<CameraScreen {...props()} />)
-    fireEvent(screen.getByTestId('camera-screen'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
-    })
-    const { react } = lastReaction()
-    react({ quad, timestamp: 5, aspect: 0.5625 })
-    react({ quad: null, timestamp: 6, aspect: 0.5625 })
-    expect(effectCanvas.mock.calls.at(-1)![0].outline.value).toBeNull()
-  })
-
   it('gives the effect canvas the camera view size', () => {
     givenPermission('authorized')
     render(<CameraScreen {...props()} />)
@@ -309,6 +189,12 @@ describe('CameraScreen', () => {
       nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 874 } },
     })
     expect(effectCanvas.mock.calls.at(-1)![0].view.value).toEqual({ width: 402, height: 874 })
+  })
+
+  it('adds the photo output to the camera', () => {
+    givenPermission('authorized')
+    render(<CameraScreen {...props()} />)
+    expect(screen.getByTestId('camera').props.outputs).toHaveLength(2)
   })
 
   it('starts the overlay on the default effect', () => {
@@ -339,8 +225,18 @@ describe('CameraScreen', () => {
   })
 })
 
-function correction() {
-  return jest.mocked(CorrectionScreen).mock.calls.at(-1)![0]
+/** The overlay of the last render. It holds the capture session. */
+const overlay = () => effectCanvas.mock.calls.at(-1)![0]
+
+/** Renders the live screen, with a layout and one frame. */
+function renderLive() {
+  givenPermission('authorized')
+  const view = render(<CameraScreen {...props()} />)
+  fireEvent(screen.getByTestId('camera-screen'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 874 } },
+  })
+  onFrame()(frameAt(1))
+  return view
 }
 
 describe('capture', () => {
@@ -354,232 +250,75 @@ describe('capture', () => {
     timings: { imageMs: 1, detectMs: 1, flattenMs: 1, classifyMs: 1 },
   }
   const FAILED: RecogniseResult = { ok: false, reason: 'no grid in the photo' }
-  type Capturing = { quad: Quad | null; image: SkImage | null; imageFailed?: boolean; result: RecogniseResult | null }
-
+  const photo = { width: 4224, height: 2376, orientation: 'right', dispose: jest.fn() }
   let frameTime = 0
 
-  /** Renders the live screen, locks on (a null quad is a shutter press without a grid), and goes to the capturing state. */
-  function lockOn(locked: Quad | null, capturing: Capturing) {
-    givenPermission('authorized')
-    const view = render(<CameraScreen {...props()} />)
-    fireEvent(screen.getByTestId('camera-screen'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 874 } },
-    })
-    onFrame()(frameAt(1))
-    act(() => effectCanvas.mock.calls.at(-1)![0].onLock(locked as Quad))
-    const show = (next: Capturing) => {
-      givenPhase({ phase: 'capturing', imageFailed: false, ...next })
-      view.rerender(<CameraScreen {...props()} />)
+  /** The photo and the result of the scanner wait until the test settles them. */
+  function givenScanner() {
+    let giveImage!: () => void
+    let giveResult!: (result: RecogniseResult) => void
+    const image = new Promise<SkImage>((resolve) => (giveImage = () => resolve(IMAGE)))
+    const result = new Promise<RecogniseResult>((resolve) => (giveResult = resolve))
+    jest.mocked(usePhotoOutput).mockReturnValue({ capturePhoto: jest.fn(async () => photo) } as never)
+    jest.mocked(createScanner).mockResolvedValue({ recognise: jest.fn(() => result) })
+    jest.mocked(photoToSkImage).mockReturnValue(image)
+    return {
+      giveImage: () => act(async () => giveImage()),
+      giveResult: (done: RecogniseResult) => act(async () => giveResult(done)),
     }
-    show(capturing)
-    return show
   }
 
   /** Runs UI frames of 1/60 s for the given seconds, through the clock step that the overlay calls first in each frame. */
   function runFrames(seconds: number) {
-    const step = effectCanvas.mock.calls.at(-1)?.[0].beforeFrame
-    if (step == null) throw new Error('the overlay has no clock step')
     for (let i = 0; i <= Math.round(seconds * 60); i++) {
-      step(frameTime * 1000)
+      overlay().session.stepClock(frameTime * 1000)
       frameTime += 1 / 60
     }
   }
 
   beforeEach(() => {
     frameTime = 0
+    Object.assign(AppState, { currentState: 'active' })
     jest.mocked(useReducedMotion).mockReturnValue(false)
+    jest.spyOn(console, 'log').mockImplementation(() => undefined)
   })
 
-  it('locks on through the canvas with the quad, and captures once for a second onLock', () => {
-    lockOn(quad, { quad, image: null, result: null })
-    expect(capture).toHaveBeenCalledTimes(1)
-    expect(capture).toHaveBeenCalledWith(quad, expect.any(Number))
-    act(() => effectCanvas.mock.calls.at(-1)![0].onLock(quad))
-    expect(capture).toHaveBeenCalledTimes(1)
-  })
-
-  it('plays a thud once for the automatic lock-on', () => {
-    jest.mocked(Haptics.impactAsync).mockClear()
-    lockOn(quad, { quad, image: null, result: null })
-    act(() => effectCanvas.mock.calls.at(-1)![0].onLock(quad))
-    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1)
-    expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium)
-  })
-
-  it('keeps onLock the same function across renders', () => {
-    givenPermission('authorized')
-    const view = render(<CameraScreen {...props()} />)
-    const first = effectCanvas.mock.calls.at(-1)![0].onLock
-    view.rerender(<CameraScreen {...props()} />)
-    expect(effectCanvas.mock.calls.at(-1)![0].onLock).toBe(first)
-  })
-
-  it('captures the current frame quad on a shutter press', () => {
-    givenPermission('authorized')
-    render(<CameraScreen {...props()} />)
-    jest.mocked(Haptics.impactAsync).mockClear()
-    fireEvent.press(screen.getByTestId('shutter'))
-    expect(capture).toHaveBeenCalledWith(null, expect.any(Number))
-    expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light)
-  })
-
-  it('renders the transition layers and hides the shutter, the close button and the effect lab', () => {
-    lockOn(quad, { quad, image: null, result: null })
+  it('locks on through the overlay and shows the transition layers, without the shutter, the close button and the effect lab', async () => {
+    givenScanner()
+    renderLive()
+    expect(screen.getByTestId('shutter')).toBeTruthy()
+    expect(screen.getByTestId('scan-close')).toBeTruthy()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
     expect(screen.getByTestId('camera')).toBeTruthy()
-    expect(jest.mocked(TransitionCanvas)).toHaveBeenCalled()
+    expect(screen.getByTestId('transition-canvas')).toBeTruthy()
     expect(screen.getByTestId('correction-screen')).toBeTruthy()
     expect(screen.getByTestId('capture-flash')).toBeTruthy()
     expect(screen.queryByTestId('shutter')).toBeNull()
     expect(screen.queryByTestId('scan-close')).toBeNull()
-    effectPicker.mockClear()
-    lockOn(quad, { quad, image: null, result: null })
-    expect(effectPicker).not.toHaveBeenCalled()
   })
 
-  it('gives the effect canvas the moving grid while it captures', () => {
-    lockOn(quad, { quad, image: IMAGE, result: null })
-    const moving = effectCanvas.mock.calls.at(-1)![0].capture!
-    expect(moving.value).toBeNull()
-    runFrames(0.1)
-    expect(moving.value).toMatchObject({ channels: { flash: expect.any(Number) } })
-    expect(moving.value!.quad).toHaveLength(4)
+  it('starts a capture on a shutter press', async () => {
+    givenScanner()
+    renderLive()
+    await act(async () => fireEvent.press(screen.getByTestId('shutter')))
+    expect(jest.mocked(usePhotoOutput).mock.results.at(-1)!.value.capturePhoto).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('shutter')).toBeNull()
   })
 
-  it('stops the camera once the photo is an image', () => {
-    const show = lockOn(quad, { quad, image: null, result: null })
+  it('stops the camera once the photo is an image', async () => {
+    const { giveImage } = givenScanner()
+    renderLive()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
     expect(screen.getByTestId('camera').props.isActive).toBe(true)
-    show({ quad, image: IMAGE, result: null })
+    await giveImage()
     expect(screen.getByTestId('camera').props.isActive).toBe(false)
   })
 
-  it('holds the clock at the photo gate until the image exists', () => {
-    const show = lockOn(quad, { quad, image: null, result: null })
-    runFrames(0.5)
-    expect(correction().clock!.value).toBeCloseTo(GATE_PHOTO)
-    show({ quad, image: IMAGE, result: null })
-    runFrames(0.2)
-    expect(correction().clock!.value).toBeGreaterThan(GATE_PHOTO)
-  })
-
-  it('holds the clock at the results gate, then waits with a spinner', () => {
-    lockOn(quad, { quad, image: IMAGE, result: null })
-    runFrames(1.2)
-    expect(correction().clock!.value).toBeCloseTo(GATE_RESULTS)
-    expect(correction().waiting!.value).toBe(false)
-    runFrames(1)
-    expect(correction().waiting!.value).toBe(true)
-  })
-
-  it('runs to the end and calls onDone once with the result', async () => {
-    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    const show = lockOn(quad, { quad, image: IMAGE, result: null })
-    runFrames(1)
-    show({ quad, image: IMAGE, result: OK })
-    runFrames(1.5)
-    // The results came at the gate, 0.15 s after the sweep start, so the end moves 0.15 s later.
-    expect(correction().resultsAt!.value).toBeCloseTo(GATE_RESULTS)
-    expect(correction().clock!.value).toBeCloseTo(TRANSITION_END + GATE_RESULTS - SWEEP_START)
-    expect(correction().reduceMotion).toBe(false)
-    runFrames(0.5)
-    await act(async () => undefined)
-    expect(onDone).toHaveBeenCalledTimes(1)
-    expect(onDone).toHaveBeenCalledWith(OK)
-    expect(log).toHaveBeenCalledWith(expect.stringMatching(/^\[scan\] transition done in \d+ ms$/))
-  })
-
-  it('does not move the end when the results come before the sweep start', async () => {
-    jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    const show = lockOn(quad, { quad, image: IMAGE, result: null })
-    runFrames(0.2)
-    show({ quad, image: IMAGE, result: OK })
-    runFrames(0.05)
-    expect(correction().resultsAt!.value).toBeGreaterThan(0)
-    expect(correction().resultsAt!.value).toBeLessThan(SWEEP_START)
-    runFrames(1.5)
-    expect(correction().clock!.value).toBe(TRANSITION_END)
-    await act(async () => undefined)
-    expect(onDone).toHaveBeenCalledTimes(1)
-  })
-
-  it('reaches review when the photo conversion fails after lock-on and the results come later', async () => {
-    jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    const show = lockOn(quad, { quad, image: null, result: null })
-    runFrames(0.5)
-    expect(correction().clock!.value).toBeCloseTo(GATE_PHOTO)
-    show({ quad, image: null, imageFailed: true, result: null })
-    runFrames(1)
-    expect(correction().clock!.value).toBeCloseTo(GATE_PHOTO)
-    await act(async () => undefined)
-    expect(onDone).not.toHaveBeenCalled()
-    show({ quad, image: null, imageFailed: true, result: OK })
-    runFrames(0.5)
-    expect(correction().clock!.value).toBe(REDUCED_END)
-    runFrames(0.5)
-    await act(async () => undefined)
-    expect(onDone).toHaveBeenCalledTimes(1)
-    expect(onDone).toHaveBeenCalledWith(OK)
-  })
-
-  it('tells the effect canvas about the cross-fade, so the free dots do not drift', () => {
-    const show = lockOn(quad, { quad, image: null, result: null })
-    runFrames(0.1)
-    const moving = effectCanvas.mock.calls.at(-1)![0].capture!
-    expect(moving.value!.crossFade).toBe(false)
-    show({ quad, image: null, imageFailed: true, result: OK })
-    runFrames(0.1)
-    expect(moving.value!.crossFade).toBe(true)
-  })
-
-  it('keeps the clock at the results gate on a failure, and shows the failure with Retake', () => {
-    const show = lockOn(quad, { quad, image: IMAGE, result: null })
-    show({ quad, image: IMAGE, result: FAILED })
-    runFrames(3)
-    expect(correction().clock!.value).toBeCloseTo(GATE_RESULTS)
-    expect(onDone).not.toHaveBeenCalled()
-    expect(screen.getByTestId('correction-failure')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('retake'))
-    expect(onRetake).toHaveBeenCalledTimes(1)
-  })
-
-  it('cross-fades without a locked quad', async () => {
-    jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    lockOn(null, { quad: null, image: IMAGE, result: OK })
-    expect(jest.mocked(TransitionCanvas).mock.calls.at(-1)![0]).toMatchObject({ crossFade: true })
-    expect(correction().reduceMotion).toBe(true)
-    runFrames(0.5)
-    expect(correction().clock!.value).toBe(REDUCED_END)
-    await act(async () => undefined)
-    expect(onDone).toHaveBeenCalledTimes(1)
-  })
-
-  it('cross-fades when the photo conversion failed, and does not wait for the image', () => {
-    jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    lockOn(quad, { quad, image: null, imageFailed: true, result: OK })
-    expect(correction().reduceMotion).toBe(true)
-    runFrames(0.5)
-    expect(correction().clock!.value).toBe(REDUCED_END)
-  })
-
-  it('keeps the dots on the locked grid in the cross-fade, and puts the cells on the grid square', () => {
-    jest.mocked(useReducedMotion).mockReturnValue(true)
-    lockOn(quad, { quad, image: IMAGE, result: OK })
-    runFrames(0.2)
-    const frame = effectCanvas.mock.calls.at(-1)![0].capture!.value!
-    expect(frame.quad[0].x).toBeCloseTo(-44.8 + 0.2 * 491.6, 0)
-    expect(frame.grid[0]).toEqual({ x: LAYOUT.grid.x, y: LAYOUT.grid.y })
-  })
-
-  it('writes nothing while a gate holds the clock', () => {
-    lockOn(quad, { quad, image: null, result: null })
-    runFrames(0.5)
-    const moving = effectCanvas.mock.calls.at(-1)![0].capture!
-    const held = moving.value
-    runFrames(0.5)
-    expect(moving.value).toBe(held)
-  })
-
   it('turns the status bar dark when the light background is half in', async () => {
-    lockOn(quad, { quad, image: IMAGE, result: null })
+    const { giveImage } = givenScanner()
+    renderLive()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
+    await giveImage()
     expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('light')
     const calls = reaction.mock.calls as unknown as [() => unknown, (dark: boolean, previous: boolean | null) => void][]
     const falseBefore = new Set(calls.filter(([prepare]) => prepare() === false))
@@ -590,29 +329,61 @@ describe('capture', () => {
     expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('dark')
   })
 
-  it('cross-fades with Reduce Motion, and the gates still hold the clock', () => {
-    jest.mocked(useReducedMotion).mockReturnValue(true)
-    lockOn(quad, { quad, image: IMAGE, result: null })
-    expect(jest.mocked(TransitionCanvas).mock.calls.at(-1)![0]).toMatchObject({ crossFade: true })
-    runFrames(0.5)
-    expect(correction().clock!.value).toBe(0)
+  it('keeps the correction screen of the transition as the static screen at the end, and unmounts the camera layers', async () => {
+    const { giveImage, giveResult } = givenScanner()
+    renderLive()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
+    const shown = screen.getByTestId('correction-screen')
+    await giveImage()
+    await giveResult(OK)
+    const overlays = effectCanvas.mock.calls.length
+    runFrames(3)
+    await act(async () => undefined)
+    expect(screen.getByTestId('correction-screen')).toBe(shown)
+    expect(screen.queryByTestId('camera')).toBeNull()
+    expect(screen.queryByTestId('transition-canvas')).toBeNull()
+    expect(screen.queryByTestId('capture-flash')).toBeNull()
+    expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('dark')
+    // The overlay of the last live render stays unmounted: no new one renders after the end.
+    expect(effectCanvas.mock.calls.length).toBe(overlays)
   })
 
-  it('warps from the locked grid in view points to the grid square', () => {
-    lockOn(quad, { quad, image: IMAGE, result: OK })
-    runFrames(0.02)
-    const moving = effectCanvas.mock.calls.at(-1)![0].capture!
-    // A 9:16 frame covers 402 x 874 pt: it is 491.6 pt wide, and 44.8 pt of it is cut on each side.
-    expect(moving.value!.quad[0].x).toBeCloseTo(-44.8 + 0.2 * 491.6, 0)
-    runFrames(GATE_RESULTS)
-    const grid = LAYOUT.grid
-    expect(moving.value!.quad[2].x).toBeCloseTo(grid.x + grid.width)
-    expect(moving.value!.quad[2].y).toBeCloseTo(grid.y + grid.height)
+  it('shows the failure, and hands the failed result to Retake', async () => {
+    const { giveImage, giveResult } = givenScanner()
+    renderLive()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
+    await giveImage()
+    await giveResult(FAILED)
+    runFrames(3)
+    expect(screen.getByTestId('correction-failure')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('retake'))
+    expect(onRetake).toHaveBeenCalledWith(FAILED)
   })
 
-  it('adds the photo output to the camera', () => {
-    givenPermission('authorized')
-    render(<CameraScreen {...props()} />)
-    expect(screen.getByTestId('camera').props.outputs).toHaveLength(2)
+  it('hands the result and the looks of the player to Exit when the screen unmounts', async () => {
+    const { giveImage, giveResult } = givenScanner()
+    const view = renderLive()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
+    await giveImage()
+    await giveResult(OK)
+    runFrames(3)
+    await act(async () => undefined)
+    view.unmount()
+    expect(onExit).toHaveBeenCalledTimes(1)
+    expect(onExit).toHaveBeenCalledWith(expect.objectContaining({ ok: true }), expect.any(Array))
+  })
+
+  it('does not hand the scan to Exit after a Retake', async () => {
+    const { giveImage, giveResult } = givenScanner()
+    const view = renderLive()
+    await act(async () => overlay().session.startCapture(quad, 'auto'))
+    await giveImage()
+    await giveResult(OK)
+    runFrames(3)
+    await act(async () => undefined)
+    fireEvent.press(screen.getByTestId('retake'))
+    view.unmount()
+    expect(onRetake).toHaveBeenCalledWith(expect.objectContaining({ ok: true }))
+    expect(onExit).not.toHaveBeenCalled()
   })
 })
