@@ -1,5 +1,6 @@
 """Training and the Check screen must put the same cells in the test split."""
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -67,8 +68,6 @@ def test_training_and_the_check_screen_have_the_same_test_split(tmp_path: Path):
     trained = split_cells(read_real_cells(paths), tuple(SPLIT), load_config(config).seed)[2]
     assert {c.path.stem for c in trained} == {cell[:16] for cell in check_screen_test}
     assert check_screen_test and len(check_screen_test) < 36
-    import json
-
     assert json.loads((run / "metrics.json").read_text())["n_test"] == len(check_screen_test)
 
 
