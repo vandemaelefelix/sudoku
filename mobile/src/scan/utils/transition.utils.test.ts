@@ -8,6 +8,7 @@ import {
   sweepShift,
   transitionEnd,
   photoMatrix,
+  resultsGateReached,
 } from './transition.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { toPreview } from './preview.utils'
@@ -249,6 +250,18 @@ describe('Reduce Motion', () => {
     expect(end.photo).toBe(0)
     expect(end.panel).toBe(1)
     expect(end.cells).toBe(1)
+  })
+})
+
+describe('resultsGateReached', () => {
+  it('is false before the results gate and true from it', () => {
+    expect(resultsGateReached(GATE_RESULTS - 0.01, false)).toBe(false)
+    expect(resultsGateReached(GATE_RESULTS, false)).toBe(true)
+  })
+
+  it('is true with Reduce Motion at any clock value, and without a clock', () => {
+    expect(resultsGateReached(0, true)).toBe(true)
+    expect(resultsGateReached(undefined, false)).toBe(true)
   })
 })
 

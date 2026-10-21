@@ -2,6 +2,7 @@ import { Directory, File } from 'expo-file-system'
 import type { Quad } from '@/utils/geometry.utils'
 import type { CaptureOk } from './captureResult.utils'
 import { cellLook } from './correction.utils'
+import { finalGrid } from './finalGrid.utils'
 import { saveScanCorrection } from './correctionStore'
 
 jest.mock('expo-file-system', () => ({
@@ -35,18 +36,19 @@ const result: CaptureOk = {
   flatPath: '/tmp/flat.png',
 }
 const looks = cells.map((cell) => cellLook(cell))
+const unchanged = finalGrid(cells, looks)
 const { photoPath: _photoPath, ...withoutPhoto } = result
 
 beforeEach(() => jest.clearAllMocks())
 
 describe('saveScanCorrection', () => {
   it('saves nothing without the photo file', async () => {
-    expect(await saveScanCorrection(withoutPhoto, looks)).toBe(false)
+    expect(await saveScanCorrection(withoutPhoto, unchanged)).toBe(false)
     expect(Directory).not.toHaveBeenCalled()
   })
 
   it('writes the photo, the flattened grid and scan.json, also for a scan without a correction', async () => {
-    expect(await saveScanCorrection(result, looks)).toBe(true)
+    expect(await saveScanCorrection(result, unchanged)).toBe(true)
     expect(Directory).toHaveBeenCalledTimes(1)
     const files = jest.mocked(File).mock.results.map((r) => r.value)
     expect(jest.mocked(File).mock.calls[0]![0]).toBe('file:///tmp/photo.jpg')
@@ -58,7 +60,7 @@ describe('saveScanCorrection', () => {
   })
 
   it('records a correction', async () => {
-    await saveScanCorrection(result, [{ ...looks[0]!, style: 'entry' as const }, ...looks.slice(1)])
+    await saveScanCorrection(result, finalGrid(cells, [{ ...looks[0]!, style: 'entry' as const }, ...looks.slice(1)]))
     const json = jest.mocked(File).mock.results[4]!.value.write as jest.Mock
     expect(JSON.parse(json.mock.calls[0]![0]).cells[0]).toMatchObject({
       kindCorrected: true,
@@ -70,6 +72,6 @@ describe('saveScanCorrection', () => {
     jest.mocked(Directory).mockImplementationOnce(() => {
       throw new Error('disk full')
     })
-    expect(await saveScanCorrection(result, looks)).toBe(false)
+    expect(await saveScanCorrection(result, unchanged)).toBe(false)
   })
 })

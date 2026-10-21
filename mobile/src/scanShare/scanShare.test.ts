@@ -1,6 +1,6 @@
 import { openNodeDatabase, type NodeDatabase } from '@/storage/nodeDatabase'
 import type { CellResult, RecogniseResult } from '@/scanner'
-import type { CellLook } from '@/scan/utils/correction.utils'
+import type { FinalCell } from '@/utils/finalGrid.utils'
 import { createScanQueue, type ScanQueue } from './queue'
 import { createScanShare, type ScanShareDeps } from './scanShare'
 
@@ -17,8 +17,8 @@ const CELL: CellResult = {
   digitProbs: probs(10, 5),
   kindProbs: probs(4, 1),
 }
-const GIVEN: CellLook = { digit: '5', style: 'given', uncertain: false }
-const LOOKS = Array.from({ length: 81 }, () => GIVEN)
+const KEPT: FinalCell = { digit: 5, kind: 'printed', digitCorrected: false, kindCorrected: false }
+const FINAL_GRID = Array.from({ length: 81 }, () => KEPT)
 const quad = [
   { x: 0.1, y: 0.1 },
   { x: 0.9, y: 0.1 },
@@ -89,7 +89,7 @@ beforeEach(async () => {
 afterEach(() => db.close())
 
 it('queues the record and the photo, then starts a drain', async () => {
-  await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+  await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
   const item = await queue.next(1_000)
   expect(item).toMatchObject({ scanId: UUID_SCAN, photoPath: `/q/${UUID_SCAN}.jpg` })
   const record = JSON.parse(item?.record ?? '{}')
@@ -102,7 +102,7 @@ it('queues the record and the photo, then starts a drain', async () => {
 it('does nothing when sharing is off', async () => {
   on = false
   const crop = jest.fn(deps.crop)
-  await createScanShare({ ...deps, crop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+  await createScanShare({ ...deps, crop }).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
   expect(crop).not.toHaveBeenCalled()
   expect(await queue.next(1_000)).toBeNull()
   expect(drains).toBe(0)
@@ -110,35 +110,39 @@ it('does nothing when sharing is off', async () => {
 
 it('does nothing for a failed scan or a scan without a photo', async () => {
   const share = createScanShare(deps)
-  await share.enqueueScan('/tmp/photo.jpg', { ok: false, reason: 'no grid' }, LOOKS)
-  await share.enqueueScan(undefined, OK, LOOKS)
+  await share.enqueueScan('/tmp/photo.jpg', { ok: false, reason: 'no grid' }, FINAL_GRID)
+  await share.enqueueScan(undefined, OK, FINAL_GRID)
   expect(await queue.next(1_000)).toBeNull()
 })
 
 describe('the original photo', () => {
   it('is deleted after the scan is queued, and the queued copy stays', async () => {
-    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
     expect(deleted).toEqual(['/tmp/photo.jpg'])
   })
 
   it('is deleted when the crop fails', async () => {
-    await createScanShare({ ...deps, crop: failingCrop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    await createScanShare({ ...deps, crop: failingCrop }).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
     expect(deleted).toEqual(['/tmp/photo.jpg'])
   })
 
   it('is deleted when sharing is off', async () => {
     on = false
-    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
     expect(deleted).toEqual(['/tmp/photo.jpg'])
   })
 
   it('is deleted when the player turns sharing off during the crop', async () => {
-    await createScanShare({ ...deps, crop: turnOffThenCrop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    await createScanShare({ ...deps, crop: turnOffThenCrop }).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
     expect(deleted).toEqual(['/tmp/photo.jpg'])
   })
 
   it('is deleted when the record breaks the contract', async () => {
-    await createScanShare(deps).enqueueScan('/tmp/photo.jpg', { ...OK, cells: [] } as unknown as RecogniseResult, LOOKS)
+    await createScanShare(deps).enqueueScan(
+      '/tmp/photo.jpg',
+      { ...OK, cells: [] } as unknown as RecogniseResult,
+      FINAL_GRID,
+    )
     expect(deleted).toEqual(['/tmp/photo.jpg'])
   })
 
@@ -149,7 +153,7 @@ describe('the original photo', () => {
         throw new Error('no file')
       },
     }
-    await expect(createScanShare(throwing).enqueueScan('/tmp/photo.jpg', OK, LOOKS)).resolves.toBeUndefined()
+    await expect(createScanShare(throwing).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)).resolves.toBeUndefined()
   })
 
   it('is deleted by discardPhoto, which never throws', () => {
@@ -171,7 +175,7 @@ const failingCrop = async () => {
 
 it('never throws when the crop fails', async () => {
   await expect(
-    createScanShare({ ...deps, crop: failingCrop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS),
+    createScanShare({ ...deps, crop: failingCrop }).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID),
   ).resolves.toBeUndefined()
   expect(await queue.next(1_000)).toBeNull()
 })
@@ -182,13 +186,13 @@ const turnOffThenCrop: ScanShareDeps['crop'] = async (path, result) => {
 }
 
 it('queues nothing when the player turns sharing off during the crop', async () => {
-  await createScanShare({ ...deps, crop: turnOffThenCrop }).enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+  await createScanShare({ ...deps, crop: turnOffThenCrop }).enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
   expect(await queue.next(1_000)).toBeNull()
 })
 
 it('clears the queue and deletes the photos when the player turns sharing off', async () => {
   const share = createScanShare(deps)
-  await share.enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+  await share.enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
   await share.setShareScans(false)
   expect(on).toBe(false)
   expect(await queue.next(1_000)).toBeNull()
@@ -197,7 +201,7 @@ it('clears the queue and deletes the photos when the player turns sharing off', 
 
 it('keeps the queue when the player turns sharing on', async () => {
   const share = createScanShare(deps)
-  await share.enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+  await share.enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
   await share.setShareScans(true)
   expect(await queue.next(1_000)).not.toBeNull()
 })
@@ -212,7 +216,7 @@ describe('first-upload notice', () => {
 
   it('"Turn off" switches sharing off, clears the queue and saves the flag', async () => {
     const share = createScanShare(deps)
-    await share.enqueueScan('/tmp/photo.jpg', OK, LOOKS)
+    await share.enqueueScan('/tmp/photo.jpg', OK, FINAL_GRID)
     await share.declineNotice()
     expect(on).toBe(false)
     expect(noticeSeen).toBe(true)

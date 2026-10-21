@@ -65,6 +65,8 @@ status: DRAFT
 | Shutter | The button on the camera screen that captures at any time, also without lock-on |
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
 | Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake. The player can fix a digit and its kind there. Play this puzzle loads it when the play gate passes |
+| Correction session | The module that owns the state of the correction screen: the edits, the given conflicts, the play gate, the verdict, the celebration, the panel state and the haptic cues. The screen renders its view and sends the intents of the player. `useCorrectionSession` |
+| Final grid | The 81 cells of a scan as the player left them: digit, kind and two flags for what the player changed. One definition: `finalGrid` in `src/scan/utils/finalGrid.utils.ts`. The development scan log and the scan upload (ADR-030) both read it |
 | Play gate | The check before "Play this puzzle" loads a scan. Given conflicts, no solution, several solutions and a grid that is already solved block it. Uncertain cells and wrong entries do not |
 | Scanned puzzle | A puzzle loaded from a scan. Its source is scanned. Its level is the level of the nearest givens target (ADR-011) |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |

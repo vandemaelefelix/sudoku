@@ -1,5 +1,5 @@
 import type { RecogniseResult } from '@/scanner'
-import type { CellLook } from '@/scan/utils/correction.utils'
+import type { FinalGrid } from '@/utils/finalGrid.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 import { buildRecord } from './buildRecord'
 import type { CroppedPhoto } from './cropPhoto'
@@ -32,7 +32,7 @@ export type ScanShare = {
    * Queues nothing when sharing is off, when the photo is not there, or when the record breaks the contract.
    * Deletes the original photo in every case: the queue keeps its own cropped copy.
    */
-  enqueueScan(photoPath: string | undefined, result: RecogniseResult, finalGrid: readonly CellLook[]): Promise<void>
+  enqueueScan(photoPath: string | undefined, result: RecogniseResult, finalGrid: FinalGrid): Promise<void>
   /** Deletes a photo that the player does not share, for example after Retake. Never throws. */
   discardPhoto(photoPath: string): void
   /** Turning sharing off clears the queue and deletes the photos. Nothing uploads later. */
@@ -74,7 +74,7 @@ async function enqueue(
   deps: ScanShareDeps,
   photoPath: string | undefined,
   result: RecogniseResult,
-  finalGrid: readonly CellLook[],
+  finalGrid: FinalGrid,
 ): Promise<void> {
   if (!deps.isOn() || !result.ok || photoPath === undefined) return
   try {
@@ -87,7 +87,7 @@ async function enqueue(
       modelVersion: deps.modelVersion,
       corners: cropped.corners,
       cells: result.cells,
-      looks: finalGrid,
+      finalGrid,
     })
     if (record === null) {
       devWarn('scanShare', 'the scan record is not valid, so the scan is not shared')

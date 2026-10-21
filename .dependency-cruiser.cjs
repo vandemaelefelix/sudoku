@@ -110,6 +110,14 @@ module.exports = {
       to: { path: '^mobile/src/(account|sync)/' },
     },
     {
+      name: 'adr-030-scanshare-does-not-use-scan',
+      comment:
+        'ADR-030: the scan upload does not import the scan UI. They share src/utils/ and src/components/. The scan UI hands over a FinalGrid (src/utils/finalGrid.utils.ts).',
+      severity: 'error',
+      from: { path: '^mobile/src/scanShare/' },
+      to: { path: '^mobile/src/scan/' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',
