@@ -76,7 +76,7 @@ flowchart TB
 | Block | Responsibility | Depends on | Must not depend on |
 | --- | --- | --- | --- |
 | **@sudoku/core** | Board model, rule checks, a backtracking solver (uniqueness), a technique solver (grading and hints), the generator ([ADR-011](adr/adr-011-puzzle-generation-and-hints.md)) | nothing | React Native, Expo, any I/O (SUD-04) |
-| **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens | @sudoku/core, local storage | the scanner (SUD-03), account, sync (ADR-028) |
+| **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens. One game session (`createGameSession`) holds the game in progress: the reducer, the clock, the pause and the saves | @sudoku/core, local storage | the scanner (SUD-03), account, sync (ADR-028) |
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
 | **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { Pressable, Text } from 'react-native'
 import { createGame, place, select, tick } from '@sudoku/core'
-import { GameSaveContext } from '@/game/hooks/useGameSaver'
+import { GameSaveContext } from '@/game/hooks/useGameSession'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGameTime } from '@/game/hooks/useGameTime'

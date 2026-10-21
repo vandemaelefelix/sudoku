@@ -124,6 +124,25 @@ The card shows after the solve pulse. With Reduce Motion on, it shows at once.
 - The card tilts a little with the movement of the phone, and a shine moves over it (ADR-017).
   With Reduce Motion on, it does not tilt.
 
+### Game session
+
+One **game session** holds the game in progress. It is plain TypeScript, so a test runs it without a React render. It owns four things:
+
+- the **session reducer**, which maps each action of the player to the core rules,
+- the **clock**, which counts the time played once a second while the game is playing,
+- the **pause when the app leaves the foreground**,
+- the **save snapshot**: when to save, and which game to save.
+
+The session saves the game after each move that changes data a resume needs. A selection and a clock tick do not save. `needsSave` in `@sudoku/core` decides, next to `toSavedGame`, so a new `Game` field cannot be forgotten.
+
+When the app leaves the foreground, the session does these steps in this order:
+
+1. It counts the time since the last clock report.
+2. It pauses the game.
+3. It saves the paused game with the exact time played. The save is one write.
+
+The hook `useGameSession` adds the one `AppState` listener of the game. It also runs the clock while the screen shows, and it saves the game when the screen closes (QR-11). The three contexts of `GameProvider` split the session by how often it changes: the actions never change, the state changes on a move, and the time changes once a second.
+
 ### Settings
 
 The Settings screen has four groups:

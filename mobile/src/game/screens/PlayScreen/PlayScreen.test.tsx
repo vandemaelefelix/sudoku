@@ -3,7 +3,7 @@ import { act, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 import { useEffect, useState } from 'react'
 import { Text } from 'react-native'
 import { createGame, generate, type Game } from '@sudoku/core'
-import type { SaveGame } from '@/game/hooks/useGameSaver'
+import type { SaveGame } from '@/game/utils/gameSession.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
@@ -18,7 +18,7 @@ jest.mock('@/game/screens/GameScreen', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native')
   const { createElement, useContext } = jest.requireActual<typeof import('react')>('react')
   const { GameSaveContext } =
-    jest.requireActual<typeof import('@/game/hooks/useGameSaver')>('@/game/hooks/useGameSaver')
+    jest.requireActual<typeof import('@/game/hooks/useGameSession')>('@/game/hooks/useGameSession')
   return {
     GameScreen: () => {
       mockSave = useContext(GameSaveContext)
