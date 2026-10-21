@@ -1,7 +1,7 @@
 import { createGame, generate, place, select, tick, type Digit, type Game, type Level } from '@sudoku/core'
 import { createMemoryStorage, type GameStorage, type SavedProgress } from '@/storage'
 import { createPuzzleStart } from './puzzleStart.utils'
-import { levelOf } from './start.utils'
+import { scannedLevel } from './start.utils'
 
 const OWNER = 'user-alice'
 
@@ -182,11 +182,11 @@ describe('playScan', () => {
   const open = givens.findIndex((digit) => digit === 0)
   const entries = givens.map((_, cell) => (cell === open ? ((solution[open] ?? 0) % 9) + 1 : 0))
 
-  it('starts the grid as a scanned game at the level of its givens, without a seed', async () => {
+  it('starts the grid as a scanned game at the level of its grade, without a seed', async () => {
     const { storage, start } = setup(true, OWNER)
     const spy = spyStart(storage)
     const started = await start.playScan({ givens, solution, entries })
-    expect(started).toMatchObject({ level: levelOf(givens), source: 'scanned', seed: null })
+    expect(started).toMatchObject({ level: scannedLevel(givens), source: 'scanned', seed: null })
     expect(started?.game.givens).toEqual(givens)
     expect(started?.game.entries[open]).toBe(entries[open])
     expect(started?.game.mistakes).toBe(0)

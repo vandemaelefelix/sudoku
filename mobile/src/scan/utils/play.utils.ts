@@ -4,7 +4,7 @@ import type { CorrectedGrid } from '@/scan/utils/correctionEdit.utils'
 /** Why "Play this puzzle" stays off. none and several: the number of solutions of the givens. full: no cell is empty, so there is nothing to play. */
 export type PlayBlock = 'conflict' | 'none' | 'several' | 'full'
 
-/** The plain grid that a scan hands to the game (SUD-03). The game finds the level from the givens. */
+/** The plain grid that a scan hands to the game (SUD-03). The game grades the givens for the level. */
 export type ScannedStart = Required<NewGame>
 
 export type PlayCheck = { ok: true; start: ScannedStart } | { ok: false; block: PlayBlock }
