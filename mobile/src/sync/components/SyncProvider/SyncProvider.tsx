@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import { Alert } from 'react-native'
+import { AccountLifecycleContext } from '@/account/hooks/useAccountLifecycle'
 import { useAccount } from '@/account/hooks/useAccount'
+import { keychainOwnerCache } from '@/account/utils/ownerCache.utils'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { useOwner } from '@/storage/hooks/useOwner'
 import { runAdoptStep } from '@/sync/adoptStep'
 import { ADOPT_ACCEPT, ADOPT_DECLINE, ADOPT_MESSAGE, ADOPT_TITLE } from '@/sync/constants/sync.constants'
 import { IDLE_SYNC, SyncContext } from '@/sync/hooks/useSync'
-import { SyncControlContext, type SyncControl } from '@/sync/hooks/useSyncControl'
 import { useSyncTriggers } from '@/sync/hooks/useSyncTriggers'
 import { createSyncApi, type AccountApi, type SyncApi } from '@/sync/syncApi'
-import { createAppSyncService } from '@/sync/createAppSyncService'
-import type { SyncService } from '@/sync/SyncService'
+import { createAppSync } from '@/sync/createAppSync'
 import { readSyncApiUrl } from '@/sync/utils/syncConfig.utils'
 
 type SyncProviderProps = { apiUrl?: string | null; api?: SyncApi; accountApi?: AccountApi; children: ReactNode }
@@ -49,23 +49,24 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, accountApi, child
   const getAccount = useCallback(() => latest.current, [])
 
   const unconfigured = account.status === 'unconfigured'
-  const service = useMemo<SyncService | null>(() => {
+  const app = useMemo(() => {
     const client = api ?? (apiUrl === null ? null : createSyncApi({ baseUrl: apiUrl }))
     if (client === null || unconfigured) return null
+    const accountClient = accountApi ?? (apiUrl === null ? null : createSyncApi({ baseUrl: apiUrl }))
     // oxlint-disable-next-line react/refs -- getAccount only reads the ref later, in an event.
-    return createAppSyncService(storage, client, getAccount)
-  }, [api, apiUrl, storage, unconfigured, getAccount])
-
-  const control = useMemo<SyncControl | null>(() => {
-    const client = accountApi ?? (apiUrl === null ? null : createSyncApi({ baseUrl: apiUrl }))
-    if (client === null || service === null) return null
-    return {
-      deleteAccount: (token) => client.deleteAccount(token),
-      stop: () => service.stop(),
-      pause: () => service.pause(),
-      resume: () => service.resume(),
-    }
-  }, [accountApi, apiUrl, service])
+    return createAppSync({
+      storage,
+      api: client,
+      accountApi: accountClient,
+      account: {
+        getApiToken: (options) => getAccount().getApiToken(options),
+        signOut: () => getAccount().signOut(),
+        markDeleted: () => getAccount().markDeleted(),
+      },
+      ownerCache: keychainOwnerCache,
+    })
+  }, [api, apiUrl, accountApi, storage, unconfigured, getAccount])
+  const service = app?.service ?? null
 
   useSyncTriggers(service)
 
@@ -110,8 +111,8 @@ export function SyncProvider({ apiUrl = readSyncApiUrl(), api, accountApi, child
 
   const status = useSyncExternalStore(service?.subscribe ?? noSubscription, service?.status ?? noStatus)
   return (
-    <SyncControlContext value={control}>
+    <AccountLifecycleContext value={app?.lifecycle ?? null}>
       <SyncContext value={status}>{children}</SyncContext>
-    </SyncControlContext>
+    </AccountLifecycleContext>
   )
 }

@@ -111,8 +111,9 @@ that account. No request goes out before the answer. The adopt of the entries of
 after a provider switch is deferred ([ADR-028](../adr/adr-028-history-sync.md)).
 
 **The errors in the app.** A 400 `invalid_cursor` clears the cursor and makes one full pull. A 410
-`account_deleted` deletes the local entries of the owner, clears the state of that owner, signs
-out and shows one alert. Every other failure is silent.
+`account_deleted` goes to the account lifecycle. It deletes the local entries of the owner, clears the
+state of that owner, signs out and shows one alert. The delete-account flow uses the same cleanup, so
+a delete and a 410 together clean up once. Every other failure is silent.
 
 **Accounts on one phone.** Every history entry has an owner: the Clerk user ID of the player. The
 app knows it at sign-in, also offline. A game finished while signed out has no owner. The first sign-in asks to add those games to the account. A sign-out hides the

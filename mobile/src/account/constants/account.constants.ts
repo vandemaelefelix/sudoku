@@ -29,3 +29,5 @@ export const DELETE_UNREACHABLE_MESSAGE = 'Could not reach the server. Try again
 export const DELETE_FAILED_MESSAGE = 'Something went wrong. Your account is not deleted. Try again.'
 export const DELETED_TITLE = 'Account deleted'
 export const DELETED_MESSAGE = 'Your account and its backed-up games are deleted.'
+/** The alert after a sync run got 410 `account_deleted`, for example a delete from another device (ADR-028). */
+export const ACCOUNT_DELETED_TITLE = 'This account was deleted. You are signed out.'

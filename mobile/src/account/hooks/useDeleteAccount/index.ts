@@ -1,1 +1,1 @@
-export { useDeleteAccount, type DeleteOutcome } from './useDeleteAccount'
+export { useDeleteAccount } from './useDeleteAccount'

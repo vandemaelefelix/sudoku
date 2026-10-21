@@ -13,8 +13,8 @@ import {
   DELETE_UNREACHABLE_MESSAGE,
 } from '@/account/constants/account.constants'
 import { useAccount } from '@/account/hooks/useAccount'
+import { useAccountLifecycle } from '@/account/hooks/useAccountLifecycle'
 import { useDeleteAccount } from '@/account/hooks/useDeleteAccount'
-import { useSyncControl } from '@/sync/hooks/useSyncControl'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './AccountSection.styles'
@@ -35,7 +35,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
   const { status, email, signOut } = useAccount()
   const deleteAccount = useDeleteAccount()
   // A build without an API URL has nothing to call, so it has no delete row.
-  const canDelete = useSyncControl() !== null
+  const canDelete = useAccountLifecycle()?.canDelete === true
   const [deleting, setDeleting] = useState(false)
   // A state update is too late for a second tap in the same frame.
   const busy = useRef(false)
