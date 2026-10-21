@@ -1,11 +1,11 @@
-import { LEVELS, type Level } from '../generator'
+import { LEVELS, type Level } from '../level'
 import { computeCandidates } from '../technique/candidates'
 import { bitOf } from '../technique/masks'
 import { nextSteps } from '../technique/nextSteps'
 import { stepWeight } from '../technique/order'
 import { playThrough } from '../technique/playThrough'
 import { findFullHouses, findHiddenSingles, findNakedSingles } from '../technique/singles'
-import type { Candidates, Step, TechniqueId } from '../technique/types'
+import type { Candidates, Step, TechniqueId, TechniqueRank } from '../technique/types'
 import { GRADE_ORDER, TECHNIQUE_LEVEL } from './levels'
 
 /** The choice counts this many moves (ADR-011, amendment 2026-10-21). */
@@ -100,12 +100,38 @@ export function grade(givens: readonly number[]): Grade {
   // The weights have one decimal. The rounding removes the float noise of the sum.
   const score = Math.round(steps.reduce((sum, step) => sum + stepWeight(step), 0) * 10) / 10
   const choice = choiceOf(givens)
-  let level: Level | 'beyond'
-  if (!solved) level = 'beyond'
-  else if (hardest === null) level = 'easy'
-  else {
-    level = TECHNIQUE_LEVEL[hardest]
-    if (level === 'easy' && choice < EASY_MIN_CHOICE) level = 'medium'
-  }
-  return { level, hardest, score, choice, steps: steps.length }
+  return { level: levelOf(solved, hardest, choice), hardest, score, choice, steps: steps.length }
+}
+
+function levelOf(solved: boolean, hardest: TechniqueId | null, choice: number): Level | 'beyond' {
+  if (!solved) return 'beyond'
+  if (hardest === null) return 'easy'
+  const level = TECHNIQUE_LEVEL[hardest]
+  return level === 'easy' && choice < EASY_MIN_CHOICE ? 'medium' : level
+}
+
+const RANKS_UP_TO: Readonly<Record<Level, readonly TechniqueRank[]>> = {
+  easy: ranksUpTo('easy'),
+  medium: ranksUpTo('medium'),
+  hard: ranksUpTo('hard'),
+  expert: ranksUpTo('expert'),
+}
+
+function ranksUpTo(level: Level): readonly TechniqueRank[] {
+  return GRADE_ORDER.filter((rank) => LEVELS.indexOf(TECHNIQUE_LEVEL[rank.technique]) <= LEVELS.indexOf(level))
+}
+
+/**
+ * True when `grade(givens).level` is `level`, and the givens have exactly one solution. The
+ * ranks of `GRADE_ORDER` go by level, and a step comes from the first rank that applies. A solve
+ * that stops at the levels up to `level` therefore takes the same steps as the full solve, until
+ * it needs a harder level. Then it stops, and the answer is false. The choice only matters when
+ * the hardest technique is a single, so a harder puzzle does not compute it.
+ */
+export function gradesAs(givens: readonly number[], level: Level): boolean {
+  const { steps, solved } = playThrough(givens, RANKS_UP_TO[level], { unique: true })
+  if (!solved) return false
+  const hardest = hardestOf(steps)
+  const needsChoice = hardest !== null && TECHNIQUE_LEVEL[hardest] === 'easy'
+  return levelOf(true, hardest, needsChoice ? choiceOf(givens) : 0) === level
 }

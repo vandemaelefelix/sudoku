@@ -1,4 +1,4 @@
-import { LEVELS, type Level } from '../generator'
+import { LEVELS, type Level } from '../level'
 import { TECHNIQUE_ORDER } from '../technique/order'
 import type { TechniqueId, TechniqueRank } from '../technique/types'
 
