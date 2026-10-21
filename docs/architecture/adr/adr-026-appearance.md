@@ -145,3 +145,20 @@ So each colourway has two looks, and the player chooses how the app picks one.
 - The app needs a dark look that is not the accent as the page. Then it is a new ADR with its own palette.
 - The iPhone setting flicker at the start of the app causes a flash of the wrong look. Then Auto waits for the first scheme event.
 - The developer wants the app icon to follow the look. Then the icon needs alternate icons.
+
+## Amendment 2026-10-21: stronger grid highlights
+
+In Colour, each fill step was 1.1 to 1.2 : 1 against the next. The row, the column and the box of the selected cell were hard to see. A wrong digit was white, the colour of a given. In Light, a peer was 1.08 : 1 against the page, and the selected cell was lighter than the same-number cells (#163).
+
+1. **The Colour page is darker.** The page is `A` mixed with black by 0.30, not 0.16. At 0.16 the typed digit on a lighter fill fell below 4.5 : 1 before the peers stood out.
+2. **The Colour fills have wider steps.** This replaces the peer, same-number and selected rows of decision 6.
+
+   | Role | Value |
+   | --- | --- |
+   | Peer, same-number cell | `white(0.12)`, `white(0.20)` |
+   | Selected cell | `white(0.24)` with a 3 point white ring. The digits keep their colours |
+
+   A peer has at least 1.37 : 1 against the page. The weakest digit on the selected cell has 4.72 : 1, in Forest.
+3. **A wrong digit in Colour is amber.** This replaces the conflict row of decision 6 and the colour of decision 8. The digit is `#ffc94d`, the amber of danger text. The stripes are the same amber at 0.25 opacity. The pattern of decision 8 stays. The amber digit has at least 3.28 : 1 on a stripe and 5.18 : 1 on the fill.
+4. **Light rings the selected cell too.** This replaces the Light value of decision 7: `cell.selectedRingWidth` is 2 in Light and 3 in Colour. The Light ring is the accent. A peer is `tint100` and a same-number cell is `tint200`. The selected cell stays `tint150`, so its notes in muted text pass 4.5 : 1. The palettes drop `tint175` and `tint050`, which no role uses now.
+5. **The app icon keeps its ground.** The iOS dark icon of ADR-022 stays the accent darkened 16 %. The icon is its own design.
