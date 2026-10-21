@@ -1,9 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { Level } from '@sudoku/core'
-import { newGeneratedGame } from '@/game/utils/start.utils'
+import { usePuzzleStart } from '@/game/hooks/usePuzzleStart'
 import { HomeMenu } from '@/home/components/HomeMenu'
-import { useConfirmReplace } from '@/home/hooks/useConfirmReplace'
 import { loadHomeStats, type HomeStats } from '@/home/utils/homeStats.utils'
 import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
@@ -15,15 +14,13 @@ export function HomeScreen() {
   const { puzzles, stats } = useGameStorage()
   const { includeScanned } = useIncludeScanned()
   const owner = useOwner()
-  const confirmReplace = useConfirmReplace()
+  const puzzleStart = usePuzzleStart()
   // peek() knows the game when a screen before read or started it. Else the menu waits for the focus read.
   const [continueLevel, setContinueLevel] = useState<Level | null | undefined>(() => {
     const known = puzzles.peek()
     return known === undefined ? undefined : (known?.level ?? null)
   })
   const [homeStats, setHomeStats] = useState<HomeStats | null | undefined>(undefined)
-  // start() discards the game before it, so a second tap must not start a second game.
-  const busy = useRef(false)
 
   useFocusEffect(
     useCallback(() => {
@@ -53,30 +50,8 @@ export function HomeScreen() {
     }, [puzzles, stats, includeScanned, owner]),
   )
 
-  const once = useCallback(async (task: () => Promise<void>) => {
-    if (busy.current) return
-    busy.current = true
-    try {
-      await task()
-    } catch (error) {
-      devWarn('storage', `The game does not start: ${errorMessage(error)}`)
-    } finally {
-      busy.current = false
-    }
-  }, [])
-
-  const newGame = (level: Level) =>
-    once(async () => {
-      // Ask from the stored state at the tap. peek() follows the focus read, so the tap waits for no read.
-      const known = puzzles.peek()
-      const current = known === undefined ? await puzzles.current() : known
-      if (current !== null && !(await confirmReplace())) return
-      const { game, seed } = newGeneratedGame(level, Math.random)
-      // The game screen opens on peek() while the write runs, so the push follows the tap at once.
-      const starting = puzzles.start({ level, source: 'generated', seed, game, owner })
-      router.push('/game')
-      await starting
-    })
+  // The game screen opens on peek() while the write runs, so the push follows the tap at once.
+  const newGame = (level: Level) => puzzleStart.newGame(level, () => router.push('/game'))
 
   return (
     <HomeMenu
