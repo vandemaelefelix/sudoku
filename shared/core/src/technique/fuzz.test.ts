@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { generate, LEVELS } from '../generator'
 import { createRandom } from '../random'
+import { computeCandidates } from './candidates'
 import { PEERS, UNITS } from '../units'
 import { bitOf } from './masks'
 import { nextSteps } from './nextSteps'
@@ -32,6 +33,30 @@ function fuzzState(solution: readonly number[], random: () => number): State {
   return { board, candidates, solution }
 }
 
+/**
+ * The candidates of a puzzle, with random extra digits removed. A removed digit is never a solution
+ * digit, so the puzzle keeps exactly one solution. A technique that needs one solution may run here.
+ */
+function uniqueState(givens: readonly number[], solution: readonly number[], random: () => number): State {
+  const drop = random() * 0.8
+  const candidates = computeCandidates(givens)
+  for (let cell = 0; cell < 81; cell++) {
+    for (let digit = 1; digit <= 9; digit++) {
+      if (candidates[cell]! & bitOf(digit) && digit !== solution[cell] && random() < drop)
+        candidates[cell]! &= ~bitOf(digit)
+    }
+  }
+  return { board: [...givens], candidates, solution }
+}
+
+const uniqueStates: State[] = LEVELS.flatMap((level, index) =>
+  [1, 2, 3, 4].flatMap((seed) => {
+    const { givens, solution } = generate(level, seed)
+    const random = createRandom(index * 100 + seed + 50)
+    return Array.from({ length: STATES_PER_SOLUTION }, () => uniqueState(givens, solution, random))
+  }),
+)
+
 const states: State[] = LEVELS.flatMap((level, index) =>
   [1, 2, 3, 4].flatMap((seed) => {
     const { solution } = generate(level, seed)
@@ -47,8 +72,8 @@ describe('technique fuzz', () => {
     'rank $index ($rank.technique) returns only sound steps',
     ({ rank }) => {
       let count = 0
-      for (const { board, candidates, solution } of states) {
-        const steps = nextSteps(candidates, board, [rank])
+      for (const { board, candidates, solution } of rank.needsUnique ? uniqueStates : [...states, ...uniqueStates]) {
+        const steps = nextSteps(candidates, board, [rank], { unique: rank.needsUnique })
         for (const step of steps) {
           count++
           expect(step.technique).toBe(rank.technique)
@@ -64,6 +89,10 @@ describe('technique fuzz', () => {
             expect(digit).not.toBe(solution[cell])
           }
           for (const cell of step.pattern) expect(board[cell]).toBe(0)
+          for (const link of step.links ?? []) {
+            expect(candidates[link.from]! & bitOf(link.digit)).not.toBe(0)
+            expect(candidates[link.to]! & bitOf(link.digit)).not.toBe(0)
+          }
           for (const unit of step.units) expect(UNITS[unit]).toBeDefined()
         }
       }

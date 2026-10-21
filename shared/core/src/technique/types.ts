@@ -26,11 +26,16 @@ export type TechniqueId =
   | 'xyWing'
   | 'xyzWing'
   | 'wWing'
+  | 'simpleColouring'
+  | 'uniqueRectangle'
+  | 'xChain'
+  | 'xyChain'
 
 /**
  * Every list is sorted, with three exceptions. The units start with the focus unit. The pattern of
  * a wing lists the pivot (or the two cells of a W-wing) first. The digits of a wing start with the
- * digit that the step removes. A step has at least one placement or one elimination.
+ * digit that the step removes. The digits of an XY-chain start with the digit that the step removes.
+ * A step has at least one placement or one elimination.
  */
 export type Step = {
   readonly technique: TechniqueId
@@ -44,7 +49,13 @@ export type Step = {
   readonly support: readonly number[]
   /** The digits of the pattern. */
   readonly digits: readonly Digit[]
+  /** Chains only: the links in chain order, from the first cell to the last. A link joins two cells that share the digit. */
+  readonly links?: readonly ChainLink[]
+  /** Simple colouring only: the cells of the two colours. Each list is sorted. Exactly one colour holds the digit. */
+  readonly groups?: readonly (readonly number[])[]
 }
+
+export type ChainLink = { readonly from: number; readonly to: number; readonly digit: Digit; readonly strong: boolean }
 
 export type TechniqueRank = {
   readonly technique: TechniqueId
@@ -52,4 +63,6 @@ export type TechniqueRank = {
   readonly weight: number
   /** Only for hiddenSingle: the kinds of unit that this rank searches. */
   readonly unitKinds?: readonly UnitKind[]
+  /** True when the rank is valid only for a puzzle with exactly one solution. `nextSteps` skips it unless the caller says so. */
+  readonly needsUnique?: boolean
 }

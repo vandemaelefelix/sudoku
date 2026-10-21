@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import { generate, LEVELS, type Level } from '../src/generator'
 import { stepWeight, TECHNIQUE_ORDER, TIER_1_ORDER } from '../src/technique/order'
 import { playThrough } from '../src/technique/playThrough'
-import type { TechniqueRank } from '../src/technique/types'
+import type { TechniqueId, TechniqueRank } from '../src/technique/types'
 
 const PUZZLES_PER_LEVEL = 1000
 
@@ -16,15 +16,19 @@ const GROUPS: readonly Group[] = [
   { name: 'and triples (all of tier 1)', limit: 4.0 },
 ]
 
+// The techniques that the full solver adds to tier 1 and tier 2. The unique rectangle runs because every generated puzzle has one solution.
+const FULL_ONLY: ReadonlySet<TechniqueId> = new Set(['simpleColouring', 'uniqueRectangle', 'xChain', 'xyChain'])
+const TIER_2_ORDER = TECHNIQUE_ORDER.filter((rank) => !FULL_ONLY.has(rank.technique))
+
 const percent = (part: number, whole: number): string => `${((part / whole) * 100).toFixed(1)} %`
 
 type Result = { solved: boolean; steps: number; hardest: number; emptyLeft: number; used: Set<string> }
 
-function measure(level: Level, ranks?: readonly TechniqueRank[]): Result[] {
+function measure(level: Level, ranks: readonly TechniqueRank[]): Result[] {
   const results: Result[] = []
   for (let seed = 1; seed <= PUZZLES_PER_LEVEL; seed++) {
     const { givens: board } = generate(level, seed)
-    const run = playThrough(board, ranks)
+    const run = playThrough(board, ranks, { unique: true })
     const placed = run.steps.reduce((sum, step) => sum + step.placements.length, 0)
     const givens = board.filter((digit) => digit !== 0).length
     results.push({
@@ -41,7 +45,8 @@ function measure(level: Level, ranks?: readonly TechniqueRank[]): Result[] {
 test('the share of generated puzzles that tier 1 and tier 2 solve to the end', () => {
   const started = performance.now()
   const rows = LEVELS.map((level) => ({ level, results: measure(level, TIER_1_ORDER) }))
-  const tier2 = LEVELS.map((level) => ({ level, results: measure(level) }))
+  const tier2 = LEVELS.map((level) => ({ level, results: measure(level, TIER_2_ORDER) }))
+  const full = LEVELS.map((level) => ({ level, results: measure(level, TECHNIQUE_ORDER) }))
   const lines: string[] = []
 
   lines.push(
@@ -99,7 +104,7 @@ test('the share of generated puzzles that tier 1 and tier 2 solve to the end', (
     )
   }
 
-  const tier2Techniques = TECHNIQUE_ORDER.map((rank) => rank.technique).filter(
+  const tier2Techniques = TIER_2_ORDER.map((rank) => rank.technique).filter(
     (technique, i, all) => !TIER_1_ORDER.some((rank) => rank.technique === technique) && all.indexOf(technique) === i,
   )
   lines.push('', 'Solved puzzles that use each tier 2 technique at least once (of 1 000 puzzles per level):', '')
@@ -107,6 +112,39 @@ test('the share of generated puzzles that tier 1 and tier 2 solve to the end', (
   lines.push(`| --- | ${tier2Techniques.map(() => '---').join(' | ')} |`)
   for (const { level, results } of tier2) {
     const counts = tier2Techniques.map(
+      (technique) => results.filter((result) => result.solved && result.used.has(technique)).length,
+    )
+    lines.push(`| ${level} | ${counts.join(' | ')} |`)
+  }
+
+  lines.push(
+    '',
+    'Full solver: tier 1, tier 2, simple colouring, unique rectangle, X-chain and XY-chain (a chain has at most 12 cells):',
+    '',
+  )
+  lines.push(
+    '| Level | Puzzles | Tier 1 solved | Tier 2 solved | Full solver solved | Stuck | Steps for a solved puzzle (mean, largest) | Empty cells left when stuck (mean) |',
+  )
+  lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |')
+  for (const [index, { level, results }] of full.entries()) {
+    const solved = results.filter((result) => result.solved)
+    const stuck = results.filter((result) => !result.solved)
+    const mean = solved.reduce((sum, result) => sum + result.steps, 0) / Math.max(1, solved.length)
+    const largest = Math.max(0, ...solved.map((result) => result.steps))
+    const left = stuck.reduce((sum, result) => sum + result.emptyLeft, 0) / Math.max(1, stuck.length)
+    const tier1Solved = rows[index]!.results.filter((result) => result.solved).length
+    const tier2Solved = tier2[index]!.results.filter((result) => result.solved).length
+    lines.push(
+      `| ${level} | ${results.length} | ${percent(tier1Solved, results.length)} | ${percent(tier2Solved, results.length)} | ${percent(solved.length, results.length)} | ${stuck.length} | ${mean.toFixed(1)}, ${largest} | ${stuck.length === 0 ? '-' : left.toFixed(1)} |`,
+    )
+  }
+
+  const fullTechniques = TECHNIQUE_ORDER.map((rank) => rank.technique).filter((technique) => FULL_ONLY.has(technique))
+  lines.push('', 'Solved puzzles that use each added technique at least once (of 1 000 puzzles per level):', '')
+  lines.push(`| Level | ${fullTechniques.join(' | ')} |`)
+  lines.push(`| --- | ${fullTechniques.map(() => '---').join(' | ')} |`)
+  for (const { level, results } of full) {
+    const counts = fullTechniques.map(
       (technique) => results.filter((result) => result.solved && result.used.has(technique)).length,
     )
     lines.push(`| ${level} | ${counts.join(' | ')} |`)
