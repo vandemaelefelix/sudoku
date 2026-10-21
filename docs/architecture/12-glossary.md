@@ -30,7 +30,7 @@ status: DRAFT
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
 | Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
-| Technique solver | The solver in `@sudoku/core` that will solve like a person. It will grade difficulty and give hints (ADR-011). v1 does not have it |
+| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques. The hint and the grading will use it (ADR-011) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
@@ -243,3 +243,9 @@ status: DRAFT
 | Contributor ID | A random ID that the app makes for the device. It names the owner of an uploaded scan. It has no link to a person, unless the player signs in (ADR-030) |
 | Scan record | The data of one finished scan: the cropped photo, the corners, the model answers, the final grid and the `edited` flags. The app uploads it when the setting "Help improve the app" is on (ADR-030) |
 | Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training uses it to filter cells (ADR-030) |
+| Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
+| Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
+| Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |
+| Step | One use of a technique. It lists the placements, the eliminations, the units, the pattern cells and the support cells |
+| Pattern cell | A cell that forms the technique in a step, such as one cell of a naked pair |
+| Support cell | A cell with a digit on the board that causes a step, such as the cell that blocks a digit in a hidden single |

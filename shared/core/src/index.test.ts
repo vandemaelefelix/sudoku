@@ -27,4 +27,11 @@ describe('@sudoku/core', () => {
     }
     expect(core.MAX_MISTAKES).toBe(3)
   })
+
+  it('exports the technique solver', () => {
+    expect(typeof core.computeCandidates).toBe('function')
+    expect(typeof core.nextSteps).toBe('function')
+    expect(core.TECHNIQUE_ORDER[0]?.technique).toBe('fullHouse')
+    expect(core.UNITS).toHaveLength(27)
+  })
 })

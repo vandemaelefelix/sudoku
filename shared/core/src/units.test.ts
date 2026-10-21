@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOXES, COLUMNS, peersOf, ROWS } from './units'
+import { BOX_OF, BOXES, COL_OF, COLUMNS, PEERS, peersOf, ROW_OF, ROWS, UNITS, UNITS_OF, unitKindOf } from './units'
 
 describe('units', () => {
   it('has nine rows, columns and boxes of nine cells', () => {
@@ -26,6 +26,25 @@ describe('units', () => {
       expect(peers).toHaveLength(20)
       expect(peers).not.toContain(cell)
     }
+  })
+
+  it('numbers the units rows, columns, boxes', () => {
+    expect(UNITS).toHaveLength(27)
+    expect(UNITS.slice(0, 9)).toEqual(ROWS)
+    expect(UNITS.slice(9, 18)).toEqual(COLUMNS)
+    expect(UNITS.slice(18)).toEqual(BOXES)
+    expect([0, 8, 9, 17, 18, 26].map(unitKindOf)).toEqual(['row', 'row', 'column', 'column', 'box', 'box'])
+  })
+
+  it('finds the row, the column and the box of each cell', () => {
+    for (let cell = 0; cell < 81; cell++) {
+      expect(ROWS[ROW_OF[cell]!]).toContain(cell)
+      expect(COLUMNS[COL_OF[cell]!]).toContain(cell)
+      expect(BOXES[BOX_OF[cell]!]).toContain(cell)
+      expect(UNITS_OF[cell]!.map((unit) => UNITS[unit]!.includes(cell))).toEqual([true, true, true])
+      expect(PEERS[cell]).toEqual(peersOf(cell))
+    }
+    expect(UNITS_OF[40]).toEqual([4, 13, 22])
   })
 
   it('takes the peers from the row, the column and the box', () => {
