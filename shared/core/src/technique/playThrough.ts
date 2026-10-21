@@ -1,6 +1,6 @@
 import { computeCandidates } from './candidates'
 import { bitOf } from './masks'
-import { nextSteps } from './nextSteps'
+import { nextSteps, type NextStepsOptions } from './nextSteps'
 import { TECHNIQUE_ORDER } from './order'
 import type { Candidates, Step, TechniqueRank } from './types'
 
@@ -19,9 +19,13 @@ export type PlayThrough = {
 /**
  * Solves with the techniques of `ranks`: all of them, unless the caller measures a smaller set. At
  * each position it applies the first of the next steps. Struck candidates stay struck after a
- * placement.
+ * placement. The `options` go to `nextSteps`.
  */
-export function playThrough(givens: readonly number[], ranks: readonly TechniqueRank[] = TECHNIQUE_ORDER): PlayThrough {
+export function playThrough(
+  givens: readonly number[],
+  ranks: readonly TechniqueRank[] = TECHNIQUE_ORDER,
+  options: NextStepsOptions = {},
+): PlayThrough {
   const board = [...givens]
   const struck = new Uint16Array(board.length)
   const positions: Position[] = []
@@ -30,7 +34,7 @@ export function playThrough(givens: readonly number[], ranks: readonly Technique
   for (;;) {
     const candidates = computeCandidates(board)
     for (let cell = 0; cell < candidates.length; cell++) candidates[cell]! &= ~struck[cell]!
-    const step = nextSteps(candidates, board, ranks)[0]
+    const step = nextSteps(candidates, board, ranks, options)[0]
     if (!step) {
       final = { board: [...board], candidates }
       break

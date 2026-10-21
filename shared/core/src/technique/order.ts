@@ -23,9 +23,13 @@ export const TECHNIQUE_ORDER: readonly TechniqueRank[] = [
   { technique: 'xyWing', weight: 4.2 },
   { technique: 'xyzWing', weight: 4.4 },
   { technique: 'wWing', weight: 4.4 },
+  { technique: 'uniqueRectangle', weight: 4.5, needsUnique: true },
+  { technique: 'simpleColouring', weight: 4.6 },
   { technique: 'nakedQuad', weight: 5.0 },
   { technique: 'jellyfish', weight: 5.2 },
   { technique: 'hiddenQuad', weight: 5.4 },
+  { technique: 'xChain', weight: 6.5 },
+  { technique: 'xyChain', weight: 6.6 },
 ]
 
 const TIER_1: ReadonlySet<TechniqueId> = new Set([
