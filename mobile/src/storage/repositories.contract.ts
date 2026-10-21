@@ -865,6 +865,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
       await finishGame(storage, 'easy', lostGame(5_000))
       await finishGame(storage, 'hard', wonWithHint(30_000))
       await finishGame(storage, 'hard', wonGame(200_000))
+      await finishGame(storage, 'easy', wonGame(1_000), 'generated', ALICE)
       const { id } = await storage.puzzles.start({ level: 'hard', source: 'generated', game: newGame(), owner: null })
       await storage.puzzles.save(id, movedGame(1_000), null)
       await storage.puzzles.start({ level: 'hard', source: 'generated', game: newGame(), owner: null })

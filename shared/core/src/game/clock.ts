@@ -1,6 +1,6 @@
 /**
  * The whole seconds of a time played. It rounds down, like the timer on the game screen: a time never shows a second
- * that has not passed. Rounding up would turn 59 999 ms into 00:60 and make the finish card disagree with the timer.
+ * that has not passed. The finish card and the stats screen then agree with the timer.
  */
 export function wholeSeconds(ms: number): number {
   return Math.floor(ms / 1000)
