@@ -1,4 +1,4 @@
-import { generateWithTarget, GIVENS_TARGET, type Level } from '../generator'
+import { generateWithTarget, type Level } from '../generator'
 import { createEmptyGrid } from '../grid'
 import type { Grid } from '../types'
 import type { Candidates } from './types'
@@ -40,11 +40,14 @@ export function onlyIn(candidates: Candidates, digit: number, cells: readonly nu
   return copy
 }
 
+/** The v1 number of givens of each level. Only `ungradedPuzzle` uses it (ADR-011, amendment 2026-10-12). */
+const V1_GIVENS: Readonly<Record<Level, number>> = { easy: 40, medium: 34, hard: 29, expert: 25 }
+
 /**
  * A puzzle with the v1 number of givens of the level, graded by nobody. `generate` grades every
  * attempt, which costs far more for many seeds. These tests need varied puzzles, not graded ones.
  * The puzzles are the ones that `generate` gave before it graded (ADR-011, amendment 2026-10-12).
  */
 export function ungradedPuzzle(level: Level, seed: number): { givens: Grid; solution: Grid } {
-  return generateWithTarget(GIVENS_TARGET[level], seed)
+  return generateWithTarget(V1_GIVENS[level], seed)
 }

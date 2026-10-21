@@ -168,8 +168,8 @@ loads. The correction screen turns "Play this puzzle" on only when this play gat
 | The givens and the entries fill the grid | Yes. The panel offers Check | "Grid is full" |
 | A handwritten entry is wrong | No. It loads as a wrong entry, not a mistake | Nothing |
 
-A scanned game takes the level of the nearest givens target and the source `scanned`
-(ADR-011, amendment "a level for scanned puzzles").
+A scanned game takes the level of its grade, with `beyond` as expert, and the source `scanned`
+(ADR-011, amendment "a level for scanned puzzles by technique").
 
 A full grid has nothing to play, so the correction screen verifies it. The player taps Check the grid. `verifyGrid` in `@sudoku/core` trusts the printed digits and judges the handwritten digits.
 

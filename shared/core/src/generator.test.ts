@@ -9,7 +9,7 @@ import {
   removeGivens,
 } from './generator'
 import { EASY_MIN_CHOICE, grade, gradesAs } from './grading/grade'
-import { generate, GIVENS_TARGET, LEVELS, solve, type Level } from './index'
+import { generate, LEVELS, solve, type Level } from './index'
 import { createRandom, shuffled } from './random'
 
 const givensCount = (grid: readonly number[]): number => grid.filter((digit) => digit !== 0).length
@@ -71,7 +71,6 @@ describe('generate', () => {
   it('has four levels, and a floor of givens that falls with the level', () => {
     expect(LEVELS).toEqual(['easy', 'medium', 'hard', 'expert'])
     expect(GIVENS_FLOOR).toEqual({ easy: 40, medium: 34, hard: 29, expert: 25 })
-    expect(GIVENS_TARGET).toEqual({ easy: 40, medium: 34, hard: 29, expert: 25 })
   })
 
   describe.for(LEVELS)('%s', (level) => {

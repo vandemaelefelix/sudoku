@@ -4,7 +4,7 @@ import { useAnimatedReaction } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import type { Digit, Level } from '@sudoku/core'
 import type { Pulse } from '@/game/hooks/usePulse'
-import { levelOf } from '@/game/utils/start.utils'
+import { scannedLevel } from '@/game/utils/start.utils'
 import type { SaveState } from '@/scan/components/DevMenu'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
@@ -81,7 +81,8 @@ export type CorrectionSession = {
   conflictCount: number
   conflictCells: ReadonlySet<number>
   hints: Readonly<Record<number, number>>
-  level: Level
+  /** The level of the grade. Null while the play gate blocks the grid, because a grade needs one solution. */
+  level: Level | null
   block: PlayBlock | null
   canPlay: boolean
   canSolve: boolean
@@ -141,7 +142,7 @@ export function useCorrectionSession(
   const start = gate?.ok ? gate.start : null
   const block = gate !== null && !gate.ok ? gate.block : null
   const canPlay = start !== null && exits.onPlay !== undefined
-  const level = useMemo(() => levelOf(grid.givens), [grid])
+  const level = useMemo(() => (start === null ? null : scannedLevel(start.givens)), [start])
 
   // The grid is full with or without a conflict. It does not depend on the open cell: the marks stay while the player fixes a wrong
   // cell in the check sheet.

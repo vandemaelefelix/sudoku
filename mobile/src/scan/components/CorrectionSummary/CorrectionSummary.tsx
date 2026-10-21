@@ -23,7 +23,7 @@ type CorrectionSummaryProps = {
   toCheck: number
   /** The givens that share a digit with another given (QR-04). */
   conflictCount: number
-  /** The level name of the givens, for example "Hard". */
+  /** The level name of the grade, for example "Hard". Empty while Play is blocked. */
   level: string
   /** Why Play is off, or null. */
   blockText: string | null

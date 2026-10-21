@@ -70,7 +70,7 @@ status: DRAFT
 | Correction session | The module that owns the state of the correction screen: the edits, the given conflicts, the play gate, the verdict, the celebration, the panel state and the haptic cues. The screen renders its view and sends the intents of the player. `useCorrectionSession` |
 | Final grid | The 81 cells of a scan as the player left them: digit, kind and two flags for what the player changed. One definition: `finalGrid` in `src/scan/utils/finalGrid.utils.ts`. The development scan log and the scan upload (ADR-030) both read it |
 | Play gate | The check before "Play this puzzle" loads a scan. Given conflicts, no solution, several solutions and a grid that is already solved block it. Uncertain cells and wrong entries do not |
-| Scanned puzzle | A puzzle loaded from a scan. Its source is scanned. Its level is the level of the nearest givens target (ADR-011) |
+| Scanned puzzle | A puzzle loaded from a scan. Its source is scanned. Its level is the level of its grade, and `beyond` counts as expert (ADR-011) |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
 | Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
 | Capture session | The module that owns the state from lock-on to the review: the capture attempt, the transition gates, the transition clock, the plan, the phase and the photo image. It disposes the photo image. The flattened grid image has no dispose call: it goes with the result. The screens and canvases of the scan read it. `useCaptureSession` |

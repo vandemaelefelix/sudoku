@@ -4,7 +4,7 @@ import { type Digit, generate, peersOf } from '@sudoku/core'
 import type { CellResult } from '@/scanner'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
-import { levelOf } from '@/game/utils/start.utils'
+import { scannedLevel } from '@/game/utils/start.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
@@ -180,7 +180,7 @@ describe('the play gate', () => {
     expect(result.current.block).toBeNull()
     expect(result.current.canPlay).toBe(true)
     expect(result.current.canSolve).toBe(true)
-    expect(result.current.level).toBe(levelOf(puzzle.givens))
+    expect(result.current.level).toBe(scannedLevel(puzzle.givens))
     act(() => result.current.actions.play())
     expect(mockPlay).toHaveBeenCalledWith('thud')
     expect(onPlay).toHaveBeenCalledTimes(1)
@@ -201,6 +201,7 @@ describe('the play gate', () => {
       block: 'conflict',
       canPlay: false,
       canSolve: false,
+      level: null,
     })
     // 1 to 8 in a row, then a 9 in the same column as the last given of the row: no digit fits cell 8.
     const none = okResult({
@@ -214,7 +215,7 @@ describe('the play gate', () => {
       7: printed(8),
       17: printed(9),
     })
-    expect(session(review(none)).result.current.block).toBe('none')
+    expect(session(review(none)).result.current).toMatchObject({ block: 'none', level: null })
     expect(session(review(okResult({ 0: printed(1) }))).result.current.block).toBe('several')
   })
 
