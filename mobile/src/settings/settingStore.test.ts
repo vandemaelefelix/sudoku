@@ -90,6 +90,19 @@ describe('createSettingStore', () => {
     expect(store.get()).toBe(before)
   })
 
+  it('saves the same value again only when retrySave is true', async () => {
+    const settings = createMemorySettings()
+    const save = jest.spyOn(settings, 'set')
+    const store = createSettingStore(settings, FLAG)
+    const listener = jest.fn()
+    store.subscribe(listener)
+    await store.set(true)
+    expect(save).not.toHaveBeenCalled()
+    await store.set(true, { retrySave: true })
+    expect(save).toHaveBeenCalledWith(FLAG.key, 'on')
+    expect(listener).not.toHaveBeenCalled()
+  })
+
   it('stops telling a listener after it unsubscribes', async () => {
     const store = createSettingStore(createMemorySettings(), FLAG)
     const listener = jest.fn()

@@ -53,6 +53,17 @@ describe('notice store', () => {
     expect(createNoticeStore(settings).seen()).toBe(true)
   })
 
+  it('saves the answer again when the first save failed', async () => {
+    const settings = createMemorySettings()
+    const save = jest.spyOn(settings, 'set').mockRejectedValueOnce(new Error('disk full'))
+    const store = createNoticeStore(settings)
+    await expect(store.markSeen()).rejects.toThrow('disk full')
+    expect(store.seen()).toBe(true)
+    await store.markSeen()
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(await settings.get(NOTICE_SEEN_KEY)).toBe('yes')
+  })
+
   it('does not become due once the notice was seen', () => {
     const store = createNoticeStore(createMemorySettings({ [NOTICE_SEEN_KEY]: 'yes' }))
     store.request()
