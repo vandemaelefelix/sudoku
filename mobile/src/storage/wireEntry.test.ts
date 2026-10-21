@@ -1,10 +1,4 @@
-import {
-  gameResultSchema,
-  HISTORY_ENTRY_VERSION,
-  levelSchema,
-  MAX_ENTRIES_PER_SYNC,
-  puzzleSourceSchema,
-} from '@sudoku/sync-contract'
+import { gameResultSchema, HISTORY_ENTRY_VERSION, levelSchema, puzzleSourceSchema } from '@sudoku/sync-contract'
 import { LEVELS } from '@sudoku/core'
 import type {
   GameResult as ContractGameResult,
@@ -12,9 +6,8 @@ import type {
   Level as ContractLevel,
   PuzzleSource as ContractPuzzleSource,
 } from '@sudoku/sync-contract'
-import type { GameResult, HistoryRecord, Level, PuzzleSource } from '@/storage'
-import { BATCH_SIZE } from '@/sync/constants/sync.constants'
-import { parseChanges, toWireEntry } from './wireEntry'
+import type { GameResult, HistoryRecord, Level, PuzzleSource } from './storage.types'
+import { meetsContract, parseChanges, toWireEntry } from './wireEntry'
 
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 // A change of the contract or of the app that makes the two differ fails the typecheck here.
@@ -45,15 +38,19 @@ describe('the contract and the app agree', () => {
     expect(puzzleSourceSchema.options).toEqual(['generated', 'scanned'])
     expect(gameResultSchema.options).toEqual(['won', 'lost', 'abandoned'])
   })
-
-  it('has the batch size of the contract', () => {
-    expect(BATCH_SIZE).toBe(MAX_ENTRIES_PER_SYNC)
-  })
 })
 
 describe('toWireEntry', () => {
   it('adds the schema version', () => {
     expect(toWireEntry(RECORD)).toEqual({ schemaVersion: HISTORY_ENTRY_VERSION, ...RECORD })
+  })
+})
+
+describe('meetsContract', () => {
+  it('accepts a valid record and refuses a record that the server would refuse', () => {
+    expect(meetsContract(RECORD)).toBe(true)
+    expect(meetsContract({ ...RECORD, id: 'not-a-uuid' })).toBe(false)
+    expect(meetsContract({ ...RECORD, playedMs: -1 })).toBe(false)
   })
 })
 

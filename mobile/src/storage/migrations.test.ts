@@ -326,7 +326,7 @@ describe('migration 5: the owner and the waiting list', () => {
 
   it('lets an owner adopt the old entries that are not deleted', async () => {
     await migrateFromVersion4()
-    await expect(createSqliteStorage(db, testDeps()).history.adoptUnowned('user-alice')).resolves.toBe(2)
+    await expect(createSqliteStorage(db, testDeps()).history.answerAdopt('user-alice', true)).resolves.toBe(2)
     const owners = await db.getAllAsync<{ id: string; owner_id: string | null }>(
       'SELECT id, owner_id FROM game_history ORDER BY rowid',
       [],

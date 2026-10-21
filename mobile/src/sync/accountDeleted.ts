@@ -1,8 +1,7 @@
-import type { HistoryRepository, SyncStateRepository } from '@/storage'
+import type { HistoryRepository } from '@/storage'
 
 type Deps = {
   history: HistoryRepository
-  state: SyncStateRepository
   /** Never rejects. Resolves false when Clerk could not sign out. */
   signOut(): Promise<boolean>
   announce(): void
@@ -30,9 +29,8 @@ export function cleanUpDeletedAccount(deps: Deps, owner: string): Promise<void> 
   return run
 }
 
-async function cleanUp({ history, state, signOut, announce }: Deps, owner: string): Promise<void> {
+async function cleanUp({ history, signOut, announce }: Deps, owner: string): Promise<void> {
   await history.deleteOwner(owner)
-  await state.clear(owner)
   await signOut()
   announce()
 }

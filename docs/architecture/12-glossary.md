@@ -199,6 +199,7 @@ status: DRAFT
 | Synced line | The muted line "Synced 5 min ago" at the bottom of the stats screen, only when signed in (ADR-028) |
 | Accepted | A pushed history entry is accepted when the server stored it, or already holds an equal or newer `updatedAt` for its id (ADR-028) |
 | Waiting list | The history entries of the signed-in owner that the server has not accepted yet: `pushed_at` is null or differs from `updated_at`. `pushed_at` holds the accepted `updatedAt`, never a clock time (ADR-028) |
+| Sync page | One answer of the server with the entries that the app pushed and the entries that it downloaded. `HistoryRepository.applySyncPage` applies it in one transaction: it marks the pushed entries, writes the downloaded entries and saves the cursor (ADR-028) |
 | Cursor | An opaque value from the server that marks how far a device has pulled: the watermark and, during paging, the `LastEvaluatedKey`. A null cursor pulls everything (ADR-028) |
 | Watermark | The highest `syncedAt` that a device has pulled. The server reads from 5 minutes before it (ADR-028) |
 | Synced at | `syncedAt`: the server time when the server stored a history entry. Only the server clock sets it (ADR-028) |

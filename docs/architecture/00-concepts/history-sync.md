@@ -55,6 +55,12 @@ differs from its `updated_at`. `pushed_at` holds the `updatedAt` that the server
 clock time. The server accepts an id when it stores the history entry, or when it already holds an
 equal or newer `updatedAt` for that id. So a lost response is harmless.
 
+**The page.** `HistoryRepository.applySyncPage` applies one answer of the server in one transaction. It marks the pushed
+entries, writes the downloaded entries and saves the cursor. It drops a downloaded entry that breaks the sync contract
+or a CHECK. `nextBatch` reads the waiting list and leaves out the entries that break the contract. The sync run
+keeps the network, the retries and the pause. The details are in the amendment of 2026-10-21 in
+[ADR-028](../adr/adr-028-history-sync.md).
+
 **The sync contract.** The zod schemas in `shared/sync-contract/` define every body of
 `POST /v1/sync`. The app and the `sync-api` Lambda import them. The package depends only on zod.
 
@@ -89,12 +95,12 @@ sequenceDiagram
   participant DB as DynamoDB
   Game->>Repo: finish: history entry with owner, pushed_at null
   Repo-->>Sync: trigger
-  Sync->>Repo: pending(owner, 100)
+  Sync->>Repo: nextBatch(owner)
   Sync->>API: POST /v1/sync (history entries, cursor), fresh Clerk token
   API->>DB: put each history entry if new or newer, up to the daily count, stamp syncedAt
   API->>DB: query bySynced from the watermark minus 5 min, max 500 rows
   API-->>Sync: accepted ids, changes, cursor, more
-  Sync->>Repo: markPushed(id and updatedAt of each accepted id), upsertRemote(changes)
+  Sync->>Repo: applySyncPage(sent, accepted ids, changes, cursor): one transaction
   Note over Sync: more = true: call again. A failure: keep the list, retry at the next trigger
 ```
 
@@ -141,7 +147,7 @@ maps the Clerk user ID to our own user ID and reads and writes one DynamoDB tabl
 flowchart TD
   start["trigger"] --> push["push up to 100 waiting entries"]
   push --> answer{"answer"}
-  answer -->|"200"| store["markPushed, upsertRemote, save cursor"]
+  answer -->|"200"| store["applySyncPage: mark pushed, store changes, save cursor"]
   store --> more{"more, or more waiting?"}
   more -->|"yes"| push
   more -->|"no"| done["save the sync time"]
