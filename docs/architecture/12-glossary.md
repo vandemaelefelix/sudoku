@@ -38,7 +38,7 @@ status: DRAFT
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes`. The kind says how the mark was made: `printed` by a printer or a screen, `handwritten` by a person (ADR-009, amendment) |
 | Lock-on | The moment the same grid has been in view long enough without a clear move, and the scan captures |
 | Lock-on tracker | The module that owns the lock-on rule: the drift window, the dwell, the warm-up and the minimum grid size. It runs on the UI thread, one step per frame, and fires once. `src/scan/utils/lockOn.utils.ts` (ADR-019) |
-| Lock latch | The JS-thread latch that lets the first of the shutter and the automatic lock-on start the scan. It refuses the second. It lives in the lock-on tracker module |
+| Lock latch | The JS-thread latch that lets the first of the shutter and the automatic lock-on start the scan. It refuses the second. It lives in the lock-on tracker module. The capture session uses it |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label. For the real cells: `ml/dataset/cells.csv` (ADR-018) |
 | Notes | Small pencil marks in a cell. In a scan: a kind, loaded as an empty cell. In the game: the candidate numbers that the player sets in notes mode |
@@ -69,6 +69,8 @@ status: DRAFT
 | Scanned puzzle | A puzzle loaded from a scan. Its source is scanned. Its level is the level of the nearest givens target (ADR-011) |
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
 | Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
+| Capture session | The module that owns the state from lock-on to the review: the capture attempt, the transition gates, the transition clock, the plan, the phase and the photo image. The screens and canvases of the scan read it. `useCaptureSession` |
+| Capture result | The scanner result plus what the scan UI adds to an ok result: the flattened grid as a Skia image and the photo file. `src/scan/utils/captureResult.utils.ts` |
 | Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, and when the photo conversion fails |
 | Install (model) | `just install-model <run>`: copies an exported run into the app without the promote gate. M0 only (ADR-007) |
 | Reference outputs | `reference-outputs.json`: the PyTorch probabilities for the 81 reference cells. The phone's outputs must match them (ADR-005) |

@@ -1,6 +1,6 @@
 import { Directory, File } from 'expo-file-system'
-import type { RecogniseResult } from '@/scanner'
 import type { Quad } from '@/utils/geometry.utils'
+import type { CaptureOk } from './captureResult.utils'
 import { cellLook } from './correction.utils'
 import { saveScanCorrection } from './correctionStore'
 
@@ -24,8 +24,7 @@ const quad = [
   { x: 1, y: 1 },
   { x: 0, y: 1 },
 ] as Quad
-type Ok = Extract<RecogniseResult, { ok: true }>
-const result: Ok = {
+const result: CaptureOk = {
   ok: true,
   cells,
   quad,
