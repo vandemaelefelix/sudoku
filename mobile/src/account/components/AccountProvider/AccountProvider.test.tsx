@@ -229,15 +229,15 @@ describe('the owner before Clerk has loaded (ADR-028)', () => {
 })
 
 describe('after the server deleted the account', () => {
-  it('forces no owner and a signed-out status although Clerk is still signed in, and flags the sign-out', async () => {
+  it('forces no owner and a signed-out status although Clerk is still signed in, and clears the cache', async () => {
     signedIn('user_alice', 'alice@example.com')
     const { result } = await renderAccount()
     expect(result.current.owner).toBe('user_alice')
-    act(() => result.current.account.markDeleted({ signedOut: false }))
+    act(() => result.current.account.markDeleted())
     await waitFor(() => expect(result.current.owner).toBeNull())
     expect(result.current.account.status).toBe('signedOut')
+    expect(await result.current.account.getApiToken()).toBeNull()
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(OWNER_CACHE_KEY)
-    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(PENDING_SIGN_OUT_KEY, '1')
   })
 
   it('signs out again at the next start, without a message, and forgets the flag', async () => {

@@ -23,5 +23,3 @@ export const ADOPT_MESSAGE =
   'These games were played before you signed in. They will back up to your account and show on your other devices.'
 export const ADOPT_DECLINE = 'Not now'
 export const ADOPT_ACCEPT = 'Add games'
-
-export const ACCOUNT_DELETED_TITLE = 'This account was deleted. You are signed out.'
