@@ -1,7 +1,6 @@
-import { MAX_MISTAKES, type Game } from '@sudoku/core'
+import { countsForBestTime, formatClock, MAX_MISTAKES, type Game } from '@sudoku/core'
 import { LEVEL_NAMES } from '@/constants/level.constants'
 import { DATE_FORMAT, DATE_LOCALE, NO_BEST } from '@/game/constants/finish.constants'
-import { formatClock } from '@/game/utils/time.utils'
 import type { Level, PuzzleSource } from '@/storage'
 
 /** bestBeforeMs is the best time of the level before this game, or null when the level has none. */
@@ -35,9 +34,8 @@ function sourceText(info: FinishInfo): string {
   return info.seed === null ? 'Generated puzzle' : `Puzzle ${formatPuzzleNumber(info.seed)}`
 }
 
-/** The same rule as HistoryRepository.bestTimes (ADR-012): only a won generated game without hints counts. */
 export function finishView(board: Game, playedMs: number, info: FinishInfo, finishedAt: Date): FinishView {
-  const counts = info.source === 'generated' && board.hintsUsed === 0
+  const counts = countsForBestTime({ result: 'won', source: info.source, hintsUsed: board.hintsUsed })
   const newBest = counts && (info.bestBeforeMs === null || playedMs < info.bestBeforeMs)
   const bestMs = newBest ? playedMs : info.bestBeforeMs
   const title = `Solved · ${LEVEL_NAMES[info.level]}`

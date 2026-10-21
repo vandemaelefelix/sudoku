@@ -50,7 +50,7 @@ type SummaryRow = {
 }
 
 // One row for every call: an aggregate without GROUP BY always returns a row, with NULL or 0 when no game matches.
-// The best and the average time read the same games: won, generated, no hints, whatever the filter says (ADR-012, amendment).
+// The best and the average time read the same games: the games that countsForBestTime accepts, whatever the filter says (ADR-012, amendment).
 const SUMMARY_SQL = `SELECT
     COALESCE(SUM(result = 'won'), 0) AS won,
     COALESCE(SUM(result = 'lost'), 0) AS lost,

@@ -1,12 +1,9 @@
+import { formatClock, wholeSeconds } from '@sudoku/core'
 import { NONE } from '@/stats/constants/stats.constants'
 
-/** Minutes and seconds, such as "04:32". A time of 100 minutes or more keeps its third digit. */
+/** Minutes and seconds, such as "04:32": the format of the finish card and the timer. A dash for no time. */
 export function formatTime(ms: number | null): string {
-  if (ms === null) return NONE
-  // Round first: 59.6 seconds must read 01:00, not 00:60.
-  const seconds = Math.round(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+  return ms === null ? NONE : formatClock(ms)
 }
 
 /** A count with its noun, such as "1 day" or "3 days". */
@@ -16,7 +13,7 @@ export function countOf(count: number, noun: string): string {
 
 /** The same time as words, for an accessibility label. */
 export function timeWords(ms: number): string {
-  const seconds = Math.round(ms / 1000)
+  const seconds = wholeSeconds(ms)
   const minutes = Math.floor(seconds / 60)
   const rest = seconds % 60
   if (minutes === 0) return countOf(rest, 'second')

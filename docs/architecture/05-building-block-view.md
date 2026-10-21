@@ -75,7 +75,7 @@ flowchart TB
 
 | Block | Responsibility | Depends on | Must not depend on |
 | --- | --- | --- | --- |
-| **@sudoku/core** | Board model, rule checks, a backtracking solver (uniqueness), a technique solver (grading and hints), the generator ([ADR-011](adr/adr-011-puzzle-generation-and-hints.md)) | nothing | React Native, Expo, any I/O (SUD-04) |
+| **@sudoku/core** | Board model, rule checks, a backtracking solver (uniqueness), a technique solver (grading and hints), the generator ([ADR-011](adr/adr-011-puzzle-generation-and-hints.md)), the streak, the counted-game rule for the best time and the clock format ([ADR-023](adr/adr-023-player-stats.md)) | nothing | React Native, Expo, any I/O (SUD-04) |
 | **Game UI** | Playing: input, notes, undo, timer, mistake highlighting, stats screens. One game session (`createGameSession`) holds the game in progress: the reducer, the clock, the pause and the saves. One puzzle start (`createPuzzleStart`) starts every game: from a level, from a scan, a new puzzle and a retry | @sudoku/core, local storage | the scanner (SUD-03), account, sync (ADR-028) |
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |

@@ -74,4 +74,15 @@ describe('finishView', () => {
     const old = { ...GENERATED, seed: null }
     expect(finishView(board(), 900_000, old, FINISHED_AT).source).toBe('Generated puzzle')
   })
+
+  it.each([
+    [0, '00:00'],
+    [59_600, '00:59'],
+    [59_999, '00:59'],
+    [60_000, '01:00'],
+    [6_000_000, '100:00'],
+  ])('writes %i ms as %s, like the stats screen', (playedMs, text) => {
+    const first = { ...GENERATED, bestBeforeMs: null }
+    expect(finishView(board(), playedMs, first, FINISHED_AT)).toMatchObject({ time: text, best: text })
+  })
 })
