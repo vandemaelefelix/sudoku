@@ -142,3 +142,9 @@ the filter. The rules of decision 4 stay.
   and the stats screen both use it. The stats screen rounded to the nearest second before, so 59 999 ms read
   `01:00` there and `00:59` on the finish card. It now reads `00:59` in both places.
 - The decisions above stay.
+
+## Amendment 2026-10-21: the hint count
+
+[ADR-032](adr-032-hints-that-teach.md) decides what a hint is. The hints in the summary, the
+flawless win and the average hints count answers shown. Old rows keep the old meaning. The sync
+contract does not change ([ADR-028](adr-028-history-sync.md)).

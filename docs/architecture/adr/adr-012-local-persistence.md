@@ -128,3 +128,12 @@ sync rules and the table layout stay.
   `src/storage/`. A test keeps `HistoryRecord` and the contract equal.
 - The in-memory fake shares one table of sync state between its history and its sync state. It passes the same
   contract tests as the SQLite repositories.
+
+## Amendment 2026-10-21: hintsUsed counts answers shown
+
+[ADR-032](adr-032-hints-that-teach.md) changes the meaning of `hintsUsed`.
+
+- For a new game, it counts the answers that a hint showed. Rungs 1 to 3 do not count.
+- The type and the columns stay the same.
+- A history row saved before this change keeps the old meaning: one cell filled.
+- The best time rule (zero hints) stays.
