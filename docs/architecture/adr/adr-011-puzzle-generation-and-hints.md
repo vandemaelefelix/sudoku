@@ -104,3 +104,11 @@ The finish card shows the number of a generated puzzle (#43). The seed is that n
   same package.
 - Players find that the levels of v1 do not match the difficulty they feel. Bring grading by
   technique forward.
+
+## Amendment 2026-10-21: hints that teach
+
+[ADR-032](adr-032-hints-that-teach.md) supersedes point 3 and the hint bullet of the v1 amendment.
+
+- A hint now teaches in four rungs: look, technique, why and answer.
+- The fallback reveals the empty cell with the fewest candidates. It still reveals one cell of the solution.
+- The v1 random hint stays until the hint card ships (#196).

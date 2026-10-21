@@ -30,7 +30,7 @@ status: DRAFT
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
 | Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
-| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques. The hint and the grading will use it (ADR-011) |
+| Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques. The hint and the grading will use it (ADR-011, ADR-032) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
 | Given | A digit printed in the puzzle. In a scan: a `printed` digit. Locked |
 | Grid-exact accuracy | The share of fixture scans with all 81 digits right. The metric that matters (10 §10.2, ADR-007) |
@@ -119,7 +119,17 @@ status: DRAFT
 | Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
 | Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
-| Hint | A move that fills one cell with its correct number. It counts once. ADR-011 decides which cell the hint picks |
+| Hint | A coach for one step. It shows where to look, names the technique, explains it and then shows the answer. It counts once, when it shows the answer (ADR-032) |
+| Technique | A named way to solve a step, such as hidden single or X-wing. The technique solver knows it (ADR-032) |
+| Hint plan | The steps that one hint shows, from the board to a placed digit. It has at most 6 steps |
+| Rung | One level of detail in a step: look, technique, why or answer |
+| Hint card | The card that replaces the keypad while the player reads a hint. It shows one rung |
+| Hint strip | The reminder between the grid and the tools while the player tries the step alone |
+| Focus unit | The row, column or box that a hint tells the player to look at |
+| Pattern cell | A cell that forms the pattern of a technique, such as a cell of a pair |
+| Support digit | A digit that the pattern uses to prove the step |
+| Struck candidate | A candidate that the technique removes. It shows only on a note that the player wrote |
+| Target cell | The cell where the hint ends. It gets the digit |
 | Complete number | A number with all nine placed correctly. Its key is disabled. Wrong placements do not count |
 | Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
 | Puzzle number | The seed of a generated puzzle, shown on the finish card: "Puzzle 412 077". The app draws seeds below 1 000 000 (ADR-011) |

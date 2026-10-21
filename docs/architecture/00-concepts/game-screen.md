@@ -25,7 +25,7 @@ The screen has four parts, from top to bottom:
 | Header | A back button to the home screen. The timer, which is also the pause button. Three dots. One dot fills for each mistake |
 | Grid | 81 cells in nine boxes. A **given** is locked and drawn with `type.given`. An **entry** uses `type.entry`. **Notes** show as a 3 × 3 set of small digits with `type.note`. A wrong entry has the conflict colour |
 | Tools | Undo, Erase, Notes and Hint. Undo and Erase are disabled when they cannot act. Notes is a toggle: in **notes mode** a number key toggles a note |
-| Keypad | One key for each number 1 to 9. The key of a **complete number** is disabled and faded |
+| Keypad | One key for each number 1 to 9. The key of a **complete number** is disabled and faded. While a hint is open, the **hint card** replaces it. After "I'll do it", the **hint strip** shows (see [hints](hints.md)) |
 
 ### Assists
 
@@ -168,7 +168,7 @@ The Settings screen has four groups:
 - A placed number removes itself from the notes in its row, column and box.
 - A wrong number counts as a **mistake**. Undo does not remove a mistake. The third mistake
   ends the game.
-- A **hint** fills one cell with its correct number and counts one hint. ADR-011 decides which cell.
+- A **hint** teaches the next step in rungs. It counts one hint when it shows the answer. See [hints](hints.md).
 - A number is complete only when all nine are placed correctly. Wrong placements do not count.
 - The timer does not count during a pause or after the game ends.
 
@@ -177,7 +177,7 @@ The Settings screen has four groups:
 | Question | Decided by |
 | --- | --- |
 | The motion sensor that tilts the finish card | Decided: ADR-017 |
-| Which cell a hint picks. V1 picks a random empty or wrong cell. Hints that teach a technique come later (ADR-011) | Issue #45, after this epic |
+| Which cell a hint picks. V1 picks a random empty or wrong cell until the hint card ships (#196) | Decided: ADR-032 |
 | An option to turn off the entry check | Issue #46, after this epic |
 | VoiceOver labels for each cell and Dynamic Type sizes | Issue #44 |
 
