@@ -6,7 +6,7 @@ import { bitOf, digitsOf, maskOf, sortedUnique } from './masks'
 import type { Candidates, CellDigit, Step } from './types'
 
 type Pattern = {
-  technique: 'nakedPair' | 'nakedTriple' | 'hiddenPair' | 'hiddenTriple'
+  technique: 'nakedPair' | 'nakedTriple' | 'nakedQuad' | 'hiddenPair' | 'hiddenTriple' | 'hiddenQuad'
   units: number[]
   cells: number[]
   digits: Digit[]
@@ -48,6 +48,17 @@ function collect(
   }
 }
 
+const NAKED_NAMES = { 2: 'nakedPair', 3: 'nakedTriple', 4: 'nakedQuad' } as const
+const HIDDEN_NAMES = { 2: 'hiddenPair', 3: 'hiddenTriple', 4: 'hiddenQuad' } as const
+
+/** True when some smaller group of `items` (2 items or more) already fits `fits`. */
+function containsSmaller<T>(items: readonly T[], fits: (group: readonly T[]) => boolean): boolean {
+  for (let size = 2; size < items.length; size++) {
+    if (combinations(items, size).some(fits)) return true
+  }
+  return false
+}
+
 function steps(found: Map<string, Pattern>): Step[] {
   return [...found.values()].map((pattern) =>
     eliminationStep(pattern.technique, pattern.units, pattern.cells, pattern.digits, [
@@ -60,7 +71,7 @@ function steps(found: Map<string, Pattern>): Step[] {
  * `size` empty cells of a unit that hold only `size` digits between them. A subset that contains a
  * smaller subset is skipped, so each pattern has one name.
  */
-export function findNakedSubsets(candidates: Candidates, board: readonly number[], size: 2 | 3): Step[] {
+export function findNakedSubsets(candidates: Candidates, board: readonly number[], size: 2 | 3 | 4): Step[] {
   const found = new Map<string, Pattern>()
   for (const [unit, unitCells] of UNITS.entries()) {
     const empty = unitCells.filter((cell) => board[cell] === 0 && bitCount(candidates[cell]!) <= size)
@@ -68,14 +79,13 @@ export function findNakedSubsets(candidates: Candidates, board: readonly number[
     for (const cells of combinations(open, size)) {
       const union = cells.reduce((mask, cell) => mask | candidates[cell]!, 0)
       if (bitCount(union) !== size) continue
-      const smaller = combinations(cells, 2).some(
-        (pair) => size === 3 && bitCount(candidates[pair[0]!]! | candidates[pair[1]!]!) === 2,
-      )
-      if (smaller) continue
+      const joined = (group: readonly number[]): boolean =>
+        bitCount(group.reduce((mask, cell) => mask | candidates[cell]!, 0)) === group.length
+      if (containsSmaller(cells, joined)) continue
       const eliminations = unitCells
         .filter((cell) => board[cell] === 0 && !cells.includes(cell))
         .flatMap((cell) => digitsOf(candidates[cell]! & union).map((digit) => ({ cell, digit })))
-      collect(found, size === 2 ? 'nakedPair' : 'nakedTriple', unit, cells, digitsOf(union), eliminations)
+      collect(found, NAKED_NAMES[size], unit, cells, digitsOf(union), eliminations)
     }
   }
   return steps(found)
@@ -85,7 +95,7 @@ export function findNakedSubsets(candidates: Candidates, board: readonly number[
  * `size` digits of a unit that fit only `size` cells. A subset that contains a smaller subset is
  * skipped, so each pattern has one name.
  */
-export function findHiddenSubsets(candidates: Candidates, board: readonly number[], size: 2 | 3): Step[] {
+export function findHiddenSubsets(candidates: Candidates, board: readonly number[], size: 2 | 3 | 4): Step[] {
   const found = new Map<string, Pattern>()
   for (const [unit, unitCells] of UNITS.entries()) {
     const places = new Map<Digit, number[]>()
@@ -97,15 +107,14 @@ export function findHiddenSubsets(candidates: Candidates, board: readonly number
     for (const digits of combinations([...places.keys()], size)) {
       const cells = sortedUnique(digits.flatMap((digit) => places.get(digit)!))
       if (cells.length !== size) continue
-      const smaller = combinations(digits, 2).some(
-        (pair) => size === 3 && new Set(pair.flatMap((digit) => places.get(digit)!)).size === 2,
-      )
-      if (smaller) continue
+      const joined = (group: readonly Digit[]): boolean =>
+        new Set(group.flatMap((digit) => places.get(digit)!)).size === group.length
+      if (containsSmaller(digits, joined)) continue
       const keep = maskOf(digits)
       const eliminations = cells.flatMap((cell) =>
         digitsOf(candidates[cell]! & ~keep).map((digit) => ({ cell, digit })),
       )
-      collect(found, size === 2 ? 'hiddenPair' : 'hiddenTriple', unit, cells, digits, eliminations)
+      collect(found, HIDDEN_NAMES[size], unit, cells, digits, eliminations)
     }
   }
   return steps(found)

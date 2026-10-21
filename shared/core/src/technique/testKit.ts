@@ -28,3 +28,12 @@ export function withDigits(candidates: Candidates, edits: Readonly<Record<number
   }
   return copy
 }
+
+/** A copy of `candidates` where the digit stays a candidate of the given cells only. */
+export function onlyIn(candidates: Candidates, digit: number, cells: readonly number[]): Candidates {
+  const copy = new Uint16Array(candidates)
+  for (let cell = 0; cell < copy.length; cell++) {
+    if (!cells.includes(cell)) copy[cell]! &= ~(1 << (digit - 1))
+  }
+  return copy
+}
