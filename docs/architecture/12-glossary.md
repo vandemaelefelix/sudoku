@@ -37,6 +37,8 @@ status: DRAFT
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes`. The kind says how the mark was made: `printed` by a printer or a screen, `handwritten` by a person (ADR-009, amendment) |
 | Lock-on | The moment the same grid has been in view long enough without a clear move, and the scan captures |
+| Lock-on tracker | The module that owns the lock-on rule: the drift window, the dwell, the warm-up and the minimum grid size. It runs on the UI thread, one step per frame, and fires once. `src/scan/utils/lockOn.utils.ts` (ADR-019) |
+| Lock latch | The JS-thread latch that lets the first of the shutter and the automatic lock-on start the scan. It refuses the second. It lives in the lock-on tracker module |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
 | Manifest (dataset) | A file in git listing every image of a dataset version with hash and label. For the real cells: `ml/dataset/cells.csv` (ADR-018) |
 | Notes | Small pencil marks in a cell. In a scan: a kind, loaded as an empty cell. In the game: the candidate numbers that the player sets in notes mode |
@@ -59,7 +61,7 @@ status: DRAFT
 | Effect lab | The switch between effects in a development build: the dev pill and its list. A release build does not have it |
 | Dev pill | The button at the top of the camera screen in a development build. It shows the active effect and opens the list of effects |
 | Draw kit | The paints, the star sprite and the compiled runtime shaders that the engine makes once and gives to every effect |
-| Lock-on progress | 0 to 1: how long the grid has been in view without a clear move, divided by `LOCK_DWELL`. It resets when the grid is lost, found again, jumps or clearly moves. At 1 the scan locks on. The gathered dots show it |
+| Lock-on progress | 0 to 1: how long the grid has been in view without a clear move, divided by `LOCK_DWELL`. It resets when the grid is lost, found again, jumps or clearly moves. At 1 the scan locks on. The gathered dots show it. The lock-on tracker gives it to the scene, and the effects read it there |
 | Shutter | The button on the camera screen that captures at any time, also without lock-on |
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
 | Correction screen | The screen after a scan. It shows the recognised grid, marks the uncertain cells and offers Retake. The player can fix a digit and its kind there. Play this puzzle loads it when the play gate passes |

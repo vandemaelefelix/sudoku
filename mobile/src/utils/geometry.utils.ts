@@ -28,3 +28,17 @@ export function rectQuad(rect: Rect): Quad {
     { x: rect.x, y: bottom },
   ]
 }
+
+/** The largest distance between matching corners of a and b, in the unit of the points. The lock-on drift, the jitter report and the corner offset of the scanner all measure it. */
+export function largestCornerStep(a: Quad, b: Quad): number {
+  'worklet'
+  const [a0, a1, a2, a3] = a
+  const [b0, b1, b2, b3] = b
+  return Math.max(
+    0,
+    Math.hypot(a0.x - b0.x, a0.y - b0.y),
+    Math.hypot(a1.x - b1.x, a1.y - b1.y),
+    Math.hypot(a2.x - b2.x, a2.y - b2.y),
+    Math.hypot(a3.x - b3.x, a3.y - b3.y),
+  )
+}

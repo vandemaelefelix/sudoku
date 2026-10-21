@@ -163,7 +163,7 @@ export function CameraScreen({
               accessibilityRole="button"
               accessibilityLabel="Take photo"
               style={({ pressed }) => [styles.shutter, pressed && pressedStyles.pressed]}
-              onPress={() => startCapture(frameQuad.get(), 'tap')}
+              onPress={() => startCapture(frameQuad.get(), 'shutter')}
             />
           </Animated.View>
           <Animated.View

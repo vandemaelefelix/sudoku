@@ -1,5 +1,6 @@
 import { transitionAt } from '@/scan/utils/transition.utils'
-import { advance, advanceCapture } from './engine'
+import { LOCK_DWELL, WARMUP } from '@/scan/constants/lockOn.constants'
+import { advance, advanceCapture, formatLockReport, lockReport } from './engine'
 import type { AnyEffect } from './types'
 import type { Quad } from '@/utils/geometry.utils'
 import { project } from '@/utils/homography.utils'
@@ -101,6 +102,112 @@ function lockedEngine(effect: AnyEffect) {
   return engine
 }
 
+describe('lock-on in the engine', () => {
+  const a = fakeEffect('a')
+
+  /** Frames at 60 fps with a new quad object per frame, as the camera gives one per detection. */
+  function runFrames(start: ReturnType<typeof advance> | null, t0: number, t1: number) {
+    let engine = start
+    for (let t = t0; t <= t1 + 1e-9; t += 1 / 60)
+      engine = advance(engine, a, VIEW, grid.map((p) => ({ ...p })) as Quad, t, false)
+    return engine!
+  }
+
+  it('gives the scene the progress and the lock time of the tracker', () => {
+    const halfway = runFrames(null, 0, WARMUP + LOCK_DWELL / 2)
+    expect(halfway.scene.lockProgress).toBe(halfway.lockOn.progress)
+    expect(halfway.scene.lockProgress).toBeGreaterThan(0)
+    expect(halfway.scene.lockProgress).toBeLessThan(1)
+    expect(halfway.scene.lockedAt).toBe(-1)
+    const locked = runFrames(halfway, WARMUP + LOCK_DWELL / 2 + 1 / 60, WARMUP + LOCK_DWELL + 0.2)
+    expect(locked.scene.lockProgress).toBe(1)
+    expect(locked.scene.lockedAt).toBe(locked.lockOn.lockedAt)
+  })
+
+  it('fires in the frame of lock-on only', () => {
+    let engine = advance(null, a, VIEW, grid, 0, false)
+    const fired: number[] = []
+    for (let t = 1 / 60; t <= WARMUP + LOCK_DWELL + 1; t += 1 / 60) {
+      engine = advance(engine, a, VIEW, grid.map((p) => ({ ...p })) as Quad, t, false)
+      if (engine.lockOn.fired) fired.push(t)
+    }
+    expect(fired).toEqual([engine.lockOn.lockedAt])
+  })
+
+  it('holds the locked quad after lock-on', () => {
+    const locked = runFrames(null, 0, WARMUP + LOCK_DWELL + 0.2)
+    const quad = locked.scene.quad
+    const later = advance(locked, a, VIEW, null, locked.scene.t + 1 / 60, false)
+    expect(later.scene.quad).toBe(quad)
+    expect(later.scene.lockedAt).toBe(locked.scene.lockedAt)
+  })
+
+  it('keeps the tracker on an effect switch', () => {
+    const first = runFrames(null, 0, 0.5)
+    const second = advance(first, fakeEffect('b'), VIEW, grid, 0.6, false)
+    expect(second.lockOn).toBe(first.lockOn)
+  })
+
+  it('starts a new tracker when the view size changes', () => {
+    const first = runFrames(null, 0, WARMUP + LOCK_DWELL + 0.2)
+    expect(first.lockOn.lockedAt).toBeGreaterThan(0)
+    const second = advance(first, a, { width: 804, height: 874 }, grid, first.scene.t + 1 / 60, false)
+    expect(second.lockOn).not.toBe(first.lockOn)
+    expect(second.scene.lockedAt).toBe(-1)
+  })
+})
+
+describe('lockReport', () => {
+  const a = fakeEffect('a')
+
+  function runFrames(quad: Quad | null, t1: number) {
+    let engine = advance(null, a, VIEW, quad, 0, false)
+    for (let t = 1 / 60; t <= t1 + 1e-9; t += 1 / 60)
+      engine = advance(engine, a, VIEW, quad == null ? null : (quad.map((p) => ({ ...p })) as Quad), t, false)
+    return engine
+  }
+
+  it('reports no grid when none is in view', () => {
+    const report = lockReport(runFrames(null, 2))
+    expect(report.grid).toBe(false)
+    expect(report.width).toBe(0)
+    expect(report.steady).toBe(false)
+    expect(report.progress).toBe(0)
+  })
+
+  it('reports the scene facts with the tracker rules for a steady big grid after the warm-up', () => {
+    const report = lockReport(runFrames(grid, WARMUP + LOCK_DWELL / 2))
+    expect(report).toMatchObject({ grid: true, steady: true, big: true, warm: true, locked: false })
+    expect(report.motion).toBeLessThan(0.5)
+    expect(report.progress).toBeGreaterThan(0)
+  })
+
+  it('reports locked after the dwell', () => {
+    const report = lockReport(runFrames(grid, WARMUP + LOCK_DWELL + 0.1))
+    expect(report.locked).toBe(true)
+    expect(report.progress).toBe(1)
+  })
+
+  it('formats one line with every rule', () => {
+    const line = formatLockReport({
+      grid: true,
+      steady: false,
+      motion: 0.618,
+      speed: 18.56,
+      drift: 12.34,
+      moving: false,
+      width: 0.7462,
+      big: true,
+      warm: true,
+      progress: 0,
+      locked: false,
+    })
+    expect(line).toBe(
+      'grid yes, steady no (motion 0.62, speed 18.6 pt/s), drift 12.3 pt/s moving no, width 0.75 big yes, warm yes, progress 0.00, locked no',
+    )
+  })
+})
+
 describe('advanceCapture', () => {
   const flat: Quad = [
     { x: 16, y: 120 },
@@ -123,6 +230,16 @@ describe('advanceCapture', () => {
     expect(next.scene.event).toBe('none')
     expect(next.scene.t).toBe(2.55)
     expect(next.scene.dt).toBeCloseTo(2.55 - previous, 9)
+  })
+
+  it('clears the fired flag and keeps the tracker', () => {
+    const a = fakeEffect('a')
+    const engine = lockedEngine(a)
+    engine.lockOn.fired = true
+    const next = advanceCapture(engine, a, flat, 2.55, transitionAt(0.3, false), false)
+    expect(next.lockOn).toBe(engine.lockOn)
+    expect(next.lockOn.fired).toBe(false)
+    expect(next.lockOn.lockedAt).toBe(next.scene.lockedAt)
   })
 
   it('steps the effect with the scene and keeps its state', () => {
