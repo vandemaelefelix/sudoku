@@ -113,6 +113,14 @@ describe('pointing', () => {
       digits: [4],
     })
   })
+
+  it('gives no step when the digit is already placed in the rest of the row', () => {
+    const state = stateOf({
+      values: { 5: 4 },
+      candidates: { ...without([2, 9, 10, 11, 18, 19, 20], [4]), ...without([3, 4, 6, 7, 8], [4]) },
+    })
+    expect(pointing.find(state)).toBeNull()
+  })
 })
 
 describe('claiming', () => {
@@ -173,6 +181,23 @@ describe('naked pair', () => {
   })
 })
 
+describe('naked subset limits', () => {
+  it('gives no naked pair when the digits are already absent from the rest of the unit', () => {
+    const others = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 18, 19, 20]
+    const state = stateOf({ candidates: { ...without(others, [1, 2]), 0: [1, 2], 1: [1, 2] } })
+    expect(nakedPair.find(state)).toBeNull()
+  })
+
+  it('does not put a cell with more candidates than the subset size in a naked pair', () => {
+    expect(nakedPair.find(stateOf({ candidates: { 0: [1, 2, 3], 4: [1, 2, 3] } }))).toBeNull()
+  })
+
+  it('does not put a cell with more candidates than the subset size in a naked triple', () => {
+    const state = stateOf({ candidates: { 18: [1, 2], 22: [2, 3], 26: [1, 2, 3, 4] } })
+    expect(nakedTriple.find(state)).toBeNull()
+  })
+})
+
 describe('hidden pair', () => {
   it('clears the other digits from two cells that hold a pair of digits alone in the row', () => {
     const state = stateOf({ candidates: without([37, 38, 39, 41, 42, 43, 44], [3, 8]) })
@@ -184,6 +209,16 @@ describe('hidden pair', () => {
       cells: [36, 40],
       digits: [3, 8],
     })
+  })
+})
+
+describe('hidden subset limits', () => {
+  it('does not count a digit that the row already holds', () => {
+    const state = stateOf({
+      values: { 37: 3 },
+      candidates: { ...without([36, 40], [3]), ...without([38, 39, 41, 42, 43, 44], [1, 3]) },
+    })
+    expect(hiddenPair.find(state)).toBeNull()
   })
 })
 

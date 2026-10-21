@@ -39,7 +39,7 @@ export function makeStep(technique: Step['technique'], parts: Partial<Omit<Step,
   return { technique, placements: [], eliminations: [], units: [], cells: [], digits: [], ...parts }
 }
 
-/** The subsets of `size` items, in lexicographic order. */
+/** Lexicographic order, so the first subset found is the same on every run. */
 export function combinations<T>(items: readonly T[], size: number): T[][] {
   if (size === 0) return [[]]
   const result: T[][] = []

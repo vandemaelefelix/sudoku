@@ -22,6 +22,7 @@ export type Step = {
   technique: TechniqueId
   placements: CellDigit[]
   eliminations: CellDigit[]
+  /** The units of the pattern. A naked single has none. */
   units: UnitRef[]
   cells: number[]
   digits: number[]
