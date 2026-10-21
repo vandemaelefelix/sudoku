@@ -9,7 +9,8 @@ from PIL import Image
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import read_journal
 from sudoku_ml.label_store import LabelStore
-from sudoku_ml.manifest import pixel_id, write_cells_manifest
+from sudoku_ml.manifest import write_cells_manifest
+from sudoku_ml.tables import pixel_id
 
 
 class Clock:

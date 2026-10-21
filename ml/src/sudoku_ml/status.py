@@ -7,8 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sudoku_ml.journal import TIME_FORMAT, format_time
-from sudoku_ml.manifest import CELL_FOLDERS, write_atomic
-from sudoku_ml.photo_import import PHOTO_STATUSES
+from sudoku_ml.tables import CELL_FOLDERS, PHOTO_STATUSES, write_atomic
 
 KIND_COLUMNS = ("printed", "handwritten", "unsure", "without")
 _LAST_FINISH = re.compile(r"^Last finish: (\S+)$", re.MULTILINE)

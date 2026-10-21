@@ -8,9 +8,8 @@ from PIL import Image
 
 from sudoku_ml.data_check import check_data
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.manifest import pixel_id, read_cells_table
 from sudoku_ml.migrate_layout import REVIEW_NOTE, logged_kind, main, replay_kinds
-from sudoku_ml.photo_import import read_photos
+from sudoku_ml.tables import PhotoRow, pixel_id, read_cells, read_photos
 
 CORNERS = [[200.04, 100.0], [740.0, 100.0], [740.0, 640.0], [200.0, 640.0]]
 
@@ -132,7 +131,7 @@ def test_apply_builds_the_two_tables_and_copies_the_images(tmp_path: Path, new: 
     before = snapshot(old)
     assert main([str(old), "--apply"], new) == 0
     assert snapshot(old) == before
-    table = read_cells_table(new.cells_csv)
+    table = read_cells(new.cells_csv)
     assert {c: (r.digit, r.kind, r.source) for c, r in table.items()} == {
         ids["seven"]: ("7", "handwritten", (ids["accepted"], 2, 8)),
         ids["binned"]: ("discarded", None, None),
@@ -141,34 +140,19 @@ def test_apply_builds_the_two_tables_and_copies_the_images(tmp_path: Path, new: 
     }
     assert [r.digit for r in table.values()] == ["7", "discarded", "empty", "unlabeled"]
     assert b"\r" not in new.cells_csv.read_bytes()
+    corners = "200.0 100.0 740.0 100.0 740.0 640.0 200.0 640.0"
     assert read_photos(new.photos_csv) == [
-        {
-            "photo_id": ids["legacy"],
-            "file": f"{ids['legacy'][:16]}.png",
-            "source": "web",
-            "licence": "none",
-            "attribution": "",
-            "status": "legacy",
-            "corners": "",
-        },
-        {
-            "photo_id": ids["accepted"],
-            "file": f"{ids['accepted'][:16]}.png",
-            "source": "openverse",
-            "licence": "by",
-            "attribution": "Someone",
-            "status": "accepted",
-            "corners": "200.0 100.0 740.0 100.0 740.0 640.0 200.0 640.0",
-        },
-        {
-            "photo_id": ids["pending"],
-            "file": f"{ids['pending'][:16]}.png",
-            "source": "phone",
-            "licence": "own",
-            "attribution": "",
-            "status": "pending",
-            "corners": "",
-        },
+        PhotoRow(ids["legacy"], f"{ids['legacy'][:16]}.png", "web", "none", "", "legacy", ""),
+        PhotoRow(
+            ids["accepted"],
+            f"{ids['accepted'][:16]}.png",
+            "openverse",
+            "by",
+            "Someone",
+            "accepted",
+            corners,
+        ),
+        PhotoRow(ids["pending"], f"{ids['pending'][:16]}.png", "phone", "own", "", "pending", ""),
     ]
     for old_file in (old / "data" / "cells").glob("*/*.png"):
         copy = new.cells / old_file.relative_to(old / "data" / "cells")
@@ -248,7 +232,7 @@ def test_a_log_newer_than_the_table_is_refused_unless_preferred(tmp_path, new, c
     assert not new.root.exists()
     assert main([str(old), "--apply", "--prefer-log"], new) == 0
     assert "kinds: 4 cells checked, 1 mismatches (the log wins)" in capsys.readouterr().out
-    assert read_cells_table(new.cells_csv)[ids["seven"]].kind == "unsure"
+    assert read_cells(new.cells_csv)[ids["seven"]].kind == "unsure"
 
 
 def test_an_accepted_photo_without_corners_is_refused(tmp_path: Path, new, capsys):
@@ -272,7 +256,7 @@ def test_missing_optional_old_files_give_notes(tmp_path: Path, new, capsys):
     out = capsys.readouterr().out
     assert "Note: no datasets/cell-origins.csv" in out and "Note: no datasets/kind-log" in out
     assert "WARNING: no datasets/photos.csv" in out
-    assert read_cells_table(new.cells_csv)[ids["seven"]].source is None
+    assert read_cells(new.cells_csv)[ids["seven"]].source is None
 
 
 def test_a_missing_old_cells_table_is_an_error(tmp_path: Path, new):

@@ -13,13 +13,14 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
 from sudoku_ml.data_paths import ML_ROOT, DataPaths
 from sudoku_ml.grouping import default_run
-from sudoku_ml.manifest import pixel_id, warn_unreadable, write_atomic
+from sudoku_ml.manifest import warn_unreadable
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
+from sudoku_ml.tables import DIGIT_FOLDERS, pixel_id, write_atomic
 
 BATCH = 1024
 # The kind needs a pre-label after the digit pass moved a cell out of unlabeled/.
-PRELABEL_FOLDERS = ("unlabeled", *(str(d) for d in range(1, 10)))
+PRELABEL_FOLDERS = ("unlabeled", *DIGIT_FOLDERS)
 NO_MODEL = (
     "No model run found, so no pre-labels. The Digits screen stays empty. "
     "Install a model with just install-model, or pass a run: just prelabel-cells <run>"

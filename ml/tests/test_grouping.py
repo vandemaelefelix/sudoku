@@ -8,8 +8,9 @@ from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.grouping import features, group_folder, ink_colour, kmeans, write_groups
-from sudoku_ml.manifest import pixel_id, write_cells_manifest
+from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.model import CellClassifier
+from sudoku_ml.tables import pixel_id
 
 
 def cell(ink: tuple[int, int, int]) -> np.ndarray:

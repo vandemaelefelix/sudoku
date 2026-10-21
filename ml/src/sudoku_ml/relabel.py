@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.manifest import CELL_FOLDERS
+from sudoku_ml.tables import CELL_FOLDERS
 
 
 def move_cells(cells_dir: Path, wanted: dict[str, str]) -> int:
