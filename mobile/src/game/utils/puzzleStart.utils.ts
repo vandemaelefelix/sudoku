@@ -1,7 +1,7 @@
 import { createGame, type Game, type Level, type NewGame, type Random } from '@sudoku/core'
 import type { PuzzleRepository, PuzzleSource, SavedProgress } from '@/storage'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import { levelOf, newGeneratedGame } from './start.utils'
+import { newGeneratedGame, scannedLevel } from './start.utils'
 
 type PuzzleStartDeps = {
   puzzles: PuzzleRepository
@@ -20,7 +20,7 @@ type PuzzleStartDeps = {
 export type PuzzleStart = {
   /** A generated puzzle of the level. Asks first when a game is in progress. */
   newGame(level: Level, opened?: () => void): Promise<SavedProgress | null>
-  /** A scanned grid, at the level of its givens. Asks first when a game is in progress. */
+  /** A scanned grid, at the level of its grade. Asks first when a game is in progress. */
   playScan(grid: Required<NewGame>, opened?: () => void): Promise<SavedProgress | null>
   /** A generated puzzle at the level of a game that is over. It does not ask. */
   newPuzzle(from: SavedProgress): Promise<SavedProgress | null>
@@ -81,7 +81,7 @@ export function createPuzzleStart({
   return {
     newGame: (level, opened) => run(() => generated(level), { ask: true, opened }),
     playScan: (grid, opened) =>
-      run(() => ({ level: levelOf(grid.givens), source: 'scanned', seed: null, game: createGame(grid) }), {
+      run(() => ({ level: scannedLevel(grid.givens), source: 'scanned', seed: null, game: createGame(grid) }), {
         ask: true,
         opened,
       }),

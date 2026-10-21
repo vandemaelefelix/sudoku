@@ -8,14 +8,6 @@ import { BOX_OF, COL_OF, ROW_OF } from './units'
 
 export { LEVELS, type Level }
 
-/** The scanned puzzles still take their level from the nearest of these counts (ADR-011, amendment 2026-10-12). */
-export const GIVENS_TARGET: Readonly<Record<Level, number>> = {
-  easy: 40,
-  medium: 34,
-  hard: 29,
-  expert: 25,
-}
-
 /**
  * One removal pass reaches 25 givens for about 4 grids in 5, so 50 attempts never run out in
  * practice. Only `generateWithTarget` uses it. The measurement and the tests call that function.

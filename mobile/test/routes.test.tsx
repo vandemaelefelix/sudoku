@@ -6,7 +6,7 @@ import { Stack } from 'expo-router'
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library'
 import { Alert, type AlertButton } from 'react-native'
 import { useReducedMotion } from 'react-native-reanimated'
-import { GIVENS_TARGET, createGame, generate, type Game } from '@sudoku/core'
+import { createGame, generate, grade, type Game } from '@sudoku/core'
 import { formatPuzzleNumber } from '@/game/utils/finish.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { newGame, wonGame } from '@/storage/repositories.contract'
@@ -59,8 +59,6 @@ async function startGame(storage: GameStorage, name = 'Easy') {
   await layOutBoard()
   return inProgress(storage)
 }
-
-const givensOf = (grid: readonly number[]) => grid.filter((digit) => digit !== 0).length
 
 /** Answers each Alert with the button of that text. */
 function answerAlert(text: string) {
@@ -118,7 +116,7 @@ it('starts a new game at the tapped level and saves it', async () => {
   const storage = renderApp()
   const progress = await startGame(storage)
   expect(progress).toMatchObject({ level: 'easy', source: 'generated' })
-  expect(givensOf(progress.game.givens)).toBe(GIVENS_TARGET.easy)
+  expect(grade(progress.game.givens).level).toBe('easy')
   expect(screen.getAllByTestId(/^cell-\d+$/)).toHaveLength(81)
   expect((await inProgress(storage)).seed).toEqual(expect.any(Number))
 })

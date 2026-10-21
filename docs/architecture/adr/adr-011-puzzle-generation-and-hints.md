@@ -78,6 +78,7 @@ gets a level in v1, against the bullet "Scanned puzzles get no level in v1" abov
 - The source of a scanned game is `scanned` (ADR-012). The finish card and the history show it.
 - The technique solver (#53) replaces this rule. Then a scanned puzzle gets the level of its
   techniques (point 5).
+- The amendment "a level for scanned puzzles by technique" (2026-10-21) replaces this rule.
 
 ## Amendment: the puzzle number (2026-10-12)
 
@@ -93,7 +94,7 @@ The finish card shows the number of a generated puzzle (#43). The seed is that n
 
 `generate(level, seed)` keeps only a puzzle whose `grade()` is that level (#202). The number of
 givens no longer sets the level. The givens count of a generated puzzle is a result, not a target.
-`GIVENS_TARGET` stays for the scanned puzzles until #203 removes it.
+`GIVENS_TARGET` is gone (#203).
 
 - **One stream.** The seed makes one random stream. Each attempt draws a full grid. It then
   removes givens in random order while the puzzle stays unique. The removal stops at the floor of
@@ -163,6 +164,21 @@ givens no longer sets the level. The givens count of a generated puzzle is a res
   they pass 1 s in the check, a follow-up issue brings the pool for expert, or a bundled set.
 - **History.** A seed now gives another puzzle than before. The history keeps the seed number
   and the level of a saved game. A game in progress keeps its own givens.
+
+## Amendment: a level for scanned puzzles by technique (2026-10-21)
+
+This replaces the amendment "a level for scanned puzzles" (2026-10-12). The rule of that
+amendment, the nearest givens target, no longer applies. A scanned puzzle gets the level of its
+grade, the same rule as a generated puzzle (point 5).
+
+- A scanned puzzle that passes the play gate has exactly one solution. The app calls `grade()` on
+  its givens. The level of the grade is the level of the game.
+- A puzzle that the solver does not finish grades as `beyond`. The app maps `beyond` to expert.
+  The four levels of the sync contract do not change (ADR-012).
+- The correction screen shows no level while the play gate blocks the puzzle. A grade has no
+  meaning without a unique solution.
+- `scannedLevel` in the app calls `grade()` only for a puzzle that the play gate lets through.
+- The source of a scanned game stays `scanned` (ADR-012).
 
 ## Consequences
 
