@@ -199,6 +199,192 @@ export const en = {
   'account.error.codeFailed': 'Too many wrong codes. Send a new one.',
   'account.error.tooManyTries': 'Too many tries. Wait a moment, then try again.',
   'account.error.continueGoogle': 'This account uses Google. Continue with Google.',
+  // Techniques: the name, the definition of hint rung 2 and the page
+  'technique.fullHouse.name': 'Full house',
+  'technique.fullHouse.definition': 'a row, column or box with one empty cell. That cell gets the missing digit.',
+  'technique.fullHouse.explanation':
+    'A row, column or box holds eight digits and one empty cell. The missing digit must go in that cell. Count the digits there to find it.',
+  'technique.hiddenSingle.name': 'Hidden single',
+  'technique.hiddenSingle.definition': 'a digit that fits in only one cell of a row, column or box.',
+  'technique.hiddenSingle.explanation':
+    'Pick a digit and a row, column or box. Check each empty cell there: the row, column or box of that cell may already hold the digit. When only one cell is left, the digit goes there.',
+  'technique.nakedSingle.name': 'Naked single',
+  'technique.nakedSingle.definition': 'a cell where only one digit fits.',
+  'technique.nakedSingle.explanation':
+    'Look at one empty cell. Each digit in its row, its column and its box rules that digit out. When eight digits are out, the ninth digit goes in the cell.',
+  'technique.pointing.name': 'Pointing',
+  'technique.pointing.definition':
+    'a digit that fits in only one row or column of a box. That row or column loses the digit outside the box.',
+  'technique.pointing.explanation':
+    'In a box, a digit fits only in the cells of one row. The digit of that box must go in that row. So the cells of the row outside the box cannot hold the digit. The same works for a column.',
+  'technique.boxLine.name': 'Box-line reduction',
+  'technique.boxLine.definition':
+    'a digit that fits in only one box of a row or column. That box loses the digit outside the row or column.',
+  'technique.boxLine.explanation':
+    'In a row, a digit fits only in the cells of one box. The digit of that row must go in that box. So the cells of the box outside the row cannot hold the digit. The same works for a column.',
+  'technique.nakedPair.name': 'Naked pair',
+  'technique.nakedPair.definition':
+    'two cells of a row, column or box that hold only the same two digits. The other cells there cannot hold them.',
+  'technique.nakedPair.explanation':
+    'Two cells of a row, column or box can hold only the same two digits. One cell gets one digit, and the other cell gets the other. So no other cell there can hold either digit.',
+  'technique.nakedTriple.name': 'Naked triple',
+  'technique.nakedTriple.definition':
+    'three cells of a row, column or box that hold only three digits between them. The other cells there cannot hold them.',
+  'technique.nakedTriple.explanation':
+    'Three cells of a row, column or box can hold only three digits between them. Those three digits must fill those three cells. So no other cell there can hold them. A cell of the triple does not need all three digits.',
+  'technique.hiddenPair.name': 'Hidden pair',
+  'technique.hiddenPair.definition':
+    'two digits that fit in only two cells of a row, column or box. Those cells can hold no other digit.',
+  'technique.hiddenPair.explanation':
+    'In a row, column or box, two digits fit in only the same two cells. Those two cells must hold those two digits. So the two cells can hold no other digit.',
+  'technique.hiddenTriple.name': 'Hidden triple',
+  'technique.hiddenTriple.definition':
+    'three digits that fit in only three cells of a row, column or box. Those cells can hold no other digit.',
+  'technique.hiddenTriple.explanation':
+    'In a row, column or box, three digits fit in only the same three cells. Those three cells must hold those three digits. So the three cells can hold no other digit.',
+  'technique.nakedQuad.name': 'Naked quad',
+  'technique.nakedQuad.definition':
+    'four cells of a row, column or box that hold only four digits between them. The other cells there cannot hold them.',
+  'technique.nakedQuad.explanation':
+    'Four cells of a row, column or box can hold only four digits between them. Those four digits must fill those four cells. So no other cell there can hold them.',
+  'technique.hiddenQuad.name': 'Hidden quad',
+  'technique.hiddenQuad.definition':
+    'four digits that fit in only four cells of a row, column or box. Those cells can hold no other digit.',
+  'technique.hiddenQuad.explanation':
+    'In a row, column or box, four digits fit in only the same four cells. Those four cells must hold those four digits. So the four cells can hold no other digit.',
+  'technique.xWing.name': 'X-wing',
+  'technique.xWing.definition':
+    'two rows where a digit fits only in the same two columns. Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
+  'technique.xWing.explanation':
+    'In two rows, a digit fits in only two cells each, and these cells share two columns. The digit takes two opposite corners of that rectangle. So each of the two columns gets the digit in one of the two rows. The other cells of the two columns lose the digit.',
+  'technique.swordfish.name': 'Swordfish',
+  'technique.swordfish.definition':
+    'three rows where a digit fits only in the same three columns. Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
+  'technique.swordfish.explanation':
+    'In three rows, a digit fits only in the same three columns. The three rows put the digit once in each of those columns. So the other cells of the three columns lose the digit. The same works with rows and columns swapped.',
+  'technique.jellyfish.name': 'Jellyfish',
+  'technique.jellyfish.definition':
+    'four rows where a digit fits only in the same four columns. Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
+  'technique.jellyfish.explanation':
+    'In four rows, a digit fits only in the same four columns. The four rows put the digit once in each of those columns. So the other cells of the four columns lose the digit. The same works with rows and columns swapped.',
+  'technique.skyscraper.name': 'Skyscraper',
+  'technique.skyscraper.definition':
+    'two rows or two columns where a digit fits in only two cells each, with one cell of each in the same line. One of the other two cells holds the digit.',
+  'technique.skyscraper.explanation':
+    'In two rows, a digit fits in only two cells each. One cell of each row lies in the same column, so at most one of them holds the digit. Then at least one of the other two cells holds it. A cell that sees both of these cells loses the digit.',
+  'technique.twoStringKite.name': 'Two-string kite',
+  'technique.twoStringKite.definition':
+    'a row and a column where a digit fits in only two cells each, with one cell of each in the same box. One of the other two cells holds the digit.',
+  'technique.twoStringKite.explanation':
+    'In a row and a column, a digit fits in only two cells each. One cell of each lies in the same box, so at most one of these two holds the digit. Then at least one of the other two cells holds it. A cell that sees both of them loses the digit.',
+  'technique.xyWing.name': 'XY-wing',
+  'technique.xyWing.definition':
+    'a cell with two digits, and two cells in its row, column or box that each pair one of them with a third digit. One of the two cells must hold the third digit.',
+  'technique.xyWing.explanation':
+    'A pivot cell holds only two digits, X and Y. Two cells that it sees hold X and Z, and Y and Z. Whatever the pivot holds, one of the two cells holds Z. So a cell that sees both of them loses Z.',
+  'technique.xyzWing.name': 'XYZ-wing',
+  'technique.xyzWing.definition':
+    'a cell with three digits, and two cells in its row, column or box that each hold two of them, one shared. One of the three cells must hold the shared digit.',
+  'technique.xyzWing.explanation':
+    'A pivot cell holds only three digits, X, Y and Z. Two cells that it sees hold X and Z, and Y and Z. One of the three cells must hold Z. So a cell that sees all three of them loses Z.',
+  'technique.wWing.name': 'W-wing',
+  'technique.wWing.definition':
+    'two cells with the same two digits, linked by a row, column or box where one of the two digits fits in only two cells. One of the two cells must hold the other digit.',
+  'technique.wWing.explanation':
+    'Two cells hold only the same two digits, X and Y. A row, column or box where X fits in only two cells links them: each end sees one of the two cells. So one of the two cells holds Y. A cell that sees both of them loses Y.',
+  // Hints (ADR-032): the card, the messages of @sudoku/core and their parts
+  'hint.title': 'Hint',
+  'hint.nice': 'Nice.',
+  'hint.step': 'Step {step} of {total}',
+  'hint.button.more': 'More help',
+  'hint.button.answer': 'Show answer',
+  'hint.button.try': 'Try it',
+  'hint.button.next': 'Next step',
+  'hint.button.fill': 'Fill it',
+  'hint.button.doIt': "I'll do it",
+  'hint.button.erase': 'Erase it',
+  'hint.button.learnMore': 'Learn more',
+  'hint.mistake': '{cell} holds a wrong digit. Erase it first.',
+  'hint.fallback':
+    'No hint technique fits this board. Put {digit} in {cell}, the cell with the fewest possible digits.',
+  'hint.technique': '{name}: {definition}',
+  'hint.put': 'Put {digit} in {cell}.',
+  'hint.look.unit': 'Look at {unit}.',
+  'hint.look.cell': 'Look at {cell}.',
+  'hint.look.digitIn': 'Look where {digit, select, 8 {an 8} other {a {digit}}} fits in {place}.',
+  'hint.removeOutside': 'Remove {digit} from {from}, outside {outside}.',
+  'hint.removeSeeingBoth': 'Remove {digit} from the cells that share a row, column or box with both {a} and {b}.',
+  'hint.removeSeeingAll':
+    'Remove {digit} from the cells that share a row, column or box with all three of these cells.',
+  'hint.fullHouse.look': 'Look at {unit}. It has one empty cell.',
+  'hint.fullHouse.why': '{unit} holds every digit but {digit}. So {digit} goes in its empty cell.',
+  'hint.hiddenSingle.why':
+    'In {unit}, {digit, select, 8 {an 8} other {a {digit}}} fits only in {cell}. Every other empty cell has {digit, select, 8 {an 8} other {a {digit}}} in its row, column or box.',
+  'hint.hiddenSingle.whyLater':
+    'In {unit}, {digit, select, 8 {an 8} other {a {digit}}} fits only in {cell}. Every other empty cell has {digit, select, 8 {an 8} other {a {digit}}} in its row, column or box, or an earlier step removed it.',
+  'hint.nakedSingle.why': 'Its row, column and box hold every digit but {digit}. So only {digit} fits.',
+  'hint.nakedSingle.whyLater':
+    'Its row, column and box hold the other digits, or earlier steps removed them. So only {digit} fits.',
+  'hint.pointing.why':
+    'In {unit}, {digit, select, 8 {an 8} other {a {digit}}} fits only in {second}. So the {digit} of {second} must be in this box.',
+  'hint.boxLine.why':
+    'In {unit}, {digit, select, 8 {an 8} other {a {digit}}} fits only in {second}. So the {digit} of {second} must be in {unit}.',
+  'hint.nakedPair.why': 'In {unit}, {cells} can hold only {digits}. So these two digits must go in these two cells.',
+  'hint.nakedTriple.why':
+    'In {unit}, {cells} can hold only {digits} between them. So these three digits must go in these three cells.',
+  'hint.nakedQuad.why':
+    'In {unit}, {cells} can hold only {digits} between them. So these four digits must go in these four cells.',
+  'hint.nakedSubset.answer': 'Remove {digits} from the other cells of {units}.',
+  'hint.hiddenPair.why': 'In {unit}, {digits} fit only in {cells}. So these two cells can hold no other digit.',
+  'hint.hiddenTriple.why': 'In {unit}, {digits} fit only in {cells}. So these three cells can hold no other digit.',
+  'hint.hiddenQuad.why': 'In {unit}, {digits} fit only in {cells}. So these four cells can hold no other digit.',
+  'hint.hiddenSubset.answer': 'Remove {digits} from {cells}.',
+  'hint.fish.why':
+    'In {bases}, {digit, select, 8 {an 8} other {a {digit}}} fits only in {covers}. So {covers} must hold their {digit}s in {bases}.',
+  'hint.linkedPair.why':
+    '{lines} each have only two cells for {digit, select, 8 {an 8} other {a {digit}}}, and both have one in {joint}. At most one of those holds the {digit}, so {a} or {b} holds it.',
+  'hint.xyWing.look': 'Look at {cell}. It has only two digits.',
+  'hint.xyWing.why':
+    '{pivot} holds {digits}. Each choice puts {shared, select, 8 {an 8} other {a {shared}}} in {a} or {b}.',
+  'hint.xyzWing.look': 'Look at {cell}. It has only three digits.',
+  'hint.xyzWing.why':
+    '{pivot} holds {digits}. Each choice puts {shared, select, 8 {an 8} other {a {shared}}} in this cell, in {a} or in {b}.',
+  'hint.wWing.look': 'Look at {a} and {b}. They hold the same two digits.',
+  'hint.wWing.why':
+    'In {link}, {linked, select, 8 {an 8} other {a {linked}}} fits only in {ends}, so one of them holds it. That cell rules out {linked} in {a} or in {b}, so one of these holds {removed}.',
+  'hint.part.cell': 'row {row}, column {column}',
+  'hint.part.row': 'row {row}',
+  'hint.part.column': 'column {column}',
+  'hint.part.box.topLeft': 'the top-left box',
+  'hint.part.box.topMiddle': 'the top-middle box',
+  'hint.part.box.topRight': 'the top-right box',
+  'hint.part.box.middleLeft': 'the middle-left box',
+  'hint.part.box.centre': 'the centre box',
+  'hint.part.box.middleRight': 'the middle-right box',
+  'hint.part.box.bottomLeft': 'the bottom-left box',
+  'hint.part.box.bottomMiddle': 'the bottom-middle box',
+  'hint.part.box.bottomRight': 'the bottom-right box',
+  'hint.part.and': '{items} and {last}',
+  'hint.part.or': '{items} or {last}',
+  'hint.part.rowCells': 'row {row}, columns {columns}',
+  'hint.part.columnCells': 'column {column}, rows {rows}',
+  'hint.part.columnsIn': '{count, plural, one {column {list}} other {columns {list}}}',
+  'hint.part.rowsIn': '{count, plural, one {row {list}} other {rows {list}}}',
+  'hint.part.rows': 'rows {list}',
+  'hint.part.columns': 'columns {list}',
+  // Hints, more
+  'hint.button.learnMoreLabel': 'Learn more about {technique}',
+  'hint.strip.label': 'Hint: {text}',
+  // Hints, the card and the strip
+  'hint.close': 'Close the hint',
+  'hint.strip.openHint': 'Opens the hint card',
+  // The techniques screen
+  'techniques.title': 'Techniques',
+  'techniques.intro': 'The ways to find a digit that the hints use, from the easiest to the hardest.',
+  'techniques.notFound': 'Not found',
+  'techniques.notInApp': 'This technique is not in the app.',
+  'techniques.level': 'First seen in {level} puzzles.',
+  'techniques.example': 'Example',
 }
 
 export type MessageId = keyof typeof en

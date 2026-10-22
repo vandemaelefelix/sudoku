@@ -201,4 +201,190 @@ export const nl: Record<MessageId, string> = {
   'account.error.codeFailed': 'Te veel foute codes. Stuur een nieuwe.',
   'account.error.tooManyTries': 'Te veel pogingen. Wacht even en probeer het dan opnieuw.',
   'account.error.continueGoogle': 'Dit account gebruikt Google. Ga verder met Google.',
+  // Techniques: the name, the definition of hint rung 2 and the page
+  'technique.fullHouse.name': 'Laatste vakje',
+  'technique.fullHouse.definition':
+    'een rij, kolom of blok met één leeg vakje. Dat vakje krijgt het ontbrekende cijfer.',
+  'technique.fullHouse.explanation':
+    'Een rij, kolom of blok bevat acht cijfers en één leeg vakje. Het ontbrekende cijfer moet in dat vakje. Tel de cijfers daar om het te vinden.',
+  'technique.hiddenSingle.name': 'Verborgen single',
+  'technique.hiddenSingle.definition': 'een cijfer dat in maar één vakje van een rij, kolom of blok past.',
+  'technique.hiddenSingle.explanation':
+    'Kies een cijfer en een rij, kolom of blok. Bekijk elk leeg vakje daar: zijn rij, kolom of blok kan het cijfer al bevatten. Blijft er maar één vakje over, dan komt het cijfer daar.',
+  'technique.nakedSingle.name': 'Naakte single',
+  'technique.nakedSingle.definition': 'een vakje waar maar één cijfer in past.',
+  'technique.nakedSingle.explanation':
+    'Bekijk één leeg vakje. Elk cijfer in zijn rij, zijn kolom en zijn blok valt af. Vallen er acht cijfers af, dan komt het negende cijfer in het vakje.',
+  'technique.pointing.name': 'Aanwijzen',
+  'technique.pointing.definition':
+    'een cijfer dat in een blok maar in één rij of kolom past. Die rij of kolom verliest het cijfer buiten het blok.',
+  'technique.pointing.explanation':
+    'In een blok past een cijfer alleen in de vakjes van één rij. Het cijfer van dat blok moet dus in die rij. De vakjes van de rij buiten het blok kunnen het cijfer dan niet bevatten. Hetzelfde werkt voor een kolom.',
+  'technique.boxLine.name': 'Blok-lijnreductie',
+  'technique.boxLine.definition':
+    'een cijfer dat in een rij of kolom maar in één blok past. Dat blok verliest het cijfer buiten de rij of kolom.',
+  'technique.boxLine.explanation':
+    'In een rij past een cijfer alleen in de vakjes van één blok. Het cijfer van die rij moet dus in dat blok. De vakjes van het blok buiten de rij kunnen het cijfer dan niet bevatten. Hetzelfde werkt voor een kolom.',
+  'technique.nakedPair.name': 'Naakt paar',
+  'technique.nakedPair.definition':
+    'twee vakjes van een rij, kolom of blok waar alleen dezelfde twee cijfers in passen. De andere vakjes daar kunnen ze niet bevatten.',
+  'technique.nakedPair.explanation':
+    'In twee vakjes van een rij, kolom of blok passen alleen dezelfde twee cijfers. Het ene vakje krijgt het ene cijfer, het andere vakje het andere. Geen ander vakje daar kan dus een van die cijfers bevatten.',
+  'technique.nakedTriple.name': 'Naakt drietal',
+  'technique.nakedTriple.definition':
+    'drie vakjes van een rij, kolom of blok waar samen maar drie cijfers in passen. De andere vakjes daar kunnen ze niet bevatten.',
+  'technique.nakedTriple.explanation':
+    'In drie vakjes van een rij, kolom of blok passen samen maar drie cijfers. Die drie cijfers moeten die drie vakjes vullen. Geen ander vakje daar kan ze dus bevatten. Een vakje van het drietal hoeft niet alle drie de cijfers te hebben.',
+  'technique.hiddenPair.name': 'Verborgen paar',
+  'technique.hiddenPair.definition':
+    'twee cijfers die in maar twee vakjes van een rij, kolom of blok passen. Die vakjes kunnen geen ander cijfer bevatten.',
+  'technique.hiddenPair.explanation':
+    'In een rij, kolom of blok passen twee cijfers alleen in dezelfde twee vakjes. Die twee vakjes moeten die twee cijfers bevatten. De twee vakjes kunnen dus geen ander cijfer bevatten.',
+  'technique.hiddenTriple.name': 'Verborgen drietal',
+  'technique.hiddenTriple.definition':
+    'drie cijfers die in maar drie vakjes van een rij, kolom of blok passen. Die vakjes kunnen geen ander cijfer bevatten.',
+  'technique.hiddenTriple.explanation':
+    'In een rij, kolom of blok passen drie cijfers alleen in dezelfde drie vakjes. Die drie vakjes moeten die drie cijfers bevatten. De drie vakjes kunnen dus geen ander cijfer bevatten.',
+  'technique.nakedQuad.name': 'Naakt viertal',
+  'technique.nakedQuad.definition':
+    'vier vakjes van een rij, kolom of blok waar samen maar vier cijfers in passen. De andere vakjes daar kunnen ze niet bevatten.',
+  'technique.nakedQuad.explanation':
+    'In vier vakjes van een rij, kolom of blok passen samen maar vier cijfers. Die vier cijfers moeten die vier vakjes vullen. Geen ander vakje daar kan ze dus bevatten.',
+  'technique.hiddenQuad.name': 'Verborgen viertal',
+  'technique.hiddenQuad.definition':
+    'vier cijfers die in maar vier vakjes van een rij, kolom of blok passen. Die vakjes kunnen geen ander cijfer bevatten.',
+  'technique.hiddenQuad.explanation':
+    'In een rij, kolom of blok passen vier cijfers alleen in dezelfde vier vakjes. Die vier vakjes moeten die vier cijfers bevatten. De vier vakjes kunnen dus geen ander cijfer bevatten.',
+  'technique.xWing.name': 'X-wing',
+  'technique.xWing.definition':
+    'twee rijen waar een cijfer alleen in dezelfde twee kolommen past. Die kolommen verliezen het cijfer dan in de andere rijen (of omgekeerd, met rijen en kolommen gewisseld).',
+  'technique.xWing.explanation':
+    'In twee rijen past een cijfer in maar twee vakjes elk, en die vakjes delen twee kolommen. Het cijfer neemt twee tegenoverliggende hoeken van die rechthoek in. Elk van de twee kolommen krijgt het cijfer dus in een van de twee rijen. De andere vakjes van de twee kolommen verliezen het cijfer.',
+  'technique.swordfish.name': 'Swordfish',
+  'technique.swordfish.definition':
+    'drie rijen waar een cijfer alleen in dezelfde drie kolommen past. Die kolommen verliezen het cijfer dan in de andere rijen (of omgekeerd, met rijen en kolommen gewisseld).',
+  'technique.swordfish.explanation':
+    'In drie rijen past een cijfer alleen in dezelfde drie kolommen. De drie rijen zetten het cijfer één keer in elk van die kolommen. De andere vakjes van de drie kolommen verliezen het cijfer dus. Hetzelfde werkt met rijen en kolommen gewisseld.',
+  'technique.jellyfish.name': 'Jellyfish',
+  'technique.jellyfish.definition':
+    'vier rijen waar een cijfer alleen in dezelfde vier kolommen past. Die kolommen verliezen het cijfer dan in de andere rijen (of omgekeerd, met rijen en kolommen gewisseld).',
+  'technique.jellyfish.explanation':
+    'In vier rijen past een cijfer alleen in dezelfde vier kolommen. De vier rijen zetten het cijfer één keer in elk van die kolommen. De andere vakjes van de vier kolommen verliezen het cijfer dus. Hetzelfde werkt met rijen en kolommen gewisseld.',
+  'technique.skyscraper.name': 'Wolkenkrabber',
+  'technique.skyscraper.definition':
+    'twee rijen of twee kolommen waar een cijfer in maar twee vakjes elk past, met van elk één vakje op dezelfde lijn. Een van de andere twee vakjes bevat het cijfer.',
+  'technique.skyscraper.explanation':
+    'In twee rijen past een cijfer in maar twee vakjes elk. Van elke rij ligt één vakje in dezelfde kolom, dus hoogstens een van die twee bevat het cijfer. Dan bevat minstens een van de andere twee vakjes het. Een vakje dat die twee vakjes allebei ziet, verliest het cijfer.',
+  'technique.twoStringKite.name': 'Vlieger',
+  'technique.twoStringKite.definition':
+    'een rij en een kolom waar een cijfer in maar twee vakjes elk past, met van elk één vakje in hetzelfde blok. Een van de andere twee vakjes bevat het cijfer.',
+  'technique.twoStringKite.explanation':
+    'In een rij en een kolom past een cijfer in maar twee vakjes elk. Van elk ligt één vakje in hetzelfde blok, dus hoogstens een van die twee bevat het cijfer. Dan bevat minstens een van de andere twee vakjes het. Een vakje dat ze allebei ziet, verliest het cijfer.',
+  'technique.xyWing.name': 'XY-wing',
+  'technique.xyWing.definition':
+    'een vakje met twee cijfers, en twee vakjes in zijn rij, kolom of blok die elk een van die cijfers met een derde cijfer combineren. Een van die twee vakjes moet het derde cijfer bevatten.',
+  'technique.xyWing.explanation':
+    'Een spilvakje bevat maar twee cijfers, X en Y. Twee vakjes die het ziet, bevatten X en Z, en Y en Z. Wat de spil ook bevat, een van de twee vakjes bevat Z. Een vakje dat ze allebei ziet, verliest dus Z.',
+  'technique.xyzWing.name': 'XYZ-wing',
+  'technique.xyzWing.definition':
+    'een vakje met drie cijfers, en twee vakjes in zijn rij, kolom of blok die er elk twee van bevatten, waarvan één gedeeld. Een van de drie vakjes moet het gedeelde cijfer bevatten.',
+  'technique.xyzWing.explanation':
+    'Een spilvakje bevat maar drie cijfers, X, Y en Z. Twee vakjes die het ziet, bevatten X en Z, en Y en Z. Een van de drie vakjes moet Z bevatten. Een vakje dat ze alle drie ziet, verliest dus Z.',
+  'technique.wWing.name': 'W-wing',
+  'technique.wWing.definition':
+    'twee vakjes met dezelfde twee cijfers, verbonden door een rij, kolom of blok waar een van de twee cijfers in maar twee vakjes past. Een van de twee vakjes moet het andere cijfer bevatten.',
+  'technique.wWing.explanation':
+    'Twee vakjes bevatten alleen dezelfde twee cijfers, X en Y. Een rij, kolom of blok waar X in maar twee vakjes past, verbindt ze: elk uiteinde ziet een van de twee vakjes. Een van de twee vakjes bevat dus Y. Een vakje dat ze allebei ziet, verliest Y.',
+  // Hints (ADR-032): the card, the messages of @sudoku/core and their parts
+  'hint.title': 'Hint',
+  'hint.nice': 'Mooi zo.',
+  'hint.step': 'Stap {step} van {total}',
+  'hint.button.more': 'Meer hulp',
+  'hint.button.answer': 'Toon het antwoord',
+  'hint.button.try': 'Probeer het',
+  'hint.button.next': 'Volgende stap',
+  'hint.button.fill': 'Vul het in',
+  'hint.button.doIt': 'Ik doe het zelf',
+  'hint.button.erase': 'Wis het',
+  'hint.button.learnMore': 'Meer weten',
+  'hint.mistake': '{cell} bevat een fout cijfer. Wis het eerst.',
+  'hint.fallback':
+    'Geen hinttechniek past op dit rooster. Zet {digit} in {cell}, het vakje met de minste mogelijke cijfers.',
+  'hint.technique': '{name}: {definition}',
+  'hint.put': 'Zet {digit} in {cell}.',
+  'hint.look.unit': 'Bekijk {unit}.',
+  'hint.look.cell': 'Bekijk {cell}.',
+  'hint.look.digitIn': 'Bekijk waar een {digit} past in {place}.',
+  'hint.removeOutside': 'Haal {digit} weg uit {from}, buiten {outside}.',
+  'hint.removeSeeingBoth': 'Haal {digit} weg uit de vakjes die een rij, kolom of blok delen met zowel {a} als {b}.',
+  'hint.removeSeeingAll': 'Haal {digit} weg uit de vakjes die een rij, kolom of blok delen met alle drie deze vakjes.',
+  'hint.fullHouse.look': 'Bekijk {unit}. Er is één leeg vakje.',
+  'hint.fullHouse.why': '{unit} bevat elk cijfer behalve {digit}. Dus komt {digit} in het lege vakje.',
+  'hint.hiddenSingle.why':
+    'In {unit} past een {digit} alleen in {cell}. Elk ander leeg vakje heeft een {digit} in zijn rij, kolom of blok.',
+  'hint.hiddenSingle.whyLater':
+    'In {unit} past een {digit} alleen in {cell}. Elk ander leeg vakje heeft een {digit} in zijn rij, kolom of blok, of een eerdere stap haalde de {digit} weg.',
+  'hint.nakedSingle.why': 'Zijn rij, kolom en blok bevatten elk cijfer behalve {digit}. Dus past alleen {digit}.',
+  'hint.nakedSingle.whyLater':
+    'Zijn rij, kolom en blok bevatten de andere cijfers, of eerdere stappen haalden ze weg. Dus past alleen {digit}.',
+  'hint.pointing.why': 'In {unit} past een {digit} alleen in {second}. De {digit} van {second} moet dus in dit blok.',
+  'hint.boxLine.why': 'In {unit} past een {digit} alleen in {second}. De {digit} van {second} moet dus in {unit}.',
+  'hint.nakedPair.why':
+    'In {unit} kunnen {cells} alleen {digits} bevatten. Deze twee cijfers moeten dus in deze twee vakjes.',
+  'hint.nakedTriple.why':
+    'In {unit} kunnen {cells} samen alleen {digits} bevatten. Deze drie cijfers moeten dus in deze drie vakjes.',
+  'hint.nakedQuad.why':
+    'In {unit} kunnen {cells} samen alleen {digits} bevatten. Deze vier cijfers moeten dus in deze vier vakjes.',
+  'hint.nakedSubset.answer': 'Haal {digits} weg uit de andere vakjes van {units}.',
+  'hint.hiddenPair.why':
+    'In {unit} passen {digits} alleen in {cells}. Deze twee vakjes kunnen dus geen ander cijfer bevatten.',
+  'hint.hiddenTriple.why':
+    'In {unit} passen {digits} alleen in {cells}. Deze drie vakjes kunnen dus geen ander cijfer bevatten.',
+  'hint.hiddenQuad.why':
+    'In {unit} passen {digits} alleen in {cells}. Deze vier vakjes kunnen dus geen ander cijfer bevatten.',
+  'hint.hiddenSubset.answer': 'Haal {digits} weg uit {cells}.',
+  'hint.fish.why': 'In {bases} past een {digit} alleen in {covers}. Dus moeten {covers} hun {digit} in {bases} hebben.',
+  'hint.linkedPair.why':
+    '{lines} hebben elk maar twee vakjes voor een {digit}, en van elk ligt er één in {joint}. Hoogstens een van die twee bevat de {digit}, dus bevat {a} of {b} de {digit}.',
+  'hint.xyWing.look': 'Bekijk {cell}. Er passen maar twee cijfers in.',
+  'hint.xyWing.why': '{pivot} bevat {digits}. Elke keuze zet een {shared} in {a} of {b}.',
+  'hint.xyzWing.look': 'Bekijk {cell}. Er passen maar drie cijfers in.',
+  'hint.xyzWing.why': '{pivot} bevat {digits}. Elke keuze zet een {shared} in dit vakje, in {a} of in {b}.',
+  'hint.wWing.look': 'Bekijk {a} en {b}. Ze bevatten dezelfde twee cijfers.',
+  'hint.wWing.why':
+    'In {link} past een {linked} alleen in {ends}, dus een ervan bevat de {linked}. Dat vakje sluit {linked} uit in {a} of in {b}, dus een van die twee bevat {removed}.',
+  'hint.part.cell': 'rij {row}, kolom {column}',
+  'hint.part.row': 'rij {row}',
+  'hint.part.column': 'kolom {column}',
+  'hint.part.box.topLeft': 'het blok linksboven',
+  'hint.part.box.topMiddle': 'het blok middenboven',
+  'hint.part.box.topRight': 'het blok rechtsboven',
+  'hint.part.box.middleLeft': 'het blok middenlinks',
+  'hint.part.box.centre': 'het middelste blok',
+  'hint.part.box.middleRight': 'het blok middenrechts',
+  'hint.part.box.bottomLeft': 'het blok linksonder',
+  'hint.part.box.bottomMiddle': 'het blok middenonder',
+  'hint.part.box.bottomRight': 'het blok rechtsonder',
+  'hint.part.and': '{items} en {last}',
+  'hint.part.or': '{items} of {last}',
+  'hint.part.rowCells': 'rij {row}, kolommen {columns}',
+  'hint.part.columnCells': 'kolom {column}, rijen {rows}',
+  'hint.part.columnsIn': '{count, plural, one {kolom {list}} other {kolommen {list}}}',
+  'hint.part.rowsIn': '{count, plural, one {rij {list}} other {rijen {list}}}',
+  'hint.part.rows': 'rijen {list}',
+  'hint.part.columns': 'kolommen {list}',
+  // Hints, more
+  'hint.button.learnMoreLabel': 'Meer weten over {technique}',
+  'hint.strip.label': 'Hint: {text}',
+  // Hints, the card and the strip
+  'hint.close': 'Sluit de hint',
+  'hint.strip.openHint': 'Opent de hintkaart',
+  // The techniques screen
+  'techniques.title': 'Technieken',
+  'techniques.intro':
+    'De manieren om een cijfer te vinden die de hints gebruiken, van de gemakkelijkste tot de moeilijkste.',
+  'techniques.notFound': 'Niet gevonden',
+  'techniques.notInApp': 'Deze techniek zit niet in de app.',
+  'techniques.level': 'Komt voor het eerst voor in puzzels op niveau {level}.',
+  'techniques.example': 'Voorbeeld',
 }

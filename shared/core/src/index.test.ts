@@ -12,7 +12,7 @@ describe('@sudoku/core', () => {
       'erase',
       'undo',
       'planHint',
-      'hintText',
+      'hintMessage',
       'revealHint',
       'fillHint',
       'pause',
@@ -40,6 +40,8 @@ describe('@sudoku/core', () => {
 
   it('exports the technique pages', () => {
     expect(core.techniqueExample('hiddenSingle')?.step.technique).toBe('hiddenSingle')
-    expect(core.TECHNIQUE_PAGES.xWing?.explanation).toBeTruthy()
+    expect(core.TECHNIQUE_PAGES.xWing?.example).toHaveLength(2)
+    expect(core.HINT_MESSAGE_IDS).toContain('hint.put')
+    expect(core.HINT_TECHNIQUE_IDS).toContain('xWing')
   })
 })

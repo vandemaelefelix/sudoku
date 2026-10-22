@@ -1,5 +1,8 @@
-import { HINT_TECHNIQUES, TECHNIQUE_PAGES, techniqueExample } from '@sudoku/core'
+import { techniqueExample } from '@sudoku/core'
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { IntlProvider } from 'react-intl'
+import { CATALOGUES } from '@/i18n/messages'
+import { createAppIntl } from '@/i18n/utils/intl.utils'
 import { exampleSpeech } from '@/techniques/utils/techniques.utils'
 import { TechniqueScreen } from './TechniqueScreen'
 
@@ -8,11 +11,26 @@ const hidden = { includeHiddenElements: true }
 
 it('shows the name, the definition, the level and the explanation', () => {
   render(<TechniqueScreen technique="pointing" onBack={jest.fn()} />)
-  const pointing = HINT_TECHNIQUES.pointing!
   expect(screen.getByRole('header', { name: 'Pointing' })).toBeTruthy()
-  expect(screen.getByText(pointing.definition.charAt(0).toUpperCase() + pointing.definition.slice(1))).toBeTruthy()
+  expect(
+    screen.getByText(
+      'A digit that fits in only one row or column of a box. That row or column loses the digit outside the box.',
+    ),
+  ).toBeTruthy()
   expect(screen.getByText('First seen in Medium puzzles.')).toBeTruthy()
-  expect(screen.getByText(TECHNIQUE_PAGES.pointing!.explanation)).toBeTruthy()
+  expect(screen.getByText(/^In a box, a digit fits only in the cells of one row\./)).toBeTruthy()
+})
+
+it('shows the page in Dutch', () => {
+  render(
+    <IntlProvider locale="nl-BE" messages={CATALOGUES.nl}>
+      <TechniqueScreen technique="pointing" onBack={jest.fn()} />
+    </IntlProvider>,
+  )
+  expect(screen.getByRole('header', { name: 'Aanwijzen' })).toBeTruthy()
+  expect(screen.getByText('Komt voor het eerst voor in puzzels op niveau Gemiddeld.')).toBeTruthy()
+  expect(screen.getByText(/^In een blok past een cijfer alleen in de vakjes van één rij\./)).toBeTruthy()
+  expect(screen.getByText('Voorbeeld')).toBeTruthy()
 })
 
 it('draws the example board with the highlight roles of its step', () => {
@@ -25,7 +43,7 @@ it('draws the example board with the highlight roles of its step', () => {
 
 it('reads the example to VoiceOver as text', () => {
   render(<TechniqueScreen technique="xWing" onBack={jest.fn()} />)
-  const text = exampleSpeech(techniqueExample('xWing')!)
+  const text = exampleSpeech(createAppIntl('en'), techniqueExample('xWing')!)
   expect(screen.getByLabelText(text)).toBeTruthy()
 })
 

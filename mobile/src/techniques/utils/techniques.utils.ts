@@ -10,7 +10,9 @@ import {
   type TechniqueExample,
   type TechniqueId,
 } from '@sudoku/core'
-import { LEVEL_NAMES } from '@/constants/level.constants'
+import { LEVEL_LABELS } from '@/constants/level.constants'
+import type { Formatter } from '@/i18n/utils/intl.utils'
+import { hintText } from '@/utils/hintText.utils'
 
 /** The techniques with a page, in hint order. The hidden single has two ranks and shows once. */
 export function techniqueIds(): TechniqueId[] {
@@ -22,8 +24,9 @@ export function toTechniqueId(param: string | undefined): TechniqueId | null {
   return techniqueIds().find((id) => id === param) ?? null
 }
 
-export function levelLine(technique: TechniqueId): string {
-  return `First seen in ${LEVEL_NAMES[TECHNIQUE_LEVEL[technique]]} puzzles.`
+export function levelLine(intl: Formatter, technique: TechniqueId): string {
+  const level = intl.formatMessage({ id: LEVEL_LABELS[TECHNIQUE_LEVEL[technique]] })
+  return intl.formatMessage({ id: 'techniques.level' }, { level })
 }
 
 /** The digits of a candidate mask: bit d - 1 is set when d is a candidate. */
@@ -45,13 +48,8 @@ export function exampleBoard({ givens, solution, board, step }: TechniqueExample
 }
 
 /** What VoiceOver reads for the example board: the why and the answer of its step. */
-export function exampleSpeech({ step }: TechniqueExample): string {
+export function exampleSpeech(intl: Formatter, { step }: TechniqueExample): string {
   const technique = HINT_TECHNIQUES[step.technique]
   if (technique === undefined) return ''
-  return `${technique.why(step, false)} ${technique.answer(step)}`
-}
-
-/** The definitions of the hint text follow a name and a colon, so they start in lower case. */
-export function capitalised(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
+  return `${hintText(intl, technique.why(step, false))} ${hintText(intl, technique.answer(step))}`
 }

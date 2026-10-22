@@ -1,5 +1,8 @@
-import { HINT_TECHNIQUES, hintText, type Step, type TechniqueId } from '@sudoku/core'
-import { HINT_LABELS, HINT_NICE, HINT_TITLE, TARGET_PULSE_SCALE } from '@/game/constants/hint.constants'
+import { HINT_TECHNIQUES, hintMessage, type HintTechniqueId, type Step, type TechniqueId } from '@sudoku/core'
+import { TARGET_PULSE_SCALE } from '@/game/constants/hint.constants'
+import { hintText, techniqueName } from '@/utils/hintText.utils'
+import type { MessageId } from '@/i18n/messages'
+import type { Formatter } from '@/i18n/utils/intl.utils'
 import type { HintHighlight } from './cell.utils'
 import type { HintCardAction, OpenHint } from './session.utils'
 
@@ -56,46 +59,59 @@ export type HintCardView = {
   technique: TechniqueId | null
 }
 
-const FILL: readonly HintButton[] = [
-  { action: 'hintFill', label: HINT_LABELS.hintFill },
-  { action: 'hintTry', label: HINT_LABELS.hintDoIt },
+type ButtonId = { action: HintCardAction; label: MessageId }
+
+const FILL: readonly ButtonId[] = [
+  { action: 'hintFill', label: 'hint.button.fill' },
+  { action: 'hintTry', label: 'hint.button.doIt' },
 ]
 
-const HELP: readonly HintButton[] = [
-  { action: 'hintMore', label: HINT_LABELS.hintMore },
-  { action: 'hintAnswer', label: HINT_LABELS.hintAnswer },
-  { action: 'hintTry', label: HINT_LABELS.hintTry },
+const HELP: readonly ButtonId[] = [
+  { action: 'hintMore', label: 'hint.button.more' },
+  { action: 'hintAnswer', label: 'hint.button.answer' },
+  { action: 'hintTry', label: 'hint.button.try' },
 ]
 
-export function hintCardView(hint: OpenHint): HintCardView {
+export function hintCardView(intl: Formatter, hint: OpenHint): HintCardView {
   const { plan, step, rung } = hint
-  const text = hint.view === 'nice' ? HINT_NICE : hintText(plan, step, rung)
+  const label = (buttons: readonly ButtonId[]): HintButton[] =>
+    buttons.map((button) => ({ action: button.action, label: intl.formatMessage({ id: button.label }) }))
+  const hintTitle = intl.formatMessage({ id: 'hint.title' })
+  const text =
+    hint.view === 'nice' ? intl.formatMessage({ id: 'hint.nice' }) : hintText(intl, hintMessage(plan, step, rung))
   switch (plan.kind) {
     case 'mistake':
       return {
-        title: HINT_TITLE,
+        title: hintTitle,
         text,
         rung: null,
         stepLabel: null,
-        buttons: [{ action: 'hintErase', label: HINT_LABELS.hintErase }],
+        buttons: label([{ action: 'hintErase', label: 'hint.button.erase' }]),
         technique: null,
       }
     case 'fallback':
-      return { title: HINT_TITLE, text, rung: null, stepLabel: null, buttons: FILL, technique: null }
+      return { title: hintTitle, text, rung: null, stepLabel: null, buttons: label(FILL), technique: null }
     case 'steps':
       break
   }
   const last = step === plan.steps.length - 1
   const technique = plan.steps[step]?.technique
-  const name = technique === undefined ? undefined : HINT_TECHNIQUES[technique]?.name
+  // The planner uses only the techniques of HINT_TECHNIQUES, so a technique there has a name in the catalogue.
+  const name =
+    technique === undefined || HINT_TECHNIQUES[technique] === undefined
+      ? undefined
+      : techniqueName(intl, technique as HintTechniqueId)
   let buttons = HELP
-  if (rung === 4) buttons = last ? FILL : [{ action: 'hintNext', label: HINT_LABELS.hintNext }]
+  if (rung === 4) buttons = last ? FILL : [{ action: 'hintNext', label: 'hint.button.next' }]
   return {
-    title: rung >= 2 && name !== undefined ? name : HINT_TITLE,
+    title: rung >= 2 && name !== undefined ? name : hintTitle,
     text,
     rung,
-    stepLabel: plan.steps.length > 1 ? `Step ${step + 1} of ${plan.steps.length}` : null,
-    buttons,
+    stepLabel:
+      plan.steps.length > 1
+        ? intl.formatMessage({ id: 'hint.step' }, { step: step + 1, total: plan.steps.length })
+        : null,
+    buttons: label(buttons),
     technique: rung >= 2 && name !== undefined ? (technique ?? null) : null,
   }
 }
