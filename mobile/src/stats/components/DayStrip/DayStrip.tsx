@@ -1,14 +1,16 @@
 import { View } from 'react-native'
-import { countOf } from '@/stats/utils/format.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { styles } from './DayStrip.styles'
 
 type DayStripProps = { days: readonly boolean[] }
 
 /** A square for each day, oldest first. A solid square is a day with a win. Today without a win yet is dashed. */
 export function DayStrip({ days }: DayStripProps) {
+  const intl = useIntl()
   const wins = days.filter(Boolean).length
   const todayOpen = days.length > 0 && days[days.length - 1] === false
-  const label = `Last ${days.length} days: wins on ${countOf(wins, 'day')}.${todayOpen ? ' Today has no win yet.' : ''}`
+  const summary = intl.formatMessage({ id: 'stats.strip.label' }, { total: days.length, count: wins })
+  const label = todayOpen ? `${summary} ${intl.formatMessage({ id: 'stats.strip.todayOpen' })}` : summary
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={label} style={styles.strip}>
       {days.map((won, index) => (

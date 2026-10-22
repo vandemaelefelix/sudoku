@@ -16,7 +16,7 @@ import { StatsCard } from '@/stats/components/StatsCard'
 import type { StatsTab } from '@/stats/constants/stats.constants'
 import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useStats, type StatsData } from '@/stats/hooks/useStats'
-import { countOf } from '@/stats/utils/format.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { isDevelopmentVariant } from '@/utils/appVariant.utils'
 import { styles } from './StatsScreen.styles'
@@ -30,15 +30,22 @@ type StatsScreenProps = {
 }
 
 function Overview({ data }: { data: StatsData }) {
+  const intl = useIntl()
+  const days = (count: number) => intl.formatMessage({ id: 'stats.days' }, { count })
   return (
     <>
       <LevelTable levels={data.levels} />
-      <StatSection title="Streak" note="all levels">
-        <StatRow label="Current" value={countOf(data.streak.current, 'day')} />
-        <StatRow label="Longest" value={countOf(data.streak.longest, 'day')} />
+      <StatSection
+        title={intl.formatMessage({ id: 'stats.streak.title' })}
+        note={intl.formatMessage({ id: 'stats.streak.note' })}
+      >
+        <StatRow label={intl.formatMessage({ id: 'stats.streak.current' })} value={days(data.streak.current)} />
+        <StatRow label={intl.formatMessage({ id: 'stats.streak.longest' })} value={days(data.streak.longest)} />
         <View style={styles.stripHeader}>
-          <Text style={styles.stripTitle}>Last 14 days</Text>
-          <Text style={styles.stripNote}>today on the right</Text>
+          <Text style={styles.stripTitle}>
+            {intl.formatMessage({ id: 'stats.strip.title' }, { count: data.streak.recent.length })}
+          </Text>
+          <Text style={styles.stripNote}>{intl.formatMessage({ id: 'stats.strip.note' })}</Text>
         </View>
         <DayStrip days={data.streak.recent} />
       </StatSection>
@@ -52,6 +59,8 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
   const [tab, setTab] = useState<StatsTab>('all')
   const { includeScanned, setIncludeScanned } = useIncludeScanned()
   const haptics = useHaptics()
+  const intl = useIntl()
+  const title = intl.formatMessage({ id: 'stats.title' })
   // A reset changes the key, so the numbers load again.
   const [reloadKey, setReloadKey] = useState(0)
   const state = useStats(includeScanned, reloadKey + refreshKey)
@@ -70,7 +79,7 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
         <View style={styles.header}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={intl.formatMessage({ id: 'common.back' })}
             onPress={onBack}
             style={({ pressed }) => [styles.back, pressed && pressedStyles.pressed]}
           >
@@ -78,18 +87,20 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
           </Pressable>
           {!hasTitleBlock && (
             <Text accessibilityRole="header" style={styles.barTitle}>
-              Stats
+              {title}
             </Text>
           )}
         </View>
         {hasTitleBlock && (
           <View testID="title-block" style={styles.titleBlock}>
             <Text accessibilityRole="header" style={styles.display}>
-              Stats
+              {title}
             </Text>
           </View>
         )}
-        {state.status === 'failed' && <Text style={styles.message}>The stats do not load.</Text>}
+        {state.status === 'failed' && (
+          <Text style={styles.message}>{intl.formatMessage({ id: 'stats.loadFailed' })}</Text>
+        )}
         {state.status === 'ready' && (
           <>
             <View style={styles.card}>
@@ -109,8 +120,8 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
             )}
             <View style={styles.settings}>
               <AssistRow
-                label="Include scanned puzzles"
-                description="A scanned level is an estimate."
+                label={intl.formatMessage({ id: 'stats.includeScanned.label' })}
+                description={intl.formatMessage({ id: 'stats.includeScanned.description' })}
                 value={includeScanned}
                 divider={false}
                 onChange={(on) => {

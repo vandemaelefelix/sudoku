@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react-native'
 import { useLocales } from 'expo-localization'
+import { useEffect } from 'react'
 import { Text } from 'react-native'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { useLanguage } from '@/i18n/hooks/useLanguage'
@@ -11,7 +12,10 @@ let choose: ReturnType<typeof useLanguage>['choose'] = () => undefined
 
 function Title() {
   const intl = useIntl()
-  choose = useLanguage().choose
+  const language = useLanguage()
+  useEffect(() => {
+    choose = language.choose
+  }, [language.choose])
   return <Text testID="title">{`${intl.formatMessage({ id: 'settings.language.title' })} ${intl.locale}`}</Text>
 }
 
