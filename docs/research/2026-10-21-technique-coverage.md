@@ -153,6 +153,37 @@ What this shows:
 - The 95 stuck expert puzzles need a technique that the solver does not have, such as forcing chains, longer chains or the other unique rectangle types.
 - The time of one `nextSteps` call stays under 5 ms. The slowest call in the bench set takes about 1.1 ms. A whole solve of 100 generated puzzles takes at most about 3 ms.
 
+### Hint coverage
+
+Added on 2026-10-22, when the tier 2 techniques got hint text (#197). The question: how often does a hint teach a
+technique, and how often does it use the fallback of ADR-032 point 9?
+
+Setup:
+
+- The seeds 1 to 200 of each level. A plan per position costs more than a solve, so this section uses fewer puzzles.
+- The full solver solves each puzzle. Each board of that solve gets one hint plan, with the givens and the correct entries.
+- `planHint` runs twice: with the tier 1 techniques only, and with tier 1 and tier 2. A hint teaches when its plan has steps.
+- A position is hard when the full solver needs an elimination before its next digit. A stuck player most likely asks there.
+- The whole coverage run, with this section, takes about 16 s on a Mac.
+
+| Level | Hints | Teach with tier 1 | Teach with tier 1 and tier 2 | Hard positions | Teach there with tier 1 | Teach there with tier 1 and tier 2 | Puzzles where every hint teaches | Slowest plan |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| easy | 8200 | 100.0 % | 100.0 % | 0 | - | - | 100.0 % | 0 ms |
+| medium | 9400 | 99.9 % | 100.0 % | 12 | 33.3 % | 83.3 % | 99.5 % | 1 ms |
+| hard | 10249 | 99.6 % | 99.8 % | 68 | 39.7 % | 73.5 % | 92.0 % | 2 ms |
+| expert | 10501 | 99.2 % | 99.6 % | 157 | 50.3 % | 77.7 % | 84.0 % | 3 ms |
+
+What this shows:
+
+- Across all positions, nearly every hint teaches, even with tier 1 alone. Most positions of a solve need only a single.
+  This share flatters both tiers.
+- The hard positions show the effect of tier 2. On expert, the share of hints that teach there rises from 50.3 % to 77.7 %.
+  On hard, it rises from 39.7 % to 73.5 %.
+- With tier 1 and tier 2, 84.0 % of the expert puzzles and 92.0 % of the hard puzzles never need the fallback.
+- The rest of the fallbacks need a tier 3 technique, or a plan of more than 6 steps. Hint text for the XY-chain
+  would help most, because the XY-chain solves the most expert puzzles of tier 3 (see the full solver coverage above).
+- The slowest plan takes 3 ms on a Mac. A plan is fast enough for a tap.
+
 ## 3. Sources
 
 - HoDoKu (GPL-3.0) and SudokuWiki: the technique definitions, as the research note of the epic gives them. I read no code of either, and copied none.

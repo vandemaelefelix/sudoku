@@ -33,8 +33,9 @@ and ends at a placed digit. The technique solver builds it. Each step is a `Step
 - The plan keeps only the steps that the placement needs. The planner drops each elimination step
   that the rest of the plan can do without. The search may take more steps than 6. The pruned plan
   has at most 6.
-- Only the techniques with hint text take part. `HINT_TECHNIQUES` in `@sudoku/core` holds the
-  text, and the planner reads its order from it.
+- Only the techniques with hint text take part: tier 1 and tier 2. `HINT_TECHNIQUES` in
+  `@sudoku/core` holds the text, and the planner reads its order from it. Tier 3 has no text, so
+  a board that needs it gets the fallback.
 - Until the hint card ships, the Hint tool fills the answer of the plan at once. For a wrong entry,
   it selects that cell.
 
