@@ -11,7 +11,7 @@ creates for itself are recorded as ADRs and indexed in [00-DECISIONS.md](00-DECI
 
 | ID | Constraint | Background |
 | --- | --- | --- |
-| TC-1 | iOS first, on iPhone | The developer and daily player uses an iPhone. Android stays possible (F-13) but is never tested in v1. |
+| TC-1 | iOS first, on iPhone | The developer and daily player uses an iPhone. An iPad runs the same layout in portrait only, at the content width. Android stays possible (F-13) but is never tested in v1. |
 | TC-2 | React Native is the known UI technology | The developer already knows React Native. A native-only stack was considered and dropped, see [ADR-002](adr/adr-002-react-native-and-scanner-engine.md). |
 | TC-3 | The game needs no backend | The game and the scanner run on the phone and never need the backend (SUD-01). The backend (part 3) adds accounts and the history sync only. Superseded in part by [ADR-027](adr/adr-027-backend-platform.md) on 2026-10-15. |
 | TC-4 | Training runs on an Apple Silicon Mac | No cloud GPU budget. Models MUST be small enough to train locally in minutes to hours. |

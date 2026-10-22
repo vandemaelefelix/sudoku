@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { roleFont } from '@/theme/typography'
+import { contentInset } from '@/theme/content'
 
 // The Settings page in the Op-art language (ADR-026): square corners, one framed block per group with rows divided by the
 // box-line weight, and a short wavy rule under each heading. The frame and the rules are the tokens of the stats card.
@@ -10,7 +11,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.space.lg,
     paddingTop: rt.insets.top,
     paddingBottom: rt.insets.bottom + theme.space.lg,
-    paddingHorizontal: theme.space.lg,
+    paddingHorizontal: contentInset(theme, rt.screen.width),
   },
   header: { height: theme.size.header, flexDirection: 'row', alignItems: 'center' },
   back: {

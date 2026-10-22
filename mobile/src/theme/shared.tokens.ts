@@ -38,6 +38,7 @@ export const SHARED_SIZE: Theme['size'] = {
   card: { width: 300, grid: 256 },
   titleBlock: 0,
   panelEdge: 0,
+  content: 560,
 }
 
 export const SHARED_OPACITY: Theme['opacity'] = { disabled: 0.3, locked: 0.35, pressed: 0.7 }
