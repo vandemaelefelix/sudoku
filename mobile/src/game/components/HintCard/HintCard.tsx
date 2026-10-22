@@ -1,10 +1,9 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { AccessibilityInfo, Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, {
   Easing,
   FadeIn,
   FadeOut,
-  LinearTransition,
   ReduceMotion,
   useAnimatedStyle,
   useReducedMotion,
@@ -37,8 +36,8 @@ const testIdOf = (action: string) => `hint-${action.slice('hint'.length).toLower
 
 /**
  * The hint card, in place of the tool row and the keypad (ADR-032, amendment of 2026-10-22). It is not modal: the grid
- * stays live. It rises in and sinks out, its height eases to each new text, and the text cross-fades. With Reduce Motion,
- * only the fades stay. VoiceOver focus moves to the title when the card opens, because the Hint tool that had it is now
+ * stays live. It covers the whole dock, so its edges line up with the grid and do not move between rungs. It rises in
+ * and sinks out, and the text cross-fades. With Reduce Motion, only the fades stay. VoiceOver focus moves to the title when the card opens, because the Hint tool that had it is now
  * hidden. VoiceOver reads each new text through an announcement: iOS has no live region.
  */
 export function HintCard({ hint, onLearn }: HintCardProps) {
@@ -71,8 +70,6 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
       testID="hint-card"
       entering={riseIn(0, slide, theme.motion.medium)}
       exiting={sinkOut(slide, theme.motion.medium)}
-      // The height glide moves the top edge, so Reduce Motion drops it.
-      layout={LinearTransition.duration(theme.motion.medium).easing(easeOut)}
       style={styles.card}
     >
       <View style={styles.top}>
@@ -106,26 +103,29 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
       </View>
       <ScrollView style={styles.textBox}>
         <Animated.View key={text} entering={fadeIn} exiting={fadeOut}>
-          <Text style={styles.text}>{text}</Text>
+          <Text style={styles.text}>
+            {text}
+            {learn && (
+              <>
+                {' '}
+                <Text
+                  testID="hint-learn"
+                  accessibilityRole="link"
+                  onPress={() => onLearn(technique)}
+                  style={styles.link}
+                >
+                  {intl.formatMessage({ id: 'hint.button.learnMore' })}
+                </Text>
+              </>
+            )}
+          </Text>
         </Animated.View>
       </ScrollView>
       <View testID="hint-buttons" style={styles.buttons}>
-        {learn && (
-          <TextButton
-            testID="hint-learn"
-            role="link"
-            label={intl.formatMessage({ id: 'hint.button.learnMore' })}
-            accessibilityLabel={intl.formatMessage({ id: 'hint.button.learnMoreLabel' }, { technique: title })}
-            onPress={() => onLearn(technique)}
-          >
-            <Icon name="next" tone="accent" size={16} />
-          </TextButton>
-        )}
         {others.map((button) => (
           <TextButton
             key={button.action}
             testID={testIdOf(button.action)}
-            role="button"
             label={button.label}
             onPress={() => hintCard(button.action)}
           />
@@ -158,29 +158,20 @@ function RungDot({ dot, on, filled }: RungDotProps) {
   )
 }
 
-type TextButtonProps = {
-  testID: string
-  role: 'button' | 'link'
-  label: string
-  accessibilityLabel?: string
-  onPress(): void
-  children?: ReactNode
-}
+type TextButtonProps = { testID: string; label: string; onPress(): void }
 
-/** An action next to the main button: the accent text alone, with a touch target of 44 pt. */
-function TextButton({ testID, role, label, accessibilityLabel, onPress, children }: TextButtonProps) {
+/** The action next to the main button: the accent text alone, with a touch target of 44 pt. */
+function TextButton({ testID, label, onPress }: TextButtonProps) {
   return (
     <Pressable
       testID={testID}
-      accessibilityRole={role}
-      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.textButton, pressed && pressedStyles.pressed]}
     >
       <Text numberOfLines={1} maxFontSizeMultiplier={CONTROL_MAX_SCALE} style={styles.textButtonText}>
         {label}
       </Text>
-      {children}
     </Pressable>
   )
 }

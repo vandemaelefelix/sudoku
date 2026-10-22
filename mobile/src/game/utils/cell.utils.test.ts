@@ -1,5 +1,4 @@
 import { DEFAULT_ASSISTS } from '@/game/constants/assists.constants'
-import { HINT_EDGE } from '@/game/constants/hint.constants'
 import { forestColour } from '@/theme/themes/forest'
 import { cellViews, displayFill, type HintHighlight } from './cell.utils'
 import { reduceSession, startSession, type SessionAction } from './session.utils'
@@ -76,67 +75,59 @@ const highlight = (roles: Partial<HintHighlight>): HintHighlight => ({
   ...roles,
 })
 
-describe('the hint roles', () => {
-  const { top, right, bottom, left } = HINT_EDGE
+const fills = (views: readonly { hintFill: string }[]) => views.map((view) => view.hintFill)
 
+describe('the hint roles', () => {
   it('draws no role without a highlight', () => {
     const views = cellViews(gameAfter({ type: 'select', cell: 2 }), DEFAULT_ASSISTS)
     for (const view of views) {
-      expect(view).toMatchObject({
-        hintFocus: false,
-        hintEdges: 0,
-        hintPattern: false,
-        hintSupport: false,
-        hintStruck: '',
-        hintTarget: 0,
-      })
+      expect(view).toMatchObject({ hintFill: 'none', hintSupport: false, hintStruck: '', hintTarget: 0 })
     }
   })
 
-  it('tints a focus unit and outlines it', () => {
+  it('tints a focus unit with one fill', () => {
     const views = cellViews(gameAfter(), DEFAULT_ASSISTS, highlight({ units: [0] }))
-    expect(views.slice(0, 9).map((view) => view.fill)).toEqual(Array(9).fill('focus'))
-    expect(views.slice(0, 9).every((view) => view.hintFocus)).toBe(true)
-    expect(views[9]?.fill).toBe('plain')
-    expect(views[9]?.hintFocus).toBe(false)
-    expect(views[0]?.hintEdges).toBe(top | bottom | left)
-    expect(views[4]?.hintEdges).toBe(top | bottom)
-    expect(views[8]?.hintEdges).toBe(top | right | bottom)
-    expect(views[9]?.hintEdges).toBe(0)
+    expect(fills(views.slice(0, 9))).toEqual(Array(9).fill('focus'))
+    expect(views[9]?.hintFill).toBe('none')
+    expect(views.slice(0, 9).every((view) => view.fill === 'plain')).toBe(true)
   })
 
-  it('outlines the outside of several focus units together', () => {
+  it('gives two focus units that overlap one tint, not a darker one', () => {
     // Row 1 and the top-left box overlap in cells 0, 1 and 2.
     const views = cellViews(gameAfter(), DEFAULT_ASSISTS, highlight({ units: [0, 18] }))
-    expect(views[0]?.hintEdges).toBe(top | left)
-    expect(views[3]?.hintEdges).toBe(top | bottom)
-    expect(views[10]?.hintEdges).toBe(0)
-    expect(views[11]?.hintEdges).toBe(right)
-    expect(views[20]?.hintEdges).toBe(right | bottom)
+    expect(new Set([views[0]?.hintFill, views[3]?.hintFill, views[10]?.hintFill])).toEqual(new Set(['focus']))
   })
 
-  it('steps back the assist shades and keeps the selected cell', () => {
+  it('hides the assist shades and the selected cell while a hint is open', () => {
     const views = cellViews(gameAfter({ type: 'select', cell: 0 }), DEFAULT_ASSISTS, highlight({ units: [8] }))
-    expect(views[0]?.fill).toBe('selected')
+    expect(views[0]).toMatchObject({ fill: 'plain', ring: false })
     expect(views[9]?.fill).toBe('plain')
-    expect(views[1]?.fill).toBe('plain')
     // Cell 14 holds the 5 of cell 0.
     expect(views[14]?.fill).toBe('plain')
+    const noAssist = { ...DEFAULT_ASSISTS, selectedCell: false }
+    expect(cellViews(gameAfter({ type: 'select', cell: 0 }), noAssist, highlight({ units: [8] }))[0]?.ring).toBe(false)
   })
 
-  it('keeps the conflict fill inside a focus unit', () => {
+  it('keeps the conflict fill of a wrong entry, without a hint fill', () => {
     const game = gameAfter({ type: 'select', cell: 2 }, { type: 'digit', digit: 5 }, { type: 'select', cell: 40 })
-    const views = cellViews(game, DEFAULT_ASSISTS, highlight({ units: [0] }))
-    expect(views[2]?.fill).toBe('conflict')
-    expect(views[2]?.hintEdges).toBe(top | bottom)
-    expect(views[2]?.hintFocus).toBe(true)
+    const views = cellViews(game, DEFAULT_ASSISTS, highlight({ units: [0], pattern: [2] }))
+    expect(views[2]).toMatchObject({ fill: 'conflict', hintFill: 'none' })
   })
 
-  it('marks the pattern cells, and the support digits only on a cell with a digit', () => {
-    const views = cellViews(gameAfter(), DEFAULT_ASSISTS, highlight({ pattern: [2, 3], support: [0, 5] }))
-    expect(views.filter((view) => view.hintPattern)).toHaveLength(2)
-    expect(views[2]?.hintPattern).toBe(true)
-    expect(views[0]?.hintSupport).toBe(true)
+  it('lets the strongest role win: target, then pattern, then focus', () => {
+    const views = cellViews(
+      gameAfter(),
+      DEFAULT_ASSISTS,
+      highlight({ units: [0], pattern: [2, 3], placements: [{ cell: 2, digit: 4 }] }),
+    )
+    expect(views[2]?.hintFill).toBe('target')
+    expect(views[3]?.hintFill).toBe('pattern')
+    expect(views[4]?.hintFill).toBe('focus')
+  })
+
+  it('colours a support digit and gives its cell the focus fill, only on a cell with a digit', () => {
+    const views = cellViews(gameAfter(), DEFAULT_ASSISTS, highlight({ support: [0, 5] }))
+    expect(views[0]).toMatchObject({ hintSupport: true, hintFill: 'focus' })
     expect(views[5]?.hintSupport).toBe(false)
   })
 
@@ -177,7 +168,7 @@ describe('the hint roles', () => {
   it('hides every role while the game is paused', () => {
     const game = gameAfter({ type: 'pause' })
     const views = cellViews(game, DEFAULT_ASSISTS, highlight({ units: [0], pattern: [2], support: [0] }))
-    for (const view of views) expect(view).toMatchObject({ fill: 'plain', hintEdges: 0, hintPattern: false })
+    for (const view of views) expect(view).toMatchObject({ fill: 'plain', hintFill: 'none', hintSupport: false })
   })
 })
 
@@ -187,7 +178,6 @@ it('gives a display fill the colours of the fill keys of the cell styles', () =>
   expect(displayFill(colours, 'peer')).toEqual({ backgroundColor: colours.peer })
   expect(displayFill(colours, 'same')).toEqual({ backgroundColor: colours.same })
   expect(displayFill(colours, 'conflict')).toEqual({ backgroundColor: colours.conflictFill })
-  expect(displayFill(colours, 'focus')).toEqual({ backgroundColor: colours.hintFocus })
   expect(displayFill(colours, 'selected')).toEqual({
     backgroundColor: colours.selected,
     borderWidth: colours.selectedRingWidth,

@@ -370,7 +370,6 @@ export const en = {
   'hint.part.rows': 'rows {list}',
   'hint.part.columns': 'columns {list}',
   // Hints, the card
-  'hint.button.learnMoreLabel': 'Learn more about {technique}',
   'hint.close': 'Close the hint',
   // The techniques screen
   'techniques.title': 'Techniques',

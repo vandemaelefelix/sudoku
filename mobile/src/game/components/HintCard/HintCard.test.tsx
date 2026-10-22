@@ -78,13 +78,10 @@ it('offers only Fill it at the answer rung of the last step', () => {
 
 it('fills one main button per card, and keeps the other actions as text', () => {
   renderCard(at(0, 2), jest.fn())
-  expect(buttonLabels()).toEqual(['Learn more', 'Show answer', 'More help'])
+  expect(buttonLabels()).toEqual(['Show answer', 'More help'])
   const main = StyleSheet.flatten(button('More help').props.style)
   expect(main.backgroundColor).toBe(cobalt.components.button.primary)
-  for (const name of ['Show answer', 'Learn more about Pointing']) {
-    const action = screen.getByRole(/^(button|link)$/, { name })
-    expect(StyleSheet.flatten(action.props.style).backgroundColor).toBeUndefined()
-  }
+  expect(StyleSheet.flatten(button('Show answer').props.style).backgroundColor).toBeUndefined()
 })
 
 it('shows one card for a wrong entry, with Erase it and no rungs', () => {
@@ -125,11 +122,10 @@ it('reads the new text to VoiceOver', () => {
   expect(announce).toHaveBeenCalledWith(`Step 1 of 2. ${textOf(pointing, 0, 1)}`)
 })
 
-it('lies over the tool row and the keypad, sizes to its text up to their height, with buttons of 44 pt or more', () => {
+it('covers the tool row and the keypad from edge to edge, with the grid margin as padding and buttons of 44 pt', () => {
   renderCard(at(0, 2), jest.fn())
   const card = StyleSheet.flatten(screen.getByTestId('hint-card').props.style)
-  expect(card).toMatchObject({ position: 'absolute', bottom: 0, maxHeight: '100%' })
-  expect(card.height).toBeUndefined()
+  expect(card).toMatchObject({ position: 'absolute', inset: 0, padding: cobalt.space.lg })
   for (const action of within(screen.getByTestId('hint-buttons')).getAllByRole(/^(button|link)$/)) {
     expect(StyleSheet.flatten(action.props.style).minHeight).toBeGreaterThanOrEqual(44)
   }
@@ -138,7 +134,6 @@ it('lies over the tool row and the keypad, sizes to its text up to their height,
 it('keeps every button label on one line', () => {
   renderCard(at(0, 2), jest.fn())
   expect(screen.getByText('Show answer').props.numberOfLines).toBe(1)
-  expect(screen.getByText('Learn more').props.numberOfLines).toBe(1)
   expect(StyleSheet.flatten(screen.getByTestId('hint-buttons').props.style).flexWrap).toBe('wrap')
 })
 
@@ -154,7 +149,10 @@ describe('Learn more', () => {
   it('opens the page of the technique from rung 2 on', () => {
     const onLearn = jest.fn()
     renderCard(at(0, 2), onLearn)
-    fireEvent.press(screen.getByRole('link', { name: 'Learn more about Pointing' }))
+    const link = screen.getByRole('link', { name: 'Learn more' })
+    // An inline link at the end of the text, not a button in the footer.
+    expect(within(screen.getByTestId('hint-buttons')).queryByRole('link')).toBeNull()
+    fireEvent.press(link)
     expect(onLearn).toHaveBeenCalledWith('pointing')
   })
 

@@ -6,7 +6,6 @@ import { useCellViews } from '@/game/hooks/useCellViews'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGridIntro } from '@/game/hooks/useGridIntro'
-import { useHintMotion } from '@/game/hooks/useHintMotion'
 import { usePulse } from '@/game/hooks/usePulse'
 import type { DigitSize, HintHighlight } from '@/game/utils/cell.utils'
 import { cellLabel } from '@/game/utils/cellLabel.utils'
@@ -39,7 +38,6 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
   const { select } = useGameActions()
   const pulse = usePulse(board, move)
   const intro = useGridIntro()
-  const hintMotion = useHintMotion(hinted)
   // Only the marked cell gets the mark props, so memo renders that cell and the cell of the mark before.
   const mark = interactive ? markOf(move) : null
   const drawCell = (cell: number) => {
@@ -52,7 +50,7 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
         cell={cell}
         {...view}
         label={cellLabel(intl, cell, view)}
-        {...(interactive ? { pulse, intro, hintMotion } : {})}
+        {...(interactive ? { pulse, intro } : {})}
         onSelect={select}
         interactive={interactive}
         digitSize={digitSize}
