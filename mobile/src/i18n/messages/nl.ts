@@ -297,14 +297,11 @@ export const nl: Record<MessageId, string> = {
     'Twee vakjes bevatten alleen dezelfde twee cijfers, X en Y. Een rij, kolom of blok waar X in maar twee vakjes past, verbindt ze: elk uiteinde ziet een van de twee vakjes. Een van de twee vakjes bevat dus Y. Een vakje dat ze allebei ziet, verliest Y.',
   // Hints (ADR-032): the card, the messages of @sudoku/core and their parts
   'hint.title': 'Hint',
-  'hint.nice': 'Mooi zo.',
   'hint.step': 'Stap {step} van {total}',
   'hint.button.more': 'Meer hulp',
   'hint.button.answer': 'Toon het antwoord',
-  'hint.button.try': 'Probeer het',
   'hint.button.next': 'Volgende stap',
   'hint.button.fill': 'Vul het in',
-  'hint.button.doIt': 'Ik doe het zelf',
   'hint.button.erase': 'Wis het',
   'hint.button.learnMore': 'Meer weten',
   'hint.mistake': '{cell} bevat een fout cijfer. Wis het eerst.',
@@ -373,12 +370,9 @@ export const nl: Record<MessageId, string> = {
   'hint.part.rowsIn': '{count, plural, one {rij {list}} other {rijen {list}}}',
   'hint.part.rows': 'rijen {list}',
   'hint.part.columns': 'kolommen {list}',
-  // Hints, more
+  // Hints, the card
   'hint.button.learnMoreLabel': 'Meer weten over {technique}',
-  'hint.strip.label': 'Hint: {text}',
-  // Hints, the card and the strip
   'hint.close': 'Sluit de hint',
-  'hint.strip.openHint': 'Opent de hintkaart',
   // The techniques screen
   'techniques.title': 'Technieken',
   'techniques.intro':

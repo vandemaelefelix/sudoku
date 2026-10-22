@@ -1,14 +1,12 @@
 import { View } from 'react-native'
 import type { NewGame, TechniqueId } from '@sudoku/core'
 import { Board } from '@/game/components/Board'
+import { Dock } from '@/game/components/Dock'
 import { FinishCard } from '@/game/components/FinishCard'
 import { GameOverSheet } from '@/game/components/GameOverSheet'
 import { GameProvider } from '@/game/components/GameProvider'
 import { Header } from '@/game/components/Header'
-import { HintStrip } from '@/game/components/HintStrip'
-import { KeypadSlot } from '@/game/components/KeypadSlot'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
-import { Tools } from '@/game/components/Tools'
 import type { LeaveCallback } from '@/game/hooks/useLeave'
 import type { FinishInfo } from '@/game/utils/finish.utils'
 import { styles } from './GameScreen.styles'
@@ -38,9 +36,7 @@ export function GameScreen({ start, onBack, onNewPuzzle, onRetry, finish, onLear
       <View style={styles.screen}>
         <Header onBack={onBack} />
         <Board />
-        <HintStrip />
-        <Tools />
-        <KeypadSlot onLearn={onLearnTechnique} />
+        <Dock onLearn={onLearnTechnique} />
         <GameOverSheet onRetry={onRetry} onNewPuzzle={onNewPuzzle} onHome={onBack} />
         {finish && <FinishCard info={finish} onNewPuzzle={onNewPuzzle} onHome={onBack} />}
       </View>

@@ -6,3 +6,6 @@ export const TARGET_PULSE_SCALE = 0.86
 
 /** Milliseconds of the pulse of the target outline. */
 export const TARGET_PULSE_MS = 520
+
+/** Points that the tool row and the keypad sink while the hint card rises the same distance into their place. */
+export const HINT_SLIDE = 40

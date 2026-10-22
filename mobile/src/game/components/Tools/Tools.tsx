@@ -88,7 +88,7 @@ export function Tools() {
         label={intl.formatMessage({ id: 'game.tool.hint' })}
         enabled={playing}
         playing={playing}
-        selected={hint !== null && hint.view !== 'nice'}
+        selected={hint !== null}
         onPress={actions.hint}
       />
     </Animated.View>
