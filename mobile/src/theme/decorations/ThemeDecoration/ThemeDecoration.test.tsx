@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react-native'
+import { ScreenShowLayout, type ScreenEvents } from '@/theme/decorations/ScreenShow'
 import type { Theme, ThemeName } from '@/theme/theme.types'
 import { THEMES } from '@/theme/themes/registry'
 import { ThemeDecoration } from './ThemeDecoration'
@@ -42,4 +43,24 @@ describe.each(['cobalt', 'forest', 'bordeaux'] as const satisfies readonly Theme
     expect(screen.getByTestId('decoration-opart-summary-waves')).toBeTruthy()
     expect(screen.getByTestId('skia-path').props.color).toBe(theme.components.summary.border)
   })
+})
+
+it('redraws the wavy lines when their screen starts to show again', () => {
+  inTheme(THEMES.cobalt)
+  const { canvasRedraw } = jest.requireMock<{ canvasRedraw: jest.Mock }>('@shopify/react-native-skia')
+  canvasRedraw.mockClear()
+  const listeners: Parameters<ScreenEvents['addListener']>[1][] = []
+  const navigation: ScreenEvents = {
+    addListener: (_type, listener) => {
+      listeners.push(listener)
+      return () => {}
+    },
+  }
+  render(
+    <ScreenShowLayout navigation={navigation}>
+      <ThemeDecoration slot="summaryEdge" />
+    </ScreenShowLayout>,
+  )
+  listeners.forEach((listener) => listener({ data: { closing: false } }))
+  expect(canvasRedraw).toHaveBeenCalledWith('decoration-opart-summary-waves')
 })

@@ -162,10 +162,15 @@ function mockPath() {
 // Skia's own Jest setup needs CanvasKit. Views are enough for these tests.
 jest.mock('@shopify/react-native-skia', () => {
   const { View } = jest.requireActual('react-native')
-  const { createElement } = jest.requireActual('react')
+  const { createElement, useImperativeHandle } = jest.requireActual('react')
+  // A test reads canvasRedraw to see which canvas, by its testID, a ref asked to draw again.
+  const canvasRedraw = jest.fn()
   return {
-    Canvas: ({ children, ...props }: { children?: unknown }) =>
-      createElement(View, { testID: 'skia-canvas', ...props }, children),
+    canvasRedraw,
+    Canvas: ({ children, ref, ...props }: { children?: unknown; ref?: unknown; testID?: string }) => {
+      useImperativeHandle(ref, () => ({ redraw: () => canvasRedraw(props.testID) }))
+      return createElement(View, { testID: 'skia-canvas', ...props }, children)
+    },
     Picture: (props: object) => createElement(View, { testID: 'skia-picture', ...props }),
     Group: ({ children }: { children?: unknown }) => children,
     Path: (props: object) => createElement(View, { testID: 'skia-path', ...props }),
