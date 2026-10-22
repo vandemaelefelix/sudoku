@@ -135,3 +135,15 @@ describe('Learn more', () => {
     expect(screen.queryByRole('link')).toBeNull()
   })
 })
+
+it('gives each button the test ID hint-<action> for the end-to-end flows', () => {
+  const hintCard = renderCard(at(0, 1))
+  fireEvent.press(screen.getByTestId('hint-more'))
+  fireEvent.press(screen.getByTestId('hint-answer'))
+  fireEvent.press(screen.getByTestId('hint-try'))
+  expect(hintCard.mock.calls).toEqual([['hintMore'], ['hintAnswer'], ['hintTry']])
+  screen.unmount()
+  const onLast = renderCard(at(1, 4))
+  fireEvent.press(screen.getByTestId('hint-fill'))
+  expect(onLast).toHaveBeenCalledWith('hintFill')
+})

@@ -224,8 +224,9 @@ navigation, a native module that does not load, or a game that a restart loses (
 4. **The flows run on their own simulator, "Sudoku E2E iOS 26".** They clear the app data, so they
    never run on a simulator of daily use. The simulator uses iOS 26: iOS 27 refuses an app
    without the UIScene life cycle when Xcode 27 builds it, and Expo SDK 57 has none.
-5. **The finish flow taps Hint until the finish card shows.** A hint fills its answer, so the flow
-   needs no solution. The app has no way to start a known generated puzzle.
+5. **The finish flow fills every cell with a hint.** Each round taps Hint, then "Show answer" when
+   the card offers it, then "Fill it". So the flow needs no solution. The app has no way to start a
+   known generated puzzle.
 6. **The scan flow needs the real model.** It has the tag `model`. CI has only the stub model
    (SUD-08), so `e2e.yml` leaves the tag out. `just e2e` puts the fixture image
    `shared/fixtures/imports/screenshot-digital.png` in the photo library of the simulator.
@@ -236,7 +237,7 @@ navigation, a native module that does not load, or a game that a restart loses (
 ### Consequences of amendment (b)
 
 - A change to a `testID` that a flow uses breaks the flow. `mobile/AGENTS.md` lists the rule.
-- A new hint card that does not fill the answer at once breaks the finish flow.
+- A change to the buttons of the hint card breaks the finish flow.
 - The developer runs the scan flow on the Mac only.
 
 ### Reassessment Triggers of amendment (b)
