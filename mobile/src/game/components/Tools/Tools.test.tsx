@@ -1,3 +1,4 @@
+import { createGame, planHint } from '@sudoku/core'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import * as Haptics from 'expo-haptics'
 import type { ReactElement } from 'react'
@@ -50,11 +51,13 @@ it('turns notes mode on and off', () => {
   expect(screen.getByLabelText('Notes')).not.toBeSelected()
 })
 
-it('reveals a cell with a hint', () => {
-  jest.spyOn(Math, 'random').mockReturnValue(0)
+it('reveals the answer of the hint plan', () => {
+  const plan = planHint(createGame(sampleStart()))
+  if (plan === null || plan.kind === 'mistake') throw new Error('expected a plan with an answer')
+  const { cell, digit } = plan.answer
   renderTools()
   fireEvent.press(screen.getByLabelText('Hint'))
-  expect(screen.getByLabelText('Row 1, column 3, 4')).toBeTruthy()
+  expect(screen.getByLabelText(`Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}, ${digit}`)).toBeTruthy()
 })
 
 it('makes every tool a touch target of 52 pt', () => {

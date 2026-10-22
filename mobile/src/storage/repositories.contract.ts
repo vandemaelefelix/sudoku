@@ -1,4 +1,4 @@
-import { countsForBestTime, createGame, hint, place, select, tick, type Game } from '@sudoku/core'
+import { countsForBestTime, createGame, fillHint, planHint, place, select, tick, type Game } from '@sudoku/core'
 import { MAX_ENTRIES_PER_SYNC } from '@sudoku/sync-contract'
 import type { GameStorage } from './gameStorage.types'
 import type { SyncPageInput } from './HistoryRepository'
@@ -29,7 +29,10 @@ export function wonGame(playedMs: number): Game {
 
 /** The last cell filled by a hint. */
 export function wonWithHint(playedMs: number): Game {
-  return hint(tick(nearlyWon(), playedMs), () => 0).game
+  const game = tick(nearlyWon(), playedMs)
+  const plan = planHint(game)
+  if (plan === null) throw new Error('The nearly won game has an open cell')
+  return fillHint(game, plan, []).game
 }
 
 /** One mistake, then the right number in cell 2. The mistake is set directly: place refuses a complete digit, and only 4 is open. */

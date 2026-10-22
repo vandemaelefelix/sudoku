@@ -100,7 +100,7 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
   the old meaning: one cell filled.
 - The best time and the flawless win become easier to reach, because rungs 1 to 3 are free.
 - The solver must be deterministic, so Vitest can pin the hint of a given board.
-- The v1 random hint stays until the hint card ships.
+- Until the hint card ships, the Hint tool fills the answer of the hint plan at once (amendment 2026-10-22).
 - Every technique needs a text for four rungs and a set of highlights. Tier 2 adds code, not design.
 
 ## Reassessment Triggers
@@ -129,3 +129,18 @@ The solver needs the option `unique: true` for it. The hint plan passes `unique:
 A game puzzle always has exactly one solution. Generated puzzles have one. A scanned puzzle has one when it passes the play gate.
 BUG+1 stays out of scope.
 [ADR-032](../adr/adr-032-hints-that-teach.md) records the decision.
+
+## Amendment 2026-10-22: the hint plan keeps only the steps that the placement needs
+
+Point 4 says that an elimination leads to the single that it unlocks. The step choice of point 5 is greedy.
+It can take an elimination that the single does not need. In 30 000 positions of generated puzzles, it often did:
+some plans shrank from 6 steps to 2.
+
+1. **The planner prunes.** After the search reaches a placement, the planner tries the plan without each elimination step.
+   It drops the step when every later step is still found unchanged.
+2. **The cap applies to the pruned plan.** The search may take up to 24 steps. The plan keeps at most 6. A pruned plan of
+   more than 6 steps gives the fallback of point 9.
+3. **Equal weights form one rank.** Point 5 says "at the same rank". Techniques with the same Sudoku Explainer weight count
+   as one rank. Inside it, a placement comes before an elimination, then the step nearest the selected cell.
+4. **The random hint is gone.** Until the hint card ships, the Hint tool fills the answer of the plan at once. For a wrong
+   entry, it selects that cell. The concept [hints](../00-concepts/hints.md) has the details.

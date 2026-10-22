@@ -30,6 +30,24 @@ and ends at a placed digit. The technique solver builds it. Each step is a `Step
   same rank, the step nearest the selected cell wins. The same board gives the same plan.
 - The hint plan passes `unique: true` to the solver. A game puzzle has exactly one solution.
   The unique rectangle needs this option.
+- The plan keeps only the steps that the placement needs. The planner drops each elimination step
+  that the rest of the plan can do without. The search may take more steps than 6. The pruned plan
+  has at most 6.
+- Only the techniques with hint text take part. `HINT_TECHNIQUES` in `@sudoku/core` holds the
+  text, and the planner reads its order from it.
+- Until the hint card ships, the Hint tool fills the answer of the plan at once. For a wrong entry,
+  it selects that cell.
+
+### The planner API
+
+| Function | Does |
+| --- | --- |
+| `planHint(game)` | Returns the plan: a mistake, 1 to 6 steps, or the fallback. Null on a full grid |
+| `hintText(plan, stepIndex, rung)` | Returns the card text of one rung. At most two short sentences |
+| `revealHint(game, answer, shown)` | Counts the hint, unless `shown` holds the same answer |
+| `fillHint(game, plan, shown)` | Places the answer, counts as `revealHint` does and adds an undo step |
+
+The app keeps `shown`, the answers that this game session showed. The saved game does not keep it.
 
 ### The rungs
 
@@ -153,9 +171,9 @@ makes the fallback card before the hint opens.
 | Question | Decided by |
 | --- | --- |
 | The shape and the colour of each role | Issue #195 |
-| The text of each technique | Issue #194 |
+| The text of each technique | Decided: `HINT_TECHNIQUES` in `@sudoku/core` |
 | The layout of the card on a small phone | Issue #196 |
-| Whether an edit of the notes alone makes a plan stale | Issue #194 |
+| Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |
 | VoiceOver reading of the card and the highlights | Issue #44 |
 
 ## Constraints

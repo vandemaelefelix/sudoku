@@ -1,4 +1,4 @@
-import { needsSave, type Digit, type Game, type Random } from '@sudoku/core'
+import { needsSave, type Digit, type Game } from '@sudoku/core'
 import { CLOCK_INTERVAL_MS, MAX_ELAPSED_MS } from '@/game/constants/game.constants'
 import { reduceSession, startSession, type GameStart, type Session, type SessionAction } from './session.utils'
 
@@ -40,7 +40,7 @@ export type GameSession = {
   background(): void
 }
 
-export function createGameSession(start: GameStart, random: Random = Math.random): GameSession {
+export function createGameSession(start: GameStart): GameSession {
   let session = startSession(start)
   const listeners = new Set<() => void>()
   let attached = false
@@ -95,7 +95,7 @@ export function createGameSession(start: GameStart, random: Random = Math.random
     digit: (digit) => dispatch({ type: 'digit', digit }),
     erase: () => dispatch({ type: 'erase' }),
     undo: () => dispatch({ type: 'undo' }),
-    hint: () => dispatch({ type: 'hint', random }),
+    hint: () => dispatch({ type: 'hint' }),
     toggleNotesMode: () => dispatch({ type: 'toggleNotesMode' }),
     pause,
     resume: () => dispatch({ type: 'resume' }),

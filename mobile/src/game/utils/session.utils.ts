@@ -1,20 +1,21 @@
 import {
   createGame,
   erase,
-  hint,
+  fillHint,
   pause,
+  planHint,
   place,
   resume,
   select,
   tick,
   toggleNote,
   undo,
+  type CellDigit,
   type Completion,
   type Digit,
   type Game,
   type MoveResult,
   type NewGame,
-  type Random,
 } from '@sudoku/core'
 
 export type MoveKind = 'number' | 'clear' | 'note' | 'erase' | 'undo' | 'hint'
@@ -35,15 +36,23 @@ export type Move = {
  * A game and the screen state around it. Notes mode belongs to the screen, not to the rules.
  * board is the game at its last change other than time. A clock tick keeps the same board object,
  * so the grid does not render again each second. Its playedMs is stale: read game.playedMs for the time.
+ * shownAnswers holds the hint answers that this session showed, so each one counts once (ADR-032 point 7).
+ * The saved game does not keep them.
  */
-export type Session = { game: Game; board: Game; notesMode: boolean; move: Move | null }
+export type Session = {
+  game: Game
+  board: Game
+  notesMode: boolean
+  move: Move | null
+  shownAnswers: readonly CellDigit[]
+}
 
 export type SessionAction =
   | { type: 'select'; cell: number }
   | { type: 'digit'; digit: Digit }
   | { type: 'erase' }
   | { type: 'undo' }
-  | { type: 'hint'; random: Random }
+  | { type: 'hint' }
   | { type: 'toggleNotesMode' }
   | { type: 'pause' }
   | { type: 'resume' }
@@ -58,7 +67,7 @@ function isGame(start: GameStart): start is Game {
 
 export function startSession(start: GameStart): Session {
   const game = isGame(start) ? start : createGame(start)
-  return { game, board: game, notesMode: false, move: null }
+  return { game, board: game, notesMode: false, move: null, shownAnswers: [] }
 }
 
 function withGame(session: Session, game: Game): Session {
@@ -97,6 +106,20 @@ function placeDigit(session: Session, digit: Digit): Session {
   return moved(session, cleared ? 'clear' : 'number', result)
 }
 
+/**
+ * Until the hint card ships, a hint fills the answer of its plan at once. For a wrong entry it
+ * selects that cell instead, so the player sees what to erase.
+ */
+function hintMove(session: Session): Session {
+  const plan = planHint(session.game)
+  if (plan === null) return session
+  if (plan.kind === 'mistake') return withGame(session, select(session.game, plan.cell))
+  const next = moved(session, 'hint', fillHint(session.game, plan, session.shownAnswers))
+  const { cell, digit } = plan.answer
+  if (next === session || session.shownAnswers.some((item) => item.cell === cell && item.digit === digit)) return next
+  return { ...next, shownAnswers: [...session.shownAnswers, plan.answer] }
+}
+
 function step(session: Session, action: SessionAction): Session {
   switch (action.type) {
     case 'select':
@@ -108,7 +131,7 @@ function step(session: Session, action: SessionAction): Session {
     case 'undo':
       return moved(session, 'undo', undo(session.game))
     case 'hint':
-      return moved(session, 'hint', hint(session.game, action.random))
+      return hintMove(session)
     case 'toggleNotesMode':
       return session.game.status === 'playing' ? { ...session, notesMode: !session.notesMode } : session
     case 'pause':
