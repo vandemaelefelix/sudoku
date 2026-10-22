@@ -102,6 +102,32 @@ Decision:
 Reassessment trigger: the model needs digital fonts for training. Then a new amendment can let the player send one imported
 scan with an explicit tap.
 
+## Amendment: a person checks the outline of each scan (2026-10-22)
+
+The pull checks only that the 4 corners form a convex quad. An outline a little off cuts part of each digit. On a page
+with several sudokus the app can lock on the wrong grid. Then every cell label of the scan is wrong, and decision 11
+trusts `app-edited` cells at once.
+
+| Option | For | Against |
+| --- | --- | --- |
+| **A person checks each outline, in a gallery sorted by fit** | A wrong cut never trains the model. The gallery is fast for many scans | One more step before training |
+| Trust the outline of the app | No work | A bad outline poisons 81 labels at once |
+| Check the cells only, never the outline | One step | A reviewer cannot see a cut that is a little off from the cells alone |
+
+Decision:
+
+1. **The pull stores a scan as `unchecked`.** This is a new status of `sudoku-photos.csv`. It has corners, like
+   `accepted`. Training leaves out every cell of a scan that is not `accepted`.
+2. **The Outlines screen of the labelling page checks each outline.** The lowest outline fit comes first. A person
+   approves it, drags the corners or rejects the scan.
+3. **A corner fix cuts the cells again.** A new cell keeps the digit, the kind and the label provenance of the old cell
+   at its place. The old cells move to `discarded/`. A rejected scan moves all of its cells to `discarded/`.
+4. **The journal holds each check.** Undo reverses it. Finish writes the status and the corners into
+   `sudoku-photos.csv`. A move of the Outlines screen never makes a cell `verified`.
+
+Reassessment trigger: the app proves its outlines with a grid check on the device. Then the gallery can show only the
+scans that the check doubts.
+
 ## Consequences
 
 - SUD-02 is weaker. The privacy policy and the notice carry the promise instead.

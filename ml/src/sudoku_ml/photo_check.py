@@ -75,6 +75,9 @@ class PhotoCheck:
     def _rows(self) -> dict[str, PhotoRow]:
         return {stem_of(r.photo_id): r for r in read_photos(self.paths.photos_csv)}
 
+    def known(self, stem: str) -> bool:
+        return stem in self._rows()
+
     def total(self) -> int:
         return len(self._rows())
 

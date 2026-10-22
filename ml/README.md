@@ -21,6 +21,7 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just label-rollback <session>`: reverse every change of one unfinished labelling session. A finished session needs git.
 - `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
 - `just check-data`: check that the images and the tables agree. Exit code 1 on a problem.
+- `just reset-scan-outlines`: set the uploaded scans with the status `accepted` back to `unchecked`. Run it once, for the scans of the first pull.
 - `just migrate-layout <old_ml_root> [--apply] [--force] [--prefer-log]`: copy the old `ml/datasets/` and `ml/data/` layout into `ml/dataset/` (ADR-018). A dry run without `--apply`.
 
 Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
@@ -76,6 +77,30 @@ Every cell and sudoku photo has a SHA-256 pixel id, and no id appears twice. Run
 rules. It prints a short report and exits with 1 on a problem. The report says how many cells
 are linked to their sudoku photo, row and column. Cells cut before the link existed have no
 link.
+
+## Check the outlines of uploaded scans
+
+`just pull-scans` stores each uploaded scan with the status `unchecked`, and cuts its 81 cells into the digit folders
+with the label from the app: `app-edited` or `app-unedited`. No cell of a scan trains the model before a person
+approves its outline. A wrong outline makes every cell label of the scan wrong.
+
+1. Run `just label-cells`. Open the **Outlines** screen. The badge counts the outlines to check.
+2. The gallery shows each scan with its outline in green. The most doubtful outlines come first: the fit says how
+   well the grid lines sit at the 9 × 9 places.
+3. Click each scan whose outline is not on the grid. Press Enter. The other scans are approved.
+4. The clicked scans open large, one at a time. Drag the 4 corners onto the outer grid corners. Press Enter. The page
+   cuts the 81 cells again. A new cell keeps the digit and kind of its place, from the app. The old cells move to
+   `discarded/`.
+5. No sudoku, or no fit? Press R to reject the scan. All of its cells move to `discarded/`, so training leaves them out.
+6. Press V to see the cells of a scan. Press Z to undo the last Enter, fix or reject.
+7. Press **Finish**. Finish writes `accepted` or `rejected` and the corners into `sudoku-photos.csv`.
+
+A cell with the same pixels as a cell of another scan is stored once. It has one label for both scans. The scan view
+marks it with `=`.
+
+Run `just reset-scan-outlines` once after this change. The first pull stored its scans as `accepted`, before the
+Outlines screen existed. The command sets them back to `unchecked`. It refuses while the journal holds an unfinished
+outline check.
 
 ## Label the kind
 

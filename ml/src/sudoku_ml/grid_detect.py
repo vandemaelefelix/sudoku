@@ -71,7 +71,9 @@ def _line_profile(mask: np.ndarray) -> np.ndarray:
     return (thick > 0).mean(axis=1)
 
 
-def _count_lines_in(binary: np.ndarray) -> int:
+def _lines_in(binary: np.ndarray) -> list[tuple[bool, int]]:
+    """For each of the 20 expected lines: whether it stands out, and the offset of its peak from
+    its 9×9 position in pixels."""
     # Close the gaps in faint lines first. The openings with long thin kernels then keep the grid
     # lines and drop the digits.
     horizontal = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((1, 9), np.uint8))
@@ -80,29 +82,43 @@ def _count_lines_in(binary: np.ndarray) -> int:
     )
     vertical = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((9, 1), np.uint8))
     vertical = cv2.morphologyEx(vertical, cv2.MORPH_OPEN, np.ones((CELL_SIZE // 2, 1), np.uint8))
-    found = 0
+    found = []
     for profile in (_line_profile(horizontal), _line_profile(vertical.T)):
         mid, band = CELL_SIZE // 2, CELL_SIZE // 6
         gaps = [
             profile[k * CELL_SIZE + mid - band : k * CELL_SIZE + mid + band].max() for k in range(9)
         ]
         for k in range(10):
-            peak = profile[max(0, k * CELL_SIZE - SEARCH) : k * CELL_SIZE + SEARCH + 1].max()
+            start = max(0, k * CELL_SIZE - SEARCH)
+            window = profile[start : k * CELL_SIZE + SEARCH + 1]
+            peak = window.max()
             beside = max(gaps[k - 1] if k > 0 else 0.0, gaps[k] if k < 9 else 0.0)
-            found += bool(peak >= LINE_COVERAGE and peak - beside >= LINE_CONTRAST)
+            stands_out = bool(peak >= LINE_COVERAGE and peak - beside >= LINE_CONTRAST)
+            found.append((stands_out, start + int(window.argmax()) - k * CELL_SIZE))
     return found
+
+
+def _binaries(flat_gray: np.ndarray) -> list[np.ndarray]:
+    blurred = cv2.GaussianBlur(flat_gray, (3, 3), 0)
+    return [
+        cv2.adaptiveThreshold(
+            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, offset
+        )
+        for offset in THRESHOLD_OFFSETS
+    ]
 
 
 def _count_lines(flat_gray: np.ndarray) -> int:
     """The expected grid lines (0 to 20) that stand out from the cells beside them."""
-    blurred = cv2.GaussianBlur(flat_gray, (3, 3), 0)
+    return max(sum(f for f, _ in _lines_in(binary)) for binary in _binaries(flat_gray))
+
+
+def line_fit(flat_gray: np.ndarray) -> float:
+    """0 to 1: how well the grid lines of a flattened grid sit at the 9×9 positions. Each line
+    that stands out adds up to 1/20, less the further its peak is from its position."""
     return max(
-        _count_lines_in(
-            cv2.adaptiveThreshold(
-                blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, offset
-            )
-        )
-        for offset in THRESHOLD_OFFSETS
+        sum(1 - abs(offset) / (SEARCH + 1) for found, offset in _lines_in(binary) if found) / 20
+        for binary in _binaries(flat_gray)
     )
 
 
