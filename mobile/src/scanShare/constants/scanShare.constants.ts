@@ -23,17 +23,5 @@ export const BACKOFF_MAX_MS = 6 * 60 * 60_000
 
 export const QUEUE_DATABASE_NAME = 'scan-queue.db'
 export const QUEUE_FOLDER = 'scan-queue'
-export const SETTINGS_FOOTER_VERSION = 'Version'
-export const SHARE_ROW = {
-  label: 'Help improve the app',
-  description: 'Send the photo of a finished scan, and what you corrected, so the scanner learns.',
-} as const
-export const POLICY_LINK_LABEL = 'Privacy policy'
 export const POLICY_URL = 'https://sudoku.felixvandemaele.be/privacy'
 
-export const NOTICE = {
-  title: 'Help improve the app',
-  body: 'We use the photo of your scan, and what you corrected, to make the scanner better.',
-  accept: 'Got it',
-  decline: 'Turn off',
-} as const

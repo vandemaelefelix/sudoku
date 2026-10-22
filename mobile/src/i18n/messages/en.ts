@@ -129,6 +129,14 @@ export const en = {
   'scan.pad.empty': 'Empty',
   // Scan, more
   'scan.summary.startCheckHint': 'Opens the first cell to check',
+  // Scan sharing (ADR-030)
+  'scanShare.title': 'Help improve the app',
+  'scanShare.description': 'Send the photo of a finished scan, and what you corrected, so the scanner learns.',
+  'scanShare.policy': 'Privacy policy',
+  'scanShare.notice.body': 'We use the photo of your scan, and what you corrected, to make the scanner better.',
+  'scanShare.notice.accept': 'Got it',
+  'scanShare.notice.decline': 'Turn off',
+  'settings.scanning.title': 'Scanning',
 }
 
 export type MessageId = keyof typeof en
