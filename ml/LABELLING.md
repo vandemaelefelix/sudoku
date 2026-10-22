@@ -20,7 +20,8 @@ A **sudoku photo** is a photo of a whole sudoku. A **cell** is one square cut fr
 | 3 Label kind | A screen shows only the cells without a kind. The model proposes printed or handwritten. Click the wrong ones. Press Enter. **Look again** on the Progress page shows all cells of a folder. |
 
 **Outlines** shows the scans that players uploaded (`just pull-scans`). Click each scan whose green outline is not
-on the grid, then press Enter: the others are approved. Fix the corners of each clicked scan, or reject it. See "Check
+on the grid, then press Enter: the others are approved. Fix the corners of each clicked scan, or reject it. Then open **Scans 2 · Cells** and confirm the cells of
+each approved scan. See "Check
 the outlines of uploaded scans" in [README.md](README.md).
 
 Tools: **Review** shows doubtful labels (run `just suspects` first). **Check** is a blind re-test
