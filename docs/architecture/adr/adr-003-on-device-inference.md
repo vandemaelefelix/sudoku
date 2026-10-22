@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-003: All inference runs on the device
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
@@ -56,3 +56,13 @@ without an explicit user action for each export (SUD-02).
 2. A photo leaves the device only through the setting "Help improve the app". The setting is on by default. The
    player can turn it off. The rule "an explicit user action for each export" ends.
 3. F-11 is now the upload of a finished scan through this setting. The player no longer chooses each time.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/src/scanner/classifier.ts` runs the cell classifier with fast-tflite on the iPhone (#25, #29). The scan
+  needs no network (SUD-01).
+- No code sends a camera frame or a cell image.
+- `mobile/src/scanShare/` uploads the photo of a finished scan only while the setting "Help improve the app" is on
+  (#152, #153). [ADR-030](adr-030-scan-collection.md) holds the rules of that upload.

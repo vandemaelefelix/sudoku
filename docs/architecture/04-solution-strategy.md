@@ -13,12 +13,13 @@ status: DRAFT
 | Learn the current ML stack (OC-2), train on a Mac (TC-4) | PyTorch on MPS, exported to TFLite (LiteRT) | [ADR-005](adr/adr-005-pytorch-to-tflite.md) |
 | Resume half-filled book puzzles (F-05) | One small CNN with two heads: digit and kind | [ADR-006](adr/adr-006-two-head-cell-classifier.md) |
 | Recognition correctness (QG 1) | Models reach the app only through a gated promote step, scored on whole fixture grids | [ADR-007](adr/adr-007-model-promotion.md) |
-| Understandable boundaries (QG 4), backend later (TC-3) | Game logic as a pure TS package. The scanner as a module inside the app with one entry point | [ADR-008](adr/adr-008-package-boundaries.md) |
+| Understandable boundaries (QG 4), a game without a backend (TC-3) | Game logic as a pure TS package. The scanner as a module inside the app with one entry point | [ADR-008](adr/adr-008-package-boundaries.md) |
 | Datasets that grow without bloating git | Images outside git, a versioned manifest inside. DVC later | [ADR-009](adr/adr-009-training-data-outside-git.md) |
 | Native code that Jest cannot run (OC-1) | Four test layers. The real scanner is tested on the phone by a fixture runner. CI on Linux only | [ADR-010](adr/adr-010-testing-and-ci.md) |
 | Puzzles and hints (F-01, F-07, QR-12) | Generate on the device. One technique solver grades and gives hints. A small pool for instant start | [ADR-011](adr/adr-011-puzzle-generation-and-hints.md) |
 | Never lose progress (QR-11), sync later | expo-sqlite behind repository interfaces, sync-ready rows | [ADR-012](adr/adr-012-local-persistence.md) |
 | A public portfolio repo later | Public-safe fixtures, real-world scans private, licence per data source | [ADR-013](adr/adr-013-fixtures-and-data-licensing.md) |
+| Accounts and the history across devices (F-14), below €10 a month (SUD-11) | Clerk for sign-in. One HTTP API, one Lambda and one DynamoDB table, built with SST. Only finished games sync | [ADR-027](adr/adr-027-backend-platform.md), [ADR-028](adr/adr-028-history-sync.md) |
 
 ## Order of work
 
@@ -33,4 +34,8 @@ status: DRAFT
 3. **M2 Scanner.** Live lock-on, capture, per-cell flatten, a first classifier trained on
    existing and synthetic data, the correction screen.
 4. **M3 Data loop.** Fixture set, training-data export, retraining, the promote gate.
-5. **Only if needed.** An ML model for grid intersections (F-12), Android (F-13), the backend.
+5. **M4 Backend.** Accounts, the history sync and the scan collection on AWS (ADR-027, ADR-028,
+   ADR-030). The backend runs in `production`. #111 holds the last release checks. The game
+   and the scanner still need no network (SUD-01).
+6. **Only if needed.** An ML model for grid intersections (F-12), Android (F-13), a leaderboard
+   (F-14).

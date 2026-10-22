@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-029: Repository layout: one folder per area

@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-014: Scan overlay effects as plug-in modules, with an effect lab in development builds
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-11 |
 | Contact | Felix      |
 
@@ -79,3 +79,11 @@ Decision 1 and decision 2 stay. An effect still reads the scene and never change
   screen.
 - One effect needs more than 4 ms per frame, or needs a fact that the scene does not give.
 - The lock-on rule exists. Then the scene gives a real lock-on event in place of the steady state.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/src/scan/effects/` holds the effect modules, the registry and `EffectCanvas` (#23, #24).
+- The effect lab and its dev pill run only in development builds (#24).
+- `mobile/src/scan/utils/lockOn.utils.ts` holds the lock-on tracker of the amendment (#183).
