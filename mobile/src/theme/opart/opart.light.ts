@@ -61,7 +61,8 @@ export function lightLook(p: OpartPalette): Look {
       cell: {
         fill: colors.surface,
         peer: p.tint100,
-        same: p.tint200,
+        // A step under the selection tile (tint300), so the tile stands clearly apart from the same numbers.
+        same: p.tint150,
         // Lighter than the same-number cells, so its notes in muted text pass. The accent ring marks it.
         selected: p.tint150,
         conflictFill: colors.dangerSurface,

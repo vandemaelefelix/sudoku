@@ -86,7 +86,8 @@ export function colourLook(p: OpartPalette): Look {
       cell: {
         fill: page,
         peer,
-        same: white(0.2),
+        // A step under the selection tile at white(0.28), so the tile stands clearly apart from the same numbers.
+        same: white(0.16),
         // The selected cell is the lightest fill, with a white ring. Its digits keep their colours.
         selected: white(0.24),
         // A conflict cell keeps the peer fill and gets the hatch, so it never reads as the accent or as a selection.

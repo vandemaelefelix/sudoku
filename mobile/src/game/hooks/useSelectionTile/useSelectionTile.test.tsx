@@ -10,9 +10,14 @@ const renderTile = () =>
 
 afterEach(() => jest.restoreAllMocks())
 
-it('measures one cell to the next from the side of the grid', () => {
-  const { result } = renderTile()
-  expect(result.current.pitch.get()).toBe(40)
+it('measures one cell to the next from the side and the line widths of the grid', () => {
+  const { result, rerender } = renderTile()
+  // 356 points less 2 outer lines of 2, 2 box lines of 2 and 6 cell lines of 1 leave 9 cells of 38, plus a line of 1.
+  rerender({ cell: null, side: 356 })
+  expect(result.current.step.get()).toBe(39)
+  expect(result.current.boxExtra.get()).toBe(1)
+  rerender({ cell: null, side: 0 })
+  expect(result.current.step.get()).toBe(0)
 })
 
 it('appears on the first selected cell at once, without a slide', () => {
