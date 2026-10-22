@@ -42,7 +42,7 @@ def status_text(report: dict, finished: datetime, prelabel_run: str | None) -> s
     lines = [
         "# Dataset status",
         "",
-        "Finish on the labelling page writes this file. Do not edit it.",
+        "Finish in the labelling app writes this file. Do not edit it.",
         "",
         f"Date: {finished.astimezone(UTC):%Y-%m-%d}",
         f"Last finish: {format_time(finished)}",

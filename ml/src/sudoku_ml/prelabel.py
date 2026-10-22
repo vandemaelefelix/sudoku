@@ -22,7 +22,7 @@ BATCH = 1024
 # The kind needs a pre-label after the digit pass moved a cell out of unlabeled/.
 PRELABEL_FOLDERS = ("unlabeled", *DIGIT_FOLDERS)
 NO_MODEL = (
-    "No model run found, so no pre-labels. The Digits screen stays empty. "
+    "No model run found, so no pre-labels. The Digits step stays empty. "
     "Install a model with just install-model, or pass a run: just prelabel-cells <run>"
 )
 

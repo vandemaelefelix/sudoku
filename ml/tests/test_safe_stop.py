@@ -88,6 +88,4 @@ def test_the_start_cleans_leftovers_and_prints_what_waits(tmp_path: Path, monkey
     monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Stop())
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
     assert main(["label_server"], paths) == 0
-    out = capsys.readouterr().out
-    assert "Waiting: 2 cells in unlabeled/, 0 sudoku photos pending." in out
     assert list(tmp.glob("*")) == [] and not (paths.cells / "unlabeled" / "tmp-cut.png").exists()

@@ -191,11 +191,11 @@ pull-device-scans device destination="$HOME/scan-corrections" app="com.vandemael
     mkdir -p "{{destination}}"
     xcrun devicectl device copy from --device "{{device}}" --domain-type appDataContainer --domain-identifier "{{app}}" --source Documents/scan-corrections --destination "{{destination}}"
 
-# Download the uploaded scans of a stage into ml/dataset/ (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage
+# Download the uploaded scans of a stage into ml/dataset/ (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage. The Fetch step of the labelling app finds them itself
 pull-scans table bucket:
     {{sudoku_aws}} uv run --directory ml python -m sudoku_ml.pull_scans --table "{{table}}" --bucket "{{bucket}}"
 
-# Set the uploaded scans with the status accepted back to unchecked, for the Outlines screen (ADR-030). Run it once, for the scans of the first pull
+# Set the uploaded scans with the status accepted back to unchecked, for the Outlines step (ADR-030). Run it once, for the scans of the first pull
 reset-scan-outlines:
     uv run --directory ml python -m sudoku_ml.scan_outlines
 
@@ -208,21 +208,27 @@ relabel file:
     file="$(realpath "{{file}}")" && uv run --directory ml python -m sudoku_ml.relabel "$file"
     just dataset-manifest
 
-# Rank the likely wrong digit and kind labels into ml/dataset/work/suspects.csv, for the Review screen
+# Rank the likely wrong digit and kind labels into ml/dataset/work/suspects.csv, for the Doubtful labels step. The app runs it too
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
 
-# Group the cells of each digit folder for the labelling page. The run path is relative to ml/
+# Group the cells of each digit folder for the Kind step of the labelling app. The run path is relative to ml/
 group-cells run="":
     uv run --directory ml python -m sudoku_ml.grouping {{run}}
 
-# Pre-label the cells in cells/unlabeled/ for the Digits screen. The run path is relative to ml/
+# Pre-label the cells in cells/unlabeled/ for the Digits step. The run path is relative to ml/
 prelabel-cells run="":
     uv run --directory ml python -m sudoku_ml.prelabel {{run}}
 
-# Open the labelling page on 127.0.0.1. At the start it repairs a stopped session, rewrites ml/dataset/cells.csv and pre-labels new cells
-label-cells:
-    uv run --directory ml python -m sudoku_ml.label_server
+# Open the labelling app on 127.0.0.1 (ADR-034). It builds the app when a source is newer than the build. At the start the server repairs a stopped session, rewrites ml/dataset/cells.csv and pre-labels new cells. Option: port=8799
+label-cells port="8765":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    built=tools/label-app/dist/index.html
+    if [ ! -f "$built" ] || [ -n "$(find tools/label-app/src tools/label-app/index.html tools/label-app/package.json tools/label-app/vite.config.ts -newer "$built" -print -quit)" ]; then
+      pnpm --filter @sudoku/label-app build
+    fi
+    uv run --directory ml python -m sudoku_ml.label_server --port "{{port}}"
 
 # Check that the images and the two tables in ml/dataset/ agree, and print a report. Exit code 1 on a problem
 check-data:

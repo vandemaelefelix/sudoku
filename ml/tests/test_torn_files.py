@@ -75,7 +75,7 @@ def test_a_torn_groups_file_counts_as_missing(tmp_path: Path):
     paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
     paths.groups.write_text('{"folders": {"7": [')
     store = LabelStore(paths, Clock())
-    assert store.groups == {} and store.progress()["folders"]["7"]["cells"] == 1
+    assert store.groups == {} and store.next_screen()["folder"] == "7"
 
 
 def test_a_torn_suspects_file_counts_as_missing(tmp_path: Path):

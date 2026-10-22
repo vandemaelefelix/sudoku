@@ -74,7 +74,10 @@ def main(paths: DataPaths | None = None) -> int:
     except ValueError as error:
         print(error, file=sys.stderr)
         return 1
-    print(f"Set {count} uploaded scans to unchecked. Check them on the Outlines screen.")
+    print(
+        f"Set {count} uploaded scans to unchecked. Check them in the Outlines step of "
+        "just label-cells."
+    )
     return 0
 
 

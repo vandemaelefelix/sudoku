@@ -53,3 +53,8 @@ parts. The backend sits in two folders. The dataset sits next to the code that o
 - A second deployable web or mobile app appears. Then `apps/` may fit again.
 - CI time grows past 15 minutes. Then add a task cache.
 - SST changes where it expects `sst.config.ts`.
+
+## Amendment 2026-10-22: the labelling app joins the workspace
+
+[ADR-034](adr-034-labelling-app.md) adds the workspace glob `tools/label-app`. Decision 7 now lists seven globs. The
+root does not change, so SUD-12 holds.
