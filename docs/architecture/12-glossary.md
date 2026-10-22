@@ -38,6 +38,8 @@ status: DRAFT
 | JSI | JavaScript Interface. Lets JS call native code directly, without serialising data |
 | Kind head | The classifier output that says `none`, `printed`, `handwritten` or `notes`. The kind says how the mark was made: `printed` by a printer or a screen, `handwritten` by a person (ADR-009, amendment) |
 | Lock-on | The moment the same grid has been in view long enough without a clear move, and the scan captures |
+| Grid chooser | The aiming rule: `chooseGrid` in `src/scanner/chooseGrid.ts`. Once per frame it picks one of the plausible grids. It keeps the tracked grid, and it switches only to a grid nearer the centre by a margin, for 0.3 s. See the scan-pipeline concept |
+| First find | The pick of the grid chooser without a tracked grid: the grid nearest the centre, of the grids with at least 60 % of the area of the largest. A still image and a shutter press without a grid use only this rule (`firstFind`) |
 | Lock-on tracker | The module that owns the lock-on rule: the drift window, the dwell, the warm-up and the minimum grid size. It runs on the UI thread, one step per frame, and fires once. `src/scan/utils/lockOn.utils.ts` (ADR-019) |
 | Lock latch | The JS-thread latch that lets the first of the shutter, the automatic lock-on and the import start the scan. It refuses the others. It lives in the lock-on tracker module. The capture session uses it |
 | Manifest (model) | `manifest.json` next to the promoted model: version, contract, metrics, dataset |
