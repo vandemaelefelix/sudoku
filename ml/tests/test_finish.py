@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from test_data_check import valid_root
-from test_label_store import Clock
+from test_label_store import Clock, save_kinds
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.finish import finish
@@ -97,8 +97,8 @@ def test_after_finish_the_kinds_and_sources_come_from_the_table(tmp_path: Path):
     store = LabelStore(paths, Clock())
     sources = store.sources()
     cell = next(iter(sources))
-    store.assign([{"id": cell, "digit": "4"}], "digits")
-    store.save([{"id": cell, "kind": "handwritten"}], "groups")
+    store.confirm_digits([{"id": cell, "digit": "4"}])
+    save_kinds(store, [{"id": cell, "kind": "handwritten"}])
     finish(store)
     again = LabelStore(paths, Clock())
     assert again.kinds()[cell] == "handwritten" and again.folder[cell] == "4"
@@ -150,8 +150,8 @@ def test_finish_closes_the_review_items_with_older_evidence(tmp_path: Path):
     clock = Clock()
     store = LabelStore(paths, clock)
     cell = next(iter(store.sources()))
-    store.assign([{"id": cell, "digit": "4"}], "digits")
-    store.save([{"id": cell, "kind": "printed"}], "groups")
+    store.confirm_digits([{"id": cell, "digit": "4"}])
+    save_kinds(store, [{"id": cell, "kind": "printed"}])
     line = {"session": "c", "cell": cell, "label": "printed", "answer": "handwritten"}
     with paths.kind_checks.open("a") as handle:
         handle.write(json.dumps({"t": "2026-10-12T08:00:00Z", **line}) + "\n")

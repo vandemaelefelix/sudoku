@@ -17,6 +17,16 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import dhash, read_real_cells, split_cells
+from sudoku_ml.doubt import (
+    DIGIT_THRESHOLD,
+    KIND_THRESHOLD,
+    digit_doubt,
+    is_sure_digit,
+    is_sure_kind,
+    kind_doubt,
+    labels_key,
+    scan_signals,
+)
 from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright, warp_grid
 from sudoku_ml.journal import (
     KINDS,
@@ -35,6 +45,7 @@ from sudoku_ml.journal import (
     read_records,
     rollback_lines,
     undo_lines,
+    undone_actions,
 )
 from sudoku_ml.kind_check import CheckLine, summary
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
@@ -63,16 +74,17 @@ from sudoku_ml.tables import (
     read_cells,
     read_photos,
     stem_of,
+    write_atomic,
 )
 
 SCREEN_SIZE = 50
-DIGIT_SCREEN_SIZE = 100
-CELL_CHECK_SIZE = 240  # a full screen of 64 px cells
+CHECK_SIZE = 240  # a full screen of 64 px cells
 ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
-DIGIT_KINDS = ("handwritten", "all")
+DIGIT_TABS = (*DIGIT_CLASSES, "unknown")
+# The screens whose digit line a person made, and whose kind line a person made.
+DIGIT_SCREENS = ("digits", "scans")
+KIND_SCREENS = ("kinds", "scans", "groups", "review")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
-_LABELLED = ("printed", "handwritten")
-PREDICTED = ("printed", "handwritten", "other")
 OUTLINE_SCREEN_SIZE = 48
 THUMBNAIL_SIZE = 320  # long side in pixels
 PHOTO_CACHE = 8  # decoded scan photos
@@ -90,14 +102,6 @@ def _source(row: PhotoRow) -> str:
     return "app" if row.source == APP_SCAN else "photo"
 
 
-def _predicted(kind: str) -> str:
-    return kind if kind in _LABELLED else "other"
-
-
-def _pages(count: int) -> int:
-    return max(1, -(-count // SCREEN_SIZE))
-
-
 class LabelStore:
     def __init__(self, paths: DataPaths, now: Callable[[], datetime] = lambda: datetime.now(UTC)):
         self.paths, self._now = paths, now
@@ -105,21 +109,12 @@ class LabelStore:
         self._actions = 0
         self._registered: dict[str, str] = {}
         self._load()
-        self.groups = self._read_groups()
         self._dups: tuple[list[tuple[str, str]], set[str]] | None = None
         self._suspects_ok = True
-        self._pre_cache: tuple[tuple[int, int], dict[str, dict]] | None = None
+        self._pre_cache: tuple[tuple[int, int], str | None, dict[str, dict]] | None = None
+        self._sudoku_cache: dict[str, dict] | None = None
         self._photos: OrderedDict[str, np.ndarray] = OrderedDict()
         self.check = PhotoCheck(paths, self.session, now)
-
-    def _read_groups(self) -> dict:
-        if not self.paths.groups.exists():
-            return {}
-        try:
-            return json.loads(self.paths.groups.read_text())["folders"]
-        except (OSError, ValueError, KeyError, TypeError) as error:
-            warn_unreadable(self.paths.groups, error)
-            return {}
 
     def _stamp(self) -> tuple[int, int]:
         journal, table = self.paths.journal, self.paths.cells_csv
@@ -209,142 +204,6 @@ class LabelStore:
         self._refresh()
         return self.paths.cells / self.folder[self._stem_ids[stem]] / f"{stem}.png"
 
-    def _groups_of(self, folder: str) -> list[dict]:
-        """The stored groups of the folder. Then the cells that no stored group holds: grouped
-        by the model's kind guess (printed, handwritten, other), least sure first. Cells without
-        a guess come last, in one plain group."""
-        stored = self.groups.get(folder, [])
-        grouped = {c for g in stored for c in g["cells"]}
-        extra = sorted(c for c, f in self.folder.items() if f == folder and c not in grouped)
-        pre = self._prelabels()
-        guessed: dict[str, list[tuple[float, str]]] = {name: [] for name in PREDICTED}
-        plain = []
-        for cell in extra:
-            if "kp" in pre.get(cell, {}):
-                guessed[_predicted(pre[cell]["kind"])].append((pre[cell]["kp"], cell))
-            else:
-                plain.append(cell)
-        groups = [
-            {
-                "cells": [c for _, c in ordered],
-                "sureness": [kp for kp, _ in ordered],
-                "ungrouped": True,
-                "predicted": name,
-            }
-            for name in PREDICTED
-            if (ordered := sorted(guessed[name]))
-        ]
-        if plain:
-            groups.append({"cells": plain, "sureness": [0.0] * len(plain), "ungrouped": True})
-        return [*stored, *groups]
-
-    def _members(self, folder: str, group: dict) -> list[str]:
-        return [c for c in group["cells"] if self.folder.get(c) == folder]
-
-    @staticmethod
-    def _open(members: list[str], kinds: dict[str, str | None]) -> list[str]:
-        """The cells without a kind. All the cells when every one has a kind (Look again)."""
-        return [c for c in members if kinds.get(c) is None] or members
-
-    # Kind step (Flow B)
-
-    @staticmethod
-    def _majority(members: list[str], kinds: dict[str, str | None]) -> str | None:
-        counts = Counter(kinds.get(c) for c in members if kinds.get(c) in _LABELLED).most_common()
-        if not counts or (len(counts) > 1 and counts[0][1] == counts[1][1]):
-            return None
-        return counts[0][0]
-
-    @staticmethod
-    def _guess(entry: dict) -> str | None:
-        return entry["kind"] if entry["kind"] in _LABELLED else None
-
-    def folder_progress(self, folder: str) -> dict:
-        kinds = self.kinds()
-        cells = [c for c, f in self.folder.items() if f == folder]
-        return {"cells": len(cells), "labelled": sum(kinds.get(c) is not None for c in cells)}
-
-    def screen(self, folder: str, group: int, page: int) -> dict:
-        self._refresh()
-        groups = self._groups_of(folder)
-        chosen = groups[group]
-        members = self._members(folder, chosen)
-        sure = dict(zip(chosen["cells"], chosen["sureness"], strict=True))
-        kinds = self.kinds()
-        predicted = chosen.get("predicted")
-        pre = self._prelabels() if predicted else {}
-        start = self._majority(members, kinds)
-        members = self._open(members, kinds)
-        pages = _pages(len(members))
-        page = min(page, pages - 1)
-        cutoff = np.quantile([sure[c] for c in members], 0.1) if members else 0.0
-        chunk = members[page * SCREEN_SIZE : (page + 1) * SCREEN_SIZE]
-        return {
-            "folder": folder,
-            "group": group,
-            "groups": len(groups),
-            "page": page,
-            "pages": pages,
-            "ungrouped": bool(chosen.get("ungrouped")),
-            "predicted": predicted,
-            "cells": [
-                {
-                    "id": c,
-                    "stem": stem_of(c),
-                    "kind": kinds.get(c),
-                    "start": kinds.get(c) or (self._guess(pre[c]) if predicted else start),
-                    "least_sure": bool(sure[c] <= cutoff),
-                    **({"kp": pre[c]["kp"], "model_kind": pre[c]["kind"]} if predicted else {}),
-                }
-                for c in chunk
-            ],
-            "progress": self.folder_progress(folder),
-        }
-
-    def _screens(self):
-        kinds = self.kinds()
-        for folder in DIGIT_FOLDERS:
-            for g, group in enumerate(self._groups_of(folder)):
-                members = self._open(self._members(folder, group), kinds)
-                for page in range(_pages(len(members))):
-                    yield folder, g, page, members[page * SCREEN_SIZE : (page + 1) * SCREEN_SIZE]
-
-    def next_screen(self, after: tuple[str, int, int] | None = None) -> dict | None:
-        """The first screen after `after` with a cell without a kind. Wraps around once."""
-        self._refresh()
-        kinds = self.kinds()
-        order = list(self._screens())
-        start = 0
-        if after is not None:
-            start = 1 + next((i for i, s in enumerate(order) if s[:3] == after), -1)
-        for folder, g, page, chunk in order[start:] + order[:start]:
-            if any(kinds.get(c) is None for c in chunk):
-                return self.screen(folder, g, page)
-        return None
-
-    # Changes
-
-    def save(self, entries: list[dict], screen: str, confirm_digits: list[str] = ()) -> int:
-        """Log a kind line per changed or new cell. On the Doubtful labels step, also per
-        confirmation."""
-        self._refresh()
-        kinds, t, action = self.kinds(), self._t(), self._action()
-        lines = []
-        for entry in entries:
-            cell, kind = entry["id"], entry["kind"]
-            if kind not in KINDS:
-                raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
-            if self.folder.get(cell) not in DIGIT_FOLDERS:
-                raise ValueError(f"{stem_of(cell)}: not in a digit folder")
-            old = kinds.get(cell)
-            if old != kind or screen == "review":
-                lines.append(Line(t, self.session, action, cell, "kind", old, kind, screen))
-        for cell in confirm_digits:
-            folder = self.folder[cell]
-            lines.append(Line(t, self.session, action, cell, "digit", folder, folder, screen))
-        self._write(lines)
-        return len(lines)
-
     def move(self, cell: str, digit: str, screen: str) -> None:
         self._refresh()
         if digit not in DIGIT_CLASSES:
@@ -384,8 +243,6 @@ class LabelStore:
         self._write(lines)
         return len(lines)
 
-    # Digits step (Flow B)
-
     def register(self, cell_ids: list[str], folder: str = "unlabeled") -> None:
         """Make new cells in `folder` known. Ctrl-C rewrites cells.csv with them later."""
         for cell in cell_ids:
@@ -393,66 +250,25 @@ class LabelStore:
             self._stem_ids[stem_of(cell)] = cell
             self.folder[cell] = folder
 
-    def _prelabels(self) -> dict[str, dict]:
-        # The file has one entry per cell. One screen change reads it for nine folders.
+    def _read_prelabels(self) -> tuple[str | None, dict[str, dict]]:
+        # The file has one entry per cell. A screen change reads it again and again.
         if self.paths.prelabels is None or not self.paths.prelabels.exists():
-            return {}
+            return None, {}
         stat = self.paths.prelabels.stat()
         key = (stat.st_mtime_ns, stat.st_size)
         if self._pre_cache is None or self._pre_cache[0] != key:
             try:
-                cells = json.loads(self.paths.prelabels.read_text())["cells"]
-            except (OSError, ValueError, KeyError, TypeError) as error:
+                value = json.loads(self.paths.prelabels.read_text())
+                self._pre_cache = (key, value.get("run"), value["cells"])
+            except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
                 warn_unreadable(self.paths.prelabels, error)
-                cells = {}
-            self._pre_cache = (key, cells)
-        return self._pre_cache[1]
+                self._pre_cache = (key, None, {})
+        return self._pre_cache[1], self._pre_cache[2]
 
-    def digit_screen(self, digit: str, kinds: str = "handwritten") -> dict:
-        self._refresh()
-        if digit not in DIGIT_CLASSES:
-            raise ValueError(f"unknown digit {digit!r}")
-        if kinds not in DIGIT_KINDS:
-            raise ValueError(f"unknown kinds filter {kinds!r}")
-        pre = self._prelabels()
-        waiting = self.loose_cells()
+    def _prelabels(self) -> dict[str, dict]:
+        return self._read_prelabels()[1]
 
-        def shown(cell: str) -> bool:
-            return cell in pre and (kinds == "all" or pre[cell]["kind"] == "handwritten")
-
-        counts = Counter(pre[c]["digit"] for c in waiting if shown(c))
-        members = sorted(
-            (c for c in waiting if shown(c) and pre[c]["digit"] == digit),
-            key=lambda c: (pre[c]["p"], c),
-        )
-        return {
-            "digit": digit,
-            "kinds": kinds,
-            "cells": [
-                {"id": c, "stem": stem_of(c), "p": pre[c]["p"]} for c in members[:DIGIT_SCREEN_SIZE]
-            ],
-            "left": len(members),
-            "counts": {d: counts[d] for d in DIGIT_CLASSES},
-            "not_prelabelled": sum(c not in pre for c in waiting),
-        }
-
-    def assign(self, entries: list[dict], screen: str) -> int:
-        """Move unlabelled cells to the chosen folders as one action. Checks all entries first."""
-        self._refresh()
-        t, action = self._t(), self._action()
-        lines = []
-        for entry in entries:
-            cell, label = entry["id"], entry["digit"]
-            if label not in ASSIGNABLE:
-                raise ValueError(f"{stem_of(cell)}: unknown label {label!r}")
-            if self.folder.get(cell) != "unlabeled":
-                raise ValueError(f"{stem_of(cell)}: not in unlabeled")
-            lines.append(Line(t, self.session, action, cell, "digit", "unlabeled", label, screen))
-        self._apply_digits(lines)
-        self._write(lines)
-        return len(lines)
-
-    # Doubtful labels step (Flow B)
+    # Doubtful labels step
 
     def _near_duplicates(self) -> tuple[list[tuple[str, str]], set[str]]:
         """Near-duplicate pairs inside one folder, and the ids in the test split. Slow: reads
@@ -555,7 +371,7 @@ class LabelStore:
         self._write(lines)
         return len(lines)
 
-    # Flow A: outlines and the cells of each scan, for uploaded scans and imported photos
+    # Outlines and the cells of each scan, for uploaded scans and imported photos
 
     def _scan_states(self) -> list[ScanState]:
         """Each scan in the order of sudoku-photos.csv, which is the pull and import order.
@@ -586,9 +402,6 @@ class LabelStore:
             if stem_of(state.row.photo_id) == photo:
                 return state
         raise ValueError(f"{photo}: not a scan or photo to check")
-
-    def source_of(self, photo: str) -> str:
-        return _source(self._scan_state(photo).row)
 
     def _upright(self, row: PhotoRow) -> np.ndarray:
         # The Outlines step asks for the same few photos many times. A decode is slow.
@@ -874,18 +687,30 @@ class LabelStore:
         self._write(lines)
         return {"cells": len(new_cells), "kept": kept, "discarded": len(gone)}
 
-    def _places(self, state: ScanState) -> list[str | None]:
+    def _own_places(self) -> dict[str, dict[int, str]]:
+        """Photo id → place (0-80) → the first cell of the sources that sits in a folder."""
+        found: dict[str, dict[int, str]] = {}
+        for cell, (photo, row, col) in self.sources().items():
+            if cell in self.folder:
+                found.setdefault(photo, {}).setdefault(row * GRID_CELLS + col, cell)
+        return found
+
+    def _places(
+        self,
+        state: ScanState,
+        cut: list[str | None] | None = None,
+        own: dict[int, str] | None = None,
+    ) -> list[str | None]:
         """The cell at each of the 81 places of the scan, or None. The cut of the current corners
         finds a cell of another scan with the same pixels. A place where the cut finds no cell
         takes the own cell of that place from the sources: an imported photo was cut from
-        corners before their rounding."""
+        corners before their rounding. `cut` and `own` skip the work when the caller has them."""
         if not state.corners:
             return []
-        cut = [cell for _, cell in scan_cut(self._upright(state.row), state.corners)]
-        own = {}
-        for cell, (photo, row, col) in self.sources().items():
-            if photo == state.row.photo_id and cell in self.folder:
-                own.setdefault(row * GRID_CELLS + col, cell)
+        if cut is None:
+            cut = [cell for _, cell in scan_cut(self._upright(state.row), state.corners)]
+        if own is None:
+            own = self._own_places().get(state.row.photo_id, {})
         return [cell if cell in self.folder else own.get(n) for n, cell in enumerate(cut)]
 
     def _suggestion(self, cell: str, pre: dict[str, dict]) -> tuple[str | None, str | None]:
@@ -1019,103 +844,14 @@ class LabelStore:
         self._write(lines)
         return len(lines)
 
-    # Flow A: the cells of the approved scans per digit
+    # Digits and Kind steps (ADR-034)
 
-    def open_cells(self) -> list[dict]:
-        """Every open cell of the scans with an accepted outline (see _unconfirmed), with the
-        label it starts with, its place and the model's guess. A cell in unlabeled/ starts with
-        the guess. `digit` is None for a cell in unlabeled/ without a guess."""
-        waiting = self._unconfirmed()
-        pre, kinds, label_sources = self._prelabels(), self.kinds(), self.label_sources()
-        sources = self.sources()
-        source_of = {s.row.photo_id: _source(s.row) for s in self._scan_states()}
-        found = []
-        for photo, cells in waiting.items():
-            for cell in cells:
-                folder = self.folder[cell]
-                if folder == "unlabeled":
-                    digit, kind = self._suggestion(cell, pre)
-                else:
-                    digit, kind = folder, kinds.get(cell)
-                guess = pre.get(cell)
-                _, row, col = sources[cell]
-                found.append(
-                    {
-                        "id": cell,
-                        "stem": stem_of(cell),
-                        "photo": stem_of(photo),
-                        "source": source_of[photo],
-                        "row": row,
-                        "col": col,
-                        "digit": digit,
-                        "kind": kind,
-                        "edited": label_sources.get(cell) == "app-edited",
-                        "model": (
-                            {"digit": guess["digit"], "p": guess["p"], "kind": guess["kind"]}
-                            if guess
-                            else None
-                        ),
-                    }
-                )
-        return found
-
-    def cell_check(self, digit: str) -> dict:
-        """One gallery of the open cells of Flow A that read as `digit`, or `unknown` for the
-        cells without a guess. First the cells that the player changed, then those that the
-        model reads differently, then the least sure guess."""
-        if digit not in (*DIGIT_CLASSES, "unknown"):
-            raise ValueError(f"unknown digit {digit!r}")
-        cells = self.open_cells()
-        tab = {c["id"]: c["digit"] or "unknown" for c in cells}
-        counts = Counter(tab.values())
-
-        def order(cell: dict) -> tuple:
-            model = cell["model"]
-            differs = model is not None and model["digit"] != cell["digit"]
-            return (not cell["edited"], not differs, model["p"] if model else 0.0, cell["id"])
-
-        members = sorted((c for c in cells if tab[c["id"]] == digit), key=order)
-        return {
-            "digit": digit,
-            "cells": members[:CELL_CHECK_SIZE],
-            "left": len(members),
-            "counts": {d: counts[d] for d in (*DIGIT_CLASSES, "unknown")},
-        }
-
-    def verify_cells(self, entries: list[dict]) -> int:
-        """Label open cells of Flow A as one action: a digit line per cell, also an unchanged
-        one, and a kind line per changed kind. `discarded` takes a bad cut out. Finish writes
-        `verified` for the others. Checks all entries first."""
-        open_ids = {c["id"] for c in self.open_cells()}
-        kinds, t, action = self.kinds(), self._t(), self._action()
-        lines = []
-        for entry in entries:
-            cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
-            if cell not in open_ids:
-                raise ValueError(f"{stem_of(cell)}: not an open cell of an approved scan")
-            if digit not in ASSIGNABLE:
-                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
-            if digit in NO_KIND_FOLDERS:
-                kind = None
-            elif kind not in KINDS:
-                raise ValueError(f"{stem_of(cell)}: the digit {digit} needs a kind")
-            old = self.folder[cell]
-            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "scans"))
-            if kinds.get(cell) != kind:
-                lines.append(
-                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "scans")
-                )
-        self._apply_digits(lines)
-        self._write(lines)
-        return len(lines)
-
-    # Start page
-
-    def loose_cells(self) -> list[str]:
-        """The cells in unlabeled/ that no scan with an accepted outline holds: Flow B. The
-        others wait in the scan view of Flow A."""
+    def loose_cells(self, states: list[ScanState] | None = None) -> list[str]:
+        """The cells in unlabeled/ that no scan with an accepted outline holds. They have no
+        photo."""
         self._refresh()
-        accepted = {s.row.photo_id for s in self._scan_states() if s.status == "accepted"}
+        states = self._scan_states() if states is None else states
+        accepted = {s.row.photo_id for s in states if s.status == "accepted"}
         sources = self.sources()
         return [
             c
@@ -1123,21 +859,333 @@ class LabelStore:
             if f == "unlabeled" and sources.get(c, ("",))[0] not in accepted
         ]
 
+    def _context(self) -> dict:
+        states = self._scan_states()
+        return {
+            "states": states,
+            "pre": self._prelabels(),
+            "kinds": self.kinds(),
+            "label_sources": self.label_sources(),
+            "sources": self.sources(),
+            "scans": {s.row.photo_id: _source(s.row) for s in states if s.status == "accepted"},
+        }
+
+    def _label_of(self, cell: str, pre: dict, kinds: dict) -> tuple[str | None, str | None]:
+        """The digit and kind that a cell starts with: its folder and kind, or for a cell in
+        unlabeled/ the model's guess."""
+        folder = self.folder.get(cell)
+        if folder == "unlabeled":
+            return self._suggestion(cell, pre)
+        return folder, kinds.get(cell)
+
+    def _item(self, cell: str, ctx: dict, digit: str | None, kind: str | None) -> dict:
+        found = ctx["sources"].get(cell)
+        photo = found[0] if found and found[0] in ctx["scans"] else None
+        guess = ctx["pre"].get(cell)
+        return {
+            "id": cell,
+            "stem": stem_of(cell),
+            "photo": stem_of(photo) if photo else None,
+            "source": ctx["scans"][photo] if photo else "loose",
+            "row": found[1] if photo else None,
+            "col": found[2] if photo else None,
+            "digit": digit,
+            "kind": kind,
+            "edited": ctx["label_sources"].get(cell) == "app-edited",
+            "probs": guess.get("probs") if guess else None,
+        }
+
+    def _open_digit_cells(self, ctx: dict) -> list[dict]:
+        """Open digit cell: an open cell of a scan with an accepted outline, or a loose cell. A
+        scan cell is open in unlabeled/, or as an `app-*` cell in a digit folder that no person
+        labelled. Each cell is one item, also when the scans share its pixels."""
+        waiting = self._unconfirmed(ctx["states"])
+        ids = [c for cells in waiting.values() for c in cells] + self.loose_cells(ctx["states"])
+        found = []
+        for cell in ids:
+            digit, kind = self._label_of(cell, ctx["pre"], ctx["kinds"])
+            found.append(self._item(cell, ctx, digit, kind))
+        return found
+
+    def _awaiting_kind(self) -> set[str]:
+        """The cells whose digit a person confirmed in this journal and that have no person
+        kind line after it. An undone action does not count."""
+        undone = undone_actions(self.lines)
+        waiting: set[str] = set()
+        for line in self.lines:
+            if line.action in undone or line.screen == "undo":
+                continue
+            if line.field == "digit" and line.screen in DIGIT_SCREENS:
+                waiting.add(line.cell)
+            elif line.field == "kind" and line.screen in KIND_SCREENS:
+                waiting.discard(line.cell)
+        return waiting
+
+    def _open_kind_cells(self, ctx: dict, open_digits: set[str]) -> list[dict]:
+        """Open kind cell: a cell in 1-9 whose digit a person confirmed and that has no person
+        kind line after it, or that has no kind at all. A cell that still waits for its digit
+        is left out: the Digits step comes first. A cell without a kind starts with the model's
+        kind."""
+        awaiting = self._awaiting_kind()
+        found = []
+        for cell, folder in sorted(self.folder.items()):
+            if folder not in DIGIT_FOLDERS or cell in open_digits:
+                continue
+            kind = ctx["kinds"].get(cell)
+            if kind is not None and cell not in awaiting:
+                continue
+            guess = ctx["pre"].get(cell)
+            if kind is None and guess and guess.get("kind") in KINDS:
+                kind = guess["kind"]
+            found.append(self._item(cell, ctx, folder, kind))
+        return found
+
+    def open_cells(self) -> list[dict]:
+        """Every open digit cell with the label it starts with. `digit` is None for a cell in
+        unlabeled/ without a guess."""
+        self._refresh()
+        return self._open_digit_cells(self._context())
+
+    def open_kind_cells(self) -> list[dict]:
+        self._refresh()
+        ctx = self._context()
+        return self._open_kind_cells(ctx, {c["id"] for c in self._open_digit_cells(ctx)})
+
+    def prelabel_targets(self) -> set[str]:
+        """The cells that the model must guess: every open digit cell and open kind cell."""
+        self._refresh()
+        ctx = self._context()
+        digits = self._open_digit_cells(ctx)
+        kinds = self._open_kind_cells(ctx, {c["id"] for c in digits})
+        return {c["id"] for c in digits + kinds}
+
+    def _read_sudoku_cache(self) -> dict[str, dict]:
+        if self._sudoku_cache is None:
+            try:
+                self._sudoku_cache = json.loads(self.paths.doubt_scans.read_text())["scans"]
+            except (OSError, ValueError, KeyError, TypeError):
+                self._sudoku_cache = {}  # derived: a broken file only costs a new cut
+        return self._sudoku_cache
+
+    def sudoku_reasons(self) -> dict[str, list[dict]]:
+        """Cell id → its `rule-break` and `not-unique` reasons, from every scan with an accepted
+        outline that holds the cell. A rule break is a digit twice in a row, a column or a box.
+        `not-unique` marks the empty cells of a scan whose printed givens have more than one
+        solution: a given that the scan missed hides in one of them.
+
+        The cut of a scan is the slow part. The cut and the signals are cached per scan in
+        doubt-sudoku.json, keyed by the corners and by the labels."""
+        cache = self._read_sudoku_cache()
+        ctx = self._context()
+        own, found, changed = self._own_places(), {}, False
+        for state in ctx["states"]:
+            if state.status != "accepted" or not state.corners:
+                continue
+            photo = state.row.photo_id
+            entry = cache.get(photo)
+            if entry is None or entry["corners"] != state.corners:
+                try:
+                    cut = [stem_of(c) for _, c in scan_cut(self._upright(state.row), state.corners)]
+                except (OSError, ValueError, cv2.error, np.linalg.LinAlgError):
+                    continue
+                entry = cache[photo] = {"corners": state.corners, "cut": cut}
+                changed = True
+            full = [self._stem_ids.get(stem) for stem in entry["cut"]]
+            places = self._places(state, full, own.get(photo, {}))
+            labels = [
+                self._label_of(cell, ctx["pre"], ctx["kinds"]) if cell else (None, None)
+                for cell in places
+            ]
+            numbers = [int(d) if d in DIGIT_FOLDERS else 0 for d, _ in labels]
+            is_printed = [k == "printed" for _, k in labels]
+            printed = [n if p else 0 for n, p in zip(numbers, is_printed, strict=True)]
+            key = labels_key(list(zip(numbers, is_printed, strict=True)))
+            if entry.get("key") != key:
+                signals = scan_signals(numbers, printed)
+                rule = signals["rule"]
+                entry.update(
+                    key=key,
+                    rule=[[p, u, i] for p, units in rule.items() for u, i in units],
+                    not_unique=signals["not_unique"],
+                )
+                changed = True
+            for place, unit, index in entry["rule"]:
+                reason = {"signal": "rule-break", "unit": unit, "index": index}
+                if places[place] and reason not in found.setdefault(places[place], []):
+                    found[places[place]].append(reason)
+            if entry["not_unique"]:
+                for cell, (digit, _) in zip(places, labels, strict=True):
+                    reason = {"signal": "not-unique"}
+                    if cell and digit == "empty" and reason not in found.setdefault(cell, []):
+                        found[cell].append(reason)
+        if changed:
+            write_atomic(self.paths.doubt_scans, json.dumps({"scans": cache}))
+        return found
+
+    def _confirmed(self, field: str, screens: tuple[str, ...]) -> set[str]:
+        undone = undone_actions(self.lines)
+        return {
+            x.cell
+            for x in self.lines
+            if x.field == field and x.screen in screens and x.action not in undone
+        }
+
+    @staticmethod
+    def _threshold(value: float) -> float:
+        if not 0 < value <= 1:
+            raise ValueError(f"the threshold {value} is not in 0 to 1")
+        return value
+
+    def _scored_digits(self, digit: str, threshold: float):
+        """Counts of the open digit cells per tab, the cells of tab `digit` with their doubt
+        (the highest first), and the ids that `sure` would confirm."""
+        if digit not in DIGIT_TABS:
+            raise ValueError(f"unknown digit {digit!r}")
+        threshold = self._threshold(threshold)
+        items = self.open_cells()
+        counts = Counter(c["digit"] or "unknown" for c in items)
+        sudoku = self.sudoku_reasons()
+        scored, sure = [], []
+        for cell in items:
+            if (cell["digit"] or "unknown") != digit:
+                continue
+            extra = sudoku.get(cell["id"], [])
+            doubt, reasons = digit_doubt(cell["digit"], cell["probs"], cell["edited"], extra)
+            scored.append({**cell, "doubt": doubt, "reasons": reasons})
+            if is_sure_digit(cell["digit"], cell["probs"], cell["edited"], extra, threshold):
+                sure.append(cell["id"])
+        scored.sort(key=lambda c: (-c["doubt"], c["id"]))
+        return counts, scored, sure
+
+    def _scored_kinds(self, digit: str, threshold: float):
+        if digit not in DIGIT_FOLDERS:
+            raise ValueError(f"unknown digit {digit!r}: the Kind step has the digits 1 to 9")
+        threshold = self._threshold(threshold)
+        items = self.open_kind_cells()
+        counts = Counter(c["digit"] for c in items)
+        scored, sure = [], []
+        for cell in items:
+            if cell["digit"] != digit:
+                continue
+            doubt, reasons = kind_doubt(cell["kind"], cell["probs"])
+            scored.append({**cell, "doubt": doubt, "reasons": reasons})
+            if is_sure_kind(cell["kind"], cell["probs"], threshold):
+                sure.append(cell["id"])
+        scored.sort(key=lambda c: (-c["doubt"], c["id"]))
+        return counts, scored, sure
+
+    def _check(self, digit, tabs, counts, scored, sure, done, threshold) -> dict:
+        return {
+            "digit": digit,
+            "cells": scored[:CHECK_SIZE],
+            "left": len(scored),
+            "counts": {t: counts[t] for t in tabs},
+            "done": {t: done[t] for t in tabs},
+            "sure": len(sure),
+            "threshold": threshold,
+        }
+
+    def check_digits(self, digit: str, threshold: float = DIGIT_THRESHOLD) -> dict:
+        """The Digits step: the open digit cells of one tab, the highest doubt first."""
+        counts, scored, sure = self._scored_digits(digit, threshold)
+        done = Counter(
+            self.folder[c] for c in self._confirmed("digit", DIGIT_SCREENS) if c in self.folder
+        )
+        return self._check(digit, DIGIT_TABS, counts, scored, sure, done, threshold)
+
+    def check_kinds(self, digit: str, threshold: float = KIND_THRESHOLD) -> dict:
+        """The Kind step: the open kind cells of one digit, the highest doubt first."""
+        counts, scored, sure = self._scored_kinds(digit, threshold)
+        done = Counter(
+            self.folder[c]
+            for c in self._confirmed("kind", KIND_SCREENS)
+            if self.folder.get(c) in DIGIT_FOLDERS
+        )
+        return self._check(digit, DIGIT_FOLDERS, counts, scored, sure, done, threshold)
+
+    def _confirm_digit_lines(self, entries: list[dict]) -> int:
+        open_ids = {c["id"] for c in self.open_cells()}
+        kinds, t, action = self.kinds(), self._t(), self._action()
+        lines, seen = [], set()
+        for entry in entries:
+            cell, digit = entry["id"], entry["digit"]
+            if cell not in open_ids or cell in seen:
+                raise ValueError(f"{stem_of(cell)}: not an open digit cell")
+            if digit not in ASSIGNABLE:
+                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
+            seen.add(cell)
+            lines.append(
+                Line(t, self.session, action, cell, "digit", self.folder[cell], digit, "digits")
+            )
+            if digit in NO_KIND_FOLDERS or digit == "discarded":
+                if kinds.get(cell) is not None:
+                    lines.append(
+                        Line(t, self.session, action, cell, "kind", kinds[cell], None, "digits")
+                    )
+        self._apply_digits(lines)
+        self._write(lines)
+        return len(lines)
+
+    def confirm_digits(self, entries: list[dict]) -> int:
+        """Confirm open digit cells as one action: a digit line per cell, also an unchanged one.
+        A move to `empty` or `discarded` drops the kind. Checks all entries first. Finish writes
+        `verified` for the cells."""
+        self._refresh()
+        return self._confirm_digit_lines(entries)
+
+    def sure_digits(self, digit: str, threshold: float = DIGIT_THRESHOLD) -> int:
+        """Confirm every sure cell of the tab as one action. Returns the number of cells."""
+        self._refresh()
+        _, scored, sure = self._scored_digits(digit, threshold)
+        label = {c["id"]: c["digit"] for c in scored}
+        self._confirm_digit_lines([{"id": c, "digit": label[c]} for c in sure])
+        return len(sure)
+
+    def _confirm_kind_lines(self, entries: list[dict]) -> int:
+        open_ids = {c["id"] for c in self.open_kind_cells()}
+        kinds, t, action = self.kinds(), self._t(), self._action()
+        lines, seen = [], set()
+        for entry in entries:
+            cell, kind = entry["id"], entry["kind"]
+            if cell not in open_ids or cell in seen:
+                raise ValueError(f"{stem_of(cell)}: not an open kind cell")
+            if kind not in KINDS:
+                raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
+            seen.add(cell)
+            lines.append(
+                Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "kinds")
+            )
+        self._write(lines)
+        return len(lines)
+
+    def confirm_kinds(self, entries: list[dict]) -> int:
+        """Confirm open kind cells as one action: a kind line per cell, also an unchanged one.
+        Checks all entries first."""
+        self._refresh()
+        return self._confirm_kind_lines(entries)
+
+    def sure_kinds(self, digit: str, threshold: float = KIND_THRESHOLD) -> int:
+        """Confirm every sure cell of the tab as one action. Returns the number of cells."""
+        self._refresh()
+        _, scored, sure = self._scored_kinds(digit, threshold)
+        label = {c["id"]: c["kind"] for c in scored}
+        self._confirm_kind_lines([{"id": c, "kind": label[c]} for c in sure])
+        return len(sure)
+
+    # Start page
+
     def status(self) -> dict:
         """The counts of the start page. It reads no cell image and runs no model."""
         self._refresh()
-        kinds = self.kinds()
-        pre = self._prelabels()
-        loose = self.loose_cells()
-        scans = self._scan_states()
-        waiting = self._unconfirmed(scans)
+        ctx = self._context()
+        digits = self._open_digit_cells(ctx)
+        kinds = self._open_kind_cells(ctx, {c["id"] for c in digits})
         return {
-            "outlines": sum(s.status == "unchecked" for s in scans),
-            "scans": len(waiting),
-            "scan_cells": sum(len(cells) for cells in waiting.values()),
-            "not_prelabelled": sum(c not in pre for c in loose),
-            "digits": sum(c in pre for c in loose),
-            "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
+            "outlines": sum(s.status == "unchecked" for s in ctx["states"]),
+            "digit_cells": len(digits),
+            "kind_cells": len(kinds),
+            "not_prelabelled": sum(c["probs"] is None for c in digits + kinds),
+            "model": self._read_prelabels()[0],
             "doubtful": self.open_review_count(),
             "suspects": self.paths.suspects.exists(),
             "changes": len(self.lines),

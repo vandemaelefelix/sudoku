@@ -7,7 +7,8 @@ import api_schemas as schema
 import jsonschema
 import pytest
 from photos import grid_photo, save_photo
-from test_label_store import Clock, build
+from test_check_steps import prelabel
+from test_label_store import Clock, build, save_kinds
 from test_label_store_scans import entries, pulled
 
 from sudoku_ml.fetch_scans import SignInNeeded
@@ -86,7 +87,9 @@ def test_a_foreign_host_header_is_refused(served):
 def test_a_post_without_json_content_type_is_refused_and_writes_nothing(served):
     one, paths, ids = served
     body = {"cells": [{"id": ids["7"][0], "kind": "printed"}]}
-    status, _ = request(one.port, "POST", "/api/kinds/save", body, content_type="text/plain")
+    status, _ = request(
+        one.port, "POST", "/api/check/kinds/confirm", body, content_type="text/plain"
+    )
     assert status == 415
     assert read_journal(paths.journal) == []
 
@@ -123,22 +126,26 @@ def test_an_unknown_api_route_is_a_404(served):
 def test_the_start_counts(served):
     one, _, _ = served
     counts = one.get("/api/start", schema.START)
-    assert (counts["kind"], counts["outlines"], counts["changes"]) == (2, 0, 0)
+    assert (counts["kind_cells"], counts["digit_cells"], counts["outlines"]) == (2, 0, 0)
+    assert (counts["changes"], counts["model"], counts["not_prelabelled"]) == (0, None, 2)
     assert counts["doubtful"] is None and not counts["suspects"]
 
 
-def test_a_kind_save_round_trips(served):
+def test_the_kind_step_round_trips(served):
     one, paths, ids = served
-    screen = one.get("/api/kinds", schema.KINDS)
-    assert [c["id"] for c in screen["cells"]] == ids["7"]
+    screen = one.get("/api/check/kinds?digit=7", schema.CHECK)
+    assert sorted(c["id"] for c in screen["cells"]) == sorted(ids["7"])
+    assert (screen["left"], screen["threshold"], screen["sure"]) == (2, 0.95, 0)
+    assert set(screen["counts"]) == set(screen["done"]) == {str(d) for d in range(1, 10)}
     body = {"cells": [{"id": ids["7"][0], "kind": "printed"}]}
-    assert one.post("/api/kinds/save", body) == 1
-    assert [x.new for x in read_journal(paths.journal)] == ["printed"]
-    after = one.get("/api/kinds?folder=7&group=0&page=0", schema.KINDS)
-    assert ids["7"][0] not in [c["id"] for c in after["cells"]]
-    assert one.post("/api/undo", {}) == {"lines": 1, "what": "groups"}
+    assert one.post("/api/check/kinds/confirm", body) == 1
+    assert [(x.new, x.screen) for x in read_journal(paths.journal)] == [("printed", "kinds")]
+    after = one.get("/api/check/kinds?digit=7&threshold=0.9", schema.CHECK)
+    assert [c["id"] for c in after["cells"]] == ids["7"][1:] and after["threshold"] == 0.9
+    assert one.get("/api/check/kinds?digit=7")["done"]["7"] == 1
+    assert one.post("/api/undo", {}) == {"lines": 1, "what": "kinds"}
     assert one.post("/api/undo", {}) == {"lines": 0, "what": None}
-    assert one.get("/api/start")["kind"] == 2
+    assert one.get("/api/start")["kind_cells"] == 2
 
 
 def test_cell_images_are_served_and_unknown_cells_are_not(served):
@@ -152,14 +159,18 @@ def test_cell_images_are_served_and_unknown_cells_are_not(served):
 def test_a_bad_request_gets_a_400_with_a_reason(served):
     one, _, ids = served
     body = {"cells": [{"id": ids["7"][0], "kind": "notes"}]}
-    error = one.post("/api/kinds/save", body, schema.ERROR, status=400)
+    error = one.post("/api/check/kinds/confirm", body, schema.ERROR, status=400)
     assert "unknown kind" in error["error"]
+    one.get("/api/check/kinds?digit=empty", schema.ERROR, status=400)
+    one.get("/api/check/digits?digit=7&threshold=2", schema.ERROR, status=400)
+    one.get("/api/check/digits?digit=7&threshold=high", schema.ERROR, status=400)
+    one.get("/api/check/digits", schema.ERROR, status=400)
 
 
 def test_the_doubtful_step_lists_and_settles_the_suspects(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
     store = LabelStore(paths, Clock())
-    store.save([{"id": c, "kind": "printed"} for c in ids["7"]], "groups")
+    save_kinds(store, [{"id": c, "kind": "printed"} for c in ids["7"]])
     cell = ids["7"][0]
 
     def rank() -> None:
@@ -187,14 +198,10 @@ FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 
 @pytest.fixture
 def served_photos(tmp_path: Path):
-    """Two loose cells with pre-labels and one imported photo that waits for its outline."""
+    """Two loose cells with guesses and one imported photo that waits for its outline."""
     paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
     u = ids["unlabeled"]
-    prelabels = {
-        u[0]: {"digit": "2", "p": 0.6, "kind": "handwritten", "kp": 0.9},
-        u[1]: {"digit": "2", "p": 0.9, "kind": "handwritten", "kp": 0.9},
-    }
-    paths.prelabels.write_text(json.dumps({"run": "test", "cells": prelabels}))
+    prelabel(paths, {u[0]: ("2", 0.6, "handwritten", 0.9), u[1]: ("2", 0.99, "handwritten", 0.9)})
     save_photo(grid_photo(), tmp_path / "in" / "p.png")
     import_folder(tmp_path / "in", paths, source="phone", licence="own")
     store = LabelStore(paths, Clock())
@@ -204,17 +211,53 @@ def served_photos(tmp_path: Path):
     one.close()
 
 
-def test_the_digit_step_and_assign_round_trip(served_photos):
+def test_the_digit_step_and_confirm_round_trip(served_photos):
     one, paths, u, _, _ = served_photos
-    screen = one.get("/api/digits?digit=2", schema.DIGITS)
+    screen = one.get("/api/check/digits?digit=2", schema.CHECK)
     assert [c["id"] for c in screen["cells"]] == [u[0], u[1]]
+    assert (screen["sure"], screen["counts"]["2"], screen["done"]["2"]) == (1, 2, 0)
+    assert {(c["source"], c["photo"], c["row"]) for c in screen["cells"]} == {("loose", None, None)}
     body = {"cells": [{"id": u[0], "digit": "2"}, {"id": u[1], "digit": "discarded"}]}
-    assert one.post("/api/digits/assign", body) == 2
+    assert one.post("/api/check/digits/confirm", body) == 2
     assert (paths.cells / "2" / f"{u[0][:16]}.png").exists()
-    assert one.get("/api/start")["digits"] == 0
+    assert one.get("/api/start", schema.START)["digit_cells"] == 0
+    assert one.post("/api/undo", {}) == {"lines": 2, "what": "digits"}
 
 
-def test_an_imported_photo_goes_through_flow_a(served_photos):
+def test_the_sure_routes_confirm_the_sure_cells_of_one_tab(served_photos):
+    one, paths, u, _, _ = served_photos
+    assert one.get("/api/check/digits?digit=2&threshold=0.5")["sure"] == 2
+    assert one.post("/api/check/digits/sure", {"digit": "2", "threshold": 0.98}, schema.SURE) == {
+        "cells": 1
+    }
+    assert [c["id"] for c in one.get("/api/check/digits?digit=2")["cells"]] == [u[0]]
+    assert (paths.cells / "2" / f"{u[1][:16]}.png").exists()
+    # The kind of the confirmed cell is the model's guess: 0.9 is below the default 0.95.
+    assert one.post("/api/check/kinds/sure", {"digit": "2"}, schema.SURE) == {"cells": 0}
+    assert one.post("/api/check/kinds/sure", {"digit": "2", "threshold": 0.9}) == {"cells": 1}
+    assert one.get("/api/check/kinds?digit=2")["cells"] == []
+    error = one.post("/api/check/digits/sure", {"digit": "7", "threshold": 0}, schema.ERROR, 400)
+    assert "threshold" in error["error"]
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/cells?digit=1"),
+        ("GET", "/api/digits?digit=1"),
+        ("GET", "/api/kinds"),
+        ("POST", "/api/cells/verify"),
+        ("POST", "/api/digits/assign"),
+        ("POST", "/api/kinds/save"),
+    ],
+)
+def test_the_routes_of_the_old_screens_are_gone(served, method, path):
+    one, _, _ = served
+    status, _ = request(one.port, method, path, {} if method == "POST" else None)
+    assert status == 404
+
+
+def test_an_imported_photo_goes_through_the_one_flow(served_photos):
     one, paths, u, stem, prelabelled = served_photos
     gallery = one.get("/api/outlines", schema.OUTLINES)
     assert [(s["photo"], s["source"]) for s in gallery["scans"]] == [(stem, "photo")]
@@ -228,36 +271,46 @@ def test_an_imported_photo_goes_through_flow_a(served_photos):
     assert request(one.port, "GET", f"/flat/{stem}.png?c=1,2,3")[0] == 400
     result = one.post("/api/outlines/fix", {"photo": stem, "corners": FULL}, schema.FIX)
     assert result["cells"] > 0 and prelabelled == [1]
-    # The cells of the photo wait in Flow A, so Flow B still counts only its own 2 cells.
-    assert one.get("/api/start")["digits"] + one.get("/api/start")["not_prelabelled"] == 2
-    gallery = one.get("/api/cells?digit=unknown", schema.CELLS)
+    start = one.get("/api/start", schema.START)
+    assert start["digit_cells"] == 2 + result["cells"]
+    assert start["not_prelabelled"] == result["cells"] + 1  # and the legacy cell of 7
+    gallery = one.get("/api/check/digits?digit=unknown", schema.CHECK)
     assert gallery["counts"]["unknown"] == result["cells"] == len(gallery["cells"])
     assert {(c["photo"], c["source"], c["digit"]) for c in gallery["cells"]} == {
         (stem, "photo", None)
     }
     status, data = request(one.port, "GET", f"/flat/{stem}.png")
     assert status == 200 and data[:4] == b"\x89PNG"
-    cells = [{"id": c["id"], "digit": "5", "kind": "printed"} for c in gallery["cells"]]
-    assert one.post("/api/cells/verify", {"cells": cells}) == 2 * len(cells)
-    assert one.get("/api/start")["scan_cells"] == 0
+    cells = [{"id": c["id"], "digit": "5"} for c in gallery["cells"]]
+    assert one.post("/api/check/digits/confirm", {"cells": cells}) == len(cells)
+    assert one.get("/api/start")["digit_cells"] == 2
     assert len(list((paths.cells / "5").glob("*.png"))) == len(cells)
+    kinds = one.get("/api/check/kinds?digit=5", schema.CHECK)
+    assert kinds["left"] == len(cells) and {c["photo"] for c in kinds["cells"]} == {stem}
+    body = [{"id": c["id"], "kind": "printed"} for c in kinds["cells"]]
+    assert one.post("/api/check/kinds/confirm", {"cells": body}) == len(cells)
+    assert one.get("/api/start")["kind_cells"] == 1  # the legacy cell of 7 has no kind
 
 
-def test_the_outline_and_scan_routes_of_uploaded_scans_round_trip(tmp_path: Path):
+def test_the_outline_and_check_routes_of_uploaded_scans_round_trip(tmp_path: Path):
     store, paths, photos = pulled(tmp_path)
-    one = Served(store)
+    prelabelled = []
+    one = Served(store, prelabel=lambda: prelabelled.append(1) or 0)
     try:
         gallery = one.get("/api/outlines", schema.OUTLINES)
         assert gallery["open"] == 2 and {s["source"] for s in gallery["scans"]} == {"app"}
         large = one.get(f"/api/outline?photo={photos[0]}", schema.OUTLINE)
         assert large["status"] == "unchecked" and len(large["corners"]) == 4
         assert one.post("/api/outlines/approve", {"photos": photos[:1]}) == 1
+        assert prelabelled == [1]  # an uploaded scan is guessed after its approval too
         body = {"photo": photos[1], "corners": large["corners"]}
         one.post("/api/outlines/fix", body, schema.FIX)
+        assert prelabelled == [1, 1]
         assert one.get("/api/start", schema.START)["outlines"] == 0
-        assert one.get("/api/start")["scans"] == 2
+        assert one.get("/api/start")["digit_cells"] > 81
         verify_every_cell(one)
-        assert one.get("/api/start")["scan_cells"] == 0
+        assert one.get("/api/start")["digit_cells"] == 0
+        assert one.get("/api/start")["kind_cells"] == 0
         error = one.post("/api/outlines/reject", {"photo": photos[0]}, schema.ERROR, 400)
         assert "already checked" in error["error"]
         one.get("/api/outline?photo=0000000000000000", schema.ERROR, status=400)
@@ -289,24 +342,31 @@ def test_a_journal_of_the_old_page_loads_with_no_finish(tmp_path: Path):
     one = Served(LabelStore(paths, Clock()))
     try:
         counts = one.get("/api/start", schema.START)
-        assert (counts["outlines"], counts["scans"]) == (0, 1)
+        assert counts["outlines"] == 0
         assert counts["changes"] == len(read_journal(paths.journal))
-        waiting = {c["photo"] for c in one.get("/api/cells?digit=empty")["cells"]}
+        waiting = {c["photo"] for c in one.get("/api/check/digits?digit=empty")["cells"]}
         assert waiting == set(photos[1:])
         verify_every_cell(one)
         assert paths.journal.read_bytes().startswith(before)
-        assert one.get("/api/start")["scans"] == 0
+        assert one.get("/api/start")["digit_cells"] == 0
     finally:
         one.close()
 
 
 def verify_every_cell(one: Served) -> None:
-    """Confirm each open cell of Flow A as it is, digit by digit, as the app does."""
+    """Confirm each open cell as it is, tab by tab, as the app does: the digits, then the kinds."""
     for digit in ("empty", *map(str, range(1, 10))):
-        cells = one.get(f"/api/cells?digit={digit}", schema.CELLS)["cells"]
-        body = [{"id": c["id"], "digit": c["digit"], "kind": c["kind"]} for c in cells]
-        if body:
-            one.post("/api/cells/verify", {"cells": body})
+        cells = one.get(f"/api/check/digits?digit={digit}", schema.CHECK)["cells"]
+        if cells:
+            one.post(
+                "/api/check/digits/confirm",
+                {"cells": [{"id": c["id"], "digit": c["digit"]} for c in cells]},
+            )
+    for digit in map(str, range(1, 10)):
+        cells = one.get(f"/api/check/kinds?digit={digit}", schema.CHECK)["cells"]
+        if cells:
+            body = [{"id": c["id"], "kind": c["kind"] or "printed"} for c in cells]
+            one.post("/api/check/kinds/confirm", {"cells": body})
 
 
 class FakeFetch:
@@ -361,7 +421,7 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
         server_port = 0
 
         def serve_forever(self):
-            LabelStore(paths, Clock()).save([{"id": ids["7"][0], "kind": "handwritten"}], "groups")
+            save_kinds(LabelStore(paths, Clock()), [{"id": ids["7"][0], "kind": "handwritten"}])
             raise KeyboardInterrupt
 
         def server_close(self):

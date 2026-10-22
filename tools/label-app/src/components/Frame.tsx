@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
 import { useKeys } from '../hooks'
-import { FLOWS, type FlowId } from '../flows'
+import { FLOW, STEPS } from '../flows'
 
 export interface KeyHelp {
   keys: string
@@ -16,7 +16,7 @@ const COMMON_KEYS: KeyHelp[] = [
 ]
 
 interface Props {
-  flow: FlowId
+  /** A step id of the flow, or `doubtful` for the tool outside the flow. */
   step: string
   /** One sentence: what to do on this step. */
   task: ReactNode
@@ -28,19 +28,18 @@ interface Props {
   children: ReactNode
 }
 
-export function Frame({ flow, step, task, keys, note, action, children }: Props) {
+export function Frame({ step, task, keys, note, action, children }: Props) {
   const [help, setHelp] = useState(false)
   useKeys({ '?': () => setHelp((open) => !open) })
-  const steps = FLOWS[flow].steps
   return (
     <div className="frame">
       <header className="bar">
         <a className="home" href="#/">
           Labels
         </a>
-        <span className="flow-name">{FLOWS[flow].name}</span>
+        <span className="flow-name">{step === 'doubtful' ? 'Tool: Check older labels' : FLOW.name}</span>
         <ol className="crumbs">
-          {steps.map((s, n) => (
+          {STEPS.map((s, n) => (
             <li key={s.id} className={s.id === step ? 'here' : undefined}>
               <a href={`#/${s.route}`}>
                 <span className="number">{n + 1}</span> {s.name}

@@ -13,11 +13,14 @@ export type Corners = [[number, number], [number, number], [number, number], [nu
 
 export interface StartCounts {
   outlines: number
-  scans: number
-  scan_cells: number
+  /** Open cells for the Digits step: cells of approved scans and loose cells. */
+  digit_cells: number
+  /** Open cells for the Kind step: a person confirmed the digit, the kind waits. */
+  kind_cells: number
+  /** Open cells without probabilities of the current model run. */
   not_prelabelled: number
-  digits: number
-  kind: number
+  /** The run of the guesses, or null when no model guessed yet. */
+  model: string | null
   /** null until the doubtful labels were computed in this server run. */
   doubtful: number | null
   suspects: boolean
@@ -48,77 +51,57 @@ export interface Outline {
   corners: Corners | null
 }
 
-export interface ModelGuess {
-  digit: Digit
-  /** The model's confidence in the digit, 0 to 1. */
-  p: number
-  kind: string
+/** `loose`: a cell in `unlabeled/` that no accepted scan holds. */
+export type CheckSource = Source | 'loose'
+
+/** Why a cell is doubtful. Every signal has its own evidence. */
+export type Signal =
+  | { signal: 'low-p'; p: number }
+  | { signal: 'model-differs'; predicted: string; p: number }
+  | { signal: 'edited' }
+  | { signal: 'rule-break'; unit: 'row' | 'col' | 'box'; index: number }
+  | { signal: 'not-unique' }
+  | { signal: 'no-guess' }
+
+export interface CellProbs {
+  /** In the order of DIGITS. */
+  digit: number[]
+  /** In the order none, printed, handwritten, notes. */
+  kind: number[]
 }
 
-/** An open cell of a scan with an approved outline (Flow A). */
+/** An open cell of the Digits step or the Kind step. */
 export interface CheckCell {
   id: string
   stem: string
-  /** The scan or photo the cell comes from. */
-  photo: string
-  source: Source
-  /** The place in the 9 × 9 grid, 0 to 8. */
-  row: number
-  col: number
-  /** The label it starts with. null: an imported cell without a guess of the model. */
+  photo: string | null
+  source: CheckSource
+  /** The place in the 9 × 9 grid, 0 to 8. null for a loose cell. */
+  row: number | null
+  col: number | null
+  /** The label it starts with. null: no label and no guess. */
   digit: Digit | null
   kind: Kind | null
   /** The player changed the label on the phone. */
   edited: boolean
-  model: ModelGuess | null
+  probs: CellProbs | null
+  /** 0 sure to 1 doubtful: the colour of the tile edge. */
+  doubt: number
+  reasons: Signal[]
 }
 
+/** A tab is `empty`, `1` to `9`, or `unknown` (Digits only). */
 export interface CheckPage {
-  digit: Digit | 'unknown'
-  /** The changed cells first, then those the model reads differently, then the least sure. */
+  digit: string
+  /** At most 240, the highest doubt first. */
   cells: CheckCell[]
   left: number
-  counts: Record<Digit | 'unknown', number>
-}
-
-export interface DigitCell {
-  id: string
-  stem: string
-  /** The model's confidence in the digit, 0 to 1. */
-  p: number
-}
-
-export interface DigitPage {
-  digit: Digit
-  kinds: string
-  /** The least sure first, at most 100. */
-  cells: DigitCell[]
-  left: number
-  counts: Record<Digit, number>
-  not_prelabelled: number
-}
-
-export interface KindCell {
-  id: string
-  stem: string
-  kind: Kind | null
-  /** The kind that the page starts with: the model's guess or the majority of the group. */
-  start: Kind | null
-  least_sure: boolean
-  kp?: number
-  model_kind?: string
-}
-
-export interface KindPage {
-  folder: string
-  group: number
-  groups: number
-  page: number
-  pages: number
-  ungrouped: boolean
-  predicted: string | null
-  cells: KindCell[]
-  progress: { cells: number; labelled: number }
+  counts: Record<string, number>
+  /** The cells of each tab that a person confirmed in this journal. */
+  done: Record<string, number>
+  /** The cells of this tab that the sure button confirms at this threshold. */
+  sure: number
+  threshold: number
 }
 
 export interface DoubtReason {
@@ -170,10 +153,4 @@ export interface FinishResult {
   removed: string[]
   review_closed: number | null
   still_waiting: { cells: number; photos: number }
-}
-
-export interface LabelledCell {
-  id: string
-  digit: Label
-  kind?: Kind | null
 }

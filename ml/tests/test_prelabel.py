@@ -66,26 +66,40 @@ def add_cell_in(cells: Path, folder: str, seed: int) -> str:
     return cell_id
 
 
-def test_each_prelabel_keeps_the_probability_of_its_kind(tmp_path: Path):
+def test_each_prelabel_keeps_the_full_probabilities(tmp_path: Path):
     cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     add_unlabeled(cells, 1)
     write_prelabels(cells, make_run(tmp_path), out)
     for entry in json.loads(out.read_text())["cells"].values():
+        probs = entry["probs"]
+        assert len(probs["digit"]) == len(DIGIT_CLASSES) and len(probs["kind"]) == len(KIND_CLASSES)
+        assert abs(sum(probs["digit"]) - 1) < 1e-3 and abs(sum(probs["kind"]) - 1) < 1e-3
+        assert entry["digit"] == DIGIT_CLASSES[probs["digit"].index(max(probs["digit"]))]
         assert 0 < entry["kp"] <= 1
 
 
-def test_an_old_entry_without_kp_is_computed_again(tmp_path: Path):
+def test_an_old_entry_without_probs_is_computed_again(tmp_path: Path):
     cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
     run = make_run(tmp_path)
     cell = add_unlabeled(cells, 1)
     other = add_unlabeled(cells, 2)
     write_prelabels(cells, run, out)
     stored = json.loads(out.read_text())
-    del stored["cells"][cell]["kp"]
+    del stored["cells"][cell]["probs"]
     out.write_text(json.dumps(stored))
     assert write_prelabels(cells, run, out) == 1
     value = json.loads(out.read_text())["cells"]
-    assert "kp" in value[cell] and "kp" in value[other]
+    assert "probs" in value[cell] and "probs" in value[other]
+
+
+def test_wanted_limits_the_cells_that_the_model_reads(tmp_path: Path):
+    cells, out = tmp_path / "data" / "cells", tmp_path / "data" / "work" / "prelabels.json"
+    run = make_run(tmp_path)
+    waiting = add_unlabeled(cells, 1)
+    in_empty = add_cell_in(cells, "empty", 2)
+    add_cell_in(cells, "3", 3)
+    assert write_prelabels(cells, run, out, {waiting, in_empty}) == 2
+    assert set(json.loads(out.read_text())["cells"]) == {waiting, in_empty}
 
 
 def test_cells_in_digit_folders_get_pre_labels_and_cells_that_left_are_dropped(tmp_path: Path):
@@ -96,7 +110,7 @@ def test_cells_in_digit_folders_get_pre_labels_and_cells_that_left_are_dropped(t
     moved = add_cell_in(cells, "3", 3)
     assert write_prelabels(cells, run, out) == 3
     assert set(json.loads(out.read_text())["cells"]) == {waiting, seven, moved}
-    (cells / "empty").mkdir()
-    (cells / "3" / f"{moved[:16]}.png").rename(cells / "empty" / f"{moved[:16]}.png")
+    (cells / "discarded").mkdir()
+    (cells / "3" / f"{moved[:16]}.png").rename(cells / "discarded" / f"{moved[:16]}.png")
     assert write_prelabels(cells, run, out) == 0
     assert set(json.loads(out.read_text())["cells"]) == {waiting, seven}

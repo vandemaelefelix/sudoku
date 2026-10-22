@@ -6,7 +6,7 @@ from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import Line, append_records, read_journal
-from sudoku_ml.manifest import repair_and_write, write_cells_manifest
+from sudoku_ml.manifest import confirmed_cells, repair_and_write, write_cells_manifest
 from sudoku_ml.tables import CELL_FIELDS, pixel_id, read_cells
 
 PHOTO = "f" * 64
@@ -178,3 +178,18 @@ def test_repair_drops_the_kind_of_a_cell_that_left_the_digit_folders(paths: Data
     assert repair_and_write(paths) == 1
     assert rows(paths.cells_csv) == [row(seven, "empty", label="verified")]
     assert [x.screen for x in read_journal(paths.journal)] == ["repair"]
+
+
+def test_the_digits_and_kinds_steps_count_as_a_confirmation_and_an_undone_one_does_not():
+    def line(cell: str, field: str, screen: str, action: str) -> Line:
+        return Line("t", "s", action, cell, field, None, "x", screen)
+
+    lines = [
+        line("a", "digit", "digits", "s-1"),
+        line("b", "kind", "kinds", "s-2"),
+        line("c", "kind", "kinds", "s-3"),
+        line("d", "digit", "outlines", "s-4"),
+        line("e", "digit", "repair", "s-5"),
+        Line("t", "s", "undo:s-3", "c", "kind", "x", None, "undo"),
+    ]
+    assert confirmed_cells(lines) == {"a", "b"}

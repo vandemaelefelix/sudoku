@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 
 import { cellImage } from '../api/client'
 import type { Kind, Label } from '../api/types'
@@ -22,13 +22,17 @@ interface Props {
   marked?: boolean | undefined
   dim?: boolean | undefined
   title?: string | undefined
-  onClick?: (() => void) | undefined
+  onClick?: ((event: MouseEvent) => void) | undefined
+  /** 0 sure to 1 doubtful: colours the edge from green to red. */
+  doubt?: number | undefined
+  /** The id that a drag selection reads from the tile. */
+  id?: string | undefined
   /** The pointer or the keyboard focus came onto the tile. */
   onHover?: (() => void) | undefined
   children?: ReactNode
 }
 
-export function CellTile({ stem, label, changed, marked, dim, title, onClick, onHover, children }: Props) {
+export function CellTile({ stem, label, changed, marked, dim, title, onClick, onHover, doubt, id, children }: Props) {
   const classes = ['tile', marked && 'marked', changed && 'changed', dim && 'dim'].filter(Boolean).join(' ')
   return (
     <button
@@ -38,6 +42,9 @@ export function CellTile({ stem, label, changed, marked, dim, title, onClick, on
       onClick={onClick}
       onMouseEnter={onHover}
       onFocus={onHover}
+      data-id={id}
+      data-doubt={doubt === undefined ? undefined : doubt.toFixed(2)}
+      style={doubt === undefined ? undefined : ({ '--doubt': doubt } as CSSProperties)}
       aria-pressed={marked ?? false}
       aria-label={label ? `Cell ${stem}, ${label}` : `Cell ${stem}`}
     >

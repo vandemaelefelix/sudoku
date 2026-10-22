@@ -59,7 +59,6 @@ export function Fetch() {
 
   return (
     <Frame
-      flow="a"
       step="fetch"
       task="Fetch the scans that players uploaded. The page finds the table and the bucket of the stage."
       keys={[{ keys: 'Enter', does: 'Fetch new scans' }]}
@@ -95,7 +94,7 @@ export function Fetch() {
             ))}
             <p>
               Next: check the outlines.{' '}
-              <button type="button" onClick={() => go('a/outlines')}>
+              <button type="button" onClick={() => go('outlines')}>
                 Open Outlines
               </button>
             </p>

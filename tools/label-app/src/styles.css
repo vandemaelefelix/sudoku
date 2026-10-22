@@ -393,6 +393,25 @@ kbd {
 
 .tile.marked {
   border-color: var(--red);
+  outline: 2px solid var(--red);
+  outline-offset: 1px;
+}
+
+/* The doubt of a cell: 0 is green, 1 is red. */
+/* A ring outside the tile: the cut's own grid lines often darken the image edge. */
+.tile[data-doubt] {
+  border-color: transparent;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) calc(var(--doubt) * 100%), var(--green));
+  margin: 4px;
+}
+
+.tile[data-doubt] .tile-label {
+  background: color-mix(in srgb, var(--graphite) 85%, var(--sheet));
+  color: var(--sheet);
+}
+
+.tile[data-doubt].changed .tile-label {
+  background: var(--blue);
 }
 
 .tile.changed .tile-label {
@@ -428,9 +447,14 @@ kbd {
   font-weight: 600;
 }
 
-.digit-tabs .count {
+.digit-tabs .count,
+.digit-tabs .progress {
   font-size: 0.8em;
   color: var(--graphite);
+}
+
+.digit-tabs .progress {
+  font-size: 0.7em;
 }
 
 .digit-tabs .here {
@@ -628,6 +652,9 @@ kbd {
 .detail {
   position: sticky;
   top: 16px;
+  /* The reasons stay in view above the footer. */
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
   display: grid;
   gap: 16px;
   padding: 16px;
@@ -664,8 +691,8 @@ kbd {
 }
 
 .detail-cell img {
-  width: 128px;
-  height: 128px;
+  width: 96px;
+  height: 96px;
   border-radius: 4px;
   flex: none;
 }
@@ -689,6 +716,149 @@ kbd {
 .detail-fix {
   color: var(--blue);
   font-weight: 600;
+}
+
+/* The check steps: legend, sure button, selection */
+
+.check-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.legend {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--graphite);
+  font-size: 0.88em;
+}
+
+.legend-bar {
+  width: 80px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--green), var(--red));
+}
+
+.badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.badge.grey {
+  background: color-mix(in srgb, var(--graphite) 85%, var(--sheet));
+  color: var(--sheet);
+}
+
+.badge.blue {
+  background: var(--blue);
+  color: var(--sheet);
+}
+
+.badge.selected {
+  background: var(--sheet);
+  color: var(--ink);
+  outline: 3px solid var(--ink);
+}
+
+.sure {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sure input {
+  width: 4.5em;
+  font: inherit;
+  padding: 4px 6px;
+  color: inherit;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.check .gallery {
+  user-select: none;
+}
+
+.drag-box {
+  position: fixed;
+  z-index: 5;
+  pointer-events: none;
+  border: 1px solid var(--blue);
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+}
+
+.detail-doubt h3 {
+  margin: 0 0 4px;
+  font-size: 1em;
+}
+
+.detail-doubt ul {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 0.92em;
+}
+
+.detail-nophoto {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+  color: var(--graphite);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+}
+
+/* Start page: model line and tools */
+
+.model-line {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  max-width: 70ch;
+  margin-bottom: 24px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--red);
+  background: var(--red-soft);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.model-line p {
+  margin: 0;
+}
+
+.tools {
+  margin-top: 40px;
+  max-width: 520px;
+}
+
+.tools h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.tool {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 8px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none;
+}
+
+.tool .count {
+  color: var(--graphite);
+}
+
+.flow-card {
+  max-width: 520px;
 }
 
 /* Fetch */
@@ -778,4 +948,16 @@ kbd {
     flex-wrap: wrap;
     padding: 12px 16px;
   }
+}
+
+/* Square, so the mark at row and col ninths stays on its cell. */
+.detail .detail-grid {
+  width: min(100%, 34vh);
+  margin: 0 auto;
+}
+
+/* Ink, not red: red already means doubt on the ring. */
+.tile[data-doubt].marked {
+  border-color: var(--ink);
+  border-width: 3px;
 }
