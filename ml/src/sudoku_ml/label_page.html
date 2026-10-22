@@ -8,8 +8,14 @@
   body { font: 14px system-ui, sans-serif; margin: 0; display: grid;
          grid-template-columns: 1fr 320px; grid-template-rows: auto auto auto auto 1fr auto;
          height: 100vh; }
-  body.mode-photos, body.mode-progress, body.mode-outlines, body.mode-outline { grid-template-columns: 1fr; }
-  body.mode-photos aside, body.mode-progress aside, body.mode-outlines aside, body.mode-outline aside { display: none; }
+  body.mode-photos, body.mode-progress, body.mode-outlines, body.mode-outline, body.mode-scanlist { grid-template-columns: 1fr; }
+  body.mode-photos aside, body.mode-progress aside, body.mode-outlines aside, body.mode-outline aside,
+  body.mode-scanlist aside { display: none; }
+  #scan-list { display: flex; flex-direction: column; gap: 8px; }
+  .scan-item { display: flex; gap: 16px; align-items: center; padding: 6px; border: 2px solid var(--none);
+               cursor: pointer; }
+  .scan-item:hover { box-shadow: 0 0 0 3px #f2b705; }
+  .scan-item img { width: 160px; display: block; }
   header { grid-row: 1; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
            padding: 8px 16px; border-bottom: 1px solid #ddd; }
   nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
@@ -130,7 +136,8 @@
     <button data-mode="digits"><span class="label">2 Confirm digits <span class="badge" data-count="digits"></span></span><small>Does each cell show this digit?</small></button>
     <button data-mode="groups"><span class="label">3 Label kind <span class="badge" data-count="kind"></span></span><small>Printed or handwritten?</small></button>
     <span class="divider"></span>
-    <button data-mode="outlines"><span class="label">Outlines <span class="badge" data-count="outlines"></span></span><small>Uploaded scans: is the outline right?</small></button>
+    <button data-mode="outlines"><span class="label">Scans 1 · Outlines <span class="badge" data-count="outlines"></span></span><small>Is the outline of each scan right?</small></button>
+    <button data-mode="scanlist"><span class="label">Scans 2 · Cells <span class="badge" data-count="scan_cells"></span></span><small>Confirm the 81 cells of each scan</small></button>
     <span class="divider"></span>
     <span class="tools">Tools</span>
     <button class="tool" data-mode="review"><span class="label">Review</span><small>Fix doubtful labels</small></button>
@@ -244,6 +251,14 @@ const HELP = {
     </ol>
     <p>No cell of a scan trains the model before its outline is approved.</p>
     <p>Press <b>N</b> for the next screen without a decision. Press <b>Z</b> to undo the last Enter, fix or reject.</p>`,
+  scanlist: `
+    <h3>What to do</h3>
+    <ol>
+      <li>Each row is an uploaded scan with an approved outline. Its cells still need your check.</li>
+      <li>Click a scan, or press <b>Enter</b> for the first one. The scan view opens with its 81 cells.</li>
+      <li>Fix the wrong cells there. Press <b>Enter</b> to confirm them. The next scan then opens.</li>
+    </ol>
+    <p>Press <b>Finish</b> after the last scan. Finish marks the confirmed cells as verified.</p>`,
   outline: `
     <h3>What to do</h3>
     <ol>
@@ -291,6 +306,8 @@ let checkError = "";
 let lastStatus = null;  // the last /api/status, for the banner
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
 let scan = null;       // the scan in the scan view, from /api/scans
+let scanList = null;   // the Cells screen, from /api/scan-list
+let scanFrom = "outline";  // the screen that B in the scan view goes back to
 let outlines = null;   // one page of the Outlines screen, from /api/outlines
 let one = null;        // the scan in the large outline view, from /api/outline
 let oneCorners = null; // [[x, y] × 4] in upright photo pixels, as the reviewer drags them
@@ -453,7 +470,21 @@ function deriveView() {
     if (st.scans === 0) {
       return showState("empty", "No uploaded scans yet. Run just pull-scans, then restart the server.");
     }
+    if (st.scan_cells > 0) {
+      return showState("done", "Every outline is checked. ✓ Next: confirm the cells of each scan (Cells).",
+        [["Open Cells", () => open("scanlist")]]);
+    }
     return showState("done", "Every outline is checked. ✓ Next: press Finish.");
+  }
+  if (mode === "scanlist" && scanList && !scanList.scans.length && st) {
+    if (st.outlines > 0) {
+      return showState("empty", `No approved scan waits. ${st.outlines} outlines wait: check them first.`,
+        [["Open Outlines", () => open("outlines")]]);
+    }
+    if (st.scans === 0) {
+      return showState("empty", "No uploaded scans yet. Run just pull-scans, then restart the server.");
+    }
+    return showState("done", "No approved scan has cells to confirm. ✓ Next: press Finish.");
   }
   if (mode === "groups" && !screen && st) {
     if (st.digit_cells === 0) {
@@ -594,6 +625,9 @@ function title() {
     text = !scan ? "" : `Scan ${scan.photo} · outline ${scan.status} · ` +
       `${scan.cells.filter((c) => c.edited).length} cells corrected by the player · ` +
       `${scan.cells.filter((c) => c.shared).length} cells shared with other scans`;
+  } else if (mode === "scanlist") {
+    const n = scanList ? scanList.scans.length : 0;
+    text = !n ? "" : `${n} ${n === 1 ? "scan" : "scans"} with cells to confirm · oldest first`;
   } else if (mode === "outlines") {
     text = !outlines ? "" : `${outlines.open} outlines to check · the most doubtful first` +
       `${outlines.pages > 1 ? ` · screen ${outlines.page + 1} of ${outlines.pages}` : ""}`;
@@ -730,6 +764,8 @@ const ACTIONS = {
            ["Z · undo", () => undo()]],
   scans: [["Enter · Confirm cells", () => confirmScan(), "Label every cell of this scan, with your changes."],
           ["B · Back", () => backFromScan()], ["Z · undo", () => undo()]],
+  scanlist: [["Enter · Open the first scan", () => openFirstScan(), "Open the oldest scan with cells to confirm."],
+             ["Z · undo", () => undo(), "Undo the last confirm. Its scan comes back to the list."]],
   outlines: [["Enter · Approve the others", () => approveOutlines(), "Approve every scan without a red ✕."],
              ["N · Next screen", () => nextOutlines(), "Show the next screen. Decide on this one later."],
              ["Z · undo", () => undo()]],
@@ -991,10 +1027,11 @@ function renderScanGrid() {
     div.onmouseenter = () => showDetail(cell);
     div.onmouseleave = () => { hovered = null; };
     const select = div.querySelector("select");
-    if (cell.shared) {
-      select.value = now.digit;
+    if (cell.shared || cell.locked) {
+      select.value = cell.locked ? "" : now.digit;
       select.disabled = true;
-      div.onclick = () => say(`This cell belongs to scan ${cell.shared}. Change it there.`);
+      div.onclick = () => say(cell.shared ? `This cell belongs to scan ${cell.shared}. Change it there.`
+        : `This cell is in ${cell.digit}/. It is not one of the labels of this scan.`);
       continue;
     }
     select.value = now.digit;
@@ -1013,7 +1050,7 @@ function renderScanGrid() {
 async function confirmScan() {
   if (!scan) return;
   if (scan.status !== "accepted") return say("Approve the outline of this scan first.");
-  const cells = scan.cells.filter((c) => c.id && !c.shared).map((c) => ({ id: c.id, ...scanLabel(c) }));
+  const cells = scan.cells.filter((c) => c.id && !c.shared && !c.locked).map((c) => ({ id: c.id, ...scanLabel(c) }));
   const missing = cells.filter((c) => c.digit !== "empty" && !c.kind).length;
   if (missing) {
     return say(`${missing} digit ${missing === 1 ? "cell has" : "cells have"} no kind yet (·). ` +
@@ -1021,12 +1058,66 @@ async function confirmScan() {
   }
   const changed = Object.keys(local).length;
   await api("/api/scans/confirm", { photo: scan.photo, cells });
+  const text = `Confirmed ${cells.length} cells with ${changed} changes. Press Z to undo.`;
+  if (scanFrom === "scanlist") {
+    const next = (await api("/api/scan-list")).scans[0];
+    if (next && next.photo === scan.photo) {
+      // A scan that a confirm leaves in the list would open again and again.
+      mode = "scanlist";
+      await loadScanList();
+      return say(`${text} Scan ${next.photo} still has ${next.open} open cells. Press Z, then report it.`);
+    }
+    if (next) {
+      await loadScan(next.photo);
+      return say(`${text} The next scan is open.`);
+    }
+    mode = "scanlist";
+    await loadScanList();
+    return say(text);
+  }
   await loadScan(scan.photo);
-  say(`Confirmed ${cells.length} cells with ${changed} changes. Press Z to undo.`);
+  say(text);
+}
+
+const loadScanList = () => asLoad(() => run(loadScanList), loadScanListNow);
+
+async function loadScanListNow() {
+  scanList = await api("/api/scan-list");
+  lastStatus = await api("/api/status");
+  endLoading();
+  local = {};
+  scan = null;
+  render();
+  const list = document.createElement("div");
+  list.id = "scan-list";
+  for (const item of scanList.scans) {
+    const row = document.createElement("div");
+    row.className = "scan-item";
+    row.innerHTML = `<img alt="" src="/outline/${item.photo}.jpg"><div><b>Scan ${item.photo}</b><br>` +
+      `${item.open} cells to confirm · ${item.edited} corrected by the player</div>`;
+    row.onclick = () => run(() => openScanFromList(item.photo));
+    list.append(row);
+  }
+  $("photos").replaceChildren(list);
+}
+
+async function openScanFromList(photo) {
+  scanFrom = "scanlist";
+  mode = "scans";
+  await loadScan(photo);
+}
+
+async function openFirstScan() {
+  if (!scanList || !scanList.scans.length) return;
+  await openScanFromList(scanList.scans[0].photo);
 }
 
 async function backFromScan() {
   if (!scan) return;
+  if (scanFrom === "scanlist") {
+    mode = "scanlist";
+    return loadScanList();
+  }
   if (scan.status === "unchecked") {
     mode = "outline";
     return loadOne(scan.photo);
@@ -1195,6 +1286,7 @@ async function rejectOutline() {
 
 async function viewCells() {
   if (!one) return;
+  scanFrom = "outline";
   mode = "scans";
   await loadScan(one.photo);
 }
@@ -1206,7 +1298,7 @@ async function backToGallery() {
 }
 
 function render() {
-  const nav = ["outline", "scans"].includes(mode) ? "outlines" : mode;
+  const nav = mode === "outline" ? "outlines" : mode === "scans" ? (scanFrom === "scanlist" ? "scanlist" : "outlines") : mode;
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === nav);
   document.body.className = `mode-${mode}`;
   $("help").innerHTML = HELP[mode];
@@ -1215,7 +1307,7 @@ function render() {
   renderFolders();
   renderActions();
   $("table").innerHTML = "";
-  if (!["photos", "scans", "outlines", "outline"].includes(mode)) $("photos").innerHTML = "";
+  if (!["photos", "scans", "outlines", "outline", "scanlist"].includes(mode)) $("photos").innerHTML = "";
   if (mode === "scans") renderScanGrid();
   const grid = $("grid");
   grid.innerHTML = "";
@@ -1291,6 +1383,8 @@ async function reload() {
     setScreen(await api("/api/review"));
   } else if (mode === "scans") {
     await loadScan(scan.photo);
+  } else if (mode === "scanlist") {
+    await loadScanList();
   } else if (mode === "outlines") {
     await loadOutlines(outlines ? outlines.page : 0);
   } else if (mode === "outline") {
@@ -1480,7 +1574,7 @@ async function refreshStatus() {
     lastStatus = value;
     const counts = {
       photos: value.photos, digits: value.digits + value.not_prelabelled, kind: value.kind,
-      outlines: value.outlines,
+      outlines: value.outlines, scan_cells: value.scan_cells,
     };
     for (const badge of document.querySelectorAll("[data-count]")) {
       const n = counts[badge.dataset.count];
@@ -1552,6 +1646,7 @@ async function open(next, target) {
   screen = null;
   scan = null;
   outlines = null;
+  scanList = null;
   one = null;
   queue = [];
   $("photos").innerHTML = "";
@@ -1563,6 +1658,8 @@ async function open(next, target) {
   const load = async () => {
     if (mode === "photos") {
       await loadPhoto();
+    } else if (mode === "scanlist") {
+      await loadScanList();
     } else if (mode === "outlines") {
       await loadOutlines();
     } else if (mode === "digits") {
@@ -1614,6 +1711,11 @@ document.addEventListener("keydown", (event) => {
     }
     if (key === "enter") run(confirmScan);
     else if (key === "b") run(backFromScan);
+    else if (key === "z") run(undo);
+    return;
+  }
+  if (mode === "scanlist") {
+    if (key === "enter") run(openFirstScan);
     else if (key === "z") run(undo);
     return;
   }
