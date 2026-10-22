@@ -26,6 +26,18 @@ function run(scene: Scene, quad: Quad | null, t0: number, t1: number) {
 }
 
 describe('stepScene', () => {
+  // A switch of the grid chooser goes to a grid with at least 60 % of the area that does not overlap the old one. The nearest such
+  // grid touches it, so its corners move by about one side: far above JUMP.
+  it.each([
+    ['the same size', 300],
+    ['60 % of the area', Math.round(300 * Math.sqrt(0.6))],
+  ])('reports found on a switch to the touching grid of %s', (_name, side) => {
+    const scene = run(createScene(VIEW), gridAt(50, 100), 0, 1)
+    stepScene(scene, gridAt(50, 400, side), 1 + 1 / 60, false)
+    expect(scene.event).toBe('found')
+    expect(scene.foundAt).toBe(1 + 1 / 60)
+  })
+
   it('reports found on the first usable quad', () => {
     const scene = run(createScene(VIEW), null, 0, 1)
     stepScene(scene, gridAt(50, 300), 1.5, false)

@@ -71,13 +71,13 @@ describe('useFrameTracking', () => {
     const frame = frameAt(5)
     onFrame(frame)
     expect(detectGrid).toHaveBeenCalledWith(frame)
-    expect(prepare()).toEqual({ quad, timestamp: 5, aspect: 1080 / 1920, switched: false })
+    expect(prepare()).toEqual({ quad, timestamp: 5, aspect: 1080 / 1920, switches: 0 })
   })
 
   it('publishes an empty detection while the detector loads', () => {
     const { onFrame, prepare } = setup(undefined)
     onFrame(frameAt(5))
-    expect(prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920, switched: false })
+    expect(prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920, switches: 0 })
   })
 
   it('publishes an empty detection and disposes the frame when detection fails, and warns once per message', async () => {
@@ -87,7 +87,7 @@ describe('useFrameTracking', () => {
     }) as GridDetector)
     const dispose = jest.fn()
     expect(() => onFrame(frameAt(5, dispose))).not.toThrow()
-    expect(prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920, switched: false })
+    expect(prepare()).toEqual({ quad: null, timestamp: 5, aspect: 1080 / 1920, switches: 0 })
     expect(dispose).toHaveBeenCalledTimes(1)
     onFrame(frameAt(6))
     await Promise.resolve()
@@ -96,7 +96,7 @@ describe('useFrameTracking', () => {
 
   it('turns a detection into an outline in view points', () => {
     const { hook, react } = setup()
-    react({ quad, timestamp: 5, aspect: 0.5625, switched: false })
+    react({ quad, timestamp: 5, aspect: 0.5625, switches: 0 })
     expect(hook.result.current.outline.value).toEqual([
       { x: 72, y: 128 },
       { x: 288, y: 128 },
@@ -108,16 +108,24 @@ describe('useFrameTracking', () => {
 
   it('removes the outline when the grid is gone for longer than the hold time', () => {
     const { hook, react } = setup()
-    react({ quad, timestamp: 5, aspect: 0.5625, switched: false })
-    react({ quad: null, timestamp: 6, aspect: 0.5625, switched: false })
+    react({ quad, timestamp: 5, aspect: 0.5625, switches: 0 })
+    react({ quad: null, timestamp: 6, aspect: 0.5625, switches: 0 })
     expect(hook.result.current.outline.value).toBeNull()
   })
 
-  it('publishes a switch of the aiming rule for the UI thread', () => {
-    const detectGrid = jest.fn(() => ({ quad, score: 0.36, switched: true }))
+  it('counts the switches of the aiming rule for the UI thread', () => {
+    const detectGrid = jest
+      .fn()
+      .mockReturnValueOnce({ quad, score: 0.36, switched: false })
+      .mockReturnValueOnce({ quad, score: 0.36, switched: true })
+      .mockReturnValue({ quad, score: 0.36, switched: false })
     const { onFrame, prepare } = setup(detectGrid as unknown as GridDetector)
     onFrame(frameAt(5))
-    expect(prepare()).toMatchObject({ quad, switched: true })
+    expect(prepare()).toMatchObject({ switches: 0 })
+    onFrame(frameAt(5.1))
+    expect(prepare()).toMatchObject({ switches: 1 })
+    onFrame(frameAt(5.2))
+    expect(prepare()).toMatchObject({ switches: 1 })
   })
 
   it('starts the smoothing new on a switch, so the outline jumps to the new grid in one frame', () => {
@@ -128,8 +136,22 @@ describe('useFrameTracking', () => {
       { x: 0.8, y: 0.9 },
       { x: 0.2, y: 0.9 },
     ]
-    react({ quad, timestamp: 5, aspect: 0.5625, switched: false })
-    react({ quad: next, timestamp: 5 + 1 / 30, aspect: 0.5625, switched: true })
+    react({ quad, timestamp: 5, aspect: 0.5625, switches: 0 })
+    react({ quad: next, timestamp: 5 + 1 / 30, aspect: 0.5625, switches: 1 })
+    expect(hook.result.current.frameQuad.value).toEqual(next)
+  })
+
+  it('starts the smoothing new when the UI thread skipped the frame of the switch', () => {
+    const { hook, react } = setup()
+    const next: Quad = [
+      { x: 0.2, y: 0.5 },
+      { x: 0.8, y: 0.5 },
+      { x: 0.8, y: 0.9 },
+      { x: 0.2, y: 0.9 },
+    ]
+    react({ quad, timestamp: 5, aspect: 0.5625, switches: 0 })
+    // The frame of the switch never reached the reaction. The next frame still carries the count.
+    react({ quad: next, timestamp: 5 + 2 / 30, aspect: 0.5625, switches: 1 })
     expect(hook.result.current.frameQuad.value).toEqual(next)
   })
 
@@ -141,8 +163,8 @@ describe('useFrameTracking', () => {
       { x: 0.8, y: 0.9 },
       { x: 0.2, y: 0.9 },
     ]
-    react({ quad, timestamp: 5, aspect: 0.5625, switched: false })
-    react({ quad: next, timestamp: 5 + 1 / 30, aspect: 0.5625, switched: false })
+    react({ quad, timestamp: 5, aspect: 0.5625, switches: 0 })
+    react({ quad: next, timestamp: 5 + 1 / 30, aspect: 0.5625, switches: 0 })
     expect(hook.result.current.frameQuad.value).not.toEqual(next)
   })
 })
