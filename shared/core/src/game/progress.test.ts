@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hint, place, select, toggleNote, undo } from './actions'
+import { fillHint, place, select, toggleNote, undo } from './actions'
 import { createGame } from './createGame'
 import { hasMoves } from './progress'
 import { SAMPLE_GIVENS, SAMPLE_SOLUTION } from './samplePuzzle'
@@ -16,7 +16,7 @@ describe('hasMoves', () => {
     const selected = select(newGame(), 2)
     expect(hasMoves(place(selected, 4).game)).toBe(true)
     expect(hasMoves(toggleNote(selected, 4).game)).toBe(true)
-    expect(hasMoves(hint(newGame(), () => 0).game)).toBe(true)
+    expect(hasMoves(fillHint(newGame(), { kind: 'fallback', answer: { cell: 2, digit: 4 } }, []).game)).toBe(true)
   })
 
   it('is false when every move is undone and none was a mistake', () => {

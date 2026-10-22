@@ -2,7 +2,9 @@ import { GRID_CELLS } from '../grid'
 import { peersOf } from '../units'
 import { completeDigits, completedBetween, DIGITS, isSolved, NOTHING_COMPLETED, valueAt } from './completion'
 import { MAX_MISTAKES, UNDO_LIMIT } from './constants'
-import type { Digit, Game, MoveResult, Random, UndoStep } from './types'
+import type { HintPlan } from '../hint/types'
+import type { CellDigit } from '../technique/types'
+import type { Digit, Game, MoveResult, UndoStep } from './types'
 
 /** For an action that completes nothing. With the same game object, the action changed nothing. */
 const noCompletion = (game: Game): MoveResult => ({ game, completed: NOTHING_COMPLETED })
@@ -114,19 +116,33 @@ export function undo(game: Game): MoveResult {
   })
 }
 
-/** Fills one random empty or wrong cell with its correct number. A hint is never a mistake. */
-export function hint(game: Game, random: Random): MoveResult {
-  if (game.status !== 'playing') return noCompletion(game)
-  const open = game.solution.flatMap((digit, cell) => (valueAt(game, cell) === digit ? [] : [cell]))
-  const cell = open[Math.min(open.length - 1, Math.max(0, Math.floor(random() * open.length)))]
-  if (cell === undefined) return noCompletion(game)
-  // createGame checks that every solution value is 1 to 9.
-  const digit = game.solution[cell] as Digit
+/** True when `shown` holds the same cell and digit as `answer`. */
+export function shownBefore(answer: CellDigit, shown: readonly CellDigit[]): boolean {
+  return shown.some((item) => item.cell === answer.cell && item.digit === answer.digit)
+}
+
+/**
+ * Counts a hint whose answer the player now sees (ADR-032 point 7). `shown` holds the answers that
+ * this game session showed before. The same answer counts once, so a second view adds nothing.
+ */
+export function revealHint(game: Game, answer: CellDigit, shown: readonly CellDigit[]): Game {
+  if (game.status !== 'playing' || shownBefore(answer, shown)) return game
+  return { ...game, hintsUsed: game.hintsUsed + 1 }
+}
+
+/**
+ * Places the answer of the plan, selects its cell and counts the hint as `revealHint` does. A hint
+ * is never a mistake. Does nothing for a mistake plan, or for a stale plan whose cell is filled or
+ * whose digit is not the solution.
+ */
+export function fillHint(game: Game, plan: HintPlan, shown: readonly CellDigit[]): MoveResult {
+  if (game.status !== 'playing' || plan.kind === 'mistake') return noCompletion(game)
+  const { cell, digit } = plan.answer
+  if (valueAt(game, cell) !== 0 || game.solution[cell] !== digit) return noCompletion(game)
   return settle(game, {
-    ...game,
+    ...revealHint(game, plan.answer, shown),
     ...withNumber(game, cell, digit),
     selected: cell,
-    hintsUsed: game.hintsUsed + 1,
     undoSteps: withUndoStep(game),
   })
 }

@@ -1,3 +1,4 @@
+import { planHint } from '@sudoku/core'
 import { canErase, canUndo, reduceSession, startSession, type Session, type SessionAction } from './session.utils'
 import { sampleStart } from './sample.utils'
 
@@ -62,11 +63,30 @@ it('returns the same session when an action changes nothing', () => {
   expect(reduceSession(session, { type: 'erase' })).toBe(session)
 })
 
-it('fills the cell that the random source picks with a hint, and selects it', () => {
-  const session = run(start(), { type: 'hint', random: () => 0 })
-  expect(session.game.entries[OPEN]).toBe(4)
+it('fills the answer of the hint plan, selects it and counts one hint', () => {
+  const before = start()
+  const plan = planHint(before.game)
+  if (plan === null || plan.kind === 'mistake') throw new Error('expected a plan with an answer')
+  const session = run(before, { type: 'hint' })
+  expect(session.game.entries[plan.answer.cell]).toBe(plan.answer.digit)
+  expect(session.game.selected).toBe(plan.answer.cell)
+  expect(session.game.hintsUsed).toBe(1)
+  expect(session.shownAnswers).toEqual([plan.answer])
+  expect(session.move).toMatchObject({ kind: 'hint', cell: plan.answer.cell })
+})
+
+it('counts the same hint answer once after an undo', () => {
+  const session = run(start(), { type: 'hint' }, { type: 'undo' }, { type: 'hint' })
+  expect(session.game.hintsUsed).toBe(1)
+  expect(session.shownAnswers).toHaveLength(1)
+})
+
+it('selects a wrong entry instead of filling a hint', () => {
+  const wrong = run(start(), { type: 'select', cell: OPEN }, { type: 'digit', digit: 5 }, { type: 'select', cell: 0 })
+  const session = run(wrong, { type: 'hint' })
   expect(session.game.selected).toBe(OPEN)
-  expect(session.move).toMatchObject({ kind: 'hint', cell: OPEN })
+  expect(session.game.hintsUsed).toBe(0)
+  expect(session.move).toBe(wrong.move)
 })
 
 it('adds time only while the game is playing', () => {
