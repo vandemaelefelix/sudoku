@@ -20,6 +20,7 @@ React Native API:
 | Build the development variant on a device | `just ios-dev <UDID>`. The app is "Sudoku Dev" with a DEV ribbon (ADR-022) |
 | Build the production variant on a device | `just ios-release <UDID>`. The app is "Sudoku", a Release build (ADR-022) |
 | Build for the iOS Simulator | `just ios-simulator`. A Release build of the development variant, without code signing and without Metro (ADR-010). CI runs the same build |
+| Check the native build in CI | `gh workflow run ios-simulator.yml --ref <branch>`. Start it before a pull request with a native change merges. A push to an open pull request starts no build (ADR-010) |
 | Render the app icons | `just icons`. Change the design in `tools/icons/geometry.mjs`, not in the PNGs |
 | Check the Expo setup | `pnpm dlx expo-doctor` |
 | Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |

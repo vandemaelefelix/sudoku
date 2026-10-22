@@ -3,8 +3,11 @@ name: ios-simulator
 # So the build runs only when a native input of the app changes, and on a manual run.
 # pnpm-lock.yaml, pnpm-workspace.yaml and the justfile are not paths: each changes in many pull requests that touch no native code.
 # mobile/ios is not a path: it is generated and git ignores it (ADR-002).
+# A push to an open pull request starts no run: one run costs about 120 of the 2,000 monthly minutes.
+# A manual run checks the branch again before the merge.
 on:
   pull_request:
+    types: [opened, reopened, ready_for_review]
     paths:
       - mobile/package.json
       - mobile/app.json
