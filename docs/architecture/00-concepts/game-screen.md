@@ -112,8 +112,9 @@ two haptics, so two taps never blur together.
 
 A tap on Hint opens the **hint card** in the dock. The tools and the keypad sink and fade, and the
 card rises into their place. They stay in the layout under the card, so the grid does not move. The
-card sizes to its text, up to the height of the dock. It is not modal: it has no scrim, and the grid
-stays live. The grid marks the cells of the hint with the highlight roles. The [hints](hints.md)
+card covers the dock from edge to edge, so it has the width of the grid. It is not modal: it has no
+scrim, and the grid stays live. The grid marks the cells of the hint with soft fills, and the
+selected cell steps back. The [hints](hints.md)
 concept describes the rungs, the buttons, the roles and the motion.
 
 Close (X) and "Fill it" end the hint. The card sinks, and the tools and the keypad come back.
