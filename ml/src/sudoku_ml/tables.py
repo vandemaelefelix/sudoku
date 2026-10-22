@@ -53,7 +53,9 @@ LICENCES = (
     "by-nc-nd",
     "player-contributed",
 )
-PHOTO_STATUSES = ("pending", "accepted", "rejected", "too-few-cells", "legacy")
+# `unchecked`: an uploaded scan whose outline no person has checked. It has corners, as `accepted`.
+PHOTO_STATUSES = ("pending", "accepted", "rejected", "too-few-cells", "legacy", "unchecked")
+CORNER_STATUSES = ("accepted", "unchecked")
 PHOTO_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp", ".heic")
 
 
@@ -74,7 +76,7 @@ class PhotoRow:
     licence: str
     attribution: str
     status: str
-    corners: str  # `x1 y1 ... x4 y4`, see format_corners. Empty unless accepted
+    corners: str  # `x1 y1 ... x4 y4`, see format_corners. Empty unless in CORNER_STATUSES
 
 
 PHOTO_FIELDS = [f.name for f in fields(PhotoRow)]
@@ -298,11 +300,11 @@ def photo_row_problems(row: PhotoRow) -> list[str]:
         found.append(f"unknown licence {row.licence!r}")
     if row.status not in PHOTO_STATUSES:
         found.append(f"unknown status {row.status!r}")
-    if row.status == "accepted":
+    if row.status in CORNER_STATUSES:
         try:
             parse_corners(row.corners)
         except ValueError:
-            found.append("accepted without 4 corners")
+            found.append(f"{row.status} without 4 corners")
     elif row.corners:
         found.append(f"corners on a {row.status} photo")
     return found

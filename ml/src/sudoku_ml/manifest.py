@@ -13,6 +13,7 @@ from sudoku_ml.journal import (
     Source,
     append_records,
     current_kinds,
+    current_label_sources,
     current_sources,
     format_time,
     read_journal,
@@ -45,13 +46,14 @@ def base_sources(table: dict[str, CellRow]) -> dict[str, Source]:
 
 def confirmed_cells(lines: list[Line]) -> set[str]:
     """Cells that a person labelled on the labelling page in the unfinished session. Undone
-    actions, source lines and repair lines do not count."""
+    actions, source lines and repair lines do not count. Nor do the moves of the Outlines
+    screen: a cut again or a reject moves files, and no person looked at the cells."""
     undone = undone_actions(lines)
     return {
         x.cell
         for x in lines
         if x.field in ("digit", "kind")
-        and x.screen not in ("undo", "repair")
+        and x.screen not in ("undo", "repair", "outlines")
         and x.action not in undone
     }
 
@@ -98,6 +100,7 @@ def write_cells_manifest(paths: DataPaths, forget_missing: bool = False) -> int:
     kinds = current_kinds(lines, base_kinds(table))
     sources = current_sources(lines, base_sources(table))
     confirmed = confirmed_cells(lines)
+    label_sources = current_label_sources(lines, {c: r.label_source for c, r in table.items()})
     if paths.cells.exists():
         for folder in paths.cells.iterdir():
             if folder.is_dir() and folder.name not in CELL_FOLDERS:
@@ -118,15 +121,11 @@ def write_cells_manifest(paths: DataPaths, forget_missing: bool = False) -> int:
                 digit,
                 _kind_column(cell_id, digit, kinds.get(cell_id)),
                 sources.get(cell_id),
-                _label_source(cell_id in confirmed, table.get(cell_id)),
+                "verified" if cell_id in confirmed else label_sources.get(cell_id, ""),
             )
         )
     write_cells(paths.cells_csv, rows)
     return len(rows)
-
-
-def _label_source(confirmed: bool, row: CellRow | None) -> str:
-    return "verified" if confirmed else (row.label_source if row else "")
 
 
 def repair_lines(

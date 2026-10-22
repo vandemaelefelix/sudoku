@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from photos import grid_photo, save_photo
 from test_label_store import Clock, build
+from test_label_store_scans import entries, pulled
 
 from sudoku_ml.journal import read_journal
 from sudoku_ml.label_server import main, make_server, prelabel_new_cells
@@ -137,6 +138,11 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Nothing to review yet. Stop the server. Run just suspects. Start the server again.",
         "The model reads ${cell.model_kind} (",
         "no model guess yet.",
+        "No uploaded scans yet. Run just pull-scans, then restart the server.",
+        "Every outline is checked. ✓ Next: press Finish.",
+        "Approve the outline of this scan first.",
+        "No cell of a scan trains the model before its outline is approved.",
+        "These corners do not form a grid.",
     ):
         assert text in page
 
@@ -266,6 +272,8 @@ def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
         "kind_not_prelabelled": 1,
         "digit_cells": 1,
         "kind": 1,
+        "outlines": 0,
+        "scans": 0,
     }
     request(port, "POST", "/api/photos/reject", {"photo": served_photos[3]})
     assert json.loads(request(port, "GET", "/api/status")[1])["photos"] == 0
@@ -278,6 +286,42 @@ def test_the_status_counts_cells_without_a_pre_label_apart(tmp_path: Path):
     try:
         data = json.loads(request(server.server_port, "GET", "/api/status")[1])
         assert data["digits"] == 0 and data["not_prelabelled"] == 2
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_the_outline_and_scan_routes_round_trip(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path)
+    server = make_server(store, PhotoCheck(paths, store.session, Clock()), port=0)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    port = server.server_port
+    try:
+        gallery = json.loads(request(port, "GET", "/api/outlines")[1])
+        assert gallery["open"] == 2 and len(gallery["scans"]) == 2
+        status, data = request(port, "GET", f"/outline/{photos[0]}.jpg")
+        assert status == 200 and data[:2] == b"\xff\xd8"
+        one = json.loads(request(port, "GET", f"/api/outline?photo={photos[0]}")[1])
+        assert one["status"] == "unchecked" and len(one["corners"]) == 4
+        query = ",".join(str(v) for point in one["corners"] for v in point)
+        status, data = request(port, "GET", f"/flat/{photos[0]}.png?c={query}")
+        assert status == 200 and data[:4] == b"\x89PNG"
+        assert not paths.detections.exists()
+        status, _ = request(port, "POST", "/api/outlines/approve", {"photos": photos[:1]})
+        assert status == 200
+        body = {"photo": photos[1], "corners": one["corners"]}
+        status, data = request(port, "POST", "/api/outlines/fix", body)
+        assert status == 200 and "kept" in json.loads(data)["result"]
+        assert json.loads(request(port, "GET", "/api/status")[1])["outlines"] == 0
+        screen = json.loads(request(port, "GET", f"/api/scans?photo={photos[0]}")[1])
+        status, data = request(
+            port, "POST", "/api/scans/confirm", {"photo": photos[0], "cells": entries(screen)}
+        )
+        assert status == 200 and json.loads(data) == {"result": 81}
+        status, data = request(port, "POST", "/api/outlines/reject", {"photo": photos[0]})
+        assert status == 400 and b"already checked" in data
+        status, data = request(port, "GET", "/api/outline?photo=0000000000000000")
+        assert status == 400 and b"not an uploaded scan" in data
     finally:
         server.shutdown()
         server.server_close()

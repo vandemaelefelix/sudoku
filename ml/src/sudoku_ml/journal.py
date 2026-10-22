@@ -18,14 +18,19 @@ class Line:
     t: str  # UTC, TIME_FORMAT
     session: str
     action: str  # the lines of one save or one move share it. An undo line: "undo:<action>"
-    cell: str  # full SHA-256 cell id
-    field: str  # "kind", "digit" or "source"
+    cell: str  # full SHA-256 cell id. For an outline line: the full photo id
+    field: str  # "kind", "digit", "source", "label_source" or "outline"
     old: str | None
-    new: str | None  # a source: "<photo_id> <row> <col>", row and col 0-8
-    screen: str  # "groups", "review", "digits", "undo", "repair" or "photos"
+    new: (
+        str | None
+    )  # a source: "<photo_id> <row> <col>", row and col 0-8. An outline: see format_outline
+    screen: str  # "groups", "review", "digits", "undo", "repair", "photos", "outlines" or "scans"
 
 
 Source = tuple[str, int, int]  # full photo id, row, col (0-8)
+# A source line records a cut, and a label_source line the label provenance of a new cell. They are
+# facts, not labels: undo and rollback skip them.
+FACT_FIELDS = ("source", "label_source")
 FINISHED = "This session is finished. Use git to go back."
 
 
@@ -67,6 +72,26 @@ def parse_source(text: str) -> Source:
     return photo_id, int(row), int(col)
 
 
+def format_outline(status: str, corners: str) -> str:
+    """The outline state of a sudoku photo: `<status> x1 y1 ... x4 y4`, or only the status."""
+    return f"{status} {corners}".strip()
+
+
+def parse_outline(text: str) -> tuple[str, str]:
+    """The inverse of format_outline: (status, corners). The corners are empty without any."""
+    status, _, corners = text.partition(" ")
+    return status, corners
+
+
+def current_outlines(lines: list[Line], base: dict[str, str]) -> dict[str, str]:
+    """`base` (photo id → format_outline of sudoku-photos.csv) with the outline lines on top."""
+    outlines = dict(base)
+    for line in lines:
+        if line.field == "outline" and line.new is not None:
+            outlines[line.cell] = line.new
+    return outlines
+
+
 def format_time(moment: datetime) -> str:
     return moment.astimezone(UTC).strftime(TIME_FORMAT)
 
@@ -98,13 +123,21 @@ def current_sources(lines: list[Line], base: dict[str, Source] | None = None) ->
     return sources
 
 
+def current_label_sources(lines: list[Line], base: dict[str, str]) -> dict[str, str]:
+    """`base` (the label_source column of cells.csv) with the label_source lines applied on top."""
+    found = dict(base)
+    for line in lines:
+        if line.field == "label_source" and line.new is not None:
+            found[line.cell] = line.new
+    return found
+
+
 def last_kind_times(lines: list[Line]) -> dict[str, str]:
     return {line.cell: line.t for line in lines if line.field == "kind"}
 
 
 def _label(line: Line) -> bool:
-    # A source line records a cut. It is a fact, not a label: undo and rollback skip it.
-    return line.field != "source" and line.screen != "undo"
+    return line.field not in FACT_FIELDS and line.screen != "undo"
 
 
 def undone_actions(lines: list[Line]) -> set[str]:
@@ -153,7 +186,7 @@ def rollback_lines(lines: list[Line], target: str, t: str, session: str) -> list
             x.cell[:16]
             for x in lines[last + 1 :]
             if x.cell in cells
-            and x.field != "source"
+            and x.field not in FACT_FIELDS
             and x.action.removeprefix("undo:") not in target_actions
         }
     )
