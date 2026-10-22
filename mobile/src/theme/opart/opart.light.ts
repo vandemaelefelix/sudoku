@@ -72,6 +72,17 @@ export function lightLook(p: OpartPalette): Look {
         conflictHatch: null,
         note: colors.textMuted,
         selectedRingWidth: 2,
+        // The tint of the selected cell: notes in muted text fail on tint200 in Forest. The ring tells the selected cell apart.
+        hintFocus: p.tint150,
+        hintFocusLine: colors.accent,
+        hintPattern: colors.accent,
+        hintSupport: colors.accent,
+        hintStrike: colors.danger,
+        hintTarget: colors.text,
+        hintGhost: p.entry,
+        hintGhostOpacity: 0.4,
+        hintLineWidth: 2,
+        hintTargetWidth: 3,
       },
       key: { fill: p.tint100, digit: colors.text, noteDigit: colors.accent },
       // Boxy toggle: an accent track with a white thumb when on, an outlined track with an accent thumb when off.
