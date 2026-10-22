@@ -91,7 +91,7 @@ status: DRAFT
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
 | Journal | `ml/dataset/work/journal.jsonl`: one line per change of the unfinished work, append-only: kinds, digits and the sources of cut cells. Undo and rollback work on it. Finish folds it into `cells.csv` and deletes it (ADR-018). It replaces the kind log of ADR-009 |
-| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Photos, Digits, Groups, Outlines, Review, Check and Progress, and the scan view |
+| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Photos, Digits, Groups, Outlines, Cells, Review, Check and Progress, and the scan view |
 | Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
 | Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
@@ -299,6 +299,7 @@ status: DRAFT
 | Unchecked scan | An uploaded scan whose outline no person has checked: the status `unchecked` in `sudoku-photos.csv`. Its cells never train the model |
 | Rejected scan | An uploaded scan that the developer rejected on the Outlines screen: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
 | Scan view | The view of the labelling page that shows one uploaded scan: the photo with its outline and the 81 cells with their labels. A cell with the same pixels as a cell of another scan shows as shared |
+| Cells screen | The screen of the labelling page that lists each uploaded scan with an approved outline whose own cells no person has confirmed, oldest first. A scan opens in the scan view. Enter there confirms its cells, and the next scan opens |
 | Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
 | Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
 | Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |

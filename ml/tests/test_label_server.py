@@ -143,6 +143,9 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Approve the outline of this scan first.",
         "No cell of a scan trains the model before its outline is approved.",
         "These corners do not form a grid.",
+        "Next: confirm the cells of each scan (Cells).",
+        "No approved scan has cells to confirm. ✓ Next: press Finish.",
+        "Finish marks the confirmed cells as verified.",
     ):
         assert text in page
 
@@ -273,6 +276,7 @@ def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
         "digit_cells": 1,
         "kind": 1,
         "outlines": 0,
+        "scan_cells": 0,
         "scans": 0,
     }
     request(port, "POST", "/api/photos/reject", {"photo": served_photos[3]})
@@ -313,6 +317,8 @@ def test_the_outline_and_scan_routes_round_trip(tmp_path: Path):
         status, data = request(port, "POST", "/api/outlines/fix", body)
         assert status == 200 and "kept" in json.loads(data)["result"]
         assert json.loads(request(port, "GET", "/api/status")[1])["outlines"] == 0
+        listed = json.loads(request(port, "GET", "/api/scan-list")[1])["scans"]
+        assert [s["photo"] for s in listed] == photos
         screen = json.loads(request(port, "GET", f"/api/scans?photo={photos[0]}")[1])
         status, data = request(
             port, "POST", "/api/scans/confirm", {"photo": photos[0], "cells": entries(screen)}

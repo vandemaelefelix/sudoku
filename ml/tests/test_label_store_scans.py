@@ -12,6 +12,7 @@ from sudoku_ml.finish import finish
 from sudoku_ml.journal import read_journal
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.pull_scans import pull_scans
+from sudoku_ml.relabel import move_cells
 from sudoku_ml.scan_outlines import main as reset_main
 from sudoku_ml.scan_outlines import read_scores
 from sudoku_ml.tables import read_cells, read_photos, stem_of, write_photos
@@ -51,7 +52,7 @@ def entries(screen: dict, **changes: tuple[str, str | None]) -> list[dict]:
     """The own cells of a scan view as the page sends them. changes: `c<index>` → (digit, kind)."""
     found = []
     for index, cell in enumerate(screen["cells"]):
-        if "id" not in cell or cell["shared"]:
+        if "id" not in cell or cell["shared"] or cell["locked"]:
             continue
         digit, kind = changes.get(f"c{index}", (cell["digit"], cell["kind"]))
         found.append({"id": cell["id"], "digit": digit, "kind": kind})
@@ -244,3 +245,51 @@ def test_the_reset_refuses_while_outline_checks_are_unfinished(tmp_path: Path):
     store, paths, photos = pulled(tmp_path)
     store.approve_outlines(photos[:1])
     assert reset_main(paths) == 1
+
+
+def test_the_cells_screen_lists_approved_scans_from_an_unfinished_journal(tmp_path: Path):
+    # The developer's journal holds outline approvals without a Finish. A new start reads it as is.
+    store, paths, photos = pulled(tmp_path)
+    store.approve_outlines(photos)
+    journal = paths.journal.read_bytes()
+    again = LabelStore(paths, Clock())
+    assert paths.journal.read_bytes() == journal
+    listed = again.scan_list()["scans"]
+    assert [s["photo"] for s in listed] == photos
+    assert listed[0]["open"] == 81 and listed[0]["edited"] == 1
+    assert listed[1]["open"] < 81  # the shared cells belong to the first scan
+    assert again.status()["scan_cells"] == 2
+    again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
+    assert [s["photo"] for s in again.scan_list()["scans"]] == photos[1:]
+    assert finish(again)["report"]["problems"] == []
+    assert [s["photo"] for s in again.scan_list()["scans"]] == photos[1:]
+
+
+def test_the_cells_screen_leaves_out_unchecked_and_rejected_scans(tmp_path: Path):
+    store, _, photos = pulled(tmp_path)
+    assert store.scan_list()["scans"] == []
+    store.reject_outline(photos[0])
+    assert store.scan_list()["scans"] == []
+
+
+def test_a_confirmed_scan_leaves_the_cells_list_and_undo_brings_it_back(tmp_path: Path):
+    store, _, photos = pulled(tmp_path)
+    store.approve_outlines(photos)
+    for photo in photos:
+        store.confirm_scan(photo, entries(store.scan_screen(photo)))
+        assert photo not in [s["photo"] for s in store.scan_list()["scans"]]
+    assert store.scan_list()["scans"] == [] and store.status()["scan_cells"] == 0
+    store.undo()
+    assert [s["photo"] for s in store.scan_list()["scans"]] == photos[1:]
+
+
+def test_a_cell_outside_the_digit_folders_is_locked_and_not_confirmed(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
+    store.approve_outlines(photos)
+    first = store.scan_screen(photos[0])["cells"][0]["id"]
+    move_cells(paths.cells, {stem_of(first): "discarded"})  # as `just relabel` does
+    again = LabelStore(paths, Clock())
+    cells = again.scan_screen(photos[0])["cells"]
+    assert cells[0]["locked"] and not any(c["locked"] for c in cells[1:])
+    again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
+    assert again.scan_list()["scans"] == []
