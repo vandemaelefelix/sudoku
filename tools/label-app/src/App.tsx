@@ -8,11 +8,11 @@ import { Outlines } from './steps/Outlines'
 import { Start } from './steps/Start'
 
 export function App() {
-  const [step, item] = useRoute()
+  const [step, item, kind] = useRoute()
   if (step === 'fetch') return <Fetch />
   if (step === 'outlines') return item ? <OutlineLarge photo={item} /> : <Outlines />
   if (step === 'digits') return <Check key="digits" mode="digits" tab={item} />
-  if (step === 'kinds') return <Check key="kinds" mode="kinds" tab={item} />
+  if (step === 'kinds') return <Check key="kinds" mode="kinds" tab={item} kind={kind} />
   if (step === 'doubtful') return <Doubtful />
   if (step === 'finish') return <Finish />
   return <Start />

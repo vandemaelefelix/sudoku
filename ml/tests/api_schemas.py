@@ -115,6 +115,15 @@ CHECK = strict(
     }
 )
 
+CHECK_KINDS = strict(
+    {
+        **CHECK["properties"],
+        "kind_counts": strict(
+            {"all": INTEGER, "printed": INTEGER, "handwritten": INTEGER, "unsure": INTEGER}
+        ),
+    }
+)
+
 SURE = strict({"cells": INTEGER})
 
 DOUBTFUL = strict(
