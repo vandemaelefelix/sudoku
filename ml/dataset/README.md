@@ -25,11 +25,11 @@ Do not delete `images/`. Until it has a backup, it holds the only copy of the im
   `discarded` cell, and for a digit cell without a kind.
 - `photo_id`, `row`, `col`: the sudoku photo and the row and column (0-8) that the cell was cut
   from. All three are empty when the source is not known.
-- `source`: `phone`, `web`, `wicht`, `openverse`, `commons` or `lexski`. `licence` and
+- `source`: `phone`, `web`, `wicht`, `openverse`, `commons`, `lexski` or `app-scan`. `licence` and
   `attribution`: see [DATA_SOURCES.md](../DATA_SOURCES.md).
-- `status`: `pending`, `accepted`, `rejected`, `too-few-cells` or `legacy` (cut before photo
-  checks existed).
-- `corners`: for an `accepted` sudoku photo, the 4 corners `x1 y1 x2 y2 x3 y3 x4 y4` (top left,
+- `status`: `pending`, `accepted`, `rejected`, `too-few-cells`, `legacy` (cut before photo
+  checks existed) or `unchecked` (an uploaded scan whose outline no person has checked, ADR-030).
+- `corners`: for an `accepted` or `unchecked` sudoku photo, the 4 corners `x1 y1 x2 y2 x3 y3 x4 y4` (top left,
   top right, bottom right, bottom left). Empty for the other statuses.
 
 ## One image store for all worktrees

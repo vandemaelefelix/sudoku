@@ -154,13 +154,19 @@ def _cell_rows(
     return kinds, linked
 
 
-def _journal(paths: DataPaths, cells: dict[str, str], problems: list[str]) -> None:
-    """Every cell id in the journal is a full id of a cell that exists in some folder."""
+def _journal(
+    paths: DataPaths, cells: dict[str, str], photos: dict[str, str], problems: list[str]
+) -> None:
+    """Every cell id in the journal is a full id of a cell that exists in some folder. The id of
+    an outline line is a photo of sudoku-photos.csv."""
     try:
-        lines = read_journal(paths.journal)
+        everything = read_journal(paths.journal)
     except (ValueError, KeyError, TypeError) as error:
         problems.append(f"{paths.journal.name} cannot be read: {error}")
         return
+    outlines = sorted({x.cell for x in everything if x.field == "outline" and x.cell not in photos})
+    _report_ids(problems, f"outline lines in {paths.journal.name} match no sudoku photo", outlines)
+    lines = [x for x in everything if x.field != "outline"]
     bad = sorted({x.cell for x in lines if not FULL_ID.fullmatch(x.cell)})
     gone = sorted({x.cell for x in lines if FULL_ID.fullmatch(x.cell) and x.cell not in cells})
     if bad:
@@ -174,7 +180,7 @@ def check_data(paths: DataPaths) -> dict:
     cells = _cells(paths, problems)
     photos = _photos(paths, problems)
     kinds, linked = _cell_rows(paths, cells, photos, problems)
-    _journal(paths, cells, problems)
+    _journal(paths, cells, photos, problems)
     per_folder = Counter(cells.values())
     per_status = Counter(photos.values())
     return {

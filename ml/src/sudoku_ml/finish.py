@@ -1,15 +1,19 @@
 """The Finish step of the labelling page (ADR-018): fold the journal into cells.csv, run the data
 check, write STATUS.md, then delete the journal and the derived files in ml/dataset/work/. It never
-touches the images. Of the tracked files it writes only cells.csv and STATUS.md."""
+touches the images. Of the tracked files it writes only cells.csv, sudoku-photos.csv (the outline
+lines) and STATUS.md."""
 
 import json
+from dataclasses import replace
 
 from sudoku_ml.data_check import check_data, format_report
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.journal import current_outlines, format_outline, parse_outline, read_journal
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_import import read_detections, write_detections
 from sudoku_ml.status import write_status
-from sudoku_ml.tables import read_photos
+from sudoku_ml.tables import read_photos, write_photos
 
 PROBLEMS_SHOWN = 5
 
@@ -19,6 +23,21 @@ def _prelabel_run(store: LabelStore) -> str | None:
         return json.loads(store.paths.prelabels.read_text())["run"]
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+def write_outlines(paths: DataPaths) -> int:
+    """Fold the outline lines of the journal into sudoku-photos.csv. Returns the rows changed."""
+    rows = read_photos(paths.photos_csv)
+    base = {r.photo_id: format_outline(r.status, r.corners) for r in rows}
+    now = current_outlines(read_journal(paths.journal), base)
+    changed = [r.photo_id for r in rows if now[r.photo_id] != base[r.photo_id]]
+    if changed:
+        updated = []
+        for row in rows:
+            status, corners = parse_outline(now[row.photo_id])
+            updated.append(replace(row, status=status, corners=corners))
+        write_photos(paths.photos_csv, updated)
+    return len(changed)
 
 
 def finish(store: LabelStore) -> dict:
@@ -34,6 +53,7 @@ def finish(store: LabelStore) -> dict:
         closed = store.open_review_count()
         store.repair()
         write_cells_manifest(paths)
+        write_outlines(paths)
     except ValueError as error:
         raise ValueError(f"Finish stopped and deleted nothing. {error}") from error
     report = check_data(paths)

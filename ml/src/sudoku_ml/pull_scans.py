@@ -1,6 +1,7 @@
 """Pull the scans that players uploaded (ADR-030). Each scan with `gsiPending` becomes one photo
-row in `sudoku-photos.csv` and 81 cell images in `<images>/cells/`, with the label provenance
-`app-edited` or `app-unedited`. The record is checked against shared/scan-contract/ (SUD-07)."""
+row in `sudoku-photos.csv` with the status `unchecked`, and 81 cell images in `<images>/cells/`,
+with the label provenance `app-edited` or `app-unedited`. The record is checked against
+shared/scan-contract/ (SUD-07)."""
 
 import argparse
 import json
@@ -183,7 +184,7 @@ def _pull_one(item: dict, paths: DataPaths, bucket: ScanBucket, report: dict) ->
         report["already_pulled"] += 1
         return True
     photos.append(
-        PhotoRow(photo_id, stored.name, APP_SCAN, LICENCE, "", "accepted", format_corners(pixels))
+        PhotoRow(photo_id, stored.name, APP_SCAN, LICENCE, "", "unchecked", format_corners(pixels))
     )
     write_photos(paths.photos_csv, photos)
     report["pulled"] += 1
@@ -265,7 +266,9 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
     ):
         if report[name]:
             print(f"{label}: {len(report[name])}, e.g. {report[name][0]}", file=sys.stderr)
-    print("Next: run just label-cells to confirm the labels, then just dataset-manifest.")
+    print(
+        "Next: run just label-cells. Check each outline on the Outlines screen. Then press Finish."
+    )
     return 0
 
 

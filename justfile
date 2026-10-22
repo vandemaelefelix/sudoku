@@ -195,6 +195,10 @@ pull-device-scans device destination="$HOME/scan-corrections" app="com.vandemael
 pull-scans table bucket:
     {{sudoku_aws}} uv run --directory ml python -m sudoku_ml.pull_scans --table "{{table}}" --bucket "{{bucket}}"
 
+# Set the uploaded scans with the status accepted back to unchecked, for the Outlines screen (ADR-030). Run it once, for the scans of the first pull
+reset-scan-outlines:
+    uv run --directory ml python -m sudoku_ml.scan_outlines
+
 # Delete the scans of one contributor ID or user ID, photo and row (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage
 delete-scans table bucket owner:
     {{sudoku_aws}} node tools/delete-scans/cli.ts "{{table}}" "{{bucket}}" "{{owner}}"

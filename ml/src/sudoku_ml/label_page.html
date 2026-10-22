@@ -8,8 +8,8 @@
   body { font: 14px system-ui, sans-serif; margin: 0; display: grid;
          grid-template-columns: 1fr 320px; grid-template-rows: auto auto auto auto 1fr auto;
          height: 100vh; }
-  body.mode-photos, body.mode-progress { grid-template-columns: 1fr; }
-  body.mode-photos aside, body.mode-progress aside { display: none; }
+  body.mode-photos, body.mode-progress, body.mode-outlines, body.mode-outline { grid-template-columns: 1fr; }
+  body.mode-photos aside, body.mode-progress aside, body.mode-outlines aside, body.mode-outline aside { display: none; }
   header { grid-row: 1; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
            padding: 8px 16px; border-bottom: 1px solid #ddd; }
   nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
@@ -57,6 +57,37 @@
                font-weight: bold; background: var(--none); }
   .cell .reason { position: absolute; left: 2px; top: 2px; padding: 0 2px; font-size: 11px;
                   background: rgba(255, 255, 255, 0.85); }
+  .wrap.scan-photo { padding: 16px; cursor: default; }
+  .wrap.scan-photo img { max-width: 420px; max-height: 70vh; }
+  #scan-grid { display: grid; grid-template-columns: repeat(9, 60px); gap: 2px; align-content: start; }
+  .scell { position: relative; width: 56px; border: 2px solid var(--none); cursor: pointer; }
+  .scell:hover { box-shadow: 0 0 0 3px #f2b705; }
+  .scell img { width: 56px; height: 56px; display: block; }
+  .scell select { display: block; width: 100%; font-size: 11px; }
+  .scell .tag { position: absolute; right: 0; top: 40px; padding: 0 4px; color: #fff;
+                font-weight: bold; background: var(--none); }
+  .scell .tag:empty { display: none; }
+  .scell.box-left { margin-left: 6px; }
+  .scell.box-top { margin-top: 6px; }
+  .scell.changed { outline: 2px dashed #111; outline-offset: 1px; }
+  .scell .mark { position: absolute; left: 0; top: 0; padding: 0 3px; font-size: 12px;
+                 background: #f2b705; color: #111; font-weight: bold; }
+  .scell.shared .mark { background: #ddd; }
+  .scell .done { position: absolute; left: 0; top: 40px; padding: 0 3px; font-size: 11px;
+                 background: #dff3e3; color: #1d7a34; font-weight: bold; }
+  #outline-grid { display: grid; grid-template-columns: repeat(auto-fill, 216px); gap: 8px; }
+  .thumb { position: relative; width: 212px; border: 2px solid var(--none); cursor: pointer; background: #444; }
+  .thumb:hover { box-shadow: 0 0 0 3px #f2b705; }
+  .thumb img { width: 212px; display: block; }
+  .thumb .tag { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; font-size: 12px;
+                background: rgba(255, 255, 255, 0.9); }
+  .thumb.bad { border-color: #b00020; }
+  .thumb.bad img { opacity: 0.45; }
+  .thumb.bad::after { content: "✕"; position: absolute; left: 8px; top: 2px; color: #b00020;
+                      font-size: 28px; font-weight: bold; }
+  .wrap img[draggable="false"] { user-select: none; }
+  .scell.missing { height: 78px; display: flex; align-items: center; justify-content: center;
+                   color: #777; background: #f4f4f4; cursor: default; }
   .printed { border-color: var(--printed); } .printed .tag { background: var(--printed); }
   .handwritten { border-color: var(--handwritten); } .handwritten .tag { background: var(--handwritten); }
   .unsure { border-color: var(--unsure); } .unsure .tag { background: var(--unsure); }
@@ -98,6 +129,8 @@
     <button data-mode="photos"><span class="label">1 Check photos <span class="badge" data-count="photos"></span></span><small>Is the grid outline right?</small></button>
     <button data-mode="digits"><span class="label">2 Confirm digits <span class="badge" data-count="digits"></span></span><small>Does each cell show this digit?</small></button>
     <button data-mode="groups"><span class="label">3 Label kind <span class="badge" data-count="kind"></span></span><small>Printed or handwritten?</small></button>
+    <span class="divider"></span>
+    <button data-mode="outlines"><span class="label">Outlines <span class="badge" data-count="outlines"></span></span><small>Uploaded scans: is the outline right?</small></button>
     <span class="divider"></span>
     <span class="tools">Tools</span>
     <button class="tool" data-mode="review"><span class="label">Review</span><small>Fix doubtful labels</small></button>
@@ -201,6 +234,37 @@ const HELP = {
     </ol>
     <p>Each disagreement goes to the Review screen. Your answers never change a label.</p>
     ${LEGEND}`,
+  outlines: `
+    <h3>What to do</h3>
+    <ol>
+      <li>Each picture is a scan that a player uploaded from the app. The green outline is the grid that the app cut.</li>
+      <li>The most doubtful outlines come first. The fit says how well the grid lines sit at the 9 × 9 places: 1 is a perfect fit.</li>
+      <li>Click each scan whose outline is not on the outer grid lines. It gets a red ✕. Click again to undo the mark.</li>
+      <li>Press <b>Enter</b>. Every scan without a ✕ is approved. The marked scans then open large, one at a time.</li>
+    </ol>
+    <p>No cell of a scan trains the model before its outline is approved.</p>
+    <p>Press <b>N</b> for the next screen without a decision. Press <b>Z</b> to undo the last Enter, fix or reject.</p>`,
+  outline: `
+    <h3>What to do</h3>
+    <ol>
+      <li>Drag the 4 corners onto the outer corners of the grid. The right image shows the cut, with the cell lines in red.</li>
+      <li>Press <b>Enter</b>. The page cuts the 81 cells again from the new outline. A new cell keeps the digit and kind of its place, from the app.</li>
+      <li>No sudoku, or a grid that you cannot fit? Press <b>R</b> to reject the scan. Training then leaves out all of its cells.</li>
+      <li>Press <b>C</b> to go back to the outline of the app. Press <b>V</b> to see the cells of the scan.</li>
+    </ol>
+    <p>Press <b>B</b> to go back to the gallery. The scan then stays unchecked. Press <b>Z</b> to undo.</p>`,
+  scans: `
+    <h3>What to do</h3>
+    <ol>
+      <li>This is one uploaded scan: the photo with its outline, and the 81 cells of the scan. Under each cell are its digit and its kind.</li>
+      <li>A cell with a yellow <b>✎</b> is a cell that the player corrected. The other cells keep the model's answer.</li>
+      <li>A cell with a grey <b>=</b> has the same pixels as a cell of another scan. It has one label for both scans, so you cannot change it here.</li>
+      <li>Digit wrong? Point at the cell and press the right digit, or pick it in the list. <b>0</b> means empty.</li>
+      <li>Kind wrong? Click the cell to switch between P and H. ⌥-click for unsure. Or point at it and press <b>P</b> or <b>H</b>.</li>
+      <li>Press <b>Enter</b>. Every cell of this scan gets its label, with your changes. This needs an approved outline.</li>
+    </ol>
+    <p>A dashed border marks a cell that you changed. A green <b>✓</b> marks a cell that a person checked. Press <b>B</b> to go back. Press <b>Z</b> to undo.</p>
+    ${LEGEND}`,
   finish: "",
   progress: `
     <h3>What to do</h3>
@@ -226,6 +290,12 @@ let lastTarget;       // the target of the last open(), for Try again
 let checkError = "";
 let lastStatus = null;  // the last /api/status, for the banner
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
+let scan = null;       // the scan in the scan view, from /api/scans
+let outlines = null;   // one page of the Outlines screen, from /api/outlines
+let one = null;        // the scan in the large outline view, from /api/outline
+let oneCorners = null; // [[x, y] × 4] in upright photo pixels, as the reviewer drags them
+let queue = [];        // the marked scans that open large after an Enter
+let dragging = null;   // the index of the dragged corner
 let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
 let clicks = [];       // corners that the person clicked, in the order TL, TR, BR, BL
 let kinds = "handwritten";
@@ -241,6 +311,9 @@ const DO = {
   groups: "Press P if most cells are printed, or H if most are handwritten. Click the odd ones. Press Enter.",
   review: "Click each cell with the wrong kind. Then press Enter.",
   check: "Label each cell again without looking back. Press Enter.",
+  outlines: "Click each scan whose green outline is not on the grid. Press Enter: the others are approved, and the clicked ones open large.",
+  outline: "Drag the 4 corners onto the outer grid corners. Press Enter to save, or R to reject the scan.",
+  scans: "Check each cell. Fix the wrong ones. Press Enter to confirm the cells of this scan.",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -376,6 +449,12 @@ function deriveView() {
     }
     return showState("done", "All sudoku photos are checked. ✓ Next: Confirm digits.", [OPEN_DIGITS]);
   }
+  if (mode === "outlines" && outlines && !outlines.open && st) {
+    if (st.scans === 0) {
+      return showState("empty", "No uploaded scans yet. Run just pull-scans, then restart the server.");
+    }
+    return showState("done", "Every outline is checked. ✓ Next: press Finish.");
+  }
   if (mode === "groups" && !screen && st) {
     if (st.digit_cells === 0) {
       return showState("empty", "No cells to label yet. Confirm digits first.", [OPEN_DIGITS]);
@@ -443,6 +522,13 @@ function detailText(cell) {
     return `The model reads ${cell.model_kind} (${Math.round(cell.kp * 100)} %).${mine}`;
   }
   if (mode === "digits") return `The model reads ${screen.digit} (${Math.round(cell.p * 100)} %).`;
+  if (mode === "scans") {
+    const kind = cell.kind ? `, ${cell.kind}` : "";
+    const shared = cell.shared ? ` Already in scan ${cell.shared}: its label counts for both scans.` : "";
+    const checked = cell.reviewed ? " A person checked it." : "";
+    return `Row ${cell.row + 1}, column ${cell.col + 1}. The label is ${cell.digit}${kind}. ` +
+      (cell.edited ? "The player corrected this cell." : "The player kept the model's answer.") + shared + checked;
+  }
   if (mode !== "review") return "Press a digit to move this cell to that folder. 0 means empty.";
   const twins = nearDuplicates(cell);
   const near = twins.length ? [`Its near-duplicates (below) have the other kind.`] : [];
@@ -504,6 +590,15 @@ function title() {
       `${screen.not_prelabelled ? ` · ${screen.not_prelabelled} cells without a pre-label` : ""}`;
   } else if (mode === "photos") {
     return;
+  } else if (mode === "scans") {
+    text = !scan ? "" : `Scan ${scan.photo} · outline ${scan.status} · ` +
+      `${scan.cells.filter((c) => c.edited).length} cells corrected by the player · ` +
+      `${scan.cells.filter((c) => c.shared).length} cells shared with other scans`;
+  } else if (mode === "outlines") {
+    text = !outlines ? "" : `${outlines.open} outlines to check · the most doubtful first` +
+      `${outlines.pages > 1 ? ` · screen ${outlines.page + 1} of ${outlines.pages}` : ""}`;
+  } else if (mode === "outline") {
+    text = !one ? "" : `Scan ${one.photo} · outline ${one.status}${queue.length ? ` · ${queue.length} more marked` : ""}`;
   } else if (mode === "finish") {
     text = "Finish";
   } else {
@@ -574,6 +669,12 @@ function bannerFor() {
   if (mode === "review") {
     return [screen && screen.open ? DO.review : "", []];
   }
+  if (mode === "scans") {
+    if (!scan) return ["", []];
+    return [scan.status === "accepted" ? DO.scans : "Approve the outline of this scan first. Press B to go back.", []];
+  }
+  if (mode === "outlines") return [outlines && outlines.open ? DO.outlines : "", []];
+  if (mode === "outline") return [one ? DO.outline : "", []];
   if (mode === "check") {
     return screen ? [DO.check, []] : ["", []];
   }
@@ -627,6 +728,17 @@ const ACTIONS = {
             "Use this when the digits in the right image lie sideways or upside down."]],
   digits: [["Enter · confirm screen", () => save()], ["K · handwritten or all kinds", () => toggleKinds()],
            ["Z · undo", () => undo()]],
+  scans: [["Enter · Confirm cells", () => confirmScan(), "Label every cell of this scan, with your changes."],
+          ["B · Back", () => backFromScan()], ["Z · undo", () => undo()]],
+  outlines: [["Enter · Approve the others", () => approveOutlines(), "Approve every scan without a red ✕."],
+             ["N · Next screen", () => nextOutlines(), "Show the next screen. Decide on this one later."],
+             ["Z · undo", () => undo()]],
+  outline: [["Enter · Save outline", () => saveOutline(), "Approve the outline. After a corner change, cut the 81 cells again."],
+            ["R · Reject scan", () => rejectOutline(), "No sudoku or no fit. Training leaves out all of its cells."],
+            ["C · Reset corners", () => resetOneCorners(), "Go back to the outline of the app."],
+            ["V · View cells", () => viewCells(), "Show the 81 cells of this scan."],
+            ["B · Back to the gallery", () => backToGallery(), "The scan stays unchecked."],
+            ["Z · undo", () => undo()]],
   progress: [],
   finish: [],
 };
@@ -658,10 +770,13 @@ function drawQuad() {
   const scale = img.clientWidth / photo.width;
   const points = clicks.length ? clicks : corners || [];
   const xy = points.map(([x, y]) => [x * scale + PAD, y * scale + PAD]);
-  const colour = clicks.length ? "#f2b705" : "#3ad65a";
+  $("quad").innerHTML = quadMarkup(xy, clicks.length ? "#f2b705" : "#3ad65a");
+}
+
+function quadMarkup(xy, colour) {
   const polygon = xy.length === 4
     ? `<polygon points="${xy.map((p) => p.join(",")).join(" ")}" fill="none" stroke="${colour}" stroke-width="2"/>` : "";
-  $("quad").innerHTML = polygon + xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="${colour}"/>`).join("");
+  return polygon + xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="${colour}"/>`).join("");
 }
 
 async function refreshPreview() {
@@ -802,8 +917,297 @@ async function toggleKinds() {
   say(kinds === "all" ? "All kinds are shown." : "Only handwritten cells are shown.");
 }
 
+const SCAN_PAD = 16;   // the padding of .scan-photo
+const EMPTY_NO_KIND = "An empty cell has no kind. Press a digit if it shows one.";
+const SCAN_DIGITS = ["empty", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+const loadScan = (photo) => asLoad(() => run(() => loadScan(photo)), () => loadScanNow(photo));
+
+async function loadScanNow(photo) {
+  scan = await api(`/api/scans?photo=${photo}`);
+  lastStatus = await api("/api/status");
+  endLoading();
+  local = {};
+  hovered = null;
+  $("photos").innerHTML = scan ? `<div class="photo-row">
+    <div class="wrap scan-photo"><img id="photo" alt="" src="/photo/${scan.photo}.jpg"><svg id="quad"></svg></div>
+    <div id="scan-grid"></div></div>` : "";
+  if (scan) $("photo").onload = drawScanQuad;
+  render();
+}
+
+function drawScanQuad() {
+  const img = $("photo");
+  if (!img || !scan || !scan.corners) return;
+  const scale = img.clientWidth / scan.width;
+  $("quad").innerHTML = quadMarkup(scan.corners.map(([x, y]) => [x * scale + SCAN_PAD, y * scale + SCAN_PAD]), "#3ad65a");
+}
+
+// The label that Enter sends: the change of the reviewer, or the label from the app.
+function scanLabel(cell) {
+  return local[cell.id] || { digit: cell.digit, kind: cell.kind };
+}
+
+function setScanLabel(cell, digit, kind) {
+  const value = { digit, kind: digit === "empty" ? null : kind };
+  if (value.digit === cell.digit && value.kind === cell.kind) delete local[cell.id];
+  else local[cell.id] = value;
+  render();
+}
+
+function scanKeyFor(cell, key) {
+  const now = scanLabel(cell);
+  if (key === "p" || key === "h") {
+    if (now.digit === "empty") return say(EMPTY_NO_KIND);
+    return setScanLabel(cell, now.digit, key === "p" ? "printed" : "handwritten");
+  }
+  setScanLabel(cell, key === "0" ? "empty" : key, now.kind);
+}
+
+function renderScanGrid() {
+  const box = $("scan-grid");
+  if (!box || !scan) return;
+  box.innerHTML = "";
+  const at = new Map(scan.cells.map((c) => [c.row * 9 + c.col, c]));
+  for (let n = 0; n < 81; n += 1) {
+    const cell = at.get(n);
+    const div = document.createElement("div");
+    const edges = `${n % 9 === 3 || n % 9 === 6 ? "box-left" : ""} ${n >= 27 && n < 36 || n >= 54 && n < 63 ? "box-top" : ""}`;
+    box.append(div);
+    if (!cell || cell.missing) {
+      div.className = `scell missing ${edges}`;
+      div.textContent = "–";
+      div.title = "Not in the dataset: the app gave an impossible digit and kind for this place.";
+      continue;
+    }
+    const now = scanLabel(cell);
+    div.className = `scell ${now.kind || ""} ${local[cell.id] ? "changed" : ""} ${cell.shared ? "shared" : ""} ${edges}`;
+    const mark = cell.shared ? `<span class="mark" title="Already in scan ${cell.shared}. One label counts for both scans.">=</span>`
+      : cell.edited ? '<span class="mark" title="The player corrected this cell.">✎</span>' : "";
+    const done = cell.reviewed ? '<span class="done" title="A person checked this cell.">✓</span>' : "";
+    const tag = now.digit === "empty" ? "" : LETTER[now.kind] || "·";
+    div.innerHTML = `<img src="/cell/${cell.stem}.png" alt="">${mark}${done}` +
+      `<span class="tag">${tag}</span><select>${SCAN_DIGITS.map((d) => `<option>${d}</option>`).join("")}</select>`;
+    div.onmouseenter = () => showDetail(cell);
+    div.onmouseleave = () => { hovered = null; };
+    const select = div.querySelector("select");
+    if (cell.shared) {
+      select.value = now.digit;
+      select.disabled = true;
+      div.onclick = () => say(`This cell belongs to scan ${cell.shared}. Change it there.`);
+      continue;
+    }
+    select.value = now.digit;
+    select.onclick = (event) => event.stopPropagation();
+    select.onchange = () => {
+      select.blur();
+      setScanLabel(cell, select.value, now.kind);
+    };
+    div.onclick = (event) => {
+      if (now.digit === "empty") return say(EMPTY_NO_KIND);
+      setScanLabel(cell, now.digit, event.altKey ? "unsure" : now.kind === "printed" ? "handwritten" : "printed");
+    };
+  }
+}
+
+async function confirmScan() {
+  if (!scan) return;
+  if (scan.status !== "accepted") return say("Approve the outline of this scan first.");
+  const cells = scan.cells.filter((c) => c.id && !c.shared).map((c) => ({ id: c.id, ...scanLabel(c) }));
+  const missing = cells.filter((c) => c.digit !== "empty" && !c.kind).length;
+  if (missing) {
+    return say(`${missing} digit ${missing === 1 ? "cell has" : "cells have"} no kind yet (·). ` +
+      "Click them, or point at them and press P or H.");
+  }
+  const changed = Object.keys(local).length;
+  await api("/api/scans/confirm", { photo: scan.photo, cells });
+  await loadScan(scan.photo);
+  say(`Confirmed ${cells.length} cells with ${changed} changes. Press Z to undo.`);
+}
+
+async function backFromScan() {
+  if (!scan) return;
+  if (scan.status === "unchecked") {
+    mode = "outline";
+    return loadOne(scan.photo);
+  }
+  mode = "outlines";
+  await loadOutlines();
+}
+
+const loadOutlines = (page = 0) => asLoad(() => run(() => loadOutlines(page)), () => loadOutlinesNow(page));
+
+async function loadOutlinesNow(page) {
+  outlines = await api(`/api/outlines?page=${page}`);
+  lastStatus = await api("/api/status");
+  endLoading();
+  local = {};
+  one = null;
+  scan = null;
+  render();
+  const grid = document.createElement("div");
+  grid.id = "outline-grid";
+  for (const item of outlines.scans) {
+    const div = document.createElement("div");
+    div.className = "thumb";
+    div.title = "Click if the green outline is not on the grid.";
+    div.innerHTML = `<img alt="" src="/outline/${item.photo}.jpg"><span class="tag">fit ${item.fit.toFixed(2)}</span>`;
+    // A toggle of the class only: a full render would load every thumbnail again.
+    div.onclick = () => {
+      if (local[item.photo]) delete local[item.photo];
+      else local[item.photo] = "bad";
+      div.classList.toggle("bad", Boolean(local[item.photo]));
+    };
+    grid.append(div);
+  }
+  $("photos").replaceChildren(grid);
+}
+
+async function nextOutlines() {
+  if (!outlines) return;
+  await loadOutlines((outlines.page + 1) % outlines.pages);
+}
+
+async function approveOutlines() {
+  if (!outlines || !outlines.scans.length) return;
+  const marked = outlines.scans.filter((s) => local[s.photo]).map((s) => s.photo);
+  const good = outlines.scans.filter((s) => !local[s.photo]).map((s) => s.photo);
+  if (good.length) await api("/api/outlines/approve", { photos: good });
+  queue = marked;
+  const text = `Approved ${good.length} ${good.length === 1 ? "outline" : "outlines"}.`;
+  if (queue.length) {
+    mode = "outline";
+    await loadOne(queue.shift());
+    return say(`${text} Fix or reject the marked scans.`);
+  }
+  await loadOutlines();
+  say(`${text} Press Z to undo.`);
+}
+
+const loadOne = (photo) => asLoad(() => run(() => loadOne(photo)), () => loadOneNow(photo));
+
+async function loadOneNow(photo) {
+  one = await api(`/api/outline?photo=${photo}`);
+  oneCorners = one.corners && one.corners.map((point) => [...point]);
+  dragging = null;
+  endLoading();
+  local = {};
+  scan = null;
+  render();
+  $("photos").innerHTML = `<div class="photo-row">
+    <div class="wrap" id="wrap"><img id="photo" alt="" draggable="false" src="/photo/${photo}.jpg"><svg id="quad"></svg></div>
+    <div><img class="flat" id="flat" alt=""><p id="usable"></p></div></div>`;
+  $("photo").onload = drawOne;
+  $("flat").onerror = () => say("These corners do not form a grid. Drag them back, or press C.");
+  const wrap = $("wrap");
+  wrap.onpointerdown = (event) => {
+    const index = nearestCorner(event);
+    if (index === null) return;
+    dragging = index;
+    wrap.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+  wrap.onpointermove = (event) => {
+    if (dragging === null) return;
+    oneCorners[dragging] = toPhoto(event);
+    drawOne();
+  };
+  wrap.onpointerup = () => {
+    if (dragging === null) return;
+    dragging = null;
+    refreshFlat();
+  };
+  refreshFlat();
+}
+
+const GRAB = 24;  // screen pixels around a corner that start a drag
+
+function toPhoto(event) {
+  const rect = $("photo").getBoundingClientRect();
+  const scale = rect.width / one.width;
+  return [(event.clientX - rect.left) / scale, (event.clientY - rect.top) / scale];
+}
+
+function nearestCorner(event) {
+  if (!oneCorners) return null;
+  const rect = $("photo").getBoundingClientRect();
+  const scale = rect.width / one.width;
+  let best = null;
+  let distance = GRAB;
+  oneCorners.forEach(([x, y], index) => {
+    const d = Math.hypot(rect.left + x * scale - event.clientX, rect.top + y * scale - event.clientY);
+    if (d < distance) [best, distance] = [index, d];
+  });
+  return best;
+}
+
+function drawOne() {
+  const img = $("photo");
+  if (!img || !one || !oneCorners) return;
+  const scale = img.clientWidth / one.width;
+  $("quad").innerHTML = quadMarkup(oneCorners.map(([x, y]) => [x * scale + PAD, y * scale + PAD]),
+    cornersChanged() ? "#f2b705" : "#3ad65a");
+}
+
+const cornersChanged = () => JSON.stringify(oneCorners) !== JSON.stringify(one.corners);
+
+function refreshFlat() {
+  if (!one || !oneCorners) return;
+  say("");
+  $("flat").src = `/flat/${one.photo}.png?c=${oneCorners.flat().map((v) => v.toFixed(1)).join(",")}`;
+  $("usable").textContent = cornersChanged() ? "Changed: Enter cuts the 81 cells again." : "The outline of the app.";
+  drawOne();
+}
+
+function resetOneCorners() {
+  if (!one || !one.corners) return;
+  oneCorners = one.corners.map((point) => [...point]);
+  refreshFlat();
+}
+
+async function afterOne(text) {
+  if (queue.length) {
+    await loadOne(queue.shift());
+  } else {
+    mode = "outlines";
+    await loadOutlines();
+  }
+  say(`${text} Press Z to undo.`);
+}
+
+async function saveOutline() {
+  if (!one) return;
+  if (one.status !== "unchecked") return say("This outline is already checked.");
+  if (!cornersChanged()) {
+    await api("/api/outlines/approve", { photos: [one.photo] });
+    return afterOne("Approved.");
+  }
+  const result = (await api("/api/outlines/fix", { photo: one.photo, corners: oneCorners })).result;
+  await afterOne(`Cut again: ${result.cells} new cells, ${result.kept} kept. ` +
+    `${result.discarded} old cells left the dataset.`);
+}
+
+async function rejectOutline() {
+  if (!one) return;
+  await api("/api/outlines/reject", { photo: one.photo });
+  await afterOne("Rejected. Training leaves out its cells.");
+}
+
+async function viewCells() {
+  if (!one) return;
+  mode = "scans";
+  await loadScan(one.photo);
+}
+
+async function backToGallery() {
+  queue = [];
+  mode = "outlines";
+  await loadOutlines();
+}
+
 function render() {
-  for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === mode);
+  const nav = ["outline", "scans"].includes(mode) ? "outlines" : mode;
+  for (const b of document.querySelectorAll("nav button")) b.classList.toggle("on", b.dataset.mode === nav);
   document.body.className = `mode-${mode}`;
   $("help").innerHTML = HELP[mode];
   deriveView();
@@ -811,7 +1215,8 @@ function render() {
   renderFolders();
   renderActions();
   $("table").innerHTML = "";
-  if (mode !== "photos") $("photos").innerHTML = "";
+  if (!["photos", "scans", "outlines", "outline"].includes(mode)) $("photos").innerHTML = "";
+  if (mode === "scans") renderScanGrid();
   const grid = $("grid");
   grid.innerHTML = "";
   for (const cell of cellsOnScreen()) {
@@ -884,6 +1289,12 @@ async function reload() {
     await loadDigits();
   } else if (mode === "review") {
     setScreen(await api("/api/review"));
+  } else if (mode === "scans") {
+    await loadScan(scan.photo);
+  } else if (mode === "outlines") {
+    await loadOutlines(outlines ? outlines.page : 0);
+  } else if (mode === "outline") {
+    await loadOne(one.photo);
   }
 }
 
@@ -1069,6 +1480,7 @@ async function refreshStatus() {
     lastStatus = value;
     const counts = {
       photos: value.photos, digits: value.digits + value.not_prelabelled, kind: value.kind,
+      outlines: value.outlines,
     };
     for (const badge of document.querySelectorAll("[data-count]")) {
       const n = counts[badge.dataset.count];
@@ -1138,6 +1550,11 @@ async function open(next, target) {
   finishResult = null;
   progressData = null;
   screen = null;
+  scan = null;
+  outlines = null;
+  one = null;
+  queue = [];
+  $("photos").innerHTML = "";
   local = {};
   hovered = null;
   say("");
@@ -1146,6 +1563,8 @@ async function open(next, target) {
   const load = async () => {
     if (mode === "photos") {
       await loadPhoto();
+    } else if (mode === "outlines") {
+      await loadOutlines();
     } else if (mode === "digits") {
       await loadDigits();
     } else if (mode === "groups" && target) {
@@ -1185,6 +1604,32 @@ document.addEventListener("keydown", (event) => {
     else if (key === "s") run(skipPhoto);
     else if (key === "c") clearCorners();
     else if (key === "t") run(turnGrid);
+    return;
+  }
+  if (mode === "scans") {
+    if (event.target.tagName === "SELECT") return;
+    if (/^[0-9]$/.test(key) || key === "p" || key === "h") {
+      if (!hovered) return say("Point at a cell first, then press the key.");
+      return scanKeyFor(hovered, key);
+    }
+    if (key === "enter") run(confirmScan);
+    else if (key === "b") run(backFromScan);
+    else if (key === "z") run(undo);
+    return;
+  }
+  if (mode === "outlines") {
+    if (key === "enter") run(approveOutlines);
+    else if (key === "n") run(nextOutlines);
+    else if (key === "z") run(undo);
+    return;
+  }
+  if (mode === "outline") {
+    if (key === "enter") run(saveOutline);
+    else if (key === "r") run(rejectOutline);
+    else if (key === "c") resetOneCorners();
+    else if (key === "v") run(viewCells);
+    else if (key === "b") run(backToGallery);
+    else if (key === "z") run(undo);
     return;
   }
   if (mode === "digits" && (/^[0-9]$/.test(key) || key === "x")) {
