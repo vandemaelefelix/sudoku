@@ -1,4 +1,5 @@
-import { Pressable } from 'react-native'
+import { useEffect, useRef, type Ref } from 'react'
+import { AccessibilityInfo, Pressable, type View } from 'react-native'
 import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
 import { Icon, type IconName } from '@/game/components/Icon'
@@ -18,10 +19,11 @@ type ToolProps = {
   playing: boolean
   selected?: boolean
   onPress(): void
+  ref?: Ref<View>
 }
 
 /** A disabled tool fades out, and the notes fill fades in, so a change of state never jumps. */
-function Tool({ icon, label, enabled, playing, selected = false, onPress }: ToolProps) {
+function Tool({ icon, label, enabled, playing, selected = false, onPress, ref }: ToolProps) {
   const { theme } = useUnistyles()
   // A locked board dims the whole row, so a tool dims on its own only while the game is played.
   const opacity = useEased(enabled || !playing ? 1 : theme.opacity.disabled)
@@ -31,6 +33,7 @@ function Tool({ icon, label, enabled, playing, selected = false, onPress }: Tool
   return (
     <Animated.View style={toolStyle}>
       <Pressable
+        ref={ref}
         testID={`tool-${icon}`}
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -55,6 +58,15 @@ export function Tools() {
   const playing = board.status === 'playing'
   const rowOpacity = useEased(playing ? 1 : theme.opacity.locked)
   const rowStyle = useAnimatedStyle(() => ({ opacity: rowOpacity.get() }))
+  // The hint card covers the tools. When it closes, VoiceOver focus returns to the Hint tool that opened it.
+  const hintTool = useRef<View>(null)
+  const hintOpen = hint !== null
+  const wasOpen = useRef(hintOpen)
+  useEffect(() => {
+    if (wasOpen.current && !hintOpen && hintTool.current)
+      AccessibilityInfo.sendAccessibilityEvent(hintTool.current, 'focus')
+    wasOpen.current = hintOpen
+  }, [hintOpen])
   const toggleNotes = () => {
     play('tick')
     actions.toggleNotesMode()
@@ -84,11 +96,11 @@ export function Tools() {
         onPress={toggleNotes}
       />
       <Tool
+        ref={hintTool}
         icon="hint"
         label={intl.formatMessage({ id: 'game.tool.hint' })}
         enabled={playing}
         playing={playing}
-        selected={hint !== null}
         onPress={actions.hint}
       />
     </Animated.View>

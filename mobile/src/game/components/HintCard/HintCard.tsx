@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { AccessibilityInfo, Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, {
   Easing,
@@ -19,8 +19,8 @@ import { Icon } from '@/game/components/Icon'
 import { HINT_SLIDE } from '@/game/constants/hint.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { hintCardView } from '@/game/utils/hint.utils'
-import { useIntl } from '@/i18n/hooks/useIntl'
 import type { OpenHint } from '@/game/utils/session.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut, riseIn, sinkOut } from '@/utils/motion.utils'
 import { CLOSE_SLOP, CONTROL_MAX_SCALE, DOT_FILL_MS, RUNGS } from './HintCard.constants'
@@ -38,7 +38,8 @@ const testIdOf = (action: string) => `hint-${action.slice('hint'.length).toLower
 /**
  * The hint card, in place of the tool row and the keypad (ADR-032, amendment of 2026-10-22). It is not modal: the grid
  * stays live. It rises in and sinks out, its height eases to each new text, and the text cross-fades. With Reduce Motion,
- * only the fades stay. VoiceOver reads each new text through an announcement: iOS has no live region.
+ * only the fades stay. VoiceOver focus moves to the title when the card opens, because the Hint tool that had it is now
+ * hidden. VoiceOver reads each new text through an announcement: iOS has no live region.
  */
 export function HintCard({ hint, onLearn }: HintCardProps) {
   const { hintCard } = useGameActions()
@@ -47,6 +48,10 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
   const reduceMotion = useReducedMotion()
   const { title, text, rung, stepLabel, buttons, technique } = hintCardView(intl, hint)
   const spoken = stepLabel === null ? text : `${stepLabel}. ${text}`
+  const titleRef = useRef<Text>(null)
+  useEffect(() => {
+    if (titleRef.current) AccessibilityInfo.sendAccessibilityEvent(titleRef.current, 'focus')
+  }, [])
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(spoken)
   }, [spoken])
@@ -71,15 +76,16 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
       style={styles.card}
     >
       <View style={styles.top}>
-        <Animated.Text
-          key={title}
-          entering={fadeIn}
-          accessibilityRole="header"
-          maxFontSizeMultiplier={CONTROL_MAX_SCALE}
-          style={styles.title}
-        >
-          {title}
-        </Animated.Text>
+        <Animated.View key={title} entering={fadeIn} style={styles.titleBox}>
+          <Text
+            ref={titleRef}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={CONTROL_MAX_SCALE}
+            style={styles.title}
+          >
+            {title}
+          </Text>
+        </Animated.View>
         <View style={styles.progress}>
           {stepLabel !== null && (
             <Text maxFontSizeMultiplier={CONTROL_MAX_SCALE} style={styles.step}>

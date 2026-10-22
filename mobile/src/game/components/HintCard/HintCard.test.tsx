@@ -110,6 +110,15 @@ it('closes on every card', () => {
   expect(hintCard).toHaveBeenCalledWith('hintClose')
 })
 
+it('moves VoiceOver focus to the title when it opens', () => {
+  const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockClear()
+  renderCard(at(0, 1))
+  const focused = focus.mock.calls
+    .filter(([, event]) => event === 'focus')
+    .map(([target]) => (target as unknown as { props: { children?: unknown } }).props.children)
+  expect(focused).toEqual(['Hint'])
+})
+
 it('reads the new text to VoiceOver', () => {
   const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
   renderCard(at(0, 1))

@@ -20,7 +20,8 @@ export const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.shape.radius.md,
   },
   top: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-  title: { ...roleText(theme.type.eyebrow), color: theme.colors.accent, flex: 1 },
+  titleBox: { flex: 1 },
+  title: { ...roleText(theme.type.eyebrow), color: theme.colors.accent },
   progress: { flexDirection: 'row', alignItems: 'center', gap: theme.space.xs },
   step: { ...roleText(theme.type.eyebrow), color: theme.colors.textMuted },
   dot: {
