@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-024: An animated splash from the system appearance
@@ -7,7 +7,7 @@ status: DRAFT
 | Field | Value |
 | --- | --- |
 | Project | Sudoku |
-| Status | Proposed |
+| Status | Accepted |
 | Date | 2026-10-14 |
 | Contact | Felix |
 | Supersedes | Decision 5 of ADR-022 |
@@ -72,3 +72,12 @@ cannot read.
 - The app needs more than 3 seconds to show the home on a normal phone.
 - A fifth theme puts the title in another place than the top left corner.
 - The developer finds the intro too slow: cut the hold, then shorten the letters.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/src/splash/` holds `SplashOverlay`, `SplashProvider`, `SplashWord` and `SplashCells` (#98, #99).
+- `mobile/src/app/_layout.tsx` renders `SplashOverlay` outside the storage provider.
+- [ADR-025](adr-025-opart-colourways.md) and [ADR-026](adr-026-appearance.md) changed the colours, as their
+  amendments say.

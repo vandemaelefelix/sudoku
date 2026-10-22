@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-012: SQLite for local data, behind repository interfaces, ready for sync
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
@@ -137,3 +137,16 @@ sync rules and the table layout stay.
 - The type and the columns stay the same.
 - A history row saved before this change keeps the old meaning: one cell filled.
 - The best time rule (zero hints) stays.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/src/storage/` holds the expo-sqlite storage behind `PuzzleRepository`, `HistoryRepository` and
+  `StatsRepository` (#60, #97). `mobile/src/settings/SettingsRepository.ts` holds the settings.
+- `mobile/src/storage/migrations.ts` holds the numbered migrations. Each row has a UUID, `updated_at` and
+  `deleted_at`.
+- `mobile/src/game/utils/gameSession.utils.ts` saves the progress after every move that changes the game (#60,
+  #176).
+- #118 and #181 built the amendments for the sync.
+- The pool of point 1 is not built. [ADR-011](adr-011-puzzle-generation-and-hints.md) decides it.

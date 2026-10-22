@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-023: Player stats from the game history, with the abandoned result and a StatsRepository

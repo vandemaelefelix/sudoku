@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-026: Appearance: Auto, Light and Colour
@@ -7,7 +7,7 @@ status: DRAFT
 | Field | Value |
 | --- | --- |
 | Project | Sudoku |
-| Status | Proposed |
+| Status | Accepted |
 | Date | 2026-10-14 |
 | Contact | Felix |
 | Supersedes | Decision 1 of ADR-025 in part (three themes in total, light only, no dark mode, no System choice) and the white-only splash text of ADR-024 in part |
@@ -162,3 +162,12 @@ In Colour, each fill step was 1.1 to 1.2 : 1 against the next. The row, the colu
 3. **A wrong digit in Colour is amber.** This replaces the conflict row of decision 6 and the colour of decision 8. The digit is `#ffc94d`, the amber of danger text. The stripes are the same amber at 0.25 opacity. The pattern of decision 8 stays. The amber digit has at least 3.28 : 1 on a stripe and 5.18 : 1 on the fill.
 4. **Light rings the selected cell too.** This replaces the Light value of decision 7: `cell.selectedRingWidth` is 2 in Light and 3 in Colour. The Light ring is the accent. A peer is `tint100` and a same-number cell is `tint200`. The selected cell stays `tint150`, so its notes in muted text pass 4.5 : 1. The palettes drop `tint175` and `tint050`, which no role uses now.
 5. **The app icon keeps its ground.** The iOS dark icon of ADR-022 stays the accent darkened 16 %. The icon is its own design.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- The Appearance setting and the six looks shipped in #114.
+- `mobile/src/theme/system/` follows the iPhone setting for Auto. `mobile/app.json` sets `userInterfaceStyle` to
+  `automatic`.
+- #188 built the amendment of 2026-10-21.

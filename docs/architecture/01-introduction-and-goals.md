@@ -4,10 +4,13 @@ status: DRAFT
 
 # 1. Introduction and Goals
 
-Sudoku is a personal project with two parts that grow into three. An iOS app to play sudoku every
-day, and a machine-learning pipeline that lets the app scan a paper sudoku from a newspaper or a
-puzzle book, load it, and solve it or give a hint. A backend for accounts and the history
-across devices follows, and a leaderboard after it (ADR-027).
+Sudoku is a personal project with three parts:
+
+1. An iOS app to play sudoku every day.
+2. A machine-learning pipeline that lets the app scan a paper sudoku from a newspaper or a puzzle
+   book, load it, and solve it or give a hint.
+3. A backend on AWS for accounts, the history across devices and the scan collection (ADR-027,
+   ADR-028, ADR-030). It runs in production since milestone M4. A leaderboard can follow.
 
 The project has two reasons to exist:
 
@@ -19,13 +22,13 @@ Shipping to the App Store is possible but not a goal. Decisions SHOULD NOT block
 
 ## 1.1 Requirements Overview
 
-The system has three parts. The backend starts with accounts and the history sync.
+The system has three parts. The backend runs accounts, the history sync and the scan collection.
 
 | Part | What it is | Scope |
 | --- | --- | --- |
 | **Game** | The sudoku app: generated puzzles, difficulty levels, notes, timer, hints | Now |
 | **Scan** | Camera → live grid outline → digit recognition → correction → load into the game | Now |
-| **Backend** | Accounts and the history across devices on AWS ([ADR-027](adr/adr-027-backend-platform.md), [ADR-028](adr/adr-028-history-sync.md)). A leaderboard later | Now: accounts and sync. Later: the leaderboard |
+| **Backend** | Accounts, the history across devices and the scan collection on AWS ([ADR-027](adr/adr-027-backend-platform.md), [ADR-028](adr/adr-028-history-sync.md), [ADR-030](adr/adr-030-scan-collection.md)). A leaderboard later | Now: accounts, sync and scan collection. Later: the leaderboard |
 
 ### Functional Requirements (MoSCoW)
 
@@ -56,7 +59,7 @@ The full tree and scenarios are in [10-quality-requirements.md](10-quality-requi
 | --- | --- | --- |
 | 1 | **Recognition correctness** | One wrong digit breaks the puzzle. The grid as a whole has to be right, not the average cell |
 | 2 | **Smooth scanning** | The live outline and the transition are the feature people notice. Jitter or stutter makes it feel broken |
-| 3 | **Offline and private** | A daily game that needs a network is worse than the app it replaces. Nothing leaves the phone unless the player exports it |
+| 3 | **Offline and private** | A daily game that needs a network is worse than the app it replaces. Camera frames stay on the phone. A scan photo leaves only through a setting that the player can turn off (SUD-02) |
 | 4 | **Understandable architecture** | It is a learning and portfolio project. A reader must be able to follow every boundary and decision |
 | 5 | **Everyday game** | It replaces the app used every day: instant start, progress never lost, a hint when stuck |
 

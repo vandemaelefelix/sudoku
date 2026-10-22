@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-018: One data folder, two tables and a session journal
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-12 |
 | Contact | Felix      |
 
@@ -118,3 +118,12 @@ describe one photo: `photos.csv` and `photo-checks.jsonl`. Some column names are
 
 - A person needs the time or the session of a finished label, for example for a label audit.
 - Real data passes about 500 MB, or training moves to a second machine (DVC, ADR-009).
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `ml/dataset/` holds `cells.csv`, `sudoku-photos.csv`, `kind-checks.jsonl` and the image store (#76).
+  [ADR-029](adr-029-repository-layout.md) moved the folder from `data/` to `ml/dataset/`.
+- `ml/src/sudoku_ml/journal.py` holds the session journal. `ml/src/sudoku_ml/data_paths.py` reads `SUDOKU_IMAGES`.
+- `ml/src/sudoku_ml/tables.py` is the one owner of the two tables (#190).

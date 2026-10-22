@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-028: The history sync: one push-and-pull call, an owner per history entry, stats on the device
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-15 |
 | Contact | Felix      |
 
@@ -344,3 +344,15 @@ The rules of the amendments "the sync in the app" and "delete the account" stay.
    makes the status `signedOut` after a delete.
 8. **`createAppSync` joins the two.** It builds the sync service and the lifecycle in `src/sync/`. The service gives
    410 to the lifecycle. The lifecycle gives `pause`, `stop` and `resume` to the delete flow.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `shared/sync-contract/` holds the sync contract (#116).
+- `mobile/src/storage/` holds the owner and the waiting list (#118). #181 built the amendment "the history repository
+  applies a sync page".
+- `backend/api/` serves `POST /v1/sync` (#120) and `DELETE /v1/account` (#125).
+- `mobile/src/sync/` runs the sync in the app (#123).
+- `mobile/src/account/accountLifecycle.ts` holds the account lifecycle (#126, #182).
+- Epic #112 still holds the check with two iPhones. It does not change a decision.
