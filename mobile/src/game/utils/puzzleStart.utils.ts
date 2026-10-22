@@ -34,6 +34,14 @@ export type PuzzleStart = {
 
 type Request = { level: Level; source: PuzzleSource; seed: number | null; game: Game }
 
+// QR-12 counts from the tap. A start that gives no game must not leave its mark for a later board.
+async function measuredStart(level: Level, start: () => Promise<SavedProgress | null>): Promise<SavedProgress | null> {
+  startMeasures.levelTapped(level)
+  const started = await start()
+  if (started === null) startMeasures.tapCancelled()
+  return started
+}
+
 /**
  * The one way to start a game (ADR-012, ADR-023). It owns the order: ask, make the game, start, tell the caller.
  * PuzzleRepository.start records the game before it as abandoned, so every start calls it once and only after the answer.
@@ -58,7 +66,10 @@ export function createPuzzleStart({
         // Ask from the stored state at the tap. peek() follows the last read, so the tap waits for no read.
         const known = puzzles.peek()
         const current = known === undefined ? await puzzles.current() : known
-        if (current !== null && !(await confirmReplace())) return null
+        if (current !== null) {
+          if (!(await confirmReplace())) return null
+          startMeasures.replaceConfirmed()
+        }
       }
       const starting = puzzles.start({ ...make(), owner })
       // The game screen opens on peek() while the write runs, so the caller can navigate at once.
@@ -85,19 +96,13 @@ export function createPuzzleStart({
   }
 
   return {
-    newGame: (level, opened) => {
-      startMeasures.levelTapped(level)
-      return run(() => generated(level), { ask: true, opened })
-    },
+    newGame: (level, opened) => measuredStart(level, () => run(() => generated(level), { ask: true, opened })),
     playScan: (grid, opened) =>
       run(() => ({ level: scannedLevel(grid.givens), source: 'scanned', seed: null, game: createGame(grid) }), {
         ask: true,
         opened,
       }),
-    newPuzzle: ({ level }) => {
-      startMeasures.levelTapped(level)
-      return run(() => generated(level), { ask: false })
-    },
+    newPuzzle: ({ level }) => measuredStart(level, () => run(() => generated(level), { ask: false })),
     retry: ({ level, source, seed, game }) =>
       run(
         () => ({

@@ -39,6 +39,8 @@ Limits of the method:
 - The first-outline times count on the JS thread. They include one hop from the UI thread, a few milliseconds.
 - The JS heap covers only the JavaScript side. The camera, the scanner and Skia hold native memory.
 - The QR-12 sum leaves out the human wait between the home screen and the tap.
+- The QR-12 time from the tap restarts when the player answers the replace question, so the answer wait is not in it.
+- The QR-07 lock-on time starts at the React effect of the capture phase, a few milliseconds after the lock-on frame.
 
 ## Results on the iPhone
 
@@ -63,7 +65,7 @@ Limits of the method:
 
 The app generates the puzzle at the level tap. It has no puzzle pool, so the generation time is part of QR-12.
 `just bench-generate` times `generate(level, seed)` for the seeds 1 to 200 of each level. The Mac is an Apple M4 Pro
-with Node 24.18, at commit `c639f97`.
+with Node 24.18, at commit `c639f97`. The generator and the grading did not change after that commit on this branch.
 
 | Level | Seeds | Mean | p95 | Slowest |
 | --- | --- | --- | --- | --- |
@@ -72,13 +74,14 @@ with Node 24.18, at commit `c639f97`.
 | hard | 200 | 37.5 ms | 109.8 ms | 152.7 ms |
 | expert | 200 | 154.3 ms | 422.3 ms | 928.6 ms |
 
-An earlier run of the same seeds, while other jobs loaded the Mac, gave a slowest expert seed of 2 360 ms and an
-expert p95 of 831 ms. The seeds are the same, so the spread comes from the load.
+Two other runs of the same seeds, while other jobs loaded the Mac, gave an expert p95 of 568 ms and 831 ms, and a
+slowest expert seed of 1 072 ms and 2 360 ms. The seeds are the same, so the spread comes from the load. Run the bench
+on an idle Mac to compare with the table.
 
 What this shows:
 
 - Easy and medium generate in a few milliseconds. They leave almost all of the 2 s for the launch.
 - Hard and expert vary much more from seed to seed, because the generator retries until the grade fits the level.
-- The slowest expert seed takes about 0.9 s on a quiet Mac. Hermes on the iPhone is likely slower than Node on a Mac.
+- The slowest expert seed took 0.9 s to 2.4 s on the Mac, by the load. Hermes on the iPhone is likely slower than Node on a Mac.
   An expert cold start can therefore miss 2 s. The device result decides it.
 - If expert fails on the device, a pool of generated puzzles is the fix that ADR-011 names.
