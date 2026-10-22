@@ -7,12 +7,13 @@ import { useGameActions } from '@/game/hooks/useGameActions'
 import { hintCardView } from '@/game/utils/hint.utils'
 import type { OpenHint } from '@/game/utils/session.utils'
 import { easeOut } from '@/utils/motion.utils'
-import { CARD_FADE_MS, CLOSE_SLOP, RUNGS } from './HintCard.constants'
+import { CARD_FADE_MS, CLOSE_SLOP, RUNGS, TOP_MAX_SCALE } from './HintCard.constants'
 import { styles } from './HintCard.styles'
 
 /**
  * The hint card, in place of the keypad (ADR-032 point 6). It is not modal: the grid stays live. The text scrolls under
  * Dynamic Type, and the buttons stay at the bottom. The card only fades in, so Reduce Motion needs nothing more.
+ * VoiceOver reads each new text through an announcement: iOS has no live region.
  */
 export function HintCard({ hint }: { hint: OpenHint }) {
   const { hintCard } = useGameActions()
@@ -27,13 +28,17 @@ export function HintCard({ hint }: { hint: OpenHint }) {
   }, [opacity])
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }))
   return (
-    <Animated.View testID="hint-card" accessibilityLiveRegion="polite" style={[styles.card, fadeStyle]}>
+    <Animated.View testID="hint-card" style={[styles.card, fadeStyle]}>
       <View style={styles.top}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text accessibilityRole="header" maxFontSizeMultiplier={TOP_MAX_SCALE} style={styles.title}>
           {title}
         </Text>
         <View style={styles.progress}>
-          {stepLabel !== null && <Text style={styles.step}>{stepLabel}</Text>}
+          {stepLabel !== null && (
+            <Text maxFontSizeMultiplier={TOP_MAX_SCALE} style={styles.step}>
+              {stepLabel}
+            </Text>
+          )}
           {rung !== null &&
             RUNGS.map((dot) => (
               <View

@@ -79,6 +79,7 @@ function Moves() {
         testID="fill"
         onPress={() => {
           hint()
+          hintCard('hintAnswer')
           hintCard('hintFill')
         }}
       />

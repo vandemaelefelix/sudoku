@@ -108,3 +108,10 @@ it('takes the height of the keypad, with buttons of 44 pt or more', () => {
     expect(StyleSheet.flatten(button(label).props.style).minHeight).toBeGreaterThanOrEqual(44)
   }
 })
+
+it('caps the Dynamic Type of the buttons and the top row, so the rung text keeps its room', () => {
+  renderCard(at(0, 1))
+  expect(screen.getByText('More help').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
+  expect(screen.getByText('Step 1 of 2').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
+  expect(screen.getByText(hintText(pointing, 0, 1)).props.maxFontSizeMultiplier).toBeUndefined()
+})
