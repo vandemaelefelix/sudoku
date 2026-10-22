@@ -93,9 +93,7 @@ function skyscraperLinks(step: Step): Links {
   const ends = (index: number) => step.pattern.filter((pattern) => UNITS[index]!.includes(pattern))
   const firstEnds = ends(first)
   const otherEnds = ends(other)
-  const cross = firstEnds
-    .map((end) => crossOf[end]!)
-    .find((line) => otherEnds.some((end) => crossOf[end] === line))!
+  const cross = firstEnds.map((end) => crossOf[end]!).find((line) => otherEnds.some((end) => crossOf[end] === line))!
   const farOf = (list: readonly number[]) => list.find((end) => crossOf[end] !== cross)!
   const crossUnit = crossOf === COL_OF ? 9 + cross : cross
   return { lines: lines([first, other]), joint: unit(crossUnit), far: [farOf(firstEnds), farOf(otherEnds)] }

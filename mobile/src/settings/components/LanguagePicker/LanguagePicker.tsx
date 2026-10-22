@@ -12,5 +12,5 @@ export function LanguagePicker({ value, onChange }: LanguagePickerProps) {
     value: choice,
     label: intl.formatMessage({ id: label }),
   }))
-  return <SegmentedControl options={options} value={value} onChange={onChange} indicatorTestID="language-indicator" />
+  return <SegmentedControl options={options} value={value} onChange={onChange} testID="language" />
 }

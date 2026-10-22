@@ -6,7 +6,9 @@ import { Stack } from 'expo-router'
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library'
 import { Alert, type AlertButton } from 'react-native'
 import { useReducedMotion } from 'react-native-reanimated'
-import { createGame, generate, grade, hintText, planHint, type Game } from '@sudoku/core'
+import { createGame, generate, grade, hintMessage, planHint, type Game } from '@sudoku/core'
+import { createAppIntl } from '@/i18n/utils/intl.utils'
+import { hintText } from '@/utils/hintText.utils'
 import { formatPuzzleNumber } from '@/game/utils/finish.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { newGame, wonGame } from '@/storage/repositories.contract'
@@ -488,6 +490,6 @@ describe('the techniques screen', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Back' }))
     await waitFor(() => expect(screen).toHavePathname('/game'))
     expect(screen.getByTestId('hint-card')).toBeTruthy()
-    expect(screen.getByText(hintText(plan, 0, 2))).toBeTruthy()
+    expect(screen.getByText(hintText(createAppIntl('en'), hintMessage(plan, 0, 2)))).toBeTruthy()
   })
 })

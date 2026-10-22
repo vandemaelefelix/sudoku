@@ -153,7 +153,14 @@ status: DRAFT
 | Target cell | The cell where the hint ends. It gets the digit |
 | Hint highlight | The cells that an open hint marks on the grid: the focus units, the pattern cells, the support cells, the struck candidates and the target cells. A `Step` is a hint highlight as it is. `HintHighlight` in `src/game/utils/cell.utils.ts` |
 | Techniques screen | The screen that lists every technique that a hint teaches, easiest first. Settings and "Learn more" on the hint card open it |
-| Technique page | The page of one technique: its definition, an explanation of at most four sentences, the first level where it appears and an example board. `TECHNIQUE_PAGES` in `@sudoku/core` holds the text and the example |
+| Technique page | The page of one technique: its definition, an explanation of at most four sentences, the first level where it appears and an example board. `TECHNIQUE_PAGES` in `@sudoku/core` holds the example. The catalogues hold the text (ADR-033) |
+| Catalogue | The messages of one language: `mobile/src/i18n/messages/en.ts` or `nl.ts`. English is the source. Each message has an id and ICU syntax (ADR-033) |
+| Message id | The name of a message in the catalogues: `<feature>.<part>.<name>`, for example `settings.language.title`. The typecheck refuses an id that `en.ts` does not have (ADR-033) |
+| Language choice | The setting `app.language`: System, English or Dutch. System follows the languages of iOS (ADR-033) |
+| Formatting locale | The locale of numbers, dates and plurals: the device tag of the chosen language, else `en-GB` or `nl-BE` (ADR-033) |
+| Hint message | The text of one hint rung as data: an id from `HINT_MESSAGE_IDS` and its values. `hintMessage` in `@sudoku/core` gives it. The app's `hintText` writes it (ADR-033) |
+| Hint part | A value of a hint message that each language writes its own way: a cell, cells, a unit, units, cells in a unit, lines or a list of digits |
+| Word list | `mobile/src/i18n/messages/nl.words.md`: the one Dutch word for each term that the player sees |
 | Complete number | A number with all nine placed correctly. Its key is disabled. Wrong placements do not count |
 | Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
 | Puzzle number | The seed of a generated puzzle, shown on the finish card: "Puzzle 412 077". The app draws seeds below 1 000 000 (ADR-011) |

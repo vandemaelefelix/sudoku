@@ -17,7 +17,8 @@
         "tinted": "./assets/icons/production/ios-tinted.png"
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "Sudoku uses the camera to scan a paper sudoku. The photos never leave your iPhone."
+        "NSCameraUsageDescription": "Sudoku uses the camera to scan a paper sudoku. The photos never leave your iPhone.",
+        "CFBundleAllowMixedLocalizations": true
       }
     },
     "android": {
@@ -70,10 +71,20 @@
             "./assets/fonts/InstrumentSerif-Regular.ttf"
           ]
         }
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": ["en", "nl"]
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "en": "./locales/en.json",
+      "nl": "./locales/nl.json"
     }
   }
 }

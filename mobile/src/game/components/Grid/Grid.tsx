@@ -12,6 +12,7 @@ import { cellLabel } from '@/game/utils/cellLabel.utils'
 import { hintHighlight } from '@/game/utils/hint.utils'
 import { markOf } from '@/game/utils/mark.utils'
 import { styles } from './Grid.styles'
+import { useIntl } from '@/i18n/hooks/useIntl'
 
 const THREE = [0, 1, 2] as const
 
@@ -33,6 +34,7 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
   // The highlight keeps its identity while the hint does, so a clock tick or a selection makes no new views.
   const hinted = useMemo(() => highlight ?? hintHighlight(hint), [highlight, hint])
   const views = useCellViews(hinted)
+  const intl = useIntl()
   const { select } = useGameActions()
   const pulse = usePulse(board, move)
   const intro = useGridIntro()
@@ -47,7 +49,7 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
         key={cell}
         cell={cell}
         {...view}
-        label={cellLabel(cell, view)}
+        label={cellLabel(intl, cell, view)}
         {...(interactive ? { pulse, intro } : {})}
         onSelect={select}
         interactive={interactive}

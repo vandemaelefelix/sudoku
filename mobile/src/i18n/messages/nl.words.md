@@ -42,6 +42,12 @@ Add a row before you use a new term in `nl.ts`. Do not use a second Dutch word f
 | erase | wissen | |
 | technique | techniek | |
 | step | stap | |
+| new best | nieuw record | |
+| finished (a game) | uitgespeeld | "Nog geen uitgespeelde spellen" |
+| finished (a scan) | afgewerkt | "een afgewerkte scan" |
+| generated puzzle | gemaakte puzzel | A puzzle of the generator |
+| home screen | startscherm | "Terug naar het startscherm" |
+| pivot | spil | The middle cell of an XY-wing or XYZ-wing |
 
 ## Stats
 
@@ -98,3 +104,21 @@ Add a row before you use a new term in `nl.ts`. Do not use a second Dutch word f
 | continue | verdergaan | |
 | delete | verwijderen | |
 | sync | synchroniseren | "Gesynchroniseerd" |
+
+## Techniques
+
+The names follow the Dutch sudoku sites where a Dutch name exists. The fish and wing names stay English, as there.
+
+| English | Dutch |
+| --- | --- |
+| Full house | Laatste vakje |
+| Hidden single | Verborgen single |
+| Naked single | Naakte single |
+| Pointing | Aanwijzen |
+| Box-line reduction | Blok-lijnreductie |
+| Naked pair, triple, quad | Naakt paar, naakt drietal, naakt viertal |
+| Hidden pair, triple, quad | Verborgen paar, verborgen drietal, verborgen viertal |
+| X-wing, Swordfish, Jellyfish | X-wing, Swordfish, Jellyfish |
+| Skyscraper | Wolkenkrabber |
+| Two-string kite | Vlieger |
+| XY-wing, XYZ-wing, W-wing | XY-wing, XYZ-wing, W-wing |

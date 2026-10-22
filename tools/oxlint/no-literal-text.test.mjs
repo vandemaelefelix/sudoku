@@ -19,7 +19,11 @@ const attribute = (name, value) => ({ type: 'JSXAttribute', name: { type: 'JSXId
 const inBraces = (expression) => ({ type: 'JSXExpressionContainer', expression })
 const alert = (...args) => ({
   type: 'CallExpression',
-  callee: { type: 'MemberExpression', object: { type: 'Identifier', name: 'Alert' }, property: { type: 'Identifier', name: 'alert' } },
+  callee: {
+    type: 'MemberExpression',
+    object: { type: 'Identifier', name: 'Alert' },
+    property: { type: 'Identifier', name: 'alert' },
+  },
   arguments: args,
 })
 
@@ -53,4 +57,13 @@ test('refuses literal text in Alert.alert', () => {
   assert.equal(reports(alert(literal('Sign out?'))), 1)
   assert.equal(reports(alert({ type: 'Identifier', name: 'title' }, template('Delete ', '?'))), 1)
   assert.equal(reports(alert({ type: 'Identifier', name: 'title' })), 0)
+})
+
+test('refuses literal text in braces as a child of an element', () => {
+  const element = { type: 'JSXElement' }
+  assert.equal(reports({ ...inBraces(template('Version ', '')), parent: element }), 1)
+  assert.equal(reports({ ...inBraces(literal('Paused')), parent: { type: 'JSXFragment' } }), 1)
+  assert.equal(reports({ ...inBraces(template(' · ', '')), parent: element }), 0)
+  // A prop value in braces is the job of the prop check, so it is not reported twice.
+  assert.equal(reports({ ...inBraces(literal('Back')), parent: { type: 'JSXAttribute' } }), 0)
 })

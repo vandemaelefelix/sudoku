@@ -8,10 +8,3 @@ export const LEVEL_LABELS: Readonly<Record<Level, MessageId>> = {
   hard: 'level.hard',
   expert: 'level.expert',
 }
-
-export const LEVEL_NAMES: Readonly<Record<Level, string>> = {
-  easy: 'Easy',
-  medium: 'Medium',
-  hard: 'Hard',
-  expert: 'Expert',
-}

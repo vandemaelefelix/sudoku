@@ -14,12 +14,11 @@ import { SettingsFooter } from '@/settings/components/SettingsFooter'
 import { ThemePicker } from '@/settings/components/ThemePicker'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
-import { TECHNIQUES_TITLE } from '@/techniques/constants/techniques.constants'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { useLanguage } from '@/i18n/hooks/useLanguage'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
-import { ASSIST_ROWS, HAPTICS_ROW, TECHNIQUES_ROW } from './SettingsScreen.constants'
+import { ASSIST_ROWS } from './SettingsScreen.constants'
 import { styles } from './SettingsScreen.styles'
 
 type SettingsScreenProps = { onBack(): void; onSignIn(): void; onTechniques(): void }
@@ -52,32 +51,32 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         <View style={styles.header}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={intl.formatMessage({ id: 'common.back' })}
             onPress={onBack}
             style={({ pressed }) => [styles.back, pressed && pressedStyles.pressed]}
           >
             <Icon name="back" tone="text" />
           </Pressable>
           <Text accessibilityRole="header" style={styles.title}>
-            Settings
+            {intl.formatMessage({ id: 'settings.title' })}
           </Text>
         </View>
         <View style={styles.section}>
           <View style={styles.heading}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Assists
+              {intl.formatMessage({ id: 'settings.assists.title' })}
             </Text>
             <ThemeDecoration slot="sectionRule" />
           </View>
-          <Text style={styles.hint}>Turn these off for a raw game.</Text>
+          <Text style={styles.hint}>{intl.formatMessage({ id: 'settings.assists.hint' })}</Text>
         </View>
         <View testID="assist-card" style={styles.card}>
           <AssistPreview />
           {ASSIST_ROWS.map(({ name, label, description }, index) => (
             <AssistRow
               key={name}
-              label={label}
-              description={description}
+              label={intl.formatMessage({ id: label })}
+              description={intl.formatMessage({ id: description })}
               value={assists[name]}
               divider={index > 0}
               onChange={(on) => {
@@ -90,7 +89,7 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         <View style={styles.section}>
           <View style={styles.heading}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Theme
+              {intl.formatMessage({ id: 'settings.theme.title' })}
             </Text>
             <ThemeDecoration slot="sectionRule" />
           </View>
@@ -105,7 +104,7 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         <View style={styles.section}>
           <View style={styles.heading}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Appearance
+              {intl.formatMessage({ id: 'settings.appearance.title' })}
             </Text>
             <ThemeDecoration slot="sectionRule" />
           </View>
@@ -135,15 +134,15 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         <View style={styles.section}>
           <View style={styles.heading}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Feedback
+              {intl.formatMessage({ id: 'settings.feedback.title' })}
             </Text>
             <ThemeDecoration slot="sectionRule" />
           </View>
         </View>
         <View style={styles.card}>
           <AssistRow
-            label={HAPTICS_ROW.label}
-            description={HAPTICS_ROW.description}
+            label={intl.formatMessage({ id: 'settings.haptics.label' })}
+            description={intl.formatMessage({ id: 'settings.haptics.description' })}
             value={haptics.on}
             divider={false}
             onChange={switchHaptics}
@@ -152,15 +151,15 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         <View style={styles.section}>
           <View style={styles.heading}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Learn
+              {intl.formatMessage({ id: 'settings.learn.title' })}
             </Text>
             <ThemeDecoration slot="sectionRule" />
           </View>
         </View>
         <View style={styles.card}>
           <LinkRow
-            label={TECHNIQUES_TITLE}
-            description={TECHNIQUES_ROW.description}
+            label={intl.formatMessage({ id: 'techniques.title' })}
+            description={intl.formatMessage({ id: 'settings.learn.techniques' })}
             divider={false}
             onPress={onTechniques}
           />

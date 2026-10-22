@@ -17,8 +17,6 @@ it('has a page for every technique with hint text, and no other', () => {
 })
 
 describe.each(TECHNIQUES)('the page of %s', (technique) => {
-  const page = TECHNIQUE_PAGES[technique]!
-
   it('shows a position of a puzzle with one solution', () => {
     const example = techniqueExample(technique)!
     const result = solve([...example.givens])
