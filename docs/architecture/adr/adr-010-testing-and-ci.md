@@ -132,3 +132,76 @@ CI no longer only checks. Two new workflows deploy the backend to AWS (ADR-027, 
   workflow lacks the claim. Then use a separate branch rule or an environment, or the fallback in
   `infra/README.md`.
 - The OIDC subject customization of the repository changes. The trust `sub` must then change with it.
+
+## Amendment 2026-10-22: CI builds the iOS app for the simulator
+
+The decision "No iOS build in CI in v1" changes. An Expo SDK or native-module upgrade can break
+the native build, and before this amendment only the developer's Mac showed it (R-08). A new
+workflow, `ios-simulator`, builds the app for the iOS Simulator on a macOS runner. A simulator build
+needs no code signing, so it needs no paid Apple Developer account.
+
+| Job | Trigger | Steps |
+| --- | --- | --- |
+| `ios-simulator` | A pull request that changes `mobile/package.json`, `mobile/app.json`, `mobile/app.config.ts` or the workflow, when it opens. A manual run | Install, stub model, `just ios-simulator` (`expo prebuild`, `pod install`, `xcodebuild`), upload the `.app` |
+
+1. **The runner is `macos-26` with Xcode 26.6.** Expo SDK 57 needs Xcode 26.4 or later. The
+   workflow pins Xcode through `DEVELOPER_DIR`, so a new default on the image does not change the build.
+2. **The build is the development variant in the Release configuration.** Release bundles the
+   JavaScript, so the app runs without Metro. The development variant talks to the development Clerk
+   instance and the development sync API, so a test run sends no traffic to production (ADR-022).
+   Both variants have the same native modules.
+3. **The build uses the stub model, as `ts` does.** The private model never enters CI (SUD-08).
+4. **The paths filter keeps the cost low.** The repository is private on the Free plan: 2,000 minutes a
+   month, and a macOS minute counts ten times. `pnpm-lock.yaml`, `pnpm-workspace.yaml` and the
+   `justfile` are not trigger paths. Each changes in many pull requests that touch no native code.
+   An upgrade that changes only the lockfile needs a manual run. `mobile/ios/` is not a trigger path,
+   because it is generated and git ignores it (ADR-002).
+5. **A push to an open pull request starts no run.** Without this rule, each review fix of a pull
+   request that adds a native dependency costs a full run. Before such a pull request merges, start a
+   manual run on its branch: `gh workflow run ios-simulator.yml --ref <branch>`.
+6. **No weekly run.** Nothing changes the native build between two pull requests. A weekly run
+   would cost about 520 of the 2,000 monthly minutes.
+7. **The workflow uses no cache.** The measurement below showed that each cache cost more time to
+   restore than it saved.
+8. **The `.app` is an artifact for the end-to-end tests.** It keeps 7 days, because the Free plan has
+   500 MB of artifact storage for a private repository. The zip is 30 MB.
+
+### The measurement
+
+Two runs of the same commit on `macos-26`, on 2026-10-22. The first run had no cache. The second
+run restored the caches that the first run saved.
+
+| Step | Without cache | With cache | Cache size |
+| --- | --- | --- | --- |
+| Restore the pnpm store (`setup-node`) | — | 3 min 41 s | 925 MB |
+| `pnpm install` | 29 s | 50 s | |
+| Restore `Pods` and `Podfile.lock` | — | 7 s | 360 MB |
+| `pod install` | 1 min 17 s | 1 min 30 s | |
+| Restore DerivedData | — | 2 min 6 s | 1,353 MB |
+| `xcodebuild` | 6 min 44 s | 5 min 55 s | |
+| Save the caches | 1 min 16 s | — | |
+| **The job** | **10 min 9 s** | **14 min 49 s** | |
+
+- `pod install` spends its time on the CocoaPods CDN and on the ExpoModulesJSI slices, not on the
+  downloads that `Pods` holds.
+- DerivedData saved 49 s of `xcodebuild`, because a new checkout gives every file a new time stamp.
+- The three caches hold 2.6 GB of the 10 GB cache limit of the repository.
+
+### The cost
+
+GitHub rounds each job up to whole minutes. A run without cache took 10 min 9 s, and a third run of
+the final workflow took 13 min 24 s on the same image. The speed of the runner changes from run to run.
+So one run costs 110 to 140 of the 2,000 monthly minutes, about 120 on average. In the month before
+this amendment, 4 commits changed a trigger path. At one run when the pull request opens and one
+manual run before the merge, the build costs about 500 to 1,000 minutes a month. That month was the
+month of the first native modules, so a normal month costs less.
+
+### Reassessment Triggers of the amendment
+
+- The build costs more than a quarter of the monthly minutes. Then run it only on a manual run,
+  before an upgrade merges.
+- `xcodebuild` takes more than 15 minutes. Then measure `ccache` (`apple.ccacheEnabled`) or a
+  DerivedData cache again.
+- The account gets more minutes, or the repository becomes public. Then add a weekly run and the
+  lockfile as a trigger path.
+- A device or TestFlight build becomes necessary. That needs a paid Apple Developer account.
