@@ -112,7 +112,7 @@ describe('useGridDetector', () => {
     const { result } = renderHook(() => useGridDetector())
     for (let i = 0; i < 30; i++) {
       // findGrids gives the largest first, and three equal grids come in any order.
-      find.mockReturnValueOnce(i % 2 === 0 ? grids : grids.toReversed())
+      find.mockReturnValueOnce(i % 2 === 0 ? grids : [...grids].reverse())
       const chosen = result.current!(frameAt(1 + i / 30))
       expect(chosen?.quad).toEqual(stacked(0.5).quad)
     }

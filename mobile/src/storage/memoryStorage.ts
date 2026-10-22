@@ -59,7 +59,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
   const visible = (owner: string | null): HistoryEntry[] =>
     rows
       .filter((row) => row.record.deletedAt === null && row.owner === owner)
-      .toSorted((a, b) => b.record.finishedAt.localeCompare(a.record.finishedAt) || b.seq - a.seq)
+      .sort((a, b) => b.record.finishedAt.localeCompare(a.record.finishedAt) || b.seq - a.seq)
       .map((row) => entryOf(row.record))
 
   const unowned = () => rows.filter((row) => row.owner === null && row.record.deletedAt === null)
@@ -138,7 +138,7 @@ export function createMemoryStorage(deps: StorageDeps = countingDeps()): GameSto
       readWaitingBatch(async (limit) =>
         rows
           .filter((row) => row.owner === owner && isPending(row))
-          .toSorted((a, b) => a.record.updatedAt.localeCompare(b.record.updatedAt) || a.seq - b.seq)
+          .sort((a, b) => a.record.updatedAt.localeCompare(b.record.updatedAt) || a.seq - b.seq)
           .slice(0, limit)
           .map((row) => row.record),
       ),

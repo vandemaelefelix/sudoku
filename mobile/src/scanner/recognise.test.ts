@@ -215,15 +215,15 @@ it('fails with the reason when a step throws, and disposes every image', () => {
   })
   const disposed: string[] = []
   expect(recognise(photo(disposed), LOCKED, model(), OUTPUTS)).toEqual({ ok: false, reason: 'warp failed' })
-  expect(disposed.toSorted()).toEqual(
-    [`${PHOTO.width}x${PHOTO.height}`, `${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].toSorted(),
+  expect([...disposed].sort()).toEqual(
+    [`${PHOTO.width}x${PHOTO.height}`, `${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].sort(),
   )
 })
 
 it('gives the time of each step', () => {
   const result = recognise(photo(), LOCKED, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
-  expect(Object.keys(result.timings).toSorted()).toEqual(['classifyMs', 'detectMs', 'flattenMs', 'imageMs'])
+  expect(Object.keys(result.timings).sort()).toEqual(['classifyMs', 'detectMs', 'flattenMs', 'imageMs'])
 })
 
 describe('a still image', () => {
@@ -298,6 +298,6 @@ describe('a still image', () => {
     const own = jest.spyOn(still, 'dispose')
     recogniseStill(still, model(), OUTPUTS)
     expect(own).not.toHaveBeenCalled()
-    expect(disposed.toSorted()).toEqual([`${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].toSorted())
+    expect([...disposed].sort()).toEqual([`${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].sort())
   })
 })
