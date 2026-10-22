@@ -91,7 +91,7 @@ status: DRAFT
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
 | Journal | `ml/dataset/work/journal.jsonl`: one line per change of the unfinished work, append-only: kinds, digits and the sources of cut cells. Undo and rollback work on it. Finish folds it into `cells.csv` and deletes it (ADR-018). It replaces the kind log of ADR-009 |
-| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Groups, Review, Check and Progress |
+| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Photos, Digits, Groups, Outlines, Review, Check and Progress, and the scan view |
 | Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
 | Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
@@ -219,7 +219,7 @@ status: DRAFT
 | Display grid | The real game grid in read-only mode: no taps, no haptics, no pulse. The settings preview uses it, and later the finish card |
 | Sudoku photo | A photo of a whole sudoku. A row of `ml/dataset/sudoku-photos.csv` lists it. The labelling tool cuts cells from it (ADR-018) |
 | Cell | One square of a sudoku grid, cut from a sudoku photo or from a scan. A real cell is a row of `ml/dataset/cells.csv` and an image in `cells/<digit>/` (ADR-018) |
-| Status (sudoku photo) | The decision on a sudoku photo: `pending`, `accepted`, `rejected`, `too-few-cells` or `legacy`. A `legacy` sudoku photo was cut before photo checks existed (ADR-018) |
+| Status (sudoku photo) | The decision on a sudoku photo: `pending`, `accepted`, `rejected`, `too-few-cells`, `legacy` or `unchecked`. A `legacy` sudoku photo was cut before photo checks existed (ADR-018). An `unchecked` one is an uploaded scan whose outline no person has checked (ADR-030) |
 | Image store | The folder with `cells/` and `sudoku-photos/`: `ml/dataset/images/`, or the folder that `SUDOKU_IMAGES` names. Outside git (ADR-018) |
 | Photo check | The Photos screen of the labelling page: a person accepts, corrects or rejects the grid outline of an imported sudoku photo. See ADR-018 |
 | Usable cell | A cell whose 4 corners lie inside the sudoku photo after the flatten. Only usable cells are cut |
@@ -294,6 +294,11 @@ status: DRAFT
 | Contributor ID | A random ID that the app makes for the device. It names the owner of an uploaded scan. It has no link to a person, unless the player signs in (ADR-030) |
 | Scan record | The data of one finished scan: the cropped photo, the corners, the model answers, the final grid and the `edited` flags. The app uploads it when the setting "Help improve the app" is on (ADR-030) |
 | Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training uses it to filter cells (ADR-030) |
+| Outlines screen | The screen of the labelling page that checks the outline of each uploaded scan: a gallery of the unchecked scans, the lowest outline fit first, and a large view to drag the corners or reject the scan (ADR-030) |
+| Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Outlines screen shows the lowest fit first |
+| Unchecked scan | An uploaded scan whose outline no person has checked: the status `unchecked` in `sudoku-photos.csv`. Its cells never train the model |
+| Rejected scan | An uploaded scan that the developer rejected on the Outlines screen: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
+| Scan view | The view of the labelling page that shows one uploaded scan: the photo with its outline and the 81 cells with their labels. A cell with the same pixels as a cell of another scan shows as shared |
 | Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
 | Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
 | Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |

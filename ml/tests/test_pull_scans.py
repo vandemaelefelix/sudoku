@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from sudoku_ml.data_check import check_data
 from sudoku_ml.data_paths import REPO_ROOT, DataPaths
 from sudoku_ml.dataset import load_cells, read_real_cells, split_cells
 from sudoku_ml.pull_scans import main, pull_scans
-from sudoku_ml.tables import read_cells, read_photos
+from sudoku_ml.tables import read_cells, read_photos, write_photos
 
 FIXTURES = REPO_ROOT / "shared" / "fixtures" / "scan-records"
 SCAN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -102,7 +103,7 @@ def test_one_scan_makes_one_photo_row_and_81_cells(paths: DataPaths):
     assert (photo.source, photo.licence, photo.status) == (
         "app-scan",
         "player-contributed",
-        "accepted",
+        "unchecked",
     )
     assert len(photo.corners.split()) == 8
     assert (paths.photos / photo.file).is_file()
@@ -194,12 +195,19 @@ def test_the_pull_never_writes_under_shared_fixtures(paths: DataPaths):
     assert digest() == before
 
 
+def approve_all(paths: DataPaths) -> None:
+    """Approve every outline, as the Outlines screen and Finish do."""
+    rows = read_photos(paths.photos_csv)
+    write_photos(paths.photos_csv, [replace(r, status="accepted") for r in rows])
+
+
 def test_unedited_scan_cells_are_left_out_of_training_by_default(paths: DataPaths):
     pull_scans(
         paths,
         FakeTable([record(SCAN_A, edited_cells=(0, 1))]),
         FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1)}),
     )
+    approve_all(paths)
     assert len(load_cells(paths)) == 2
     assert len(load_cells(paths, include_unedited=True)) == 81
 
@@ -208,14 +216,16 @@ def test_the_cells_of_one_scan_stay_on_one_side_of_the_split(paths: DataPaths):
     items = [record(SCAN_A), record(SCAN_B, scanId=SCAN_B)]
     bucket = FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1), f"scans/{SCAN_B}.jpg": jpeg(2)})
     pull_scans(paths, FakeTable(items), bucket)
+    approve_all(paths)
     cells = read_real_cells(paths)
+    assert len(cells) > 81
     sides = split_cells(cells, (0.5, 0.25, 0.25), seed=3, include_unedited=True)
     for photo in {c.sample.photo for c in cells}:
         owners = {k for k, side in enumerate(sides) for c in side if c.sample.photo == photo}
         assert len(owners) == 1
 
 
-def test_main_reads_the_table_and_bucket_names(paths: DataPaths, monkeypatch):
+def test_main_reads_the_table_and_bucket_names(paths: DataPaths, monkeypatch, capsys):
     seen = {}
 
     def fake_pull(paths_, table, bucket, **kwargs):
@@ -233,3 +243,4 @@ def test_main_reads_the_table_and_bucket_names(paths: DataPaths, monkeypatch):
     monkeypatch.setattr("sudoku_ml.pull_scans.aws_clients", lambda t, b: (f"T:{t}", f"B:{b}"))
     assert main(["--table", "tbl", "--bucket", "bkt"], paths) == 0
     assert seen == {"table": "T:tbl", "bucket": "B:bkt"}
+    assert "the Outlines screen" in capsys.readouterr().out

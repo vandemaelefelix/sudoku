@@ -20,6 +20,7 @@ from sudoku_ml.photo_check import PhotoCheck, clear_temp
 
 PAGE = Path(__file__).with_name("label_page.html")
 PHOTO_ROUTES = ("/api/photos/", "/photo/", "/flat/", "/api/source", "/source/")
+OUTLINE_PREFIX = "/outline/"
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 
 
@@ -111,6 +112,15 @@ def make_server(
                     self._json(store.review_screen())
                 elif url.path == "/api/check":
                     self._json(store.check_start())
+                elif url.path == "/api/outlines":
+                    self._json(store.outline_screen(int(q.get("page", 0))))
+                elif url.path == "/api/outline":
+                    self._json(store.outline(q["photo"]))
+                elif url.path.startswith(OUTLINE_PREFIX):
+                    stem = url.path.removeprefix(OUTLINE_PREFIX).removesuffix(".jpg")
+                    self._send(200, store.outline_jpeg(stem), "image/jpeg")
+                elif url.path == "/api/scans":
+                    self._json(store.scan_screen(q["photo"]))
                 elif url.path == "/api/status":
                     self._json(
                         {
@@ -150,9 +160,7 @@ def make_server(
                     self._send(200, body, "image/jpeg")
                 elif url.path.startswith("/flat/"):
                     stem = url.path.removeprefix("/flat/").removesuffix(".png")
-                    try:
-                        check.photo(stem)
-                    except KeyError:
+                    if not check.known(stem):
                         self._json({"error": "no such photo"}, 404)
                         return
                     self._send(200, check.preview_png(stem, parse_corners(q["c"])), "image/png")
@@ -178,6 +186,10 @@ def make_server(
                 "/api/undo": lambda b: store.undo(),
                 "/api/check": lambda b: store.check_answer(b["answers"]),
                 "/api/assign": lambda b: store.assign(b["cells"], b["screen"]),
+                "/api/scans/confirm": lambda b: store.confirm_scan(b["photo"], b["cells"]),
+                "/api/outlines/approve": lambda b: store.approve_outlines(b["photos"]),
+                "/api/outlines/fix": lambda b: store.fix_outline(b["photo"], b["corners"]),
+                "/api/outlines/reject": lambda b: store.reject_outline(b["photo"]),
                 "/api/prelabel": lambda b: prelabel(),
                 "/api/finish": lambda b: finish(),
                 "/api/photos/accept": lambda b: accept(b["photo"], b["corners"]),
