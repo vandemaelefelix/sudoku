@@ -50,7 +50,7 @@ class Served:
 
 @pytest.fixture
 def served(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2})
     app = tmp_path / "app"
     (app / "assets").mkdir(parents=True)
     (app / "index.html").write_text("<title>Labels</title>")
@@ -73,7 +73,7 @@ def request(port, method, path, body=None, host=None, content_type="application/
 
 
 def test_the_server_refuses_any_address_but_localhost(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     with pytest.raises(ValueError, match="127.0.0.1"):
         make_server(LabelStore(paths, Clock()), host="0.0.0.0", port=0)
 
@@ -108,7 +108,7 @@ def test_the_built_app_is_served_and_nothing_outside_it(served):
 
 
 def test_a_missing_build_says_how_to_build(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     one = Served(LabelStore(paths, Clock()), app_dir=tmp_path / "none")
     try:
         status, data = request(one.port, "GET", "/")
@@ -168,7 +168,7 @@ def test_a_bad_request_gets_a_400_with_a_reason(served):
 
 
 def test_the_doubtful_step_lists_and_settles_the_suspects(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2})
     store = LabelStore(paths, Clock())
     save_kinds(store, [{"id": c, "kind": "printed"} for c in ids["7"]])
     cell = ids["7"][0]
@@ -199,7 +199,7 @@ FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 @pytest.fixture
 def served_photos(tmp_path: Path):
     """Two loose cells with guesses and one imported photo that waits for its outline."""
-    paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2})
     u = ids["unlabeled"]
     prelabel(paths, {u[0]: ("2", 0.6, "handwritten", 0.9), u[1]: ("2", 0.99, "handwritten", 0.9)})
     save_photo(grid_photo(), tmp_path / "in" / "p.png")
@@ -395,7 +395,7 @@ REPORT = {
 
 
 def test_fetch_reports_the_pull_and_asks_for_a_sign_in_when_the_session_expired(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     fake = FakeFetch([REPORT, SignInNeeded("Token has expired")])
     signed_in = []
     one = Served(LabelStore(paths, Clock()), fetch=fake, sign_in=lambda: signed_in.append(1))
@@ -415,7 +415,7 @@ def test_a_route_without_its_function_answers_404(served, route):
 
 
 def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeypatch):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
 
     class Interrupted:
         server_port = 0
@@ -433,9 +433,8 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
     assert paths.cells_csv.read_text().splitlines()[1].endswith(",handwritten,,,,verified")
 
 
-def test_the_server_starts_without_groups_and_on_the_port_given(tmp_path, monkeypatch):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    paths.groups.unlink()
+def test_the_server_starts_on_the_port_given(tmp_path, monkeypatch):
+    paths, _ = build(tmp_path, {"7": 1})
     ports = []
 
     class Interrupted:
@@ -458,7 +457,7 @@ def test_the_server_starts_without_groups_and_on_the_port_given(tmp_path, monkey
 
 
 def serve_with(tmp_path: Path, prelabel) -> Served:
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     return Served(LabelStore(paths, Clock()), prelabel=prelabel)
 
 
@@ -483,7 +482,7 @@ def test_a_missing_model_gets_a_400_with_the_message(tmp_path: Path):
 
 def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
     root = tmp_path / "ml"
-    paths, _ = build(root, {"unlabeled": 1}, {})
+    paths, _ = build(root, {"unlabeled": 1})
     manifest = tmp_path / "mobile" / "assets" / "models" / "manifest.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text(json.dumps({"run": "r1"}))
@@ -516,7 +515,7 @@ def test_an_unexpected_error_gets_a_500_with_a_message_and_the_server_keeps_serv
 
 
 def test_the_finish_route_answers_with_the_result_or_a_plain_error(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     answers = [{"removed": ["groups.json"]}, ValueError("Finish stopped and deleted nothing.")]
 
     def finish() -> dict:
@@ -534,13 +533,13 @@ def test_the_finish_route_answers_with_the_result_or_a_plain_error(tmp_path: Pat
 
 
 def test_a_rollback_of_a_finished_session_says_to_use_git(tmp_path: Path, capsys):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     assert main(["label_server", "rollback", "20200101-000000"], paths) == 1
     assert "This session is finished. Use git to go back." in capsys.readouterr().err
 
 
 def test_the_start_refuses_a_table_that_does_not_parse(tmp_path: Path, capsys):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     paths.cells_csv.write_text("id,label,kind\n")
     assert main(["label_server"], paths) == 1
     assert "Restore it from git." in capsys.readouterr().err

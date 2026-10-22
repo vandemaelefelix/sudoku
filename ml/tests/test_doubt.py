@@ -2,11 +2,12 @@ import pytest
 
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.doubt import (
+    clamp_doubt,
     count_solutions,
-    digit_doubt,
+    digit_doubt_raw,
     is_sure_digit,
     is_sure_kind,
-    kind_doubt,
+    kind_doubt_raw,
     labels_key,
     rule_breaks,
     scan_signals,
@@ -114,61 +115,74 @@ def test_the_labels_key_changes_with_a_digit_or_a_kind():
 
 
 def test_a_sure_cell_has_a_doubt_of_one_minus_its_probability():
-    doubt, reasons = digit_doubt("7", probs("7", 0.99), False, [])
+    doubt, reasons = digit_doubt_raw("7", probs("7", 0.99), False, [])
     assert doubt == pytest.approx(0.01) and reasons == []
 
 
 def test_low_p_names_its_probability():
-    doubt, reasons = digit_doubt("7", probs("7", 0.6), False, [])
+    doubt, reasons = digit_doubt_raw("7", probs("7", 0.6), False, [])
     assert doubt == pytest.approx(0.4)
     assert reasons == [{"signal": "low-p", "p": 0.6}]
 
 
 def test_a_model_that_reads_another_digit_adds_a_half_and_names_it():
-    doubt, reasons = digit_doubt("1", probs("7", 0.9), False, [])
-    assert doubt == 1  # 1 - 0.0111 + 0.5 is capped
+    doubt, reasons = digit_doubt_raw("1", probs("7", 0.9), False, [])
+    assert doubt == pytest.approx(1 - 0.1 / 9 + 0.5)
     assert reasons[0] == {"signal": "model-differs", "predicted": "7", "p": 0.9}
-    other, _ = digit_doubt("1", probs("7", 0.3), False, [])
-    assert other == 1
+    other, _ = digit_doubt_raw("1", probs("7", 0.3), False, [])
+    assert other == pytest.approx(1 - 0.7 / 9 + 0.5)
 
 
 def test_a_player_change_a_rule_break_and_a_non_unique_grid_nudge_the_order():
     rule = {"signal": "rule-break", "unit": "row", "index": 3}
     unique = {"signal": "not-unique"}
-    plain, _ = digit_doubt("7", probs("7", 0.95), False, [])
-    edited, reasons = digit_doubt("7", probs("7", 0.95), True, [])
-    broken, _ = digit_doubt("7", probs("7", 0.95), False, [rule])
-    loose, _ = digit_doubt("7", probs("7", 0.95), False, [unique])
+    plain, _ = digit_doubt_raw("7", probs("7", 0.95), False, [])
+    edited, reasons = digit_doubt_raw("7", probs("7", 0.95), True, [])
+    broken, _ = digit_doubt_raw("7", probs("7", 0.95), False, [rule])
+    loose, _ = digit_doubt_raw("7", probs("7", 0.95), False, [unique])
     assert (edited - plain, broken - plain, loose - plain) == pytest.approx((0.3, 0.2, 0.1))
     assert {"signal": "edited"} in reasons
-    _, with_both = digit_doubt("7", probs("7", 0.95), False, [rule, unique])
+    _, with_both = digit_doubt_raw("7", probs("7", 0.95), False, [rule, unique])
     assert with_both == [rule, unique]
 
 
-def test_the_doubt_never_passes_one():
+def test_the_doubt_never_passes_one_but_the_raw_sum_does():
     rule = {"signal": "rule-break", "unit": "box", "index": 0}
-    assert digit_doubt("1", probs("7", 0.9), True, [rule])[0] == 1
+    raw, _ = digit_doubt_raw("1", probs("7", 0.9), True, [rule])
+    assert raw > 1 and clamp_doubt(raw) == 1
+
+
+def test_cells_that_the_model_reads_differently_keep_their_order_above_one():
+    raws = []
+    for p in (0.4, 0.2, 0.01):
+        digit = [0.0] * 10
+        digit[DIGIT_CLASSES.index("1")] = p
+        digit[DIGIT_CLASSES.index("7")] = 1 - p
+        raws.append(digit_doubt_raw("1", {"digit": digit, "kind": [0, 1, 0, 0]}, False, [])[0])
+    assert all(raw > 1 for raw in raws)
+    assert {clamp_doubt(raw) for raw in raws} == {1}
+    assert raws == sorted(raws)
 
 
 def test_a_cell_without_probabilities_has_a_doubt_of_one_and_keeps_its_other_signals():
-    doubt, reasons = digit_doubt("7", None, True, [])
+    doubt, reasons = digit_doubt_raw("7", None, True, [])
     assert doubt == 1 and reasons == [{"signal": "no-guess"}, {"signal": "edited"}]
-    assert digit_doubt(None, None, False, []) == (1.0, [{"signal": "no-guess"}])
+    assert digit_doubt_raw(None, None, False, []) == (1.0, [{"signal": "no-guess"}])
 
 
 def test_the_kind_doubt_renormalises_over_printed_and_handwritten():
     kind = {"digit": [0.0] * 10, "kind": [0.4, 0.5, 0.05, 0.05]}
-    doubt, reasons = kind_doubt("printed", kind)
+    doubt, reasons = kind_doubt_raw("printed", kind)
     assert doubt == pytest.approx(1 - 0.5 / 0.55, abs=1e-4) and reasons == []
-    assert kind_doubt("handwritten", kind)[0] == 1
+    assert clamp_doubt(kind_doubt_raw("handwritten", kind)[0]) == 1
 
 
 def test_a_model_that_reads_the_other_kind_adds_a_half():
-    doubt, reasons = kind_doubt("printed", probs("7", 0.9, "handwritten", 0.8))
-    assert doubt == pytest.approx(min(1, 0.8 + 0.5))
+    doubt, reasons = kind_doubt_raw("printed", probs("7", 0.9, "handwritten", 0.8))
+    assert doubt == pytest.approx(0.8 + 0.5)
     assert reasons[0] == {"signal": "model-differs", "predicted": "handwritten", "p": 0.8}
-    assert kind_doubt("unsure", probs("7", 0.9))[0] == 1
-    assert kind_doubt("printed", None) == (1.0, [{"signal": "no-guess"}])
+    assert kind_doubt_raw("unsure", probs("7", 0.9))[0] == 1
+    assert kind_doubt_raw("printed", None) == (1.0, [{"signal": "no-guess"}])
 
 
 @pytest.mark.parametrize(

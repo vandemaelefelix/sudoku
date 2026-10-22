@@ -7,7 +7,7 @@ export const KIND_LETTER: Record<Kind, string> = { printed: 'P', handwritten: 'H
 
 export function labelText(digit: Label | null, kind?: Kind | null): string {
   if (digit === null) return '?'
-  if (digit === 'empty') return '·'
+  if (digit === 'empty') return 'Empty'
   if (digit === 'discarded') return '✕'
   return kind ? `${digit} ${KIND_LETTER[kind]}` : digit
 }
@@ -43,6 +43,7 @@ export function CellTile({ stem, label, changed, marked, dim, title, onClick, on
       onMouseEnter={onHover}
       onFocus={onHover}
       data-id={id}
+      data-changed={changed ? 'true' : undefined}
       data-doubt={doubt === undefined ? undefined : doubt.toFixed(2)}
       style={doubt === undefined ? undefined : ({ '--doubt': doubt } as CSSProperties)}
       aria-pressed={marked ?? false}

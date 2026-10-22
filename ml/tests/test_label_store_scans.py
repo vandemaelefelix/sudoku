@@ -2,7 +2,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from test_label_store import Clock
+from test_label_store import Clock, settle_kinds
 from test_pull_scans import CORNERS, SCAN_A, SCAN_B, FakeBucket, FakeTable, jpeg, record
 
 from sudoku_ml.data_check import check_data
@@ -192,6 +192,7 @@ def test_a_scan_cell_trains_only_after_its_outline_and_its_label_are_checked(tmp
     finish(store)
     assert load_cells(paths) == []
     store.confirm_scan(photos[0], entries(store.scan_screen(photos[0])))
+    settle_kinds(store)
     finish(store)
     assert len(load_cells(paths)) == 81
 
@@ -224,6 +225,7 @@ def test_confirm_moves_a_changed_digit_and_logs_a_changed_kind(tmp_path: Path):
     store.confirm_scan(photos[0], entries(screen, c0=("7", "handwritten")))
     assert (paths.cells / "7" / f"{stem_of(cell)}.png").exists()
     assert store.kinds()[cell] == "handwritten"
+    settle_kinds(store)
     finish(store)
     assert read_cells(paths.cells_csv)[cell].label_source == "verified"
 
@@ -264,6 +266,7 @@ def test_the_scan_list_reads_approved_scans_from_an_unfinished_journal(tmp_path:
     assert again.status()["digit_cells"] == 81 + listed[1]["open"]
     again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
     assert [s["photo"] for s in again.scan_list()["scans"]] == photos[1:]
+    settle_kinds(again)
     assert finish(again)["report"]["problems"] == []
     assert [s["photo"] for s in again.scan_list()["scans"]] == photos[1:]
 

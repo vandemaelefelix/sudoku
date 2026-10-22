@@ -212,10 +212,6 @@ relabel file:
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
 
-# Group the cells of each digit folder into ml/dataset/work/groups.json. The labelling app no longer reads it. The run path is relative to ml/
-group-cells run="":
-    uv run --directory ml python -m sudoku_ml.grouping {{run}}
-
 # Pre-label the cells of unlabeled/ and the digit folders with the full probabilities. The labelling app does this by itself. The run path is relative to ml/
 prelabel-cells run="":
     uv run --directory ml python -m sudoku_ml.prelabel {{run}}

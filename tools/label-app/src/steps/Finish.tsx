@@ -11,9 +11,10 @@ export function Finish() {
   const action = useAction(counts.reload)
   const [result, setResult] = useState<FinishResult | undefined>()
   const changes = counts.data?.changes ?? 0
+  const kindCells = counts.data?.kind_cells ?? 0
 
   const finish = async (): Promise<void> => {
-    if (!changes || action.busy) return
+    if (!changes || kindCells > 0 || action.busy) return
     const done = await action.run(
       () => post<FinishResult>('/api/finish'),
       () => 'Finished. Z can no longer undo these changes. Git keeps the old tables.',
@@ -32,9 +33,21 @@ export function Finish() {
       note={action.note}
       action={
         changes && !result ? (
-          <button type="button" className="primary" onClick={finish} disabled={action.busy}>
-            Finish {changes} changes <kbd>Enter</kbd>
-          </button>
+          <>
+            {kindCells > 0 ? (
+              <>
+                <span className="summary">
+                  {kindCells} {kindCells === 1 ? 'cell waits' : 'cells wait'} in the Kind step. Check them first.
+                </span>
+                <button type="button" onClick={() => go('kinds')}>
+                  Open Kind
+                </button>
+              </>
+            ) : null}
+            <button type="button" className="primary" onClick={finish} disabled={action.busy || kindCells > 0}>
+              Finish {changes} changes <kbd>Enter</kbd>
+            </button>
+          </>
         ) : undefined
       }
     >

@@ -16,7 +16,6 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just preprocess-fixtures`: regenerate the synthetic reference pairs in `shared/fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
 - `just dataset-manifest [--forget-missing]`: rewrite `ml/dataset/cells.csv` from the cell folders and the journal. It refuses a missing or wrong image store. `--forget-missing` drops the rows of cells whose file is gone.
 - `just suspects`: rank the cells whose digit or kind label the model doubts most. The start page of the labelling app has a tool for them. The app runs it too.
-- `just group-cells [run]`: group similar cells per digit folder into `groups.json`. The labelling app no longer reads it.
 - `just import-photos <folder> [--source S] [--licence L]`: copy new sudoku photos into the image store and find the grid in each.
 - `just prelabel-cells [run]`: let a model propose a digit and a kind, with the full probabilities, for each cell in `unlabeled/` and the digit folders. The labelling app does this by itself, for the open cells.
 - `just label-cells`: build the labelling app if needed and open it on 127.0.0.1 (ADR-034).

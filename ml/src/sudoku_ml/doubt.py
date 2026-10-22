@@ -152,11 +152,18 @@ def model_kind(probs: Probs) -> tuple[str, float]:
     return ("printed", printed) if printed >= handwritten else ("handwritten", handwritten)
 
 
-def digit_doubt(
+def clamp_doubt(raw: float) -> float:
+    """The doubt of the API and the tile colour: the raw sum, at most 1."""
+    return _round(min(1.0, raw))
+
+
+def digit_doubt_raw(
     label: str | None, probs: Probs | None, edited: bool, sudoku: list[dict]
 ) -> tuple[float, list[dict]]:
-    """Doubt of a digit label (0 sure, 1 doubtful) and its reasons. `sudoku` holds the
-    `rule-break` and `not-unique` reasons of the cell. Without probabilities the doubt is 1."""
+    """The sum of the signals of a digit label, and its reasons. The sum can pass 1. It sets the
+    order of the cells, because a clamp would tie every cell that the model reads differently.
+    `sudoku` holds the `rule-break` and `not-unique` reasons of the cell. Without probabilities
+    the sum is 1."""
     reasons: list[dict] = []
     rule = any(r["signal"] == "rule-break" for r in sudoku)
     unique = any(r["signal"] == "not-unique" for r in sudoku)
@@ -178,12 +185,13 @@ def digit_doubt(
     if edited:
         reasons.append({"signal": "edited"})
     reasons += sudoku
-    return _round(min(1.0, doubt)), reasons
+    return doubt, reasons
 
 
-def kind_doubt(kind: str | None, probs: Probs | None) -> tuple[float, list[dict]]:
-    """Doubt of a kind label, from the model's kind head alone. A label that is not printed or
-    handwritten (`unsure`) counts as a probability of 0."""
+def kind_doubt_raw(kind: str | None, probs: Probs | None) -> tuple[float, list[dict]]:
+    """The sum of the signals of a kind label, from the model's kind head alone, and its reasons.
+    Like the digit sum it can pass 1. A label that is not printed or handwritten (`unsure`)
+    counts as a probability of 0."""
     if probs is None or kind is None:
         return 1.0, [{"signal": "no-guess"}]
     printed, handwritten = kind_probs(probs)
@@ -195,7 +203,7 @@ def kind_doubt(kind: str | None, probs: Probs | None) -> tuple[float, list[dict]
         reasons.append({"signal": "model-differs", "predicted": read, "p": _round(p_read)})
     if p_label < LOW_P:
         reasons.append({"signal": "low-p", "p": _round(p_label)})
-    return _round(min(1.0, (1 - p_label) + KIND_W_DIFFERS * differs)), reasons
+    return (1 - p_label) + KIND_W_DIFFERS * differs, reasons
 
 
 def is_sure_digit(

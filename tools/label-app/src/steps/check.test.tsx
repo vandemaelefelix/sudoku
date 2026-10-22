@@ -149,6 +149,21 @@ describe('Digits', () => {
     ).toBeInTheDocument()
   })
 
+  it('marks a cell that the person fixed to empty, and shows Empty on a cell the model left empty', async () => {
+    fakeServer({ [D7]: page([cell(0), cell(1, { digit: 'empty' })]) })
+    open('digits/7')
+    const all = await tiles()
+    expect(all[1]).not.toHaveAttribute('data-changed')
+    expect(within(all[1]!).getByText('Empty')).toBeInTheDocument()
+    await userEvent.click(all[0]!)
+    await userEvent.keyboard('0')
+    const fixed = (await tiles())[0]!
+    expect(fixed).toHaveAttribute('data-changed', 'true')
+    expect(fixed).toHaveClass('changed')
+    expect(within(fixed).getByText('Empty')).toBeInTheDocument()
+    expect(all[1]).not.toHaveAttribute('data-changed')
+  })
+
   it('clears the selection with Escape, and goes back to the start with none', async () => {
     fakeServer({ [D7]: page([cell(0), cell(1)]) })
     open('digits/7')
@@ -198,6 +213,57 @@ describe('Digits', () => {
     await userEvent.click(button)
     await waitFor(() => expect(server.posts['/api/check/digits/sure']).toEqual([{ digit: '7', threshold: 0.9 }]))
     expect(await screen.findByText(/Confirmed 240 sure cells of this tab/)).toBeInTheDocument()
+  })
+
+  it('shows the sure button as counting until the count of the new threshold arrives', async () => {
+    let release: (() => void) | undefined
+    fakeServer({
+      [D7]: page([cell(0)], { sure: 182 }),
+      '/api/check/digits?digit=7&threshold=0.9': () =>
+        new Promise((resolve) => {
+          release = () => resolve(page([cell(0)], { sure: 240, threshold: 0.9 }))
+        }),
+    })
+    open('digits/7')
+    await screen.findByRole('button', { name: 'Confirm 182 cells the model is at least 98 % sure of' })
+    fireEvent.change(screen.getByLabelText(/Threshold/), { target: { value: '90' } })
+    const counting = await screen.findByRole('button', {
+      name: /Counting the cells the model is at least 90 % sure of/,
+    })
+    expect(counting).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /Confirm 182 cells/ })).toBeNull()
+    release?.()
+    expect(
+      await screen.findByRole('button', { name: 'Confirm 240 cells the model is at least 90 % sure of' }),
+    ).toBeEnabled()
+  })
+
+  it('ignores Enter and the sure button while the reload after a confirm runs', async () => {
+    let loads = 0
+    let release: (() => void) | undefined
+    const server = fakeServer({
+      [D7]: () =>
+        ++loads === 1
+          ? page([cell(0)], { sure: 4 })
+          : new Promise((resolve) => {
+              release = () => resolve(page([cell(0)], { sure: 4 }))
+            }),
+      '/api/check/digits/confirm': 1,
+      '/api/check/digits/sure': { cells: 4 },
+    })
+    open('digits/7')
+    await tiles()
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(loads).toBe(2))
+    await userEvent.keyboard('{Enter}')
+    const sure = screen.getByRole('button', { name: /Counting the cells/ })
+    expect(sure).toBeDisabled()
+    expect(server.posts['/api/check/digits/confirm']).toHaveLength(1)
+    release?.()
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Confirm 4 cells the model is at least 98 % sure of' }),
+    )
+    await waitFor(() => expect(server.posts['/api/check/digits/sure']).toHaveLength(1))
   })
 
   it('blocks Enter for a cell without a digit on the No guess tab', async () => {

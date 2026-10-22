@@ -41,7 +41,8 @@ def write_outlines(paths: DataPaths) -> int:
 
 
 def finish(store: LabelStore) -> dict:
-    """Raises ValueError, with nothing deleted, when the data check finds a problem.
+    """Raises ValueError, with nothing written or deleted, while a cell waits in the Kind step.
+    Raises ValueError, with nothing deleted, when the data check finds a problem.
 
     cells.csv is rewritten before the check: the check compares it with the folders. The call
     may append `repair` lines to the journal through `store.repair()`. After a Finish, Undo
@@ -49,6 +50,15 @@ def finish(store: LabelStore) -> dict:
     Review item: the new `Last finish:` line is newer than their evidence. `review_closed` is
     their number, or None when the Doubtful labels step did not run in this session."""
     paths = store.paths
+    try:
+        waiting_kinds = len(store.open_kind_cells())
+    except ValueError as error:
+        raise ValueError(f"Finish stopped and deleted nothing. {error}") from error
+    if waiting_kinds:
+        raise ValueError(
+            f"Finish stopped and deleted nothing. {waiting_kinds} cells wait in the Kind step. "
+            "Check them first."
+        )
     try:
         closed = store.open_review_count()
         store.repair()
@@ -66,7 +76,7 @@ def finish(store: LabelStore) -> dict:
         )
     write_status(paths.status, report, store.now(), _prelabel_run(store))
     removed = []
-    for path in (paths.journal, paths.prelabels, paths.suspects, paths.groups):
+    for path in (paths.journal, paths.prelabels, paths.suspects):
         if path.exists():
             path.unlink()
             removed.append(path.name)

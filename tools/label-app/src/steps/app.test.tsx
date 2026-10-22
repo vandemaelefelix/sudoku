@@ -246,10 +246,12 @@ describe('Doubtful labels', () => {
   })
 })
 
+const READY = { ...START, kind_cells: 0 }
+
 describe('Finish', () => {
   it('finishes and says to commit the tables', async () => {
     const server = fakeServer({
-      '/api/start': START,
+      '/api/start': READY,
       '/api/finish': {
         report: {},
         text: 'cells: 120',
@@ -267,7 +269,7 @@ describe('Finish', () => {
 
   it('shows the reason when the data check stops Finish', async () => {
     fakeServer({
-      '/api/start': START,
+      '/api/start': READY,
       '/api/finish': new Refusal(400, { error: 'Finish stopped and deleted nothing.' }),
     })
     open('finish')
@@ -277,9 +279,23 @@ describe('Finish', () => {
   })
 })
 
+describe('Finish with Kind cells waiting', () => {
+  it('says how many wait, disables Finish and opens the Kind step', async () => {
+    const server = fakeServer({ '/api/start': START, '/api/finish': {} })
+    open('finish')
+    expect(await screen.findByText(/3 cells wait in the Kind step/)).toBeInTheDocument()
+    const finish = screen.getByRole('button', { name: /Finish 5 changes/ })
+    expect(finish).toBeDisabled()
+    await userEvent.keyboard('{Enter}')
+    expect(server.posts['/api/finish']).toBeUndefined()
+    await userEvent.click(screen.getByRole('button', { name: 'Open Kind' }))
+    expect(window.location.hash).toBe('#/kinds')
+  })
+})
+
 describe('Every step', () => {
   it('shows its keys with ?, and Z undoes the last change', async () => {
-    const server = fakeServer({ '/api/start': START, '/api/undo': { lines: 2, what: 'kinds' } })
+    const server = fakeServer({ '/api/start': READY, '/api/undo': { lines: 2, what: 'kinds' } })
     open('finish')
     await screen.findByRole('button', { name: /Finish 5 changes/ })
     await userEvent.keyboard('?')
@@ -290,7 +306,7 @@ describe('Every step', () => {
   })
 
   it('goes back to the start with Escape', async () => {
-    fakeServer({ '/api/start': START })
+    fakeServer({ '/api/start': READY })
     open('finish')
     await screen.findByRole('button', { name: /Finish 5 changes/ })
     await userEvent.keyboard('{Escape}')

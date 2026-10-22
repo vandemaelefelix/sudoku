@@ -36,7 +36,8 @@ def read_real_cells(data: DataPaths) -> list[RealCell]:
 
     A cell of a scan photo carries the id of that photo, so that its cells stay on one side of the
     split. Other cells keep their old grouping, so a new scan does not move them. A cell of a scan
-    whose outline is not `accepted` is left out: an unchecked outline can cut every cell wrong."""
+    whose first source photo has an outline that is not `accepted` is left out, unless a person
+    verified the cell: an unchecked outline can cut every cell wrong."""
     table = {stem_of(c): row for c, row in read_cells(data.cells_csv).items()}
     photos = [p for p in read_photos(data.photos_csv) if p.source == APP_SCAN]
     scans = {p.photo_id for p in photos}
@@ -44,7 +45,8 @@ def read_real_cells(data: DataPaths) -> list[RealCell]:
     cells = []
     for path in cell_paths(data.cells):
         row = table.get(path.stem)
-        # A verified cell can also sit in another, accepted scan with the same pixels.
+        # The code reads only the first source photo of the row. It keeps a verified cell: a person
+        # checked its pixels, so a later unchecked outline of the same pixels does not drop it.
         if row and row.source and row.source[0] in unchecked and row.label_source != "verified":
             continue
         label = path.parent.name
