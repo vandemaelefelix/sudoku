@@ -1,0 +1,17 @@
+# A game ends on the finish card. A hint fills its answer, so the flow needs no solution of the puzzle.
+appId: com.vandemaelefelix.sudoku.dev
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: new-game-easy
+- repeat:
+    while:
+      notVisible:
+        id: finish-card
+    times: 81
+    commands:
+      - tapOn:
+          id: tool-hint
+- assertVisible:
+    id: finish-card

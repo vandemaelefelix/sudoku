@@ -18,7 +18,7 @@ export function TimerPill() {
   const time = formatClock(playedMs)
   if (status === 'lost' || status === 'won') {
     return (
-      <View style={styles.area} accessible accessibilityLabel={`Time ${time}`}>
+      <View testID="timer" style={styles.area} accessible accessibilityLabel={`Time ${time}`}>
         <View testID="timer-pill" style={styles.endedPill}>
           <Text style={styles.endedTime}>{time}</Text>
         </View>
@@ -47,6 +47,7 @@ function PauseButton({ time, paused }: { time: string; paused: boolean }) {
   }
   return (
     <Pressable
+      testID="timer"
       style={({ pressed }) => [styles.area, pressed && pressedStyles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={`${paused ? 'Resume' : 'Pause'}, time ${time}`}
