@@ -103,7 +103,12 @@ export function Check({
   const nextKind = kindCounts ? nextWithCells(KIND_TABS, kind, kindCounts) : undefined
   const seenCount = useRef({ key: '', n: 0 })
   useEffect(() => {
-    if (!kindCounts || kind === 'all') return
+    if (!kindCounts) return
+    if (kind === 'all') {
+      // A move-on that lands on All must not make a later click on an empty kind tab jump on.
+      carried.current = false
+      return
+    }
     const key = `${tab}:${kind}`
     const emptied = seenCount.current.key === key && seenCount.current.n > 0 && shownCount === 0
     seenCount.current = { key, n: shownCount }
