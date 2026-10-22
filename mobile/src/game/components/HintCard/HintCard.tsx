@@ -13,17 +13,17 @@ import { easeOut } from '@/utils/motion.utils'
 import { CARD_FADE_MS, CLOSE_SLOP, RUNGS, TOP_MAX_SCALE } from './HintCard.constants'
 import { styles } from './HintCard.styles'
 
-/**
- * The hint card, in place of the keypad (ADR-032 point 6). It is not modal: the grid stays live. The text scrolls under
- * Dynamic Type, and the buttons stay at the bottom. The card only fades in, so Reduce Motion needs nothing more.
- * VoiceOver reads each new text through an announcement: iOS has no live region.
- */
 type HintCardProps = {
   hint: OpenHint
   /** Opens the page of the technique. Without it, the card has no "Learn more". */
   onLearn?: ((technique: TechniqueId) => void) | undefined
 }
 
+/**
+ * The hint card, in place of the keypad (ADR-032 point 6). It is not modal: the grid stays live. The text scrolls under
+ * Dynamic Type, and the buttons stay at the bottom. The card only fades in, so Reduce Motion needs nothing more.
+ * VoiceOver reads each new text through an announcement: iOS has no live region.
+ */
 export function HintCard({ hint, onLearn }: HintCardProps) {
   const { hintCard } = useGameActions()
   const { title, text, rung, stepLabel, buttons, technique } = hintCardView(hint)
