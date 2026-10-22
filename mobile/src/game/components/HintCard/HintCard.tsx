@@ -4,9 +4,9 @@ import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } 
 import type { TechniqueId } from '@sudoku/core'
 import { PanelButton } from '@/components/PanelButton'
 import { Icon } from '@/game/components/Icon'
-import { HINT_LABELS } from '@/game/constants/hint.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { hintCardView } from '@/game/utils/hint.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import type { OpenHint } from '@/game/utils/session.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
@@ -26,7 +26,8 @@ type HintCardProps = {
  */
 export function HintCard({ hint, onLearn }: HintCardProps) {
   const { hintCard } = useGameActions()
-  const { title, text, rung, stepLabel, buttons, technique } = hintCardView(hint)
+  const intl = useIntl()
+  const { title, text, rung, stepLabel, buttons, technique } = hintCardView(intl, hint)
   const spoken = stepLabel === null ? text : `${stepLabel}. ${text}`
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(spoken)
@@ -59,7 +60,7 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close the hint"
+          accessibilityLabel={intl.formatMessage({ id: 'hint.close' })}
           hitSlop={CLOSE_SLOP}
           onPress={() => hintCard('hintClose')}
           style={styles.close}
@@ -72,11 +73,11 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
         {technique !== null && onLearn !== undefined && (
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={`${HINT_LABELS.learnMore} about ${title}`}
+            accessibilityLabel={intl.formatMessage({ id: 'hint.button.learnMoreLabel' }, { technique: title })}
             onPress={() => onLearn(technique)}
             style={({ pressed }) => [styles.learn, pressed && pressedStyles.pressed]}
           >
-            <Text style={styles.learnText}>{HINT_LABELS.learnMore}</Text>
+            <Text style={styles.learnText}>{intl.formatMessage({ id: 'hint.button.learnMore' })}</Text>
             <Icon name="next" tone="accent" size={16} />
           </Pressable>
         )}

@@ -1,4 +1,6 @@
-import { createGame, hintText, planHint, type HintPlan, type HintRung, type TechniqueId } from '@sudoku/core'
+import { createGame, hintMessage, planHint, type HintPlan, type HintRung, type TechniqueId } from '@sudoku/core'
+import { createAppIntl } from '@/i18n/utils/intl.utils'
+import { hintText } from '@/utils/hintText.utils'
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import { AccessibilityInfo, StyleSheet } from 'react-native'
 import { GameActionsContext } from '@/game/hooks/useGameActions'
@@ -7,6 +9,10 @@ import { pointingStart, stuckStart } from '@/game/utils/sample.utils'
 import type { OpenHint } from '@/game/utils/session.utils'
 import { cobalt } from '@/theme/themes/cobalt'
 import { HintCard } from './HintCard'
+
+const en = createAppIntl('en')
+/** The English card text of a rung, as the app writes it. */
+const textOf = (plan: HintPlan, step: number, rung: HintRung): string => hintText(en, hintMessage(plan, step, rung))
 
 function planOf(start: ReturnType<typeof pointingStart>): HintPlan {
   const plan = planHint(createGame(start))
@@ -39,7 +45,7 @@ afterEach(() => jest.restoreAllMocks())
 it('shows the look rung: the text, the rung dots, the step and three buttons', () => {
   const hintCard = renderCard(at(0, 1))
   expect(screen.getByText('Hint')).toBeTruthy()
-  expect(screen.getByText(hintText(pointing, 0, 1))).toBeTruthy()
+  expect(screen.getByText(textOf(pointing, 0, 1))).toBeTruthy()
   expect(screen.getByText('Step 1 of 2')).toBeTruthy()
   expect(screen.getAllByTestId(/^hint-rung-/)).toHaveLength(4)
   expect(screen.getAllByTestId(/^hint-rung-\d-on$/)).toHaveLength(1)
@@ -81,7 +87,7 @@ it('shows one card for a wrong entry, with Erase it and no rungs', () => {
 it('shows one card for the fallback, with Fill it', () => {
   const plan = planOf(stuckStart())
   renderCard(at(0, 1, plan))
-  expect(screen.getByText(hintText(plan, 0, 1))).toBeTruthy()
+  expect(screen.getByText(textOf(plan, 0, 1))).toBeTruthy()
   expect(screen.queryAllByTestId(/^hint-rung-/)).toHaveLength(0)
   expect(buttonLabels()).toEqual(['Fill it', "I'll do it"])
 })
@@ -95,7 +101,7 @@ it('closes on every card', () => {
 it('reads the new text to VoiceOver', () => {
   const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
   renderCard(at(0, 1))
-  expect(announce).toHaveBeenCalledWith(`Step 1 of 2. ${hintText(pointing, 0, 1)}`)
+  expect(announce).toHaveBeenCalledWith(`Step 1 of 2. ${textOf(pointing, 0, 1)}`)
 })
 
 it('takes the height of the keypad, with buttons of 44 pt or more', () => {
@@ -113,7 +119,7 @@ it('caps the Dynamic Type of the buttons and the top row, so the rung text keeps
   renderCard(at(0, 1))
   expect(screen.getByText('More help').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
   expect(screen.getByText('Step 1 of 2').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
-  expect(screen.getByText(hintText(pointing, 0, 1)).props.maxFontSizeMultiplier).toBeUndefined()
+  expect(screen.getByText(textOf(pointing, 0, 1)).props.maxFontSizeMultiplier).toBeUndefined()
 })
 
 describe('Learn more', () => {

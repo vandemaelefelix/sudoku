@@ -1,4 +1,6 @@
-import { createGame, hintText, planHint, type HintPlan } from '@sudoku/core'
+import { createGame, hintMessage, planHint, type HintPlan, type HintRung } from '@sudoku/core'
+import { createAppIntl } from '@/i18n/utils/intl.utils'
+import { hintText } from '@/utils/hintText.utils'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { GameActionsContext } from '@/game/hooks/useGameActions'
 import { GameStateContext, type GameState } from '@/game/hooks/useGameState'
@@ -7,6 +9,10 @@ import { sampleStart } from '@/game/utils/sample.utils'
 import type { OpenHint } from '@/game/utils/session.utils'
 import { NICE_MS } from './HintStrip.constants'
 import { HintStrip } from './HintStrip'
+
+const en = createAppIntl('en')
+/** The English card text of a rung, as the app writes it. */
+const textOf = (plan: HintPlan, step: number, rung: HintRung): string => hintText(en, hintMessage(plan, step, rung))
 
 const board = createGame(sampleStart())
 const plan = planHint(board) as HintPlan
@@ -35,9 +41,9 @@ it('shows nothing while no hint is open, or while the card shows', () => {
 
 it('shows the text of the rung on one line, and opens the card on a tap', () => {
   const hintCard = renderStrip({ plan, step: 0, rung: 2, view: 'strip' })
-  const text = screen.getByText(hintText(plan, 0, 2))
+  const text = screen.getByText(textOf(plan, 0, 2))
   expect(text.props.numberOfLines).toBe(1)
-  fireEvent.press(screen.getByRole('button', { name: `Hint: ${hintText(plan, 0, 2)}` }))
+  fireEvent.press(screen.getByRole('button', { name: `Hint: ${textOf(plan, 0, 2)}` }))
   expect(hintCard).toHaveBeenCalledWith('hintOpen')
 })
 

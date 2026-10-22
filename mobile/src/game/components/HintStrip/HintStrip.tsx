@@ -4,8 +4,8 @@ import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } 
 import { Icon } from '@/game/components/Icon'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
-import { HINT_TITLE } from '@/game/constants/hint.constants'
 import { hintCardView } from '@/game/utils/hint.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { easeOut } from '@/utils/motion.utils'
 import { CLOSE_SLOP, NICE_MS, STRIP_FADE_MS } from './HintStrip.constants'
 import { styles } from './HintStrip.styles'
@@ -15,6 +15,7 @@ import { styles } from './HintStrip.styles'
  * the card at the same rung. After the player placed the target digit, it says "Nice." and closes itself.
  */
 export function HintStrip() {
+  const intl = useIntl()
   const { hint } = useGameState()
   const { hintCard } = useGameActions()
   const nice = hint?.view === 'nice'
@@ -32,18 +33,18 @@ export function HintStrip() {
   }, [shown, opacity])
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }))
   if (!shown) return null
-  const { text } = hintCardView(hint)
+  const { text } = hintCardView(intl, hint)
   return (
     <Animated.View testID="hint-strip" style={[styles.strip, fadeStyle]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={nice ? text : `${HINT_TITLE}: ${text}`}
-        accessibilityHint={nice ? undefined : 'Opens the hint card'}
+        accessibilityLabel={nice ? text : intl.formatMessage({ id: 'hint.strip.label' }, { text })}
+        accessibilityHint={nice ? undefined : intl.formatMessage({ id: 'hint.strip.openHint' })}
         disabled={nice}
         onPress={() => hintCard('hintOpen')}
         style={styles.open}
       >
-        {!nice && <Text style={styles.label}>{HINT_TITLE}</Text>}
+        {!nice && <Text style={styles.label}>{intl.formatMessage({ id: 'hint.title' })}</Text>}
         <Text numberOfLines={1} style={styles.text}>
           {text}
         </Text>
@@ -51,7 +52,7 @@ export function HintStrip() {
       {!nice && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close the hint"
+          accessibilityLabel={intl.formatMessage({ id: 'hint.close' })}
           hitSlop={CLOSE_SLOP}
           onPress={() => hintCard('hintClose')}
           style={styles.close}
