@@ -14,6 +14,11 @@ function logFps(fps: number) {
   measureLog('QR-05', `detection ${fps.toFixed(1)} fps`)
 }
 
+function logFirst(what: 'grid' | 'outline', openedAt: number) {
+  const label = what === 'grid' ? 'first grid found' : 'first outline'
+  measureLog('QR-05', `${label} ${Date.now() - openedAt} ms after the camera screen opened`)
+}
+
 function logJitter(report: JitterReport) {
   measureLog(
     'QR-06',
@@ -45,22 +50,19 @@ export function useScanMeasures({
 }) {
   const [enabled] = useState(isMeasuring)
   const [openedAt] = useState(Date.now)
-  const firsts = useRef({ grid: false, outline: false })
+  // UI-thread flags, so each first time crosses to the JS thread once and adds no load to the frames it measures.
+  const firsts = useSharedValue({ grid: false, outline: false })
   const frames = useSharedValue(EMPTY_WINDOW)
   const jitter = useSharedValue(EMPTY_JITTER)
-
-  const logFirst = (what: 'grid' | 'outline') => {
-    if (firsts.current[what]) return
-    firsts.current[what] = true
-    const label = what === 'grid' ? 'first grid found' : 'first outline'
-    measureLog('QR-05', `${label} ${Date.now() - openedAt} ms after the camera screen opened`)
-  }
 
   useAnimatedReaction(
     () => detection.value,
     (current) => {
       if (!enabled || current == null) return
-      if (current.quad != null) scheduleOnRN(logFirst, 'grid')
+      if (current.quad != null && !firsts.value.grid) {
+        firsts.set({ ...firsts.value, grid: true })
+        scheduleOnRN(logFirst, 'grid', openedAt)
+      }
       const counted = countFrame(frames.value, current.timestamp, 0)
       frames.set(counted.window)
       if (counted.report !== null) scheduleOnRN(logFps, counted.report.fps)
@@ -72,7 +74,10 @@ export function useScanMeasures({
     (shown) => {
       const timestamp = detection.value?.timestamp
       if (!enabled || timestamp == null) return
-      if (shown != null) scheduleOnRN(logFirst, 'outline')
+      if (shown != null && !firsts.value.outline) {
+        firsts.set({ ...firsts.value, outline: true })
+        scheduleOnRN(logFirst, 'outline', openedAt)
+      }
       const tracked = trackJitter(jitter.value, shown, timestamp)
       jitter.set(tracked.window)
       if (tracked.report !== null) scheduleOnRN(logJitter, tracked.report)

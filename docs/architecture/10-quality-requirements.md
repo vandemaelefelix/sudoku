@@ -106,3 +106,6 @@ The [quality measurements record](../research/2026-10-22-quality-measurements.md
 QR-05 to QR-08 and QR-10 to QR-12 on the reference iPhone. The
 [measurement guide](../operations/measure-quality.md) gives the steps for one session. The development variant logs
 the timings, also in its Release build (ADR-022). The production variant logs nothing.
+
+The app has no puzzle pool yet. It generates the puzzle at the level tap, so the QR-12 result includes the
+generation. The record holds a first generation time per level, measured on a Mac.

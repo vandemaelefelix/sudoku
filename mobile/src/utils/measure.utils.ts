@@ -19,7 +19,12 @@ export function measureLog(id: QualityId, message: string): void {
 /** The marks of QR-12, from the load of the bundle to a playable board. */
 export type StartMeasures = {
   homeShown(): void
+  /** A tap while an earlier start runs keeps the earlier mark, because that start shows the board. */
   levelTapped(level: string): void
+  /** The tap started no game: the player kept the game in progress, or the start failed. */
+  tapCancelled(): void
+  /** The player answered the replace question with New game. The wait for the answer is not part of QR-12. */
+  replaceConfirmed(): void
   generated(level: string, ms: number): void
   boardShown(): void
 }
@@ -40,7 +45,13 @@ export function createStartMeasures(now: () => number, log: (id: QualityId, mess
       log('QR-12', `home shown ${now() - loadedAt} ms after the bundle loaded`)
     },
     levelTapped(level) {
-      tap = { level, at: now() }
+      if (tap === null) tap = { level, at: now() }
+    },
+    tapCancelled() {
+      tap = null
+    },
+    replaceConfirmed() {
+      if (tap !== null) tap = { ...tap, at: now() }
     },
     generated(level, ms) {
       log('QR-12', `${level} generated in ${ms} ms`)

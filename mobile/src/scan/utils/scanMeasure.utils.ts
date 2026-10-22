@@ -1,4 +1,4 @@
-/** The recognition timings of a scan, in ms. */
+/** In ms. */
 export type RecognitionTimings = { imageMs: number; detectMs: number; flattenMs: number; classifyMs: number }
 
 /** QR-07 sets a target for the recognition alone: the sum of these parts. */

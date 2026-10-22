@@ -64,6 +64,34 @@ describe('createStartMeasures', () => {
     expect(lines.at(-1)).toBe('hard board shown 300 ms after the tap')
   })
 
+  it('forgets a tap that started no game, so a later Continue logs nothing', () => {
+    const { measures, lines } = setup()
+    measures.levelTapped('easy')
+    measures.tapCancelled()
+    measures.boardShown()
+    expect(lines).toEqual([])
+  })
+
+  it('leaves the wait for the replace question out of the board time', () => {
+    const { measures, lines, advance } = setup()
+    measures.levelTapped('easy')
+    advance(4_000)
+    measures.replaceConfirmed()
+    advance(90)
+    measures.boardShown()
+    expect(lines.at(-1)).toMatch(/^easy board shown 90 ms after the tap/)
+  })
+
+  it('keeps the first tap while its start runs', () => {
+    const { measures, lines, advance } = setup()
+    measures.levelTapped('easy')
+    advance(100)
+    measures.levelTapped('hard')
+    advance(50)
+    measures.boardShown()
+    expect(lines.at(-1)).toMatch(/^easy board shown 150 ms after the tap/)
+  })
+
   it('logs no board without a tap, such as Continue', () => {
     const { measures, lines } = setup()
     measures.boardShown()

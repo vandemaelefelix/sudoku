@@ -51,6 +51,24 @@ describe('newGame', () => {
     jest.restoreAllMocks()
   })
 
+  it('restarts the tap mark when the player confirms the new game', async () => {
+    const confirmed = jest.spyOn(startMeasures, 'replaceConfirmed')
+    const { storage, start } = setup(true)
+    await begin(storage)
+    await start.newGame('hard')
+    expect(confirmed).toHaveBeenCalled()
+    jest.restoreAllMocks()
+  })
+
+  it('forgets the tap mark when the player keeps the game in progress', async () => {
+    const cancelled = jest.spyOn(startMeasures, 'tapCancelled')
+    const { storage, start } = setup(false)
+    await begin(storage)
+    await start.newGame('hard')
+    expect(cancelled).toHaveBeenCalled()
+    jest.restoreAllMocks()
+  })
+
   it('starts for the owner', async () => {
     const { storage, start } = setup(true, OWNER)
     const spy = spyStart(storage)
