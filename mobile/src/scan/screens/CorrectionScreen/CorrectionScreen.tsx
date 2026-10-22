@@ -19,6 +19,7 @@ import { Icon } from '@/game/components/Icon'
 import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/components/CorrectionCell'
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
 import { CorrectionSummary } from '@/scan/components/CorrectionSummary'
+import { CorrectionTile } from '@/scan/components/CorrectionTile'
 import { DevMenu } from '@/scan/components/DevMenu'
 import { NO_GRID } from '@/scanner'
 import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
@@ -156,6 +157,12 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
       ),
     }
   }, [grid.width, theme])
+  // The tile of the open cell. An uncertain cell keeps its own ring and fill instead. During the transition no cell is
+  // open, and the tile stays away so it never slides with the grid.
+  const tile =
+    clock !== undefined || open === null || looks[open]?.uncertain !== false
+      ? null
+      : { left: grid.x + (open % 9) * cellSize, top: grid.y + Math.floor(open / 9) * cellSize, size: cellSize }
   const gridBox = { position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height } as const
   // The board and the lines mount with the transition and stay hidden under it. A new Skia canvas is blank until a later
   // display frame, so a canvas that mounted at the end of the transition would blink.
@@ -238,6 +245,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           </Text>
         </Animated.View>
       )}
+      <CorrectionTile rect={tile} />
       {looks.map((look, n) => (
         <CorrectionCell
           // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells

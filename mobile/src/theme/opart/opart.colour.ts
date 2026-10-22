@@ -86,7 +86,8 @@ export function colourLook(p: OpartPalette): Look {
       cell: {
         fill: page,
         peer,
-        same: white(0.2),
+        // A step under the selection tile at white(0.28), so the tile stands clearly apart from the same numbers.
+        same: white(0.16),
         // The selected cell is the lightest fill, with a white ring. Its digits keep their colours.
         selected: white(0.24),
         // A conflict cell keeps the peer fill and gets the hatch, so it never reads as the accent or as a selection.
@@ -98,7 +99,10 @@ export function colourLook(p: OpartPalette): Look {
         conflictHatch: CONFLICT_HATCH,
         // Notes also sit on the selected fill, where muted text is too faint, so they are nearly white.
         note: white(0.9),
-        selectedRingWidth: 3,
+        // Brighter than the same-number cell at white(0.20), and apart from the hint target at white(0.30). The notes take
+        // white on it.
+        selectedTile: white(0.28),
+        selectedNote: w.white,
         // The hint fills are white over the page, in the steps of the assist shades. The notes keep 4.5 : 1 on the pattern fill.
         hintFocusFill: peer,
         hintPatternFill: white(0.2),

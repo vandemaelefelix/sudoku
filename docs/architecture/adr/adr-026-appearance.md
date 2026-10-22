@@ -171,3 +171,30 @@ The code on `develop` proves this decision. The status moves from Proposed to Ac
 - `mobile/src/theme/system/` follows the iPhone setting for Auto. `mobile/app.json` sets `userInterfaceStyle` to
   `automatic`.
 - #188 built the amendment of 2026-10-21.
+
+## Amendment 2026-10-22: a sliding tile marks the selected cell
+
+The ring of decision 7 was a border of the selected cell. React Native draws a border inside its view. Next to a grid
+line, the ring and the line showed as two parallel lines (#250). A frame on the grid lines removed the double line, but the
+developer did not like a border at all. The developer liked the slide of the frame to the new cell. This amendment
+replaces the ring of decision 7 and of the amendment of 2026-10-21.
+
+1. **A filled tile marks the selected cell. No border.** The token `cell.selectedTile` is `tint300` in Light and
+   `white(0.28)` in Colour. It differs from the hint fills of ADR-032. `cell.selectedRingWidth` goes.
+2. **The same-number shade steps down,** so the tile stands clearly apart from it in all six looks. A same-number cell
+   is `tint150` in Light and `white(0.16)` in Colour. This replaces those values in the amendment of 2026-10-21. The
+   contrast test keeps the tile at least 1.3 : 1 above the peer and same-number shades.
+3. **The tile lies above the cell fills and under the digits and the grid lines.** In the game grid, each cell draws its
+   own part of the tile between its fill and its digit, cut to its square. So the tile never covers a grid line, and a
+   line never doubles. On the correction screen, the tile lies under the cells and under the line canvas.
+4. **The tile slides to a new cell in 120 ms.** The slide runs on the UI thread and renders no cell. With Reduce Motion
+   it jumps. A pause or an open hint hides it at once.
+5. **The selected cell keeps its own fill under the tile.** A wrong selected cell keeps its hatch on top.
+6. **The notes on the tile take `cell.selectedNote`:** the ink in Light, white in Colour. The muted note colour is too
+   faint on the tile.
+7. **Contrast.** A given and the notes reach 4.5 : 1 on the tile. A typed and a wrong digit reach 3 : 1. A cell digit is
+   large text (23 pt), so WCAG AA asks 3 : 1. A tile that stands clearly above the same-number shade cannot keep them at
+   4.5 : 1 in these palettes. The amber wrong digit was already below 4.5 : 1 on the old selected fill of Colour.
+8. **Without the selected-cell assist,** no tile shows. The row, column and box shades still show where the selection is.
+
+The segmented control of decision 10 is not a grid. It keeps its fill and its ring.

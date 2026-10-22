@@ -513,8 +513,17 @@ describe('CorrectionScreen check flow', () => {
     press('correction-press-0')
     expect(screen.getByTestId('correction-question')).toHaveTextContent('Change this 5')
     expect(screen.queryByTestId('correction-progress')).toBeNull()
-    expect(style('correction-fill-0')).toMatchObject({ backgroundColor: cobalt.components.cell.selected })
+    // The tile lies on the square of cell 0, in the tile colour, under the cell.
+    const cell = style('correction-press-0')
+    expect(style('correction-tile')).toMatchObject({
+      left: cell.left,
+      top: cell.top,
+      width: cell.width,
+      backgroundColor: cobalt.components.cell.selectedTile,
+    })
+    expect(screen.queryByTestId('correction-fill-0')).toBeNull()
     press('correction-key-6')
+    expect(screen.queryByTestId('correction-tile')).toBeNull()
     expect(screen.getByTestId('correction-cell-0')).toHaveTextContent('6')
     expect(screen.getByTestId('correction-summary')).toBeTruthy()
   })

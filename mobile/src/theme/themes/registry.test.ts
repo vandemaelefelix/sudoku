@@ -43,13 +43,12 @@ describe('the theme registry', () => {
     }
   })
 
-  it('rings the selected cell in both looks, with a lighter tint of the page as its fill in Colour', () => {
+  it('marks the selected cell with a tile of the strongest tint in Light and a white tint of the page in Colour', () => {
     for (const name of THEME_NAMES) {
-      expect(THEMES[name].components.cell.selectedRingWidth).toBe(2)
       expect(THEMES[name].components.cell.ring).toBe(THEMES[name].colors.accent)
       const colour = COLOUR_THEMES[name].components.cell
-      expect(colour.selectedRingWidth).toBe(3)
       expect(colour.ring).toBe('#ffffff')
+      expect(colour.selectedTile).not.toBe('#ffffff')
       expect(colour.selected).not.toBe('#ffffff')
       expect(colour.given).toBe('#ffffff')
     }

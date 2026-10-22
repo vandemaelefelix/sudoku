@@ -39,8 +39,12 @@ or off in Settings. All four are on by default.
 | --- | --- | --- |
 | Row and column | Shades the row and the column of the selected cell | No shade |
 | Box | Shades the 3 × 3 box of the selected cell | No shade |
-| Selected cell | Fills the **selected cell** | A thin ring in the accent colour marks it |
+| Selected cell | The selection tile marks the **selected cell** | No tile. The other shades still show where it is |
 | Same numbers | Shades every cell that holds the number of the selected cell | No shade |
+
+The grid marks the selected cell with a **selection tile**: a fill clearly stronger than the shades, with no border. The
+tile lies above the cell fills and under the digits and the grid lines, so a line never doubles. It slides to a new cell.
+With Reduce Motion it jumps (ADR-026).
 
 A wrong entry keeps its conflict fill, whatever the assists are.
 
@@ -114,7 +118,7 @@ A tap on Hint opens the **hint card** in the dock. The tools and the keypad sink
 card rises into their place. They stay in the layout under the card, so the grid does not move. The
 card covers the dock from edge to edge, so it has the width of the grid. It is not modal: it has no
 scrim, and the grid stays live. The grid marks the cells of the hint with soft fills, and the
-selected cell steps back. The [hints](hints.md)
+selection tile steps back. The [hints](hints.md)
 concept describes the rungs, the buttons, the roles and the motion.
 
 Close (X) and "Fill it" end the hint. The card sinks, and the tools and the keypad come back.

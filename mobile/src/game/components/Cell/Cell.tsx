@@ -26,6 +26,7 @@ import { HINT_FADE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import type { Intro } from '@/game/hooks/useGridIntro'
 import type { Pulse } from '@/game/hooks/usePulse'
+import type { SelectionTile } from '@/game/hooks/useSelectionTile'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
 import { displayFill, type CellView, type DigitSize } from '@/game/utils/cell.utils'
 import { columnOf, rowOf } from '@/game/utils/grid.utils'
@@ -41,6 +42,8 @@ type CellProps = CellView & {
   label: string
   pulse?: Pulse
   intro?: Intro
+  /** The tile of the selected cell. Without it, the cell draws no part of a tile. */
+  tile?: SelectionTile
   onSelect(cell: number): void
   /** false: the cell only shows the board. No tap, no focus, no VoiceOver stop. */
   interactive?: boolean
@@ -121,6 +124,31 @@ function CellFlash({ kind }: { kind: 'hint' | 'undo' }) {
   )
 }
 
+/**
+ * This cell's part of the selection tile, above its fill and under its digit (ADR-026). Every cell draws the tile moved
+ * by its distance from the cell, cut to its own square. So the tile slides as one, and never covers a grid line.
+ */
+function TileLayer({ cell, tile }: { cell: number; tile: SelectionTile }) {
+  const row = rowOf(cell)
+  const column = columnOf(cell)
+  const style = useAnimatedStyle(() => {
+    const step = tile.step.get()
+    const boxExtra = tile.boxExtra.get()
+    // The point where cell line x starts: one step per cell, and the extra width of each box line before it.
+    const at = (x: number) => x * step + Math.floor(x / 3) * boxExtra
+    return {
+      // Before the grid has its size, every cell would draw the tile at offset 0.
+      opacity: step > 0 ? tile.shown.get() : 0,
+      transform: [{ translateX: at(tile.column.get()) - at(column) }, { translateY: at(tile.row.get()) - at(row) }],
+    }
+  })
+  return (
+    <View style={styles.tileClip} pointerEvents="none">
+      <Animated.View testID={`cell-${cell}-tile`} style={[styles.tile, style]} />
+    </View>
+  )
+}
+
 // A hint role fades in and out. A layout animation follows the system setting, so with Reduce Motion a role shows at once.
 const ROLE_IN = FadeIn.duration(HINT_FADE_MS).easing(easeOut)
 const ROLE_OUT = FadeOut.duration(HINT_FADE_MS).easing(easeOut)
@@ -137,7 +165,6 @@ export const Cell = memo(function Cell({
   digitStyle,
   notes,
   fill,
-  ring,
   hintFill,
   hintSupport,
   hintStruck,
@@ -145,6 +172,8 @@ export const Cell = memo(function Cell({
   label,
   pulse,
   intro,
+  tile,
+  selected,
   onSelect,
   interactive = true,
   digitSize = 'full',
@@ -180,6 +209,7 @@ export const Cell = memo(function Cell({
   )
   const content = (
     <>
+      {tile && <TileLayer cell={cell} tile={tile} />}
       {hintFill !== 'none' && (
         <Animated.View
           key={hintFill}
@@ -198,7 +228,7 @@ export const Cell = memo(function Cell({
           {NOTE_PLACES.map((place) => (
             <View key={place} testID={`note-slot-${place}`} style={styles.noteSlot}>
               {notes.includes(place) && (
-                <Text allowFontScaling={false} style={styles.note}>
+                <Text allowFontScaling={false} style={[styles.note, selected && styles.noteSelected]}>
                   {place}
                 </Text>
               )}
@@ -230,7 +260,7 @@ export const Cell = memo(function Cell({
   if (!interactive) {
     // A display grid crossfades its fills, so a change of an assist in Settings reads as a change, not a flicker.
     return (
-      <View testID={`cell-${cell}`} style={[styles.cell, styles.plain, ring && styles.ring]}>
+      <View testID={`cell-${cell}`} style={[styles.cell, styles.plain]}>
         <FillFade cell={cell} fill={fill} />
         {content}
       </View>
@@ -242,7 +272,7 @@ export const Cell = memo(function Cell({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => onSelect(cell)}
-      style={[styles.cell, styles[fill], ring && styles.ring]}
+      style={[styles.cell, styles[fill]]}
     >
       {content}
     </Pressable>

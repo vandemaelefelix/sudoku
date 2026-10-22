@@ -29,5 +29,5 @@ it('follows a switch at once, without a new game', async () => {
   expect(result.current.views[36]?.fill).toBe('plain')
 
   await act(async () => result.current.setAssist('selectedCell', false))
-  expect(result.current.views[40]).toMatchObject({ fill: 'peer', ring: true })
+  expect(result.current.views[40]).toMatchObject({ fill: 'peer', selected: false })
 })

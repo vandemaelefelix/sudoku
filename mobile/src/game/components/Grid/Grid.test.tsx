@@ -32,10 +32,11 @@ it('puts each cell in its box, row by row', () => {
 
 it('selects a cell on a tap', () => {
   renderGrid()
-  const selected = { backgroundColor: cobalt.components.cell.selected }
-  expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).not.toMatchObject(selected)
+  // Cell 36 is in the row of cell 40, so it takes the peer shade once cell 40 is selected.
+  const peer = { backgroundColor: cobalt.components.cell.peer }
+  expect(StyleSheet.flatten(screen.getByTestId('cell-36').props.style)).not.toMatchObject(peer)
   fireEvent.press(screen.getByTestId('cell-40'))
-  expect(StyleSheet.flatten(screen.getByTestId('cell-40').props.style)).toMatchObject(selected)
+  expect(StyleSheet.flatten(screen.getByTestId('cell-36').props.style)).toMatchObject(peer)
 })
 
 it('shows a board that cannot be tapped and that VoiceOver skips', () => {
@@ -64,7 +65,7 @@ it('keeps the game grid open to VoiceOver by default', () => {
 })
 
 function Moves() {
-  const { select, digit, undo, hint, hintCard } = useGameActions()
+  const { select, digit, undo, hint, hintCard, pause } = useGameActions()
   return (
     <>
       <Pressable
@@ -76,6 +77,7 @@ function Moves() {
       />
       <Pressable testID="undo" onPress={undo} />
       <Pressable testID="hint" onPress={hint} />
+      <Pressable testID="pause" onPress={pause} />
       <Pressable
         testID="fill"
         onPress={() => {
@@ -120,5 +122,12 @@ describe('the hint fills (ADR-032)', () => {
     fireEvent.press(screen.getByTestId('hint'))
     expect(screen.getAllByTestId(/^cell-\d+-hint-focus$/)).toHaveLength(9)
     expect(screen.queryAllByTestId(/^cell-\d+-hint-(pattern|target)$/)).toHaveLength(0)
+  })
+})
+
+describe('the selection tile (ADR-026)', () => {
+  it('gives every cell a part of the one tile, so it can slide across the grid', () => {
+    renderWithMoves()
+    expect(screen.getAllByTestId(/^cell-\d+-tile$/)).toHaveLength(81)
   })
 })

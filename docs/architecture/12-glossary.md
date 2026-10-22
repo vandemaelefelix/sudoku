@@ -127,6 +127,7 @@ status: DRAFT
 | Card edge | The `cardEdge` slot: a band across the top of the finish card. Op-art draws 4 wavy white lines (ADR-021) |
 | Game | One puzzle in progress: the givens, the solution, the entries, the start entries, the notes, the mistakes, the hints used and the time played. `@sudoku/core` holds its rules |
 | Selected cell | The one cell that a number key, Erase or a note acts on. The player selects it with a tap |
+| Selection tile | The fill that marks the selected cell and slides to a new one. It lies above the cell fills and under the digits and the grid lines. `useSelectionTile` (ADR-026) |
 | Notes mode | The state of the Notes tool. When it is on, a number key toggles a note instead of placing an entry |
 | Mistake | An entry that differs from the solution. Each one counts once, and undo does not remove it. The third mistake ends the game. A digit loaded from a scan is not a mistake |
 | Hint | A coach for one step. It shows where to look, names the technique, explains it and then shows the answer. It counts once, when it shows the answer (ADR-032) |
