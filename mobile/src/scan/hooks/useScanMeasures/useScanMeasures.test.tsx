@@ -31,7 +31,7 @@ function renderMeasures(initial: Props = { phase: 'live', origin: 'camera', resu
   // The hook adds two reactions: the detection first, then the outline.
   const [detectionReaction, outlineReaction] = jest.mocked(useAnimatedReaction).mock.calls.slice(-2)
   const frame = (timestamp: number, quad: Quad | null) => {
-    const current = { quad, timestamp, aspect: 0.75 }
+    const current = { quad, timestamp, aspect: 0.75, switches: 0 }
     detection!.set(current)
     detectionReaction![1](current, null)
     jest.runAllTicks()
