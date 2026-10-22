@@ -188,7 +188,7 @@ makes the fallback card before the hint opens.
 | The text of each technique | Decided: `HINT_TECHNIQUES` in `@sudoku/core` |
 | The layout of the card on a small phone | Issue #196 |
 | Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |
-| VoiceOver reading of the card and the highlights | Issue #44 |
+| VoiceOver reading of the card and the highlights | Not planned |
 
 ## Constraints
 
