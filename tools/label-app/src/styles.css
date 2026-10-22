@@ -473,6 +473,27 @@ kbd {
   background: var(--blue-soft);
 }
 
+.kind-tabs {
+  display: flex;
+  gap: 4px;
+  margin: -8px 0 16px;
+  flex-wrap: wrap;
+}
+
+.kind-tabs button {
+  padding: 3px 10px;
+  font-size: 0.85em;
+}
+
+.kind-tabs .count {
+  color: var(--graphite);
+}
+
+.kind-tabs .here {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
 /* Outlines */
 
 .outline-grid {

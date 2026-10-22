@@ -54,6 +54,10 @@ function page(cells: CheckCell[], extra: Partial<CheckPage> = {}): CheckPage {
 
 const D7 = '/api/check/digits?digit=7&threshold=0.98'
 const K7 = '/api/check/kinds?digit=7&threshold=0.95'
+const KC = { all: 5, printed: 3, handwritten: 2, unsure: 0 }
+const KP7 = `${K7}&kind=printed`
+const kindPage = (cells: CheckCell[], kind_counts = KC, extra: Partial<CheckPage> = {}) =>
+  page(cells, { threshold: 0.95, kind_counts, ...extra })
 const tiles = () => screen.findAllByRole('button', { name: /^Cell / })
 
 describe('Digits', () => {
@@ -417,5 +421,107 @@ describe('Kind', () => {
     expect(await screen.findByText(/No cell waits for a kind/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Next: Finish' }))
     expect(window.location.hash).toBe('#/finish')
+  })
+})
+
+describe('Kind tabs', () => {
+  it('shows the count of each kind and no kind tabs in the Digits step', async () => {
+    fakeServer({ [K7]: kindPage([cell(0)]), [D7]: page([cell(0)]) })
+    const { unmount } = open('kinds/7')
+    await tiles()
+    expect(screen.getByRole('button', { name: 'All 5' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: 'Printed 3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Handwritten 2' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unsure 0' })).toBeInTheDocument()
+    unmount()
+    open('digits/7')
+    await tiles()
+    expect(screen.queryByRole('navigation', { name: 'Kinds' })).not.toBeInTheDocument()
+  })
+
+  it('puts the kind in the route and in the request', async () => {
+    const server = fakeServer({
+      [K7]: kindPage([cell(0)]),
+      [KP7]: kindPage([cell(1)]),
+      [`${K7}&kind=handwritten`]: kindPage([cell(2, { kind: 'handwritten' })]),
+    })
+    open('kinds/7/printed')
+    expect((await tiles())[0]).toHaveAttribute('aria-label', 'Cell stem1, P')
+    expect(screen.getByRole('button', { name: 'Printed 3' })).toHaveAttribute('aria-current', 'page')
+    await userEvent.click(screen.getByRole('button', { name: 'Handwritten 2' }))
+    expect(window.location.hash).toBe('#/kinds/7/handwritten')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Cell stem2, H' })).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: 'All 5' }))
+    expect(window.location.hash).toBe('#/kinds/7')
+    expect(server.posts).toEqual({})
+  })
+
+  it('keeps the kind when the digit tab changes', async () => {
+    fakeServer({
+      [KP7]: kindPage([cell(1)]),
+      '/api/check/kinds?digit=3&threshold=0.95&kind=printed': kindPage([cell(4, { digit: '3' })], KC, {
+        digit: '3',
+        counts: { ...ZERO, '7': 5, '3': 5 },
+      }),
+    })
+    open('kinds/7/printed')
+    await tiles()
+    await userEvent.click(screen.getByRole('button', { name: /^3 / }))
+    expect(window.location.hash).toBe('#/kinds/3/printed')
+  })
+
+  it('confirms the sure cells of the shown kind only', async () => {
+    const server = fakeServer({
+      [KP7]: kindPage([cell(1)], KC, { sure: 2 }),
+      '/api/check/kinds/sure': { cells: 2 },
+    })
+    open('kinds/7/printed')
+    await tiles()
+    await userEvent.click(screen.getByRole('button', { name: /Confirm 2 cells the model is at least 95 % sure of/ }))
+    await waitFor(() =>
+      expect(server.posts['/api/check/kinds/sure']).toEqual([{ digit: '7', threshold: 0.95, kind: 'printed' }]),
+    )
+  })
+
+  it('confirms the cells of the shown kind with Enter and moves on when the kind tab empties', async () => {
+    let confirmed = false
+    const server = fakeServer({
+      [KP7]: () =>
+        confirmed
+          ? kindPage([], { all: 2, printed: 0, handwritten: 2, unsure: 0 }, { counts: { ...ZERO, '7': 2 } })
+          : kindPage([cell(1)], { all: 3, printed: 1, handwritten: 2, unsure: 0 }, { counts: { ...ZERO, '7': 3 } }),
+      [`${K7}&kind=handwritten`]: kindPage([cell(2, { kind: 'handwritten' })], {
+        all: 2,
+        printed: 0,
+        handwritten: 2,
+        unsure: 0,
+      }),
+      '/api/check/kinds/confirm': () => {
+        confirmed = true
+        return 1
+      },
+    })
+    open('kinds/7/printed')
+    await tiles()
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() =>
+      expect(server.posts['/api/check/kinds/confirm']).toEqual([{ cells: [{ id: 'id1', kind: 'printed' }] }]),
+    )
+    await waitFor(() => expect(window.location.hash).toBe('#/kinds/7/handwritten'))
+  })
+
+  it('keeps a fixed cell in view and says what is next for an empty kind tab', async () => {
+    fakeServer({
+      [KP7]: kindPage([cell(1)]),
+      [`${K7}&kind=unsure`]: kindPage([], KC, { counts: { ...ZERO, '7': 5 } }),
+    })
+    open('kinds/7/printed')
+    await userEvent.click((await tiles())[0]!)
+    await userEvent.keyboard('h')
+    expect(await tiles()).toHaveLength(1)
+    window.location.hash = '#/kinds/7/unsure'
+    expect(await screen.findByText(/No unsure cell of the digit 7 is open/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Next: All' }))
+    expect(window.location.hash).toBe('#/kinds/7')
   })
 })

@@ -165,7 +165,9 @@ def make_server(
                 elif url.path == "/api/check/digits":
                     self._json(store.check_digits(q["digit"], *self._threshold(q)))
                 elif url.path == "/api/check/kinds":
-                    self._json(store.check_kinds(q["digit"], *self._threshold(q)))
+                    self._json(
+                        store.check_kinds(q["digit"], *self._threshold(q), kind=q.get("kind"))
+                    )
                 elif url.path == "/api/doubtful":
                     self._json(store.review_screen())
                 elif url.path.startswith("/api/"):
@@ -198,7 +200,7 @@ def make_server(
                     "cells": store.sure_digits(b["digit"], *sure_threshold(b))
                 },
                 "/api/check/kinds/sure": lambda b: {
-                    "cells": store.sure_kinds(b["digit"], *sure_threshold(b))
+                    "cells": store.sure_kinds(b["digit"], *sure_threshold(b), kind=b.get("kind"))
                 },
                 "/api/doubtful/save": lambda b: store.review_save(b["cells"]),
                 "/api/undo": lambda b: undo(),
