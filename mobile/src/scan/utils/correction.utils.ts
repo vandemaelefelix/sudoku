@@ -9,7 +9,7 @@ export type Insets = { top: number; bottom: number; left: number; right: number 
 /**
  * bar: Retake, the title and the dev menu. title: the large title block under the bar, 0 high in a theme without one.
  * panel: the bottom panel at its smallest, down to the bottom edge. panelInset: the extra side padding of the panel
- * content, so the content keeps the column of the bar and the grid. 0 on an iPhone.
+ * content, so the content keeps the width of the bar and the grid. 0 on an iPhone.
  */
 export type CorrectionLayout = { bar: Rect; title: Rect; grid: Rect; panel: Rect; panelInset: number }
 
@@ -21,18 +21,18 @@ const GRID_TOP_GAP = 28
 /**
  * Points, not rounded. The transition and the correction screen both read this, so the last frame matches the screen.
  * titleBlock: the theme token size.titleBlock. panelEdge: the theme token size.panelEdge, which adds to the panel height.
- * column: the theme token size.column, the widest content. An iPad centres the content in it.
+ * content: the theme token size.content, the widest content. An iPad centres the content in it.
  */
 export function correctionLayout(
   view: ViewSize,
   insets: Insets,
   titleBlock = 0,
   panelEdge = 0,
-  column = Infinity,
+  content = Infinity,
 ): CorrectionLayout {
   'worklet'
   const fullWidth = view.width - 2 * MARGIN - insets.left - insets.right
-  const contentWidth = Math.min(fullWidth, column)
+  const contentWidth = Math.min(fullWidth, content)
   const panelInset = (fullWidth - contentWidth) / 2
   const contentLeft = insets.left + MARGIN + panelInset
   const bar: Rect = { x: contentLeft, y: insets.top, width: contentWidth, height: BAR_HEIGHT }

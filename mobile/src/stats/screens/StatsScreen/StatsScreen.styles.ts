@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { roleFont, roleText } from '@/theme/typography'
-import { columnInset } from '@/theme/column'
+import { contentInset } from '@/theme/content'
 
 // Unistyles reads the safe-area insets natively, as on the settings screen.
 export const styles = StyleSheet.create((theme, rt) => ({
@@ -8,7 +8,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
   content: {
     paddingTop: rt.insets.top,
     paddingBottom: rt.insets.bottom + theme.space.xxl,
-    paddingHorizontal: columnInset(theme, rt.screen.width),
+    paddingHorizontal: contentInset(theme, rt.screen.width),
   },
   header: { height: theme.size.header, flexDirection: 'row', alignItems: 'center' },
   back: {

@@ -26,9 +26,9 @@ export function ScanFlow() {
         { top, bottom, left, right },
         theme.size.titleBlock,
         theme.size.panelEdge,
-        theme.size.column,
+        theme.size.content,
       ),
-    [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge, theme.size.column],
+    [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge, theme.size.content],
   )
   const play = useScannedStart()
   const { enqueueScan, discardPhoto } = useScanShare()

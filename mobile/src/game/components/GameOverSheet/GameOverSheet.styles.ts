@@ -11,6 +11,9 @@ export const styles = StyleSheet.create((theme, rt) => ({
     backgroundColor: theme.colors.scrim,
   },
   sheet: {
+    width: '100%',
+    maxWidth: theme.size.content,
+    alignSelf: 'center',
     gap: theme.space.sm,
     paddingTop: theme.space.xl,
     paddingHorizontal: theme.space.lg + theme.space.xs,
