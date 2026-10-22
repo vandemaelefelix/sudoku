@@ -126,3 +126,29 @@ it('asks for a new puzzle from New puzzle on the sheet', () => {
   pressOnSheet('New puzzle')
   expect(onNewPuzzle).toHaveBeenCalledTimes(1)
 })
+
+describe('the hint (ADR-032)', () => {
+  it('opens the card in place of the keypad, and hands the move back with Try it', () => {
+    renderScreen()
+    fireEvent.press(screen.getByLabelText('Hint'))
+    expect(screen.getByTestId('hint-card')).toBeTruthy()
+    expect(screen.queryByLabelText('Enter 9')).toBeNull()
+    expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
+    fireEvent.press(screen.getByRole('button', { name: 'Try it' }))
+    expect(screen.queryByTestId('hint-card')).toBeNull()
+    expect(screen.getByLabelText('Enter 9')).toBeTruthy()
+    expect(screen.getByTestId('hint-strip')).toBeTruthy()
+    expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
+  })
+
+  it('fills the answer from the card and brings back the keypad', () => {
+    renderScreen()
+    fireEvent.press(screen.getByLabelText('Hint'))
+    fireEvent.press(screen.getByRole('button', { name: 'Show answer' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Fill it' }))
+    expect(screen.queryByTestId('hint-card')).toBeNull()
+    expect(screen.queryByTestId('hint-strip')).toBeNull()
+    expect(screen.getByLabelText('Enter 9')).toBeTruthy()
+    expect(screen.getAllByTestId('cell-flash-hint')).toHaveLength(1)
+  })
+})

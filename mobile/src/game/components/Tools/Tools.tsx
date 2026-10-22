@@ -37,7 +37,7 @@ function Tool({ icon, label, enabled, playing, selected = false, onPress }: Tool
         onPress={onPress}
         style={({ pressed }) => [styles.tool, pressed && pressedStyles.pressed]}
       >
-        <Animated.View testID={`tool-${icon}-fill`} style={[styles.notesOn, fillStyle]} pointerEvents="none" />
+        <Animated.View testID={`tool-${icon}-fill`} style={[styles.selectedFill, fillStyle]} pointerEvents="none" />
         <Icon name={icon} tone={selected ? 'accent' : 'text'} />
       </Pressable>
     </Animated.View>
@@ -45,7 +45,7 @@ function Tool({ icon, label, enabled, playing, selected = false, onPress }: Tool
 }
 
 export function Tools() {
-  const { board, notesMode } = useGameState()
+  const { board, notesMode, hint } = useGameState()
   const actions = useGameActions()
   const { play } = useHaptics()
   const { theme } = useUnistyles()
@@ -61,7 +61,14 @@ export function Tools() {
       <Tool icon="undo" label="Undo" enabled={canUndo(board)} playing={playing} onPress={actions.undo} />
       <Tool icon="erase" label="Erase" enabled={canErase(board)} playing={playing} onPress={actions.erase} />
       <Tool icon="notes" label="Notes" enabled={playing} playing={playing} selected={notesMode} onPress={toggleNotes} />
-      <Tool icon="hint" label="Hint" enabled={playing} playing={playing} onPress={actions.hint} />
+      <Tool
+        icon="hint"
+        label="Hint"
+        enabled={playing}
+        playing={playing}
+        selected={hint !== null && hint.view !== 'nice'}
+        onPress={actions.hint}
+      />
     </Animated.View>
   )
 }

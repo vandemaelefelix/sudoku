@@ -90,7 +90,7 @@ two haptics, so two taps never blur together.
 | --- | --- | --- |
 | A correct number | tap | none |
 | A note, a clear, an erase or an undo | tick | a flash on the cell that an undo restored |
-| A hint | soft | a glow on the hinted cell |
+| A hint, from "Fill it" | soft | a glow on the hinted cell |
 | A wrong number | warning, or error for the third mistake | the digit shakes, and a mistake dot fills |
 | A completed row, column, box or number | thud | the pulse |
 | The solved grid | success | the solve pulse |
@@ -104,6 +104,41 @@ two haptics, so two taps never blur together.
 - Every screen starts a game through the puzzle start. It asks before it replaces a game in progress. The game over sheet and the finish card do not ask, because their game is over.
 - With Reduce Motion on, the fades stay. The slides, the scales and the shake go.
 - The **haptics switch** in Settings turns every haptic off. Reduce Motion does not stop haptics.
+
+### Hint card and hint strip
+
+A tap on Hint opens the **hint card** in place of the keypad. The card has the height of the
+keypad, so the grid does not move. The tools row stays, and the Hint tool shows as active. The
+card is not modal: it has no scrim, and the grid stays live. The grid marks the cells of the hint
+with the highlight roles. The [hints](hints.md) concept describes the rungs, the buttons and the
+roles.
+
+"Try it" and "I'll do it" close the card. The keypad comes back. The one-line **hint strip** shows
+between the grid and the tools, with the text of the rung. A tap on the strip or on Hint opens the
+card again at the same rung. The grid gives up the height of the strip.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Card: Hint
+    Card --> Card: More help, Show answer, Next step
+    Card --> Strip: Try it, I'll do it
+    Strip --> Card: strip or Hint tapped
+    Strip --> Nice: the target digit placed
+    Nice --> [*]: after a moment
+    Card --> [*]: Fill it, Erase it, close, Hint
+    Strip --> [*]: close
+    Card --> [*]: an entry, an erase, an undo, a pause, the end of the game
+    Strip --> [*]: an entry, an erase, an undo, a pause, the end of the game
+```
+
+| State | What the screen shows |
+| --- | --- |
+| Card | The hint card in place of the keypad. The grid shows the highlight of the rung |
+| Strip | The keypad, and the hint strip above the tools. The highlight stays |
+| Nice | The strip says "Nice." for a moment. The highlight is gone |
+
+A notes edit and a selection keep the hint open. Back closes the screen, so the hint ends with it.
+The open hint is not saved.
 
 ### Finish card
 
@@ -177,7 +212,7 @@ The Settings screen has four groups:
 | Question | Decided by |
 | --- | --- |
 | The motion sensor that tilts the finish card | Decided: ADR-017 |
-| Which cell a hint picks. The hint plan picks it. Until the hint card ships, the Hint tool fills the answer at once | Decided: ADR-032 |
+| Which cell a hint picks. The hint plan picks it. The hint card leads the player to it | Decided: ADR-032 |
 | An option to turn off the entry check | Not planned |
 | VoiceOver labels for each cell and Dynamic Type sizes | Not planned |
 

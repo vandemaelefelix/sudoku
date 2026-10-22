@@ -9,7 +9,7 @@ export const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notesOn: {
+  selectedFill: {
     position: 'absolute',
     inset: 0,
     borderRadius: theme.size.tool / 2,
