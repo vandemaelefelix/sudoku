@@ -48,6 +48,8 @@ import { styles } from './CameraScreen.styles'
  * image after an import without a grid: the parent then mounts the new screen with pickAtStart.
  * pickAtStart: the photo picker opens when the screen mounts.
  * The library button opens the photo picker. The import needs no camera, so the denied and missing screens offer it too.
+ * onScanAnother: the same new CameraScreen after the player accepted the scan. The parent keeps the photo, because onExit hands
+ * the scan to the upload queue when the correction screen unmounts.
  * onExit and onSave get the result of the scan with its final grid. The correction screen of the transition stays mounted
  * and becomes the static screen at the end, so its Skia canvases have drawn before they show. The camera and the transition layers
  * unmount.
@@ -55,6 +57,7 @@ import { styles } from './CameraScreen.styles'
 export function CameraScreen({
   layout,
   onRetake,
+  onScanAnother,
   onPlay,
   onHome,
   onClose,
@@ -64,6 +67,7 @@ export function CameraScreen({
 }: {
   layout: CorrectionLayout
   onRetake: (result: CaptureResult | null, next?: ScanOrigin) => void
+  onScanAnother: () => void
   onPlay: NonNullable<CorrectionProps['onPlay']>
   onHome: () => void
   onClose: () => void
@@ -164,6 +168,7 @@ export function CameraScreen({
           layout={layout}
           onRetake={() => onRetake(result)}
           onChooseImage={() => onRetake(result, 'library')}
+          onScanAnother={onScanAnother}
           onPlay={onPlay}
           onHome={onHome}
           onExit={(finalGrid) => onExit(result, finalGrid)}

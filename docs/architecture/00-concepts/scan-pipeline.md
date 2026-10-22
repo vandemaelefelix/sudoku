@@ -244,7 +244,7 @@ stateDiagram-v2
 | Verdict | After the first tap on Check, the verdict follows every edit. A grid with an empty cell has none |
 | Celebration | The solved pulse and its haptic start once the open cell closes. They stay on until the verdict changes |
 | Haptic cues | The session plays them: tick for Yes and No, tap for a digit and Empty, thud for Play, success for a solved grid, for a scan that turns playable after a check and for the results gate, warning for the failure panel |
-| Retake order | `retake` marks the scan as not accepted, then calls `onRetake`. The unmount that follows does not call `onExit`. Scan another does not mark: it accepts the scan |
+| Retake order | `retake` marks the scan as not accepted, then calls `onRetake`. The unmount that follows does not call `onExit`. Scan another does not mark: it accepts the scan. It calls `onScanAnother`, and `ScanFlow` keeps the photo. The unmount calls `onExit`, and the queue step deletes the photo after it reads it. Only Retake deletes the photo at once |
 | Exit | `onExit` gets the final grid when the screen unmounts after the player could edit it, by any route except `retake`. The scan is final |
 
 The final grid is the one definition of a scan after the edits: `finalGrid` in `src/scan/utils/finalGrid.utils.ts`. The development
