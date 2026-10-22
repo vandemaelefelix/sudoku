@@ -2,7 +2,7 @@ import { Canvas, Path, Skia, type CanvasRef } from '@shopify/react-native-skia'
 import { useMemo, useRef } from 'react'
 import { useWindowDimensions } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
-import { columnWidth } from '@/theme/column'
+import { contentWidth } from '@/theme/content'
 import { wavePoints } from '@/theme/decorations/geometry'
 import { useRedrawOnShow } from '@/theme/decorations/ScreenShow'
 import {
@@ -72,7 +72,7 @@ export function OpartSummaryWaves() {
   return (
     <Waves
       testID="decoration-opart-summary-waves"
-      width={columnWidth(theme, width) - 2 * borderWidth}
+      width={contentWidth(theme, width) - 2 * borderWidth}
       height={theme.size.panelEdge}
       color={border}
     />

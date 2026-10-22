@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { roleFont } from '@/theme/typography'
-import { columnInset } from '@/theme/column'
+import { contentInset } from '@/theme/content'
 
 // The page of the Settings screen: the same header, margins and title (ADR-026).
 export const styles = StyleSheet.create((theme, rt) => ({
@@ -9,7 +9,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.space.lg,
     paddingTop: rt.insets.top,
     paddingBottom: rt.insets.bottom + theme.space.lg,
-    paddingHorizontal: columnInset(theme, rt.screen.width),
+    paddingHorizontal: contentInset(theme, rt.screen.width),
   },
   header: { height: theme.size.header, flexDirection: 'row', alignItems: 'center' },
   back: {
