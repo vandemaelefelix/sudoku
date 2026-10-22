@@ -1,11 +1,12 @@
+import type { Image } from 'react-native-nitro-image'
 import type { Photo } from 'react-native-vision-camera'
 import { createWorkletRuntime } from 'react-native-worklets'
 import { loadClassifier } from './model'
-import { recognise } from './recognise'
+import { recognise, recogniseStill } from './recognise'
 import type { Quad } from '@/utils/geometry.utils'
 
 jest.mock('./model', () => ({ loadClassifier: jest.fn() }))
-jest.mock('./recognise', () => ({ recognise: jest.fn() }))
+jest.mock('./recognise', () => ({ recognise: jest.fn(), recogniseStill: jest.fn() }))
 jest.mock('react-native-worklets', () => ({
   createWorkletRuntime: jest.fn(() => ({ name: 'scanner' })),
   runOnRuntimeAsync: jest.fn(async (_runtime: unknown, worklet: (...args: unknown[]) => unknown, ...args: unknown[]) =>
@@ -44,6 +45,22 @@ it('runs recognise with the photo, the quad, the model and the output index', as
   const scanner = await freshScanner()
   await scanner.recognise(photo, QUAD)
   expect(recognise).toHaveBeenCalledWith(photo, QUAD, MODEL, { digit: 0, kind: 1 })
+})
+
+it('runs recogniseStill with the image, the model and the output index on the scanner runtime', async () => {
+  jest.mocked(recogniseStill).mockReturnValue({ ok: false, reason: 'no grid in the photo' })
+  const image = { width: 1206, height: 2622 } as Image
+  const scanner = await freshScanner()
+  await expect(scanner.recogniseStill(image)).resolves.toEqual({ ok: false, reason: 'no grid in the photo' })
+  expect(recogniseStill).toHaveBeenCalledWith(image, MODEL, { digit: 0, kind: 1 })
+  expect(createWorkletRuntime).toHaveBeenCalledTimes(1)
+})
+
+it('turns a rejected still run into a failure', async () => {
+  const { runOnRuntimeAsync } = jest.requireMock<{ runOnRuntimeAsync: jest.Mock }>('react-native-worklets')
+  runOnRuntimeAsync.mockRejectedValueOnce(new Error('runtime crashed'))
+  const scanner = await freshScanner()
+  await expect(scanner.recogniseStill({} as Image)).resolves.toEqual({ ok: false, reason: 'runtime crashed' })
 })
 
 it('makes one scanner runtime for many calls', async () => {

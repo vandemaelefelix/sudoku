@@ -41,6 +41,9 @@ export type RecogniseResult =
     }
   | { ok: false; reason: string }
 
+/** The failure reason when the photo or the still image has no grid. */
+export const NO_GRID = 'no grid in the photo'
+
 /**
  * A grid in the photo farther than this share of the grid side from the locked quad is another grid. The grids on one page lie
  * about one side apart, and a hand moves the phone much less between lock-on and the photo.
@@ -48,6 +51,15 @@ export type RecogniseResult =
 export const MATCH_TOLERANCE = 0.5
 /** The search box around the locked quad grows by this share of its size on each side. */
 export const SEARCH_GROW = 0.1
+
+/**
+ * The still path searches again inside the found quad: its bounding box shrinks by this share of its size on each side. The cut
+ * goes through the edge of a page, so the page does not count again. Inside a grid the cut goes through the grid lines, so the
+ * line network touches the edge of the crop and gives no quad.
+ */
+export const INNER_INSET = 0.03
+/** The most searches inside a found quad: a grid on a page on a sheet. */
+export const MAX_DEPTH = 3
 
 type Located = { quad: Quad; corners: CornerSource; cornerOffset: number | null }
 type Match = { quad: Quad; offset: number }
@@ -91,43 +103,66 @@ export function locateGrid(small: Uint8Array, width: number, height: number, qua
   return match == null ? null : { quad: match.quad, corners: 'redetected', cornerOffset: match.offset }
 }
 
-/** quad: the locked quad, normalised to the upright frame, or null for a shutter press without a grid. Never throws. */
-export function recognise(
-  photo: PhotoSource,
+/**
+ * small: the RGB still image, width × height. findGrid keeps only the outer contours, so a photo of a whole page finds the page.
+ * The grid lies inside it, so the search goes on inside each found quad while it finds one. Null when the image has no grid.
+ */
+export function locateStill(small: Uint8Array, width: number, height: number): Located | null {
+  'worklet'
+  const found = findGrid(small, width, height)
+  if (found == null) return null
+  let quad = found.quad
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    const rect = searchRect(quad, width, height, -INNER_INSET)
+    const inner = findGrid(cropRgb(small, width, rect), rect.width, rect.height)
+    if (inner == null) break
+    quad = fromCrop(inner.quad, rect, width, height)
+  }
+  return { quad, corners: 'found', cornerOffset: null }
+}
+
+/**
+ * image: the photo, or a still image. The steps after the first image read the same for both. Disposes every image it makes, never
+ * the image it gets. Never throws.
+ */
+function recogniseImage(
+  image: ImageSource,
   quad: Quad | null,
+  still: boolean,
   model: TfliteModel,
   outputs: OutputIndex,
+  started: number,
 ): RecogniseResult {
   'worklet'
   const images: ImageSource[] = []
   try {
-    let started = Date.now()
-    const image = photo.toImage()
-    images.push(image)
     const size = downscaleSize(image.width, image.height)
     const small = image.resize(size.width, size.height)
     images.push(small)
     const smallRaw = small.toRawPixelData()
     const smallRgb = toRgb(smallRaw)
-    // The raw pixels of the photo image keep the sensor orientation. A resize draws them upright.
+    // The raw pixels of the photo image keep the sensor orientation. A resize draws them upright. A still image keeps its EXIF
+    // orientation the same way.
     const upright = image.resize(image.width, image.height)
     images.push(upright)
     const full = upright.toRawPixelData()
     const imageMs = Date.now() - started
 
-    started = Date.now()
-    const located = locateGrid(smallRgb, smallRaw.width, smallRaw.height, quad)
-    if (located == null) return { ok: false, reason: 'no grid in the photo' }
-    const detectMs = Date.now() - started
+    let step = Date.now()
+    const located = still
+      ? locateStill(smallRgb, smallRaw.width, smallRaw.height)
+      : locateGrid(smallRgb, smallRaw.width, smallRaw.height, quad)
+    if (located == null) return { ok: false, reason: NO_GRID }
+    const detectMs = Date.now() - step
 
-    started = Date.now()
+    step = Date.now()
     const flat = toRgb(warpGrid(full, toPhotoPixels(located.quad, full.width, full.height), FLAT_SIZE))
     const cellImages = sliceCells(flat)
-    const flattenMs = Date.now() - started
+    const flattenMs = Date.now() - step
 
-    started = Date.now()
+    step = Date.now()
     const cells = decodeOutputs(runModel(model, outputs, preprocessCells(cellImages)))
-    const classifyMs = Date.now() - started
+    const classifyMs = Date.now() - step
 
     return {
       ok: true,
@@ -141,6 +176,37 @@ export function recognise(
   } catch (error) {
     return { ok: false, reason: errorMessage(error) }
   } finally {
-    for (const image of images) image.dispose()
+    for (const made of images) made.dispose()
   }
+}
+
+/** quad: the locked quad, normalised to the upright frame, or null for a shutter press without a grid. Never throws. */
+export function recognise(
+  photo: PhotoSource,
+  quad: Quad | null,
+  model: TfliteModel,
+  outputs: OutputIndex,
+): RecogniseResult {
+  'worklet'
+  const started = Date.now()
+  let image: ImageSource
+  try {
+    image = photo.toImage()
+  } catch (error) {
+    return { ok: false, reason: errorMessage(error) }
+  }
+  try {
+    return recogniseImage(image, quad, false, model, outputs, started)
+  } finally {
+    image.dispose()
+  }
+}
+
+/**
+ * A still image from the photo library. It has no locked quad, so findGrid searches the whole image, then inside the quad it finds
+ * (locateStill). The caller keeps the image and disposes it. Never throws.
+ */
+export function recogniseStill(image: ImageSource, model: TfliteModel, outputs: OutputIndex): RecogniseResult {
+  'worklet'
+  return recogniseImage(image, null, true, model, outputs, Date.now())
 }

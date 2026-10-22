@@ -36,6 +36,23 @@ jest.mock('react-native-vision-camera', () => {
   }
 })
 
+// nitro-image makes its native objects when it loads. A test that loads an image gives its own stand-in.
+jest.mock('react-native-nitro-image', () => ({
+  loadImage: jest.fn(async () => {
+    throw new Error('Jest has no native images')
+  }),
+}))
+
+// The picker is closed until a test gives a result.
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+  UIImagePickerPreferredAssetRepresentationMode: {
+    Automatic: 'automatic',
+    Compatible: 'compatible',
+    Current: 'current',
+  },
+}))
+
 jest.mock('react-native-fast-opencv', () => ({
   DataTypes: { CV_8U: 0 },
   Mat: {

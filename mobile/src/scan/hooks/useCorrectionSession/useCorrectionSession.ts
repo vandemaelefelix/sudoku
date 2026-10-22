@@ -24,6 +24,7 @@ import type { FinalGrid } from '@/utils/finalGrid.utils'
  * What the correction session hands to the rest of the app. Each one is optional except onRetake.
  * onPlay: without it, Play stays off. onSave: development builds. onHome: the solved panel shows a Home button.
  * onExit: gets the final grid when the screen unmounts after the player could edit it, by any route except retake. The scan is final.
+ * onChooseImage: the failure panel of an import without a grid offers another image. Like retake, the scan is not final.
  */
 export type CorrectionExits = {
   onRetake(): void
@@ -31,6 +32,7 @@ export type CorrectionExits = {
   onSave?: ((grid: FinalGrid) => Promise<boolean>) | undefined
   onExit?: ((grid: FinalGrid) => void) | undefined
   onHome?: (() => void) | undefined
+  onChooseImage?: (() => void) | undefined
 }
 
 /**
@@ -47,6 +49,7 @@ export type CorrectionActions = Omit<CorrectionEditActions, 'yes' | 'no' | 'setD
   toggleSolution(): void
   play(): void
   retake(): void
+  chooseImage(): void
   scanAnother(): void
   save(): void
 }
@@ -252,6 +255,11 @@ export function useCorrectionSession(
     retake: () => {
       retaking.current = true
       exits.onRetake()
+    },
+    chooseImage: () => {
+      if (exits.onChooseImage === undefined) return
+      retaking.current = true
+      exits.onChooseImage()
     },
     scanAnother: () => exits.onRetake(),
     save: () => {

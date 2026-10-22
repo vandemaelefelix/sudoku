@@ -48,6 +48,7 @@ function scanResult(): RecogniseResult {
 // The finished scan: the clock values are not read in the review phase.
 const review: CorrectionProps['session'] = {
   phase: 'review',
+  origin: 'camera',
   result: scanResult(),
   crossFade: false,
   clock: { value: 0 } as SharedValue<number>,

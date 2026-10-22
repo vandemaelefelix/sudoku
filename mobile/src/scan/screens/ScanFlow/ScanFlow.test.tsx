@@ -127,3 +127,36 @@ describe('the photo of a scan that the player drops', () => {
     expect(mockEnqueue).not.toHaveBeenCalled()
   })
 })
+
+describe('an image from the photo library', () => {
+  const IMPORTED: CaptureResult = { ...WITH_PHOTO, imported: true }
+
+  it('never joins the upload queue, and its photo is deleted', () => {
+    render(<ScanFlow />)
+    camera().onExit(IMPORTED, [] as FinalGrid)
+    expect(mockEnqueue).not.toHaveBeenCalled()
+    expect(mockDiscard).toHaveBeenCalledWith('/tmp/photo.jpg')
+  })
+
+  it('needs no delete when the import kept no photo', () => {
+    render(<ScanFlow />)
+    camera().onExit({ ...OK, imported: true }, [] as FinalGrid)
+    expect(mockEnqueue).not.toHaveBeenCalled()
+    expect(mockDiscard).not.toHaveBeenCalled()
+  })
+
+  it('mounts a new camera screen that opens the picker when the player chooses another image', () => {
+    render(<ScanFlow />)
+    expect(camera().pickAtStart).toBe(false)
+    act(() => camera().onRetake({ ok: false, reason: 'no grid in the photo' }, 'library'))
+    expect(mockMounts).toHaveLength(2)
+    expect(camera().pickAtStart).toBe(true)
+  })
+
+  it('mounts a plain camera screen on a later Retake', () => {
+    render(<ScanFlow />)
+    act(() => camera().onRetake(null, 'library'))
+    act(() => camera().onRetake(null))
+    expect(camera().pickAtStart).toBe(false)
+  })
+})
