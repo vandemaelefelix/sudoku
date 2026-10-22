@@ -73,6 +73,25 @@ describe('correctionLayout', () => {
     expect(bar.x).toBe(36)
     expect(bar.width).toBe(800 - 32 - 30)
   })
+
+  it.each([375, 402, 440])(
+    'keeps the layout of a %i point iPhone, which is narrower than the content width',
+    (width) => {
+      const view = { width, height: 874 }
+      expect(correctionLayout(view, insets, 60, 30, 560)).toEqual(correctionLayout(view, insets, 60, 30))
+      expect(correctionLayout(view, insets, 60, 30, 560).panelInset).toBe(0)
+    },
+  )
+
+  it('centres the bar and the grid at the content width on an iPad, and insets the panel content to it', () => {
+    const { bar, grid, panel, panelInset } = correctionLayout({ width: 1032, height: 1376 }, insets, 0, 0, 560)
+    expect(bar.width).toBe(560)
+    expect(bar.x).toBe((1032 - 560) / 2)
+    expect(grid.width).toBe(560)
+    expect(grid.x).toBe((1032 - 560) / 2)
+    expect(panel.width).toBe(1032)
+    expect(panelInset).toBe((1032 - 32 - 560) / 2)
+  })
 })
 
 const cell = (over: Partial<CellResult>): CellResult => ({

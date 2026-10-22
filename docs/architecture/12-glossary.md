@@ -101,6 +101,7 @@ status: DRAFT
 | Theme decoration | A named slot in a component that a theme can fill with drawn structure, such as a texture behind the grid. The slots are `panelEdge`, `cardEdge`, `summaryEdge` and `sectionRule` (ADR-015, ADR-021, ADR-026) |
 | Type role | A semantic text style for one kind of text: the digits `type.given`, `type.entry` and `type.note`, and `display`, `question`, `status` and `eyebrow` (ADR-015, ADR-021) |
 | Text pair | A text token and the background token it is drawn on. The contrast test checks every pair (ADR-015) |
+| Content width | The widest content of a screen: the token `size.content`, 560 points. An iPhone is narrower, so only an iPad centres the content. The side margins grow to fill the rest |
 | Op-art | The one style of the app: one ink colour and wavy parallel lines, on a white page or on the accent (ADR-021, ADR-025, ADR-026) |
 | Colourway | One colour version of the Op-art style: Cobalt, Forest or Bordeaux. A colourway is a palette. One builder makes its theme (ADR-025) |
 | Appearance | The setting that picks the look of a colourway: Auto, Light or Colour. Auto is a preference. A theme has only Light or Colour (ADR-026) |

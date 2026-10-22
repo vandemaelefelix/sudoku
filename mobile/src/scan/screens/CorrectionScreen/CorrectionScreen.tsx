@@ -70,7 +70,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const { bottom } = useSafeAreaInsets()
   const systemReduceMotion = useReducedMotion()
   const motion = !(reduceMotion || systemReduceMotion)
-  const { bar, title, grid, panel } = layout
+  const { bar, title, grid, panel, panelInset } = layout
   const cellSize = grid.width / 9
   // A theme sets its digit sizes relative to the system font: a serif given needs more size than a sans entry to look as large.
   const { given: givenRole, entry: entryRole } = theme.type
@@ -275,7 +275,12 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           <View
             style={[
               styles.panelBody,
-              { padding: PANEL_PADDING, paddingTop: PANEL_PADDING - 4, paddingBottom: bottom + PANEL_PADDING },
+              {
+                padding: PANEL_PADDING,
+                paddingHorizontal: PANEL_PADDING + panelInset,
+                paddingTop: PANEL_PADDING - 4,
+                paddingBottom: bottom + PANEL_PADDING,
+              },
             ]}
           >
             <Animated.View
