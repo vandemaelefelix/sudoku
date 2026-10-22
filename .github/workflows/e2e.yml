@@ -1,7 +1,10 @@
 name: e2e
-# The Maestro flows on the iOS Simulator (ADR-010, amendment 2026-10-22). Only a manual run starts them:
+# The Maestro flows on the iOS Simulator (ADR-010, amendment 2026-10-22). Only a manual step starts them:
 # one run costs about 200 of the 2,000 monthly minutes, because a macOS minute counts ten times.
+# The label "run: e2e" on a pull request starts a run of its branch. A manual run of a branch needs this file on develop.
 on:
+  pull_request:
+    types: [labeled]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +16,7 @@ concurrency:
 
 jobs:
   e2e:
+    if: "github.event_name == 'workflow_dispatch' || github.event.label.name == 'run: e2e'"
     runs-on: macos-26
     timeout-minutes: 60
     steps:
