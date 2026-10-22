@@ -222,8 +222,9 @@ navigation, a native module that does not load, or a game that a restart loses (
    outside the app, so the scan flow picks the photo by its label.
 3. **Each flow clears the app data first.** No flow depends on another.
 4. **The flows run on their own simulator, "Sudoku E2E iOS 26".** They clear the app data, so they
-   never run on a simulator of daily use. The simulator uses iOS 26: iOS 27 refuses an app
-   without the UIScene life cycle when Xcode 27 builds it, and Expo SDK 57 has none.
+   never run on a simulator of daily use. The simulator uses iOS 26, like the CI runner, which
+   has Xcode 26.6 and no iOS 27 runtime. The app starts on iOS 27 too since it uses the scene
+   life cycle (ADR-002, amendment 2026-10-22).
 5. **The finish flow fills every cell with a hint.** Each round taps Hint, then "Show answer" when
    the card offers it, then "Fill it". So the flow needs no solution. The app has no way to start a
    known generated puzzle.
@@ -244,7 +245,7 @@ navigation, a native module that does not load, or a game that a restart loses (
 
 ### Reassessment Triggers of amendment (b)
 
-- The app adopts the UIScene life cycle. Then the flows can run on iOS 27.
+- CI moves to Xcode 27. Then run the flows on iOS 27 as well.
 - A flow fails twice in a month without a change of the app. Then find the flaky step before the
   flows run more often.
 - The account gets more minutes, or the repository becomes public. Then run `e2e.yml` on each pull

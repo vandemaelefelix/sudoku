@@ -138,7 +138,7 @@ e2e flow="mobile/e2e" *flags:
     app=mobile/ios/DerivedData/Build/Products/Release-iphonesimulator/SudokuDev.app
     test -d "$app" || { echo "The app is missing. Run: just ios-simulator" >&2; exit 1; }
     udid=$(xcrun simctl list devices available | grep -F "{{e2e_simulator}} (" | grep -oE '[0-9A-F-]{36}' | head -1 || true)
-    # iOS 27 refuses an app without the UIScene life cycle when Xcode 27 builds it. Expo SDK 57 has none, so the flows use iOS 26.
+    # The flows use iOS 26, like the CI runner: it has Xcode 26.6 and no iOS 27 runtime.
     if [ -z "$udid" ]; then
       runtime=$(xcrun simctl list runtimes available | grep -E '^iOS 26\.' | tail -1 | awk '{print $NF}')
       test -n "$runtime" || { echo "No iOS 26 simulator runtime. Install one in Xcode: Settings > Components" >&2; exit 1; }
