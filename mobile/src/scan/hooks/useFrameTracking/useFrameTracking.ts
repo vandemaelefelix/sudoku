@@ -19,9 +19,10 @@ import { MEASURE_JITTER } from './useFrameTracking.constants'
 
 /**
  * One frame's result, from the camera thread to the UI thread. timestamp: seconds, camera clock. aspect: of the upright frame.
- * switched: the aiming rule moved to another grid in this frame.
+ * switches: how many times the aiming rule moved to another grid. A count, not a flag: the UI thread can skip a frame under load,
+ * and a skipped flag would lose the switch.
  */
-export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number; switched: boolean }
+export type FrameDetection = { quad: Quad | null; timestamp: number; aspect: number; switches: number }
 
 function logFrameRate(fps: number, detectionMs: number) {
   devLog('camera', `${fps.toFixed(1)} fps, detection ${detectionMs.toFixed(1)} ms`)
@@ -46,12 +47,14 @@ function logJitter(report: JitterReport) {
 export function useFrameTracking(viewSize: SharedValue<ViewSize>) {
   const frameWindow = useMemo(() => createSynchronizable(EMPTY_WINDOW), [])
   const lastWarned = useMemo(() => createSynchronizable(''), [])
+  const switchCount = useMemo(() => createSynchronizable(0), [])
   const detectGrid = useGridDetector()
   const detection = useSharedValue<FrameDetection | null>(null)
   const smoothing = useSharedValue<Smoothing | null>(null)
   const jitter = useSharedValue(EMPTY_JITTER)
   const outline = useSharedValue<Quad | null>(null)
   const frameQuad = useSharedValue<Quad | null>(null)
+  const handledSwitches = useSharedValue(0)
 
   const frameOutput = useFrameOutput({
     pixelFormat: 'yuv',
@@ -73,9 +76,10 @@ export function useFrameTracking(viewSize: SharedValue<ViewSize>) {
         frameWindow.setBlocking(counted.window)
         if (__DEV__ && counted.report !== null)
           scheduleOnRN(logFrameRate, counted.report.fps, counted.report.detectionMs)
+        if (grid?.switched === true) switchCount.setBlocking(switchCount.getBlocking() + 1)
         detection.set({
           quad: grid == null ? null : grid.quad,
-          switched: grid?.switched ?? false,
+          switches: switchCount.getBlocking(),
           timestamp: frame.timestamp,
           aspect: uprightAspect(frame.width, frame.height, frame.orientation),
         })
@@ -91,7 +95,9 @@ export function useFrameTracking(viewSize: SharedValue<ViewSize>) {
       if (current == null) return
       // A switch to another grid starts the smoothing new. The outline then jumps in one frame, and the scene counts the jump as
       // lost and found, so the dots gather on the new grid.
-      const smoothed = smoothQuad(current.switched ? null : smoothing.value, current.quad, current.timestamp)
+      const switched = current.switches !== handledSwitches.value
+      handledSwitches.set(current.switches)
+      const smoothed = smoothQuad(switched ? null : smoothing.value, current.quad, current.timestamp)
       smoothing.set(smoothed)
       frameQuad.set(smoothed == null ? null : smoothed.quad)
       const shown = smoothed == null ? null : toPreview(smoothed.quad, current.aspect, viewSize.value)

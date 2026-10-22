@@ -81,10 +81,12 @@ stateDiagram-v2
 | First find | The grid nearest the frame centre, of the grids that count. The view shows the frame with a centred cover mapping, so the frame centre is the view centre. Distances are shares of the frame width |
 | Tracking | The tracked grid is the grid of the frame nearest it, within `TRACK_TOLERANCE` = 0.5 of the grid side. It stays chosen, also when another grid is about as near the centre |
 | Switch | Another grid must be nearer the centre by `SWITCH_MARGIN` = 0.15 of the frame width, for `SWITCH_DWELL` = 0.3 s. A break in the margin starts the dwell again |
-| Loss | A frame without the tracked grid gives no grid, so the outline does not jump to a neighbour. After `LOSS_HOLD` = 0.25 s, the next detection is a first find |
+| Loss | A frame without the tracked grid gives no grid, so the outline does not jump to a neighbour. After `LOSS_HOLD` = 0.25 s, the next detection is a first find. The hold counts camera time, so a stall of the frame processor longer than the hold also ends the track |
 
-A switch counts as lost and found. The detection carries `switched`, and `useFrameTracking` starts the corner smoothing new.
-The outline jumps in one frame, and the scene gives `found`, so the dots gather on the new grid. There is no extra UI.
+A switch counts as lost and found. The detection carries a count of the switches, not a flag, because the UI thread can skip
+a frame under load. When the count changes, `useFrameTracking` starts the corner smoothing new. The outline jumps in one frame.
+Two grids that do not overlap lie about one side apart, far above `JUMP`, so the scene gives `found`. The dots gather on the
+new grid. There is no extra UI.
 
 A still image and a shutter press without a grid have no aim. They use only the first find (`firstFind`).
 

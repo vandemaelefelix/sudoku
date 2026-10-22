@@ -16,8 +16,8 @@ export const LOSS_HOLD = 0.25
 export const TRACK_TOLERANCE = 0.5
 
 /**
- * tracked: the chosen grid, normalised to the upright frame, or null. seenAt: seconds, when the frame last held it.
- * candidate: another grid that is nearer the centre by the margin, and since when, in seconds.
+ * tracked: the chosen grid, normalised to the upright frame, or null. seenAt: seconds, the last frame that held it.
+ * candidate: another grid that is nearer the centre by the margin, or null. candidateSince: seconds, the start of its dwell.
  */
 export type GridChoice = { tracked: Quad | null; seenAt: number; candidate: Quad | null; candidateSince: number }
 

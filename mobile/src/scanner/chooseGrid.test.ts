@@ -151,6 +151,65 @@ describe('chooseGrid', () => {
   })
 })
 
+describe('chooseGrid, edge cases', () => {
+  it('starts the dwell again when another grid takes the place of the candidate', () => {
+    const [first] = run([[TOP]])
+    const far = moved(TOP, 0, -0.1)
+    const half = Math.floor(SWITCH_DWELL / FRAME / 2) + 1
+    // Two other grids take turns as the one nearest the centre, so no single candidate keeps the margin for SWITCH_DWELL.
+    const left = grid(0.3, 0.5)
+    const right = grid(0.7, 0.5)
+    const steps = run(
+      [...Array.from({ length: half }, () => [far, left]), ...Array.from({ length: half }, () => [far, right])],
+      first!.state,
+      FRAME,
+    )
+    expect(steps.some((step) => step.switched)).toBe(false)
+  })
+
+  it('drops the candidate when the tracked grid leaves the frame, and then makes a first find', () => {
+    const [first] = run([[TOP]])
+    const far = moved(TOP, 0, -0.1)
+    const pending = run(
+      Array.from({ length: 5 }, () => [far, MIDDLE]),
+      first!.state,
+      FRAME,
+    )
+    const last = pending.at(-1)!.state
+    expect(last.candidate).not.toBeNull()
+    const [gone] = run([[MIDDLE]], last, 6 * FRAME)
+    expect(gone!.grid).toBeNull()
+    expect(gone!.state.candidate).toBeNull()
+  })
+
+  it('keeps a tracked grid that a larger grid pushes below 60 %', () => {
+    const [first] = run([[MIDDLE]])
+    const large = grid(0.5, 0.15, 0.9)
+    const steps = run(
+      Array.from({ length: 30 }, () => [large, MIDDLE]),
+      first!.state,
+      FRAME,
+    )
+    for (const step of steps) expect(centreY(step.grid)).toBeCloseTo(0.5)
+  })
+
+  it('holds the tracked grid for exactly LOSS_HOLD', () => {
+    const [first] = run([[MIDDLE]])
+    const [atHold] = run([[TOP]], first!.state, LOSS_HOLD)
+    expect(atHold!.grid).toBeNull()
+    const [afterHold] = run([[TOP]], first!.state, LOSS_HOLD + 0.001)
+    expect(centreY(afterHold!.grid)).toBeCloseTo(0.2)
+  })
+
+  it('makes a first find after a stall longer than LOSS_HOLD, also with the tracked grid in view', () => {
+    const [first] = run([[TOP]])
+    const [later] = run([[TOP, MIDDLE]], first!.state, LOSS_HOLD + 0.1)
+    // The tracked grid has no claim after the hold. The grid nearest the centre wins.
+    expect(centreY(later!.grid)).toBeCloseTo(0.5)
+    expect(later!.switched).toBe(false)
+  })
+})
+
 describe('firstFind', () => {
   it('takes the grid nearest the centre of the grids that pass the 60 % rule', () => {
     expect(centreY(firstFind([TOP, MIDDLE, BOTTOM], ASPECT))).toBeCloseTo(0.5)
