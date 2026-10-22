@@ -122,3 +122,31 @@ added to this ADR.
 
 - fast-opencv or fast-tflite goes unmaintained. Move those steps to B.
 - More than half the pipeline ends up in Swift. Re-check whether A still pays for itself.
+
+## Amendment 2026-10-22: the iOS scene life cycle on SDK 57
+
+The iOS 27 SDK requires the UIKit scene life cycle. A build made with Xcode 27 that keeps the old
+application life cycle does not start on iOS 27. UIKit logs "UIScene life cycle is required for apps
+built with this SDK" and shows no window. React Native adds scene support only in 0.88, and Expo
+makes it the default only in SDK 58.
+
+1. **The app opts in through `expo-build-properties`.** `app.json` sets `ios.enableSceneSupport` to
+   `true`. Prebuild then changes three things:
+   - `AppDelegate` conforms to `ExpoReactNativeFactoryProvider`.
+   - `AppDelegate` no longer creates the window or starts React Native.
+   - `Info.plist` gets a `UIApplicationSceneManifest` with Expo's `EXExpoAppSceneDelegate`.
+   `mobile/ios` stays generated, as this ADR requires.
+2. **It needs `expo@57.0.23` or newer.** That patch has the scene runtime of SDK 58. The plugin
+   refuses an older patch.
+3. **Expo forwards the scene events.** Under scenes, UIKit no longer calls the URL, user activity
+   and life cycle methods of the app delegate. `EXExpoAppSceneDelegate` sends them to the
+   `ExpoAppDelegate` overrides and subscribers, and it sends a URL to `RCTLinkingManager` only once.
+4. **The app can be resized on iOS 27.** With scenes, iOS 27 can resize the window, also on an
+   iPhone. `requireFullScreen` no longer prevents this on an iPad. Layout code reads the window
+   size through Unistyles and `useWindowDimensions`.
+
+Source: the Expo guide [iOS scene life cycle](https://expo.fyi/ios-scene-lifecycle), section
+"Staying on SDK 57 with Xcode 27".
+
+Reassessment trigger: the upgrade to Expo SDK 58. SDK 58 generates the scene delegate itself, so
+remove `ios.enableSceneSupport` then.

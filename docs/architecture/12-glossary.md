@@ -226,6 +226,7 @@ status: DRAFT
 | Cell source | The sudoku photo, row and column (0-8) that a cut cell comes from: the columns `photo_id`, `row` and `col` of `cells.csv` (ADR-018) |
 | App variant | One of two builds of the app with its own bundle ID: the development variant and the production variant. `APP_VARIANT` selects it (ADR-022) |
 | Development variant | The app variant for daily work: "Sudoku Dev", bundle ID `com.vandemaelefelix.sudoku.dev`, an icon with a DEV ribbon. The default (ADR-022) |
+| Scene life cycle | The UIKit start-up in which a scene delegate creates the window and gets the URL and life cycle events. The iOS 27 SDK requires it. The app uses Expo's `EXExpoAppSceneDelegate` (ADR-002) |
 | Production variant | The app variant for real use and release: "Sudoku", bundle ID `com.vandemaelefelix.sudoku`, the clean icon (ADR-022) |
 | DEV ribbon | The white band with "DEV" cut out of it on the development variant icon: across the bottom-left corner on iOS, a plate over the empty top-centre cell on Android |
 | Abandoned game | A game that a new game replaces before it ends. It has the history result `abandoned`. It is not in the win rate. See ADR-023 |

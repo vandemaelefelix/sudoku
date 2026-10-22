@@ -37,6 +37,7 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
+      ["expo-build-properties", { "ios": { "enableSceneSupport": true } }],
       [
         "@clerk/expo",
         {
