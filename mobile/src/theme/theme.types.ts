@@ -162,8 +162,12 @@ export type Theme = {
       /** Diagonal stripes over the conflict fill, 45°. Null: the fill alone marks the conflict. width and pitch in points, pitch along the x axis. */
       conflictHatch: { color: string; opacity: number; width: number; pitch: number } | null
       note: string
-      /** The width of the ring that marks the selected cell, in points. 0 for none. */
-      selectedRingWidth: number
+      /**
+       * The tile that slides to the selected cell (ADR-026, amendment of 2026-10-22). It is stronger than the peer and
+       * same-number shades. selectedNote: the notes on the tile, where the note colour is too faint.
+       */
+      selectedTile: string
+      selectedNote: string
       /**
        * The hint roles (ADR-032, amendment of 2026-10-22): fills and one digit colour, no outlines. The fills of a focus
        * unit, a pattern cell and the target are lightness steps, each stronger than the one before.

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react-native'
+import { act, render, renderHook, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
@@ -23,7 +23,9 @@ afterEach(async () => {
 it('draws the real grid with the shades of the canvas', () => {
   render(<AssistPreview />)
   expect(screen.getAllByTestId(/^cell-\d+$/, hidden)).toHaveLength(81)
-  expect(styleOf(39).backgroundColor).toBe(colours.selected)
+  // The selected cell keeps the peer shade of its row. The tile of the grid slides over it.
+  expect(styleOf(39).backgroundColor).toBe(colours.peer)
+  expect(screen.getByTestId('cell-39-tile', hidden)).toBeTruthy()
   expect(styleOf(36).backgroundColor).toBe(colours.peer)
   expect(styleOf(5).backgroundColor).toBe(colours.same)
   expect(styleOf(54).backgroundColor).toBe(colours.conflictFill)
@@ -36,12 +38,6 @@ it('follows a switch at once', async () => {
   // Cell 31 is in the box of cell 39, not in its row or column, and holds no 8.
   await act(async () => result.current.setAssist('box', false))
   expect(styleOf(31).backgroundColor).toBe(colours.fill)
-  fireEvent(screen.getByTestId('grid-box', hidden), 'layout', { nativeEvent: { layout: { width: 180, height: 180 } } })
-  const frame = () => StyleSheet.flatten(screen.getByTestId('selection-frame', hidden).props.style)
-  expect(frame().borderWidth).toBe(colours.selectedRingWidth)
-  await act(async () => result.current.setAssist('selectedCell', false))
-  // Without the selected fill, a thinner frame marks the selected cell.
-  expect(frame()).toMatchObject({ borderColor: colours.ring, borderWidth: cobalt.shape.stroke.ring })
 })
 
 it('cannot be tapped and VoiceOver skips it', () => {

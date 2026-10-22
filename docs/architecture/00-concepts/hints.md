@@ -158,8 +158,8 @@ white. The fill marks the cell where the colour does not.
 Each role has a **role entrance**: a fade of 150 ms in and out. A role that stays through a rung change does not fade
 again. With Reduce Motion, a role shows and goes at once.
 
-While a hint is open, the assist shades step back: row and column, box and same numbers. The selected fill and its ring
-step back too. The conflict fill stays. The contrast test checks, in all six themes:
+While a hint is open, the assist shades step back: row and column, box and same numbers. The selection tile
+steps back too. The conflict fill stays. The contrast test checks, in all six themes:
 
 - every digit and note on each hint fill at 4.5 : 1, and the support digit on its fill at 4.5 : 1,
 - the ghost digit on the target fill at 3 : 1 (a cell digit is large text),

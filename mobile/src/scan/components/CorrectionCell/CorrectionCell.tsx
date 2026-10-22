@@ -122,13 +122,11 @@ export const CorrectionCell = memo(function CorrectionCell({
         onPress={() => onSelect?.(n)}
         style={[styles.cell, { left, top, width: size, height: size }]}
       >
-        {(selected || conflict) && (
+        {/* The screen slides the tile of a certain open cell under the cells. An uncertain one keeps its own fill. */}
+        {((selected && look.uncertain) || (conflict && !selected)) && (
           <View
             testID={`correction-fill-${n}`}
-            style={[
-              styles.fill,
-              selected ? (look.uncertain ? styles.selectedCheck : styles.selected) : styles.conflictFill,
-            ]}
+            style={[styles.fill, selected ? styles.selectedCheck : styles.conflictFill]}
           />
         )}
         {conflict && !selected && <ConflictHatch />}

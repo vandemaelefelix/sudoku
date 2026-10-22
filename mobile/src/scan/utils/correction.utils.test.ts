@@ -1,11 +1,4 @@
-import {
-  correctionCellLines,
-  correctionLayout,
-  cellLook,
-  cellsToCheck,
-  drawGridLines,
-  gridLineStyle,
-} from './correction.utils'
+import { correctionLayout, cellLook, cellsToCheck, drawGridLines, gridLineStyle } from './correction.utils'
 import type { Rect } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
@@ -240,13 +233,5 @@ describe('gridLineStyle', () => {
       boxWidth: cobalt.shape.gridLine.box,
       cellWidth: cobalt.shape.gridLine.cell,
     })
-  })
-})
-
-describe('correctionCellLines', () => {
-  it('puts the lines where drawGridLines draws them: from half the frame width inside one edge to the other', () => {
-    // A side of 362 with a frame of 2: the lines run from 1 to 361, 40 points apart.
-    expect(correctionCellLines(0, 362, 2)).toEqual({ left: 1, right: 41, top: 1, bottom: 41 })
-    expect(correctionCellLines(80, 362, 2)).toEqual({ left: 321, right: 361, top: 321, bottom: 361 })
   })
 })

@@ -35,6 +35,9 @@ const TEXT_PAIRS: Pair[] = [
       (t) => t.components.cell[fill],
     ]),
   ),
+  // The selection tile (ADR-026): a given and the notes of the selected cell.
+  ['given on the selection tile', (t) => t.components.cell.given, (t) => t.components.cell.selectedTile],
+  ['note on the selection tile', (t) => t.components.cell.selectedNote, (t) => t.components.cell.selectedTile],
   // A segmented control and a tab bar draw their selected cell with the fill of the selected grid cell.
   ['accent label on the selected cell', (t) => t.colors.accent, (t) => t.components.cell.selected],
   ['muted label on a segment', (t) => t.colors.textMuted, (t) => t.colors.surface],
@@ -78,6 +81,19 @@ function hatchStripe(t: Theme): string {
   return conflictHatch === null ? conflictFill : mixHex(conflictFill, conflictHatch.color, conflictHatch.opacity)
 }
 
+/**
+ * A typed and a wrong digit on the selection tile. A cell digit is large text (23 pt), so WCAG AA asks 3 : 1. A tile that
+ * stands clearly above the same-number shade cannot keep these at 4.5 : 1 in these palettes (ADR-026, amendment of
+ * 2026-10-22). The given and the notes keep 4.5 : 1 above.
+ */
+const LARGE_DIGIT_PAIRS: Pair[] = [
+  ['entry on the selection tile', (t) => t.components.cell.entry, (t) => t.components.cell.selectedTile],
+  ['wrong digit on the selection tile', (t) => t.components.cell.conflict, (t) => t.components.cell.selectedTile],
+]
+
+/** The smallest contrast ratio between the selection tile and an assist shade, so the tile stands out. */
+const TILE_STEP = 1.14
+
 /** Shapes that carry meaning need 3 : 1 (WCAG 1.4.11): the thumb of a toggle against its track, the ring of a cell against its fill. */
 const SHAPE_PAIRS: Pair[] = [
   ['thumb of a toggle that is on, on its track', (t) => t.components.switch.thumbOn, (t) => t.components.switch.on],
@@ -107,6 +123,17 @@ describe.each(ALL_THEMES)('$name $appearance', (theme) => {
 
   it.each(SHAPE_PAIRS)('%s meets 3 : 1', (_label, foreground, background) => {
     expect(contrastRatio(foreground(theme), background(theme))).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(LARGE_DIGIT_PAIRS)('%s meets 3 : 1 for large text', (_label, foreground, background) => {
+    expect(contrastRatio(foreground(theme), background(theme))).toBeGreaterThanOrEqual(3)
+  })
+
+  it('keeps the selection tile clearly above the peer and same-number shades, and apart from the hint fills', () => {
+    const { selectedTile, peer, same, hintFocusFill, hintPatternFill, hintTargetFill } = theme.components.cell
+    expect(contrastRatio(selectedTile, peer)).toBeGreaterThanOrEqual(TILE_STEP)
+    expect(contrastRatio(selectedTile, same)).toBeGreaterThanOrEqual(TILE_STEP)
+    for (const hint of [hintFocusFill, hintPatternFill, hintTargetFill]) expect(selectedTile).not.toBe(hint)
   })
 
   // The hint fills are lightness steps (ADR-032, amendment of 2026-10-22), so a step must not depend on the hue alone.

@@ -172,21 +172,27 @@ The code on `develop` proves this decision. The status moves from Proposed to Ac
   `automatic`.
 - #188 built the amendment of 2026-10-21.
 
-## Amendment 2026-10-22: the selection frame lies on the grid lines
+## Amendment 2026-10-22: a sliding tile marks the selected cell
 
 The ring of decision 7 was a border of the selected cell. React Native draws a border inside its view. Next to a grid
-line, the ring and the line showed as two parallel lines (#250). This amendment changes where the ring is drawn. The
-tokens and the colours of decision 7 and of the amendment of 2026-10-21 do not change.
+line, the ring and the line showed as two parallel lines (#250). A frame on the grid lines removed the double line, but the
+developer did not like a border at all. The developer liked the slide of the frame to the new cell. This amendment
+replaces the ring of decision 7 and of the amendment of 2026-10-21.
 
-1. **The grid draws one selection frame above its lines.** The cell itself draws only its fill. The frame is a stroke of
-   `cell.selectedRingWidth` in `cell.ring`.
-2. **The stroke is centred on the lines around the cell.** It is at least as wide as a box line, so it covers the line
-   below it. A cell next to a box line looks as clean as a cell in the middle of a box.
-3. **The frame stays inside the grid.** At the outer edge it is clamped into the grid frame, so nothing clips it.
-4. **Without the selected-cell assist,** the frame is `shape.stroke.ring` wide and the cell has no fill.
-5. **One component for every grid with a selection:** `SelectionFrame`. The game grid, the Settings preview and the
-   correction screen use it. An uncertain cell on the correction screen keeps its own dashed ring.
-6. **Motion.** The frame slides to a new cell in 120 ms. With Reduce Motion it jumps. A pause or an open hint hides it at
-   once.
+1. **A filled tile marks the selected cell. No border.** The token `cell.selectedTile` is `tint300` in Light and
+   `white(0.28)` in Colour. It is clearly stronger than the peer and same-number shades. It differs from the hint fills of
+   ADR-032. `cell.selectedRingWidth` goes.
+2. **The tile lies above the cell fills and under the digits and the grid lines.** In the game grid, each cell draws its
+   own part of the tile between its fill and its digit, cut to its square. So the tile never covers a grid line, and a
+   line never doubles. On the correction screen, the tile lies under the cells and under the line canvas.
+3. **The tile slides to a new cell in 120 ms.** The slide runs on the UI thread and renders no cell. With Reduce Motion
+   it jumps. A pause or an open hint hides it at once.
+4. **The selected cell keeps its own fill under the tile.** A wrong selected cell keeps its hatch on top.
+5. **The notes on the tile take `cell.selectedNote`:** the ink in Light, white in Colour. The muted note colour is too
+   faint on the tile.
+6. **Contrast.** A given and the notes reach 4.5 : 1 on the tile. A typed and a wrong digit reach 3 : 1. A cell digit is
+   large text (23 pt), so WCAG AA asks 3 : 1. A tile that stands clearly above the same-number shade cannot keep them at
+   4.5 : 1 in these palettes. The amber wrong digit was already below 4.5 : 1 on the old selected fill of Colour.
+7. **Without the selected-cell assist,** no tile shows. The row, column and box shades still show where the selection is.
 
-The segmented control of decision 10 is not a grid, so it keeps its ring inside its cell.
+The segmented control of decision 10 is not a grid. It keeps its fill and its ring.

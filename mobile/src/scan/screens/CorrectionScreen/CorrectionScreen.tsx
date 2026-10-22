@@ -13,13 +13,13 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
 import { PanelButton } from '@/components/PanelButton'
-import { SelectionFrame } from '@/components/SelectionFrame'
 import { LEVEL_LABELS } from '@/constants/level.constants'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { Icon } from '@/game/components/Icon'
 import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/components/CorrectionCell'
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
 import { CorrectionSummary } from '@/scan/components/CorrectionSummary'
+import { CorrectionTile } from '@/scan/components/CorrectionTile'
 import { DevMenu } from '@/scan/components/DevMenu'
 import { NO_GRID } from '@/scanner'
 import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
@@ -29,14 +29,7 @@ import { swapIn } from '@/scan/utils/swap.utils'
 import { panelAt, resultsGateReached, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
 import { SWAP_OUT_MS } from '@/scan/constants/swap.constants'
 import { easeOut } from '@/utils/motion.utils'
-import { selectionFrame } from '@/utils/selectionFrame.utils'
-import {
-  cellLook,
-  correctionCellLines,
-  drawGridLines,
-  gridLineStyle,
-  type CorrectionLayout,
-} from '@/scan/utils/correction.utils'
+import { cellLook, drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { SHARED_TYPE } from '@/theme/shared.tokens'
 import { pressedStyles } from '@/theme/pressed.styles'
@@ -164,12 +157,12 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
       ),
     }
   }, [grid.width, theme])
-  // The frame of the open cell lies over the lines. An uncertain cell keeps its own ring instead.
-  const ringWidth = theme.components.cell.selectedRingWidth
-  const framed =
-    open === null || looks[open]?.uncertain !== false
+  // The tile of the open cell. An uncertain cell keeps its own ring and fill instead. During the transition no cell is
+  // open, and the tile stays away so it never slides with the grid.
+  const tile =
+    clock !== undefined || open === null || looks[open]?.uncertain !== false
       ? null
-      : selectionFrame(correctionCellLines(open, grid.width, theme.shape.gridLine.outer), ringWidth, grid.width)
+      : { left: grid.x + (open % 9) * cellSize, top: grid.y + Math.floor(open / 9) * cellSize, size: cellSize }
   const gridBox = { position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height } as const
   // The board and the lines mount with the transition and stay hidden under it. A new Skia canvas is blank until a later
   // display frame, so a canvas that mounted at the end of the transition would blink.
@@ -252,6 +245,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           </Text>
         </Animated.View>
       )}
+      <CorrectionTile rect={tile} />
       {looks.map((look, n) => (
         <CorrectionCell
           // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
@@ -277,10 +271,6 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
       <Canvas testID="correction-lines" pointerEvents="none" style={boardBox}>
         <Picture picture={lines} />
       </Canvas>
-      <SelectionFrame
-        rect={framed && { ...framed, left: grid.x + framed.left, top: grid.y + framed.top }}
-        width={ringWidth}
-      />
       {correction.panel === null && waiting && (
         <Animated.View
           testID="correction-waiting"
