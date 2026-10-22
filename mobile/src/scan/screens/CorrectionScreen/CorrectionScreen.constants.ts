@@ -15,6 +15,13 @@ export const PANEL_HIDDEN = 1.4
 /** Milliseconds the panel takes to grow or shrink to new content, such as the keypad. */
 export const PANEL_RESIZE_MS = 220
 
+/** The failure panel of an image from the photo library without a grid. */
+export const IMPORT_NO_GRID = {
+  title: 'No sudoku found',
+  reason: 'Choose an image that shows the whole grid.',
+  button: 'Choose another image',
+} as const
+
 /** Milliseconds a failure panel needs to slide up. */
 export const FAILURE_SLIDE_MS = 300
 

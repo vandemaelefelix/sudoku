@@ -132,7 +132,7 @@ title fades in at 0.20–0.50 s. This follows the prototype. The spec table has 
 ### Cross-fade path
 
 The cross-fade path has no movement. It runs with Reduce Motion, after a shutter press without a
-grid, and when the photo conversion fails. The dots and the free dots fade in place. The photo fades
+grid, after an import, and when the photo conversion fails. The dots and the free dots fade in place. The photo fades
 out with the preview mapping. The correction screen fades in over 0.3 s once both gates are open.
 
 ### The end
@@ -146,6 +146,40 @@ lock-on latch and the warm-up start new.
 The QR-07 budget is 1.5 s from lock-on to a filled screen. The time to the photo gate probably
 misses it: the photo takes about 120 ms, and the conversion follows. The code logs
 `[scan] transition done in N ms`. The measure on the iPhone is still open.
+
+## Still images
+
+The player can scan an imported image: a photo from earlier or a screenshot of a digital sudoku. The library button on the
+camera screen opens the photo picker of iOS. The camera screens for a denied or missing camera offer it too, because an import
+needs no camera. One path serves photos and screenshots.
+
+```mermaid
+flowchart LR
+    b["Library button"] --> p["Photo picker<br>outside the app"]
+    p -->|cancel| live["Live camera"]
+    p -->|image| s["startImport<br>origin library"]
+    s --> l["Load the file<br>nitro-image"]
+    l --> f["findGrid on 640 px"]
+    f --> n["findGrid inside<br>the found quad"]
+    n -->|"a quad"| n
+    n --> c["Flatten, classify"]
+    c --> r["Correction screen"]
+    f -->|no grid| x["No sudoku found<br>Choose another image"]
+    x --> p
+```
+
+| Step | What happens |
+| --- | --- |
+| Pick | `useImageImport` opens `PHPickerViewController` through `expo-image-picker`. The picker runs outside the app, so the app gets only the picked image. The app asks for no photo library permission. The picker copies the original file to the cache folder without a new encode. The camera stops while the picker is open, so the lock-on cannot fire behind it |
+| Start | `startImport` of the capture session. The lock latch takes `import` as a third source. The attempt has the origin `library` and no locked quad, so the transition takes the cross-fade path |
+| Load | nitro-image loads the file on the JS thread. The scanner runtime gets the image. A resize draws it upright, as for a camera photo, so an EXIF orientation reads right |
+| Detect | `recogniseStill` calls `locateStill`. It runs the same `findGrid` on the 640 px image. `findGrid` keeps only the outer contours, so a photo of a whole page finds the page. The search goes on inside each found quad while it finds one: the bounding box shrinks by `INNER_INSET` = 0.03 on each side, at most `MAX_DEPTH` = 3 times. Inside a grid the cut goes through the grid lines, so the search stops there |
+| Flatten, classify | The same steps as for a camera photo |
+| No grid | The failure panel says "No sudoku found" and offers "Choose another image". It mounts a new camera screen, which opens the picker |
+| End | The session disposes the image and deletes the cache copy. An imported scan never uploads (ADR-030, amendment 2026-10-22) |
+
+A picked file that does not load, for example a photo that is only in iCloud while the phone is offline, gives an alert.
+The camera stays live.
 
 ## Loading the result
 
@@ -228,11 +262,13 @@ It reads only the `FinalGrid` type in `src/utils/`.
 | Confidence threshold for "review this cell" | First real fixture set |
 | QR-07 budget (lock-on to a filled screen in 1.5 s) against the time to the photo gate. Options: a faster photo path, a compressed timeline, or a revised budget | The developer, after the iPhone measure |
 | Rough flatten budget: 30 ms, measured 129 to 137 ms. Options: crop the upright photo to the grid before the pixel read, or a revised budget | The developer, after the iPhone measure |
+| How well the classifier reads digital fonts. It learned from paper cells | The developer, with screenshots, before a retrain |
+| A home screen entry and the share sheet ("Open in Sudoku") for an import | A later issue |
 | Peak memory per scan: two full-size reads of the photo run at the same time (about 33 to 40 MB of pixels). Options: crop before the pixel read | The developer, after the iPhone measure |
 
 ## Constraints
 
 | ID | Constraint |
 | --- | --- |
-| SUD-02 | Camera frames and cell images MUST NOT leave the device. A photo MUST leave only through the setting "Help improve the app". |
+| SUD-02 | Camera frames and cell images MUST NOT leave the device. A photo MUST leave only through the setting "Help improve the app". An imported image MUST NOT leave the device. |
 | SUD-05 | The app MUST reach the scanner only through `src/scanner/index.ts`. |

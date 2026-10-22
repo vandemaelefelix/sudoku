@@ -37,8 +37,9 @@ Run lint, typecheck and tests before you say a task is done.
   `src/scanner/index.ts`), `src/storage/` (game storage), `src/splash/` (the animated splash) and `src/account/` (the
   Clerk account: the provider, the sign-in screens and the Settings section) and `src/sync/` (the history sync:
   the service, the API client and the provider) and `src/scanShare/` (the scan upload, ADR-030: the record, the crop, the queue, the uploader
-  and the sharing switch; it does not import `src/scan/`, and the scan UI hands it a `FinalGrid` from `src/utils/finalGrid.utils.ts`). The uploader sends the photo length in `x-jpeg-bytes` and sets the same `Content-Length` on the `PUT`: the presigned URL signs it. `expo-network` is a native module, so a change to it needs a new
-  development build.
+  and the sharing switch; it does not import `src/scan/`, and the scan UI hands it a `FinalGrid` from `src/utils/finalGrid.utils.ts`). The uploader sends the photo length in `x-jpeg-bytes` and sets the same `Content-Length` on the `PUT`: the presigned URL signs it. `expo-network` and `expo-image-picker` are native modules, so a change to
+  them needs a new development build. `expo-image-picker` asks for no photo library permission: `app.json` sets
+  `photosPermission` and `microphonePermission` to `false`.
 - Navigation follows ADR-016: Expo Router 57. A route file in `src/app/` only renders one screen
   from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
   state, styles or tests in `src/app/`. A route param is a URL string. Load data from a

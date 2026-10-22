@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar'
-import { useEffect, useState } from 'react'
-import { AppState, Pressable, StyleSheet, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Alert, AppState, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   FadeOut,
   ReduceMotion,
@@ -20,20 +20,22 @@ import { scheduleOnRN } from 'react-native-worklets'
 import { kvSettings } from '@/settings/SettingsRepository'
 import { type CameraBlock, CameraPermission } from '@/scan/components/CameraPermission'
 import { CloseButton } from '@/scan/components/CloseButton'
+import { LibraryButton } from '@/scan/components/LibraryButton'
 import { TransitionCanvas } from '@/scan/components/TransitionCanvas'
 import { EffectCanvas } from '@/scan/effects/components/EffectCanvas'
 import { EffectPicker } from '@/scan/effects/components/EffectPicker'
 import { DEFAULT_INDEX } from '@/scan/effects/registry'
 import { useCaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
+import { useImageImport } from '@/scan/hooks/useImageImport'
 import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
-import type { CaptureResult } from '@/scan/utils/captureResult.utils'
+import type { CaptureResult, ScanOrigin } from '@/scan/utils/captureResult.utils'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import type { ViewSize } from '@/utils/geometry.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
-import { DARK_BAR_DIM, FLASH_PEAK } from './CameraScreen.constants'
+import { DARK_BAR_DIM, FLASH_PEAK, PICK_FAILED } from './CameraScreen.constants'
 import { styles } from './CameraScreen.styles'
 
 /**
@@ -42,7 +44,10 @@ import { styles } from './CameraScreen.styles'
  * layout: the correction screen layout that the transition ends on. onClose: the close button before the capture. The correction
  * screen has its own exits.
  * onRetake: the parent mounts a new CameraScreen, so the capture session, the scene, its lock-on latch and the transition start new.
- * It gets the result that the player leaves, so the parent can delete its photo.
+ * It gets the result that the player leaves, so the parent can delete its photo. next is library when the player chose another
+ * image after an import without a grid: the parent then mounts the new screen with pickAtStart.
+ * pickAtStart: the photo picker opens when the screen mounts.
+ * The library button opens the photo picker. The import needs no camera, so the denied and missing screens offer it too.
  * onExit and onSave get the result of the scan with its final grid. The correction screen of the transition stays mounted
  * and becomes the static screen at the end, so its Skia canvases have drawn before they show. The camera and the transition layers
  * unmount.
@@ -55,14 +60,16 @@ export function CameraScreen({
   onClose,
   onExit,
   onSave,
+  pickAtStart = false,
 }: {
   layout: CorrectionLayout
-  onRetake: (result: CaptureResult | null) => void
+  onRetake: (result: CaptureResult | null, next?: ScanOrigin) => void
   onPlay: NonNullable<CorrectionProps['onPlay']>
   onHome: () => void
   onClose: () => void
   onExit: (result: CaptureResult | null, finalGrid: FinalGrid) => void
   onSave?: (result: CaptureResult | null, finalGrid: FinalGrid) => Promise<boolean>
+  pickAtStart?: boolean
 }) {
   const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission()
   const device = useCameraDevice('back')
@@ -76,7 +83,8 @@ export function CameraScreen({
   })
   const { frameOutput, detection, outline, frameQuad } = useFrameTracking(viewSize)
   const session = useCaptureSession({ photoOutput, layout, detection, viewSize })
-  const { phase, result, captureFrame } = session
+  const { phase, origin, result, captureFrame } = session
+  const library = useImageImport()
   const { theme } = useUnistyles()
   // True once the theme background covers the camera: the bar then takes the theme style, not the light style over the camera.
   const [darkBar, setDarkBar] = useState(false)
@@ -99,14 +107,34 @@ export function CameraScreen({
     if (canRequestPermission) void requestPermission()
   }, [canRequestPermission, requestPermission])
 
-  const blocked = (block: CameraBlock) => (
-    <>
-      <CameraPermission block={block} />
-      <CloseButton onPress={onClose} overCamera={false} />
-    </>
-  )
-  if (!hasPermission) return blocked(canRequestPermission ? 'waiting' : 'denied')
-  if (device == null) return blocked('missing')
+  const { choose } = library
+  const { startImport } = session
+  const chooseImage = useCallback(async () => {
+    const pick = await choose()
+    if (pick.kind === 'picked') startImport(pick.uri)
+    else if (pick.kind === 'failed') Alert.alert(PICK_FAILED.title, PICK_FAILED.message)
+  }, [choose, startImport])
+
+  const pickedAtStart = useRef(false)
+  useEffect(() => {
+    if (!pickAtStart || pickedAtStart.current) return
+    pickedAtStart.current = true
+    void chooseImage()
+  }, [pickAtStart, chooseImage])
+
+  // The camera runs only for a live scan. The picker covers it, and an import has no use for it.
+  const cameraOn = isActive && !session.photoShown && !library.picking && origin === 'camera'
+  let block: CameraBlock | null = null
+  if (!hasPermission) block = canRequestPermission ? 'waiting' : 'denied'
+  else if (device == null) block = 'missing'
+  if (block != null && phase === 'live') {
+    return (
+      <>
+        <CameraPermission block={block} onChooseImage={() => void chooseImage()} />
+        <CloseButton onPress={onClose} overCamera={false} />
+      </>
+    )
+  }
   return (
     <View
       testID="camera-screen"
@@ -117,11 +145,11 @@ export function CameraScreen({
     >
       <StatusBar style={darkBar || phase === 'review' ? theme.statusBar : 'light'} />
       {/* When the photo draws, the camera stops. The photo covers the last preview frame. */}
-      {phase !== 'review' && (
+      {phase !== 'review' && device != null && block == null && (
         <Camera
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={isActive && !session.photoShown}
+          isActive={cameraOn}
           outputs={[frameOutput, photoOutput]}
           orientationSource="interface"
         />
@@ -135,6 +163,7 @@ export function CameraScreen({
           session={session}
           layout={layout}
           onRetake={() => onRetake(result)}
+          onChooseImage={() => onRetake(result, 'library')}
           onPlay={onPlay}
           onHome={onHome}
           onExit={(finalGrid) => onExit(result, finalGrid)}
@@ -147,6 +176,9 @@ export function CameraScreen({
             style={styles.bottom}
             pointerEvents="box-none"
           >
+            <View style={styles.library}>
+              <LibraryButton onPress={() => void chooseImage()} disabled={library.picking} />
+            </View>
             <Pressable
               testID="shutter"
               accessibilityRole="button"
