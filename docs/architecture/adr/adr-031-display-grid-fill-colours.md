@@ -55,7 +55,7 @@ close relative: a view that mounts after a theme change gets the styles of the o
 
 The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
 
-- `displayFill` in `mobile/src/game/utils/cell.utils.ts` gives a display cell its fill colours from
-  `useUnistyles()` (#187).
-- The iPhone check in issue #175 passed for the grid preview, also after Settings opens a second time.
+- A display cell reads its colours from `useUnistyles()`. `displayFill` in `mobile/src/game/utils/cell.utils.ts`
+  turns them into fills (#187).
+- The criteria of issue #175 for the grid preview are met, also after Settings opens a second time.
 - The wavy lines of the stats card are still open in #175. They are not part of this decision.

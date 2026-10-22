@@ -81,4 +81,4 @@ The code on `develop` proves this decision. The status moves from Proposed to Ac
 
 - `mobile/src/app/` holds the routes and `_layout.tsx` with one `Stack` without a native header (#68).
 - Each route file renders one feature screen. The stack now also has `stats`, `sign-in` and `sign-up`.
-- #51 is closed, with every acceptance criterion met. This was the check that this ADR waited for.
+- #51 is closed, with every acceptance criterion met. Its criteria use the routes of this ADR.

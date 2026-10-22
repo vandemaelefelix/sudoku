@@ -127,8 +127,8 @@ exactly which images trained it.
 
 The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
 
-- These points stand: the manifest in git (point 2), no stored synthetic data (point 3), the photo import, the work
-  folder, Finish and the data check.
+- These points stand: the manifest in git (point 2) and no stored synthetic data (point 3). The photo import, the
+  work folder, Finish and the data check also stand.
 - `just dataset-manifest`, `just import-photos` and `just check-data` exist (#10, #76). Finish is
   `ml/src/sudoku_ml/finish.py`. The data check is `ml/src/sudoku_ml/data_check.py`.
 - `ml/src/sudoku_ml/synthetic.py` renders the synthetic cells at training time.
