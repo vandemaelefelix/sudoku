@@ -9,8 +9,17 @@ type ScannerOk = Extract<RecogniseResult, { ok: true }>
  * What the scan UI keeps of an ok result. flatImage: the flattened grid as a Skia image, for the cell crops of the correction
  * screen, set in every build. photoPath: a temporary file with the upright capture photo, set when the photo was kept
  * (development builds, or sharing on). flatPath: a temporary PNG of the flattened grid, set in development builds.
+ * imported: set when the image came from the photo library. An imported scan never uploads (ADR-030, amendment 2026-10-22).
  */
-export type CaptureOk = Omit<ScannerOk, 'flat'> & { flatImage?: SkImage; photoPath?: string; flatPath?: string }
+export type CaptureOk = Omit<ScannerOk, 'flat'> & {
+  flatImage?: SkImage
+  photoPath?: string
+  flatPath?: string
+  imported?: true
+}
+
+/** camera: a photo of the live camera. library: an image that the player picked from the photo library. */
+export type ScanOrigin = 'camera' | 'library'
 
 /** The result of one capture: the scanner result with the files and images that the scan UI adds. */
 export type CaptureResult = CaptureOk | Extract<RecogniseResult, { ok: false }>

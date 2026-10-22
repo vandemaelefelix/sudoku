@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { CameraPermission } from './CameraPermission'
 import { cobalt } from '@/theme/themes/cobalt'
@@ -12,5 +12,17 @@ describe('CameraPermission', () => {
     expect(StyleSheet.flatten(screen.getByText(/needs the camera/).props.style)).toMatchObject({
       color: cobalt.colors.text,
     })
+  })
+
+  it.each(['denied', 'missing'] as const)('offers a photo from the library when the camera is %s', (block) => {
+    const onChooseImage = jest.fn()
+    render(<CameraPermission block={block} onChooseImage={onChooseImage} />)
+    fireEvent.press(screen.getByTestId('choose-image'))
+    expect(onChooseImage).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers no photo while the permission prompt is open', () => {
+    render(<CameraPermission block="waiting" onChooseImage={jest.fn()} />)
+    expect(screen.queryByTestId('choose-image')).toBeNull()
   })
 })

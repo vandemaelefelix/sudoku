@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import { AppState, Linking } from 'react-native'
+import { Alert, AppState, Linking } from 'react-native'
+import { launchImageLibraryAsync, type ImagePickerResult } from 'expo-image-picker'
 import { useCameraDevice, useCameraPermission, useFrameOutput, usePhotoOutput } from 'react-native-vision-camera'
 import { useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import type { SkImage } from '@shopify/react-native-skia'
@@ -20,7 +21,13 @@ jest.mock('@/scanner', () => ({
   createScanner: jest.fn(() => new Promise(() => undefined)),
 }))
 jest.mock('@/scan/utils/photoImage.utils', () => ({ photoToSkImage: jest.fn() }))
-jest.mock('@/scan/utils/photoFile', () => ({ saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg') }))
+const mockStillImage = { width: 1206, height: 2622, dispose: jest.fn() }
+const mockStill = { toImageAsync: jest.fn(async () => mockStillImage) }
+jest.mock('@/scan/utils/photoFile', () => ({
+  saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg'),
+  stillPhoto: jest.fn(() => mockStill),
+  deletePickedImage: jest.fn(),
+}))
 
 jest.mock('@/scan/effects/components/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
 jest.mock('@/scan/effects/components/EffectPicker', () => ({ EffectPicker: jest.fn(() => null) }))
@@ -260,9 +267,11 @@ describe('capture', () => {
     const image = new Promise<SkImage>((resolve) => (giveImage = () => resolve(IMAGE)))
     const result = new Promise<RecogniseResult>((resolve) => (giveResult = resolve))
     jest.mocked(usePhotoOutput).mockReturnValue({ capturePhoto: jest.fn(async () => photo) } as never)
-    jest.mocked(createScanner).mockResolvedValue({ recognise: jest.fn(() => result) })
+    const recogniseStill = jest.fn(() => result)
+    jest.mocked(createScanner).mockResolvedValue({ recognise: jest.fn(() => result), recogniseStill })
     jest.mocked(photoToSkImage).mockReturnValue(image)
     return {
+      recogniseStill,
       giveImage: () => act(async () => giveImage()),
       giveResult: (done: RecogniseResult) => act(async () => giveResult(done)),
     }
@@ -385,5 +394,112 @@ describe('capture', () => {
     view.unmount()
     expect(onRetake).toHaveBeenCalledWith(expect.objectContaining({ ok: true }))
     expect(onExit).not.toHaveBeenCalled()
+  })
+})
+
+/** The result of the scanner for a picked image waits until the test settles it. */
+function givenStillScanner() {
+  let giveResult!: (result: RecogniseResult) => void
+  const result = new Promise<RecogniseResult>((resolve) => (giveResult = resolve))
+  const recogniseStill = jest.fn(() => result)
+  jest.mocked(createScanner).mockResolvedValue({ recognise: jest.fn(), recogniseStill })
+  jest.mocked(photoToSkImage).mockReturnValue(new Promise(() => undefined))
+  return { recogniseStill, giveResult: (done: RecogniseResult) => act(async () => giveResult(done)) }
+}
+
+describe('an image from the photo library', () => {
+  const PICKED = 'file:///cache/ImagePicker/picked.png'
+  const picker = jest.mocked(launchImageLibraryAsync)
+  const FAILED: RecogniseResult = { ok: false, reason: 'no grid in the photo' }
+  let frameTime = 0
+
+  function deferredPick() {
+    let resolve!: (result: ImagePickerResult) => void
+    picker.mockReturnValueOnce(new Promise((res) => (resolve = res)))
+    return {
+      pick: () => act(async () => resolve({ canceled: false, assets: [{ uri: PICKED, width: 1206, height: 2622 }] })),
+      cancel: () => act(async () => resolve({ canceled: true, assets: null })),
+    }
+  }
+
+  function runFrames(seconds: number) {
+    for (let i = 0; i <= Math.round(seconds * 60); i++) {
+      overlay().session.stepClock(frameTime * 1000)
+      frameTime += 1 / 60
+    }
+  }
+
+  beforeEach(() => {
+    frameTime = 0
+    Object.assign(AppState, { currentState: 'active' })
+    jest.mocked(useReducedMotion).mockReturnValue(false)
+    jest.spyOn(console, 'log').mockImplementation(() => undefined)
+  })
+
+  it('stops the camera while the picker is open, and keeps the camera live after a cancel', async () => {
+    givenStillScanner()
+    const { cancel } = deferredPick()
+    renderLive()
+    await act(async () => fireEvent.press(screen.getByTestId('scan-library')))
+    expect(picker).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('camera').props.isActive).toBe(false)
+    await cancel()
+    expect(screen.getByTestId('camera').props.isActive).toBe(true)
+    expect(screen.getByTestId('shutter')).toBeTruthy()
+  })
+
+  it('scans the picked image, with the camera off', async () => {
+    const { recogniseStill } = givenStillScanner()
+    const { pick } = deferredPick()
+    renderLive()
+    await act(async () => fireEvent.press(screen.getByTestId('scan-library')))
+    await pick()
+    expect(recogniseStill).toHaveBeenCalledWith(mockStillImage)
+    expect(screen.getByTestId('correction-screen')).toBeTruthy()
+    expect(screen.getByTestId('camera').props.isActive).toBe(false)
+  })
+
+  it('offers another image when the image has no grid', async () => {
+    const { giveResult } = givenStillScanner()
+    const { pick } = deferredPick()
+    renderLive()
+    await act(async () => fireEvent.press(screen.getByTestId('scan-library')))
+    await pick()
+    await giveResult(FAILED)
+    runFrames(3)
+    expect(screen.getByTestId('correction-failure')).toHaveTextContent(/No sudoku found/)
+    fireEvent.press(screen.getByTestId('choose-another'))
+    expect(onRetake).toHaveBeenCalledWith(FAILED, 'library')
+  })
+
+  it('opens the picker at the start when the parent asks for it', async () => {
+    givenStillScanner()
+    givenPermission('authorized')
+    render(<CameraScreen {...props()} pickAtStart />)
+    await act(async () => undefined)
+    expect(picker).toHaveBeenCalledTimes(1)
+  })
+
+  it('says so when the image does not load', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    picker.mockRejectedValueOnce(new Error('the image is in iCloud'))
+    renderLive()
+    await act(async () => fireEvent.press(screen.getByTestId('scan-library')))
+    expect(alert).toHaveBeenCalledWith('The image did not load', expect.stringContaining('iCloud'))
+    expect(screen.getByTestId('shutter')).toBeTruthy()
+  })
+
+  it.each(['denied', 'missing'] as const)('scans a picked image when the camera is %s', async (block) => {
+    const { recogniseStill } = givenStillScanner()
+    const { pick } = deferredPick()
+    givenPermission(block === 'denied' ? 'denied' : 'authorized')
+    if (block === 'missing') device.mockReturnValue(undefined)
+    render(<CameraScreen {...props()} />)
+    await act(async () => fireEvent.press(screen.getByTestId('choose-image')))
+    await pick()
+    expect(recogniseStill).toHaveBeenCalledWith(mockStillImage)
+    expect(screen.getByTestId('correction-screen')).toBeTruthy()
+    expect(screen.queryByTestId('camera')).toBeNull()
   })
 })

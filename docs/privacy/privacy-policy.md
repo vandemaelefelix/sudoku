@@ -37,8 +37,9 @@ address, to run the sign-in. AWS DynamoDB in Ireland keeps the history and the d
 ## Scans that help improve the app
 
 The setting "Help improve the app" is on by default. You can turn it off at any time in Settings, under Scanning.
-When it is on, the app sends each finished scan. A scan is finished when you leave the correction screen, except
-through Retake. We use the scans to train the digit reader in the app.
+When it is on, the app sends each finished scan of the camera. A scan is finished when you leave the correction screen,
+except through Retake. We use the scans to train the digit reader in the app. A scan of an image from your photo library
+never leaves the phone, also when the setting is on.
 
 | Data | Why | Where |
 | --- | --- | --- |
@@ -74,6 +75,7 @@ We process this data under Article 6(1)(b) of the GDPR: it is needed to perform 
 ## What the app does not collect
 
 - Camera frames and cell images. A scan runs on the phone. Only a finished scan can leave it, when "Help improve the app" is on.
+- Images from your photo library. The app sees only the image that you pick. A scan of it never leaves the phone.
 - The settings and the game in progress.
 - Your location.
 - An advertising ID.

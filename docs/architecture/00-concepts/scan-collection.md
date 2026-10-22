@@ -14,7 +14,8 @@ retrains with little hand-labelling. The decision is in [ADR-030](../adr/adr-030
 ## What
 
 A **scan record** holds one finished scan. The app builds it when the player leaves the correction screen by any
-route except Retake. The setting "Help improve the app" must be on.
+route except Retake. The setting "Help improve the app" must be on. A scan of an imported image never makes a record
+(ADR-030, amendment 2026-10-22).
 
 | Part | Content |
 | --- | --- |
@@ -77,7 +78,7 @@ flowchart LR
 | ID | Constraint |
 | --- | --- |
 | SUD-01 | A failed upload MUST NOT block play or scanning. |
-| SUD-02 | A photo MUST leave the device only through the setting "Help improve the app". Camera frames and cell images MUST NOT leave the device. |
+| SUD-02 | A photo MUST leave the device only through the setting "Help improve the app". Camera frames and cell images MUST NOT leave the device. An imported image MUST NOT leave the device. |
 | SUD-08 | Scan photos MUST NOT be committed. |
 | SUD-10 | Fixture cells MUST NOT appear in any training dataset. Scan cells never become fixtures. |
 | SUD-11 | The AWS bill MUST stay below €10 a month. The scans route has its own throttle. The shared app key is not a secret. |

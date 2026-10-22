@@ -1,15 +1,16 @@
 import type { SkImage } from '@shopify/react-native-skia'
+import type { Image } from 'react-native-nitro-image'
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { type SharedValue, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
-import { createScanner, type Scanner } from '@/scanner'
+import { createScanner, type RecogniseResult, type Scanner } from '@/scanner'
 import { GATE_RESULTS, SPINNER_DELAY } from '@/scan/constants/transition.constants'
 import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
-import { type CaptureResult, formatScanLog, toCaptureResult } from '@/scan/utils/captureResult.utils'
+import { type CaptureResult, formatScanLog, type ScanOrigin, toCaptureResult } from '@/scan/utils/captureResult.utils'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import { claimLock, createLockLatch, type LockSource } from '@/scan/utils/lockOn.utils'
-import { saveUprightPhoto } from '@/scan/utils/photoFile'
+import { deletePickedImage, saveUprightPhoto, stillPhoto } from '@/scan/utils/photoFile'
 import { photoToSkImage } from '@/scan/utils/photoImage.utils'
 import { sameAspect, toPreview, uprightAspect } from '@/scan/utils/preview.utils'
 import {
@@ -47,6 +48,7 @@ export type CapturePhase = 'live' | 'capturing' | 'review'
  *
  * JS thread, changes per render:
  * - phase, result (null until recognise settles), quad (the locked grid, normalised to the upright frame, or null).
+ * - origin: camera, or library for an image from the photo library.
  * - photoShown: the photo is an image, so the camera can stop.
  * - crossFade: the transition has no movement (scan-pipeline concept, "Cross-fade path").
  *
@@ -59,15 +61,21 @@ export type CapturePhase = 'live' | 'capturing' | 'review'
  * automatic lock-on, which the player did not tap, and tap for the shutter. The first source to call it starts the capture and
  * the lock latch refuses the other one, so a second call does nothing. A retake mounts a new camera screen with a new session.
  *
+ * startImport: the same for an image from the photo library. uri: the cache copy of the picker. The session deletes it when the
+ * attempt is done, also when the latch refuses the import or the screen has unmounted. An import has no locked quad and no photo
+ * image, so the transition cross-fades.
+ *
  * stepClock: a worklet. The overlay calls it first in each UI frame, so the overlay draws the grid of this frame.
  */
 export type CaptureSession = {
   phase: CapturePhase
+  origin: ScanOrigin
   result: CaptureResult | null
   quad: Quad | null
   photoShown: boolean
   crossFade: boolean
   startCapture: (quad: Quad | null, source?: LockSource) => void
+  startImport: (uri: string) => void
   stepClock: (timestamp: number) => void
   clock: SharedValue<number>
   waiting: SharedValue<boolean>
@@ -82,6 +90,7 @@ export type CaptureSession = {
  */
 type Attempt = {
   phase: CapturePhase
+  origin: ScanOrigin
   quad: Quad | null
   lockedView: Quad | null
   image: SkImage | null
@@ -90,18 +99,26 @@ type Attempt = {
 }
 
 type Change =
-  | { type: 'start'; quad: Quad | null; lockedView: Quad | null }
+  | { type: 'start'; quad: Quad | null; lockedView: Quad | null; origin: ScanOrigin }
   | { type: 'image'; image: SkImage }
   | { type: 'imageFailed' }
   | { type: 'dropQuad' }
   | { type: 'result'; result: CaptureResult }
   | { type: 'end' }
 
-const LIVE: Attempt = { phase: 'live', quad: null, lockedView: null, image: null, imageFailed: false, result: null }
+const LIVE: Attempt = {
+  phase: 'live',
+  origin: 'camera',
+  quad: null,
+  lockedView: null,
+  image: null,
+  imageFailed: false,
+  result: null,
+}
 
 function reduce(attempt: Attempt, change: Change): Attempt {
   if (change.type === 'start') {
-    return { ...LIVE, phase: 'capturing', quad: change.quad, lockedView: change.lockedView }
+    return { ...LIVE, phase: 'capturing', origin: change.origin, quad: change.quad, lockedView: change.lockedView }
   }
   if (attempt.phase === 'live') return attempt
   switch (change.type) {
@@ -171,6 +188,7 @@ export function useCaptureSession({
   const held = useSharedValue(0)
   const shownVersion = useSharedValue(-1)
   const ended = useSharedValue(false)
+  const mounted = useRef(true)
 
   const crossFade = crossFadeOf(attempt, reduceMotion)
   const { photo: photoReady, results: resultsReady } = gatesOf(attempt)
@@ -183,6 +201,13 @@ export function useCaptureSession({
   useEffect(() => {
     latest.current = attempt
   }, [attempt])
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   // The model loads at start, so the first scan does not wait for it. A load failure shows at the first capture.
   useEffect(() => {
@@ -222,9 +247,9 @@ export function useCaptureSession({
     gates.set({ photo: photoReady, results: resultsReady })
   }, [photoReady, resultsReady, gates])
 
-  const run = useCallback((quad: Quad | null, frameAspect: number) => {
+  // One capture attempt. An unmount makes the attempt stale. A stale attempt must not change the state.
+  const begin = useCallback(() => {
     const attemptId = ++generation.current
-    // An unmount makes the attempt stale. A stale attempt must not change the state.
     const current = () => generation.current === attemptId
     const began = Date.now()
 
@@ -232,7 +257,7 @@ export function useCaptureSession({
       if (__DEV__) console.log(formatScanLog(photoMs, Date.now() - began, result))
       if (current()) change({ type: 'result', result })
     }
-    const convert = async (photo: Photo) => {
+    const convert = async (photo: Pick<Photo, 'toImageAsync'>) => {
       try {
         const converted = await photoToSkImage(photo, IMAGE_MAX_SIDE)
         if (current()) {
@@ -246,53 +271,106 @@ export function useCaptureSession({
         if (current()) change({ type: 'imageFailed' })
       }
     }
-
-    void (async () => {
-      let photo: Photo
-      let photoMs = 0
-      let scanner: Scanner
-      try {
-        scanner = await createScanner()
-        // The haptic is the feedback. No shutter sound (ADR-002).
-        photo = await output.current.capturePhoto({ enableShutterSound: false }, {})
-        photoMs = Date.now() - began
-      } catch (error) {
-        if (current()) change({ type: 'imageFailed' })
-        settle(photoMs, { ok: false, reason: errorMessage(error) })
-        return
-      }
-      // The quad is normalised to the frame. It fits the photo only when both have the same field of view (ADR-002). Without it,
-      // recognise searches the whole photo and the transition cross-fades.
-      let locked = quad
-      if (quad != null && !sameAspect(uprightAspect(photo.width, photo.height, photo.orientation), frameAspect)) {
-        locked = null
-        devWarn('scan', 'the photo and the frame differ in aspect, so the locked quad does not fit the photo')
-        if (current()) change({ type: 'dropQuad' })
-      }
-      // Development builds keep the photo for the dev menu. Every build keeps it while sharing is on: the scan upload crops it (ADR-030).
-      const saved =
-        __DEV__ || shareStore.get()
-          ? saveUprightPhoto(photo).catch((error) => {
-              devWarn('scan', `the photo is not saved: ${errorMessage(error)}`)
-              return null
-            })
-          : Promise.resolve(null)
-      try {
-        await Promise.all([
-          scanner.recognise(photo, locked).then(
-            async (result) => {
-              const photoPath = await saved
-              settle(photoMs, toCaptureResult(result, photoPath))
-            },
-            (error) => settle(photoMs, { ok: false, reason: errorMessage(error) }),
-          ),
-          convert(photo),
-        ])
-      } finally {
-        photo.dispose()
-      }
-    })()
+    return { current, began, settle, convert }
   }, [])
+
+  const run = useCallback(
+    (quad: Quad | null, frameAspect: number) => {
+      const { current, began, settle, convert } = begin()
+
+      void (async () => {
+        let photo: Photo
+        let photoMs = 0
+        let scanner: Scanner
+        try {
+          scanner = await createScanner()
+          // The haptic is the feedback. No shutter sound (ADR-002).
+          photo = await output.current.capturePhoto({ enableShutterSound: false }, {})
+          photoMs = Date.now() - began
+        } catch (error) {
+          if (current()) change({ type: 'imageFailed' })
+          settle(photoMs, { ok: false, reason: errorMessage(error) })
+          return
+        }
+        // The quad is normalised to the frame. It fits the photo only when both have the same field of view (ADR-002). Without it,
+        // recognise searches the whole photo and the transition cross-fades.
+        let locked = quad
+        if (quad != null && !sameAspect(uprightAspect(photo.width, photo.height, photo.orientation), frameAspect)) {
+          locked = null
+          devWarn('scan', 'the photo and the frame differ in aspect, so the locked quad does not fit the photo')
+          if (current()) change({ type: 'dropQuad' })
+        }
+        // Development builds keep the photo for the dev menu. Every build keeps it while sharing is on: the scan upload crops it (ADR-030).
+        const saved =
+          __DEV__ || shareStore.get()
+            ? saveUprightPhoto(photo).catch((error) => {
+                devWarn('scan', `the photo is not saved: ${errorMessage(error)}`)
+                return null
+              })
+            : Promise.resolve(null)
+        try {
+          await Promise.all([
+            scanner.recognise(photo, locked).then(
+              async (result) => {
+                const photoPath = await saved
+                settle(photoMs, toCaptureResult(result, photoPath))
+              },
+              (error) => settle(photoMs, { ok: false, reason: errorMessage(error) }),
+            ),
+            convert(photo),
+          ])
+        } finally {
+          photo.dispose()
+        }
+      })()
+    },
+    [begin],
+  )
+
+  const runImport = useCallback(
+    (uri: string) => {
+      const { current, settle } = begin()
+      const still = stillPhoto(uri)
+
+      // One decoded copy of the image at a time: a library image can be far larger than a camera photo. The transition does not
+      // draw an import, so the session makes no Skia image of it.
+      void (async () => {
+        try {
+          let picked: Image
+          let scanner: Scanner
+          try {
+            scanner = await createScanner()
+            picked = await still.toImageAsync()
+          } catch (error) {
+            if (current()) change({ type: 'imageFailed' })
+            settle(0, { ok: false, reason: errorMessage(error) })
+            return
+          }
+          let result: RecogniseResult
+          try {
+            result = await scanner.recogniseStill(picked)
+          } catch (error) {
+            result = { ok: false, reason: errorMessage(error) }
+          } finally {
+            picked.dispose()
+          }
+          // An imported image never uploads (ADR-030, amendment 2026-10-22). Only development builds keep it, for the dev menu.
+          const photoPath =
+            __DEV__ && result.ok
+              ? await saveUprightPhoto(still).catch((error) => {
+                  devWarn('scan', `the image is not saved: ${errorMessage(error)}`)
+                  return null
+                })
+              : null
+          const captured = toCaptureResult(result, photoPath)
+          settle(0, captured.ok ? { ...captured, imported: true } : captured)
+        } finally {
+          deletePickedImage(uri)
+        }
+      })()
+    },
+    [begin],
+  )
 
   const startCapture = useCallback(
     (quad: Quad | null, source: LockSource = 'auto') => {
@@ -300,10 +378,29 @@ export function useCaptureSession({
       play(source === 'shutter' ? 'tap' : 'thud')
       // The frame aspect at lock-on: the photo has the field of view of the frames.
       const aspect = detection.get()?.aspect ?? 0
-      change({ type: 'start', quad, lockedView: quad == null ? null : toPreview(quad, aspect, viewSize.get()) })
+      change({
+        type: 'start',
+        quad,
+        lockedView: quad == null ? null : toPreview(quad, aspect, viewSize.get()),
+        origin: 'camera',
+      })
       run(quad, aspect)
     },
     [run, detection, viewSize, play],
+  )
+
+  const startImport = useCallback(
+    (uri: string) => {
+      // The picker can close after the screen unmounted. A dead session must not start a scan.
+      if (!mounted.current || !claimLock(latch.current, 'import', Date.now())) {
+        deletePickedImage(uri)
+        return
+      }
+      play('tap')
+      change({ type: 'start', quad: null, lockedView: null, origin: 'library' })
+      runImport(uri)
+    },
+    [runImport, play],
   )
 
   const finish = useCallback(() => {
@@ -347,11 +444,13 @@ export function useCaptureSession({
 
   return {
     phase: attempt.phase,
+    origin: attempt.origin,
     result: attempt.result,
     quad: attempt.quad,
     photoShown: attempt.image != null,
     crossFade,
     startCapture,
+    startImport,
     stepClock,
     clock,
     waiting,

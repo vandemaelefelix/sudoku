@@ -27,6 +27,11 @@ it('draws the scan icon', () => {
   expect(screen.getByTestId('skia-path').props.path).toContain('M4 8V5')
 })
 
+it('draws the photo icon', () => {
+  render(<Icon name="photo" tone="text" />)
+  expect(screen.getByTestId('skia-path').props.path).toContain('M5 4h14')
+})
+
 it('draws the small icons with a thicker line', () => {
   render(<Icon name="pause" tone="text" size={16} />)
   expect(screen.getByTestId('skia-path').props.strokeWidth).toBe(2)

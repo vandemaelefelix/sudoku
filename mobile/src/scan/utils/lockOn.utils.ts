@@ -141,8 +141,8 @@ export function lockStatus(lock: LockOn, t: number): LockStatus {
   }
 }
 
-/** The two ways a scan starts: the tracker gives 'auto', the shutter button gives 'shutter'. */
-export type LockSource = 'auto' | 'shutter'
+/** The three ways a scan starts: the tracker gives 'auto', the shutter button 'shutter', and an image from the photo library 'import'. */
+export type LockSource = 'auto' | 'shutter' | 'import'
 
 /** at: the clock time of the winning claim, in milliseconds. */
 export type LockLatch = { source: LockSource | null; at: number }
@@ -152,7 +152,7 @@ export function createLockLatch(): LockLatch {
 }
 
 /**
- * Both sources call this on the JS thread. The first call wins and gets true. Every later call gets false.
+ * Every source calls this on the JS thread. The first call wins and gets true. Every later call gets false.
  * A shutter press and the tracker can fire in the same moment, and the scan must start once.
  */
 export function claimLock(latch: LockLatch, source: LockSource, at: number): boolean {

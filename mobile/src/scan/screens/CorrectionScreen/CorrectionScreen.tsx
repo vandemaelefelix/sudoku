@@ -19,6 +19,7 @@ import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/com
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
 import { CorrectionSummary } from '@/scan/components/CorrectionSummary'
 import { DevMenu } from '@/scan/components/DevMenu'
+import { NO_GRID } from '@/scanner'
 import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
 import { type CorrectionExits, useCorrectionSession } from '@/scan/hooks/useCorrectionSession'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
@@ -33,6 +34,7 @@ import { pressedStyles } from '@/theme/pressed.styles'
 import {
   DIGIT_SHARE,
   FAILURE_SLIDE_MS,
+  IMPORT_NO_GRID,
   KIND_TAG,
   WAITING_FADE_MS,
   PANEL_HIDDEN,
@@ -49,7 +51,7 @@ export type CorrectionProps = CorrectionExits & {
    * The capture session. In the capturing phase the clock drives every layer and the results may be null. In the review phase
    * everything shows and the player can edit.
    */
-  session: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'waiting' | 'resultsAt'>
+  session: Pick<CaptureSession, 'phase' | 'origin' | 'result' | 'crossFade' | 'clock' | 'waiting' | 'resultsAt'>
   layout: CorrectionLayout
 }
 
@@ -85,6 +87,9 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const { actions, editable, looks, openCell, picking, scan, solution, solved, threshold } = correction
   const open = openCell?.cell ?? null
   const failed = correction.panel === 'failure'
+  // A failed import offers another image, not the camera. Without a grid, the panel says what to pick.
+  const importFailed = failed && capture.origin === 'library' && exits.onChooseImage !== undefined
+  const importNoGrid = importFailed && correction.failure === NO_GRID
   const blockText = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
   const full = correction.fullGrid && {
     ...correction.fullGrid,
@@ -281,9 +286,18 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
             >
               {correction.panel === 'failure' ? (
                 <View testID="correction-failure" style={styles.failure}>
-                  <Text style={styles.failureTitle}>The scan failed</Text>
-                  <Text style={styles.failureReason}>{correction.failure}</Text>
-                  <PanelButton testID="retake-failure" label="Retake" kind="primary" onPress={actions.retake} />
+                  <Text style={styles.failureTitle}>{importNoGrid ? IMPORT_NO_GRID.title : 'The scan failed'}</Text>
+                  <Text style={styles.failureReason}>{importNoGrid ? IMPORT_NO_GRID.reason : correction.failure}</Text>
+                  {importFailed ? (
+                    <PanelButton
+                      testID="choose-another"
+                      label={IMPORT_NO_GRID.button}
+                      kind="primary"
+                      onPress={actions.chooseImage}
+                    />
+                  ) : (
+                    <PanelButton testID="retake-failure" label="Retake" kind="primary" onPress={actions.retake} />
+                  )}
                 </View>
               ) : openCell !== null && correction.panel !== 'summary' ? (
                 <CorrectionCheck
