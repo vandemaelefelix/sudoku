@@ -7,7 +7,6 @@ export const styles = StyleSheet.create((theme) => ({
   plain: { backgroundColor: theme.components.cell.fill },
   peer: { backgroundColor: theme.components.cell.peer },
   same: { backgroundColor: theme.components.cell.same },
-  focus: { backgroundColor: theme.components.cell.hintFocus },
   conflict: { backgroundColor: theme.components.cell.conflictFill },
   // The selected cell has a fill and a ring in both looks (ADR-026).
   selected: {
@@ -46,6 +45,9 @@ export const styles = StyleSheet.create((theme) => ({
     flexWrap: 'wrap',
   },
   // The hint roles (ADR-032). Each is an overlay, so none of them fights the ring of the selected cell.
+  hintLayer: { position: 'absolute', inset: 0, pointerEvents: 'none' },
+  hintTint: { backgroundColor: theme.components.cell.hintFocus },
+  hintGlow: { backgroundColor: theme.components.cell.hintFocusLine },
   hintEdges: {
     position: 'absolute',
     inset: 0,
@@ -106,8 +108,14 @@ export const styles = StyleSheet.create((theme) => ({
     left: '12%',
     right: '12%',
     height: theme.components.cell.hintLineWidth,
-    backgroundColor: theme.components.cell.hintStrike,
     transform: [{ rotate: '-35deg' }],
+  },
+  // It grows from its left end along the rotated bar.
+  noteStrikeLine: {
+    position: 'absolute',
+    inset: 0,
+    transformOrigin: 'left',
+    backgroundColor: theme.components.cell.hintStrike,
   },
   noteSlot: { width: '33.33%', height: '33.33%', alignItems: 'center', justifyContent: 'center' },
   note: { ...roleFont(theme.type.note), fontSize: theme.type.note.scale, color: theme.components.cell.note },
