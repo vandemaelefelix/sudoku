@@ -168,8 +168,7 @@ describe('planHint', () => {
     expect(planHint(game, TIER_1_ORDER)?.kind).toBe('fallback')
     const plan = planHint(game)
     if (plan?.kind !== 'steps') throw new Error('expected a steps plan')
-    const tier1 = new Set(TIER_1_ORDER.map((rank) => rank.technique))
-    expect(plan.steps.some((step) => !tier1.has(step.technique))).toBe(true)
+    expect(plan.steps.map((step) => step.technique)).toEqual(['twoStringKite', 'xyWing', 'hiddenSingle'])
   })
 
   it('takes the fallback when the placement needs more than six steps', () => {

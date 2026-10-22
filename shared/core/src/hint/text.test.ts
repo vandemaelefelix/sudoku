@@ -8,6 +8,7 @@ import { findFish } from '../technique/fish'
 import { findSkyscrapers, findTwoStringKites } from '../technique/singleDigit'
 import { findHiddenSubsets, findNakedSubsets } from '../technique/subsets'
 import { onlyIn, struck, ungradedPuzzle, withDigits } from '../technique/testKit'
+import { sees } from '../technique/sight'
 import { findWWings, findXyWings, findXyzWings } from '../technique/wings'
 import { createEmptyGrid } from '../grid'
 import type { CellDigit, Step, TechniqueId } from '../technique/types'
@@ -277,7 +278,7 @@ describe('hintText, tier 2', () => {
     const candidates = onlyIn(empty, 5, [2, 6, 38, 42, 11, 69])
     expect(rungs(only(findFish(candidates, board, 2)))).toEqual([
       'Look where a 5 fits in rows 1 and 5.',
-      'X-wing: two rows where a digit fits only in the same two columns. Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'X-wing: two rows where a digit fits only in the same two columns. Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
       'In rows 1 and 5, a 5 fits only in columns 3 and 7. So columns 3 and 7 must hold their 5s in rows 1 and 5.',
       'Remove 5 from columns 3 and 7, outside rows 1 and 5.',
     ])
@@ -303,7 +304,7 @@ describe('hintText, tier 2', () => {
     )
     expect(rungs(swordfish)).toEqual([
       'Look where a 5 fits in rows 1, 5 and 9.',
-      'Swordfish: three rows where a digit fits only in the same three columns. Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'Swordfish: three rows where a digit fits only in the same three columns. Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
       'In rows 1, 5 and 9, a 5 fits only in columns 3, 5 and 7. So columns 3, 5 and 7 must hold their 5s in rows 1, 5 and 9.',
       'Remove 5 from columns 3, 5 and 7, outside rows 1, 5 and 9.',
     ])
@@ -316,7 +317,7 @@ describe('hintText, tier 2', () => {
     )
     expect(rungs(jellyfish)).toEqual([
       'Look where a 7 fits in columns 1, 3, 5 and 9.',
-      'Jellyfish: four rows where a digit fits only in the same four columns. Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'Jellyfish: four rows where a digit fits only in the same four columns. Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
       'In columns 1, 3, 5 and 9, a 7 fits only in rows 1, 3, 5 and 9. So rows 1, 3, 5 and 9 must hold their 7s in columns 1, 3, 5 and 9.',
       'Remove 7 from rows 1, 3, 5 and 9, outside columns 1, 3, 5 and 9.',
     ])
@@ -349,6 +350,45 @@ describe('hintText, tier 2', () => {
     ])
   })
 
+  it('names the far ends of a mirrored kite', () => {
+    const candidates = onlyIn(empty, 1, [at(1, 8), at(1, 3), at(2, 6), at(7, 6), at(7, 3)])
+    expect(rungs(only(findTwoStringKites(candidates, board)))[2]).toBe(
+      'Row 2 and column 7 each have only two cells for a 1, and both have one in the top-right box. ' +
+        'At most one of those holds the 1, so row 2, column 4 or row 8, column 7 holds it.',
+    )
+  })
+
+  // Both ends of the row link lie in the box of the kite. The far ends follow from the eliminations.
+  it('names the far ends of a kite whose row link lies in its box', () => {
+    const candidates = onlyIn(empty, 1, [at(0, 0), at(0, 1), at(1, 2), at(6, 2), at(7, 1)])
+    const steps = findTwoStringKites(candidates, board)
+    expect(steps.length).toBeGreaterThan(0)
+    for (const step of steps) {
+      const named = [...rungs(step)[3]!.matchAll(/row (\d), column (\d)/g)].map(([, row, column]) =>
+        at(Number(row) - 1, Number(column) - 1),
+      )
+      expect(named).toHaveLength(2)
+      for (const { cell } of step.eliminations) expect(named.every((far) => sees(far, cell))).toBe(true)
+    }
+  })
+
+  it('teaches a W-wing linked by a box', () => {
+    const candidates = struck(withDigits(empty, { 0: [1, 2], 40: [1, 2] }), [4, 5, 12, 13, 14, 21, 23], [1])
+    const step = findWWings(candidates, board).find((wing) => wing.units[0] === 19)!
+    expect(rungs(step)[2]).toBe(
+      'In the top-middle box, a 1 fits only in row 1, column 4 and row 3, column 5, so one of them holds it. ' +
+        'That cell rules out 1 in row 1, column 1 or in row 5, column 5, so one of these holds 2.',
+    )
+  })
+
+  it('keeps every definition to two short sentences', () => {
+    for (const technique of Object.values(HINT_TECHNIQUES)) {
+      const text = `${technique!.name}: ${technique!.definition}`
+      expect(text.split(/\.(?: |$)/).filter(Boolean).length).toBeLessThanOrEqual(2)
+      expect(text.split(/[.:]/).every((sentence) => sentence.trim().split(/\s+/).length <= 25)).toBe(true)
+    }
+  })
+
   it('teaches an XY-wing', () => {
     const candidates = withDigits(empty, { 0: [1, 2], 3: [1, 3], 18: [2, 3] })
     expect(rungs(only(findXyWings(candidates, board)))).toEqual([
@@ -364,7 +404,7 @@ describe('hintText, tier 2', () => {
     expect(rungs(only(findXyzWings(candidates, board)))).toEqual([
       'Look at row 1, column 1. It has only three digits.',
       'XYZ-wing: a cell with three digits, and two cells in its row, column or box that each hold two of them, one shared. One of the three cells must hold the shared digit.',
-      'Row 1, column 1 holds 1, 2 or 3. Each choice puts a 3 in it, in row 1, column 2 or in row 2, column 1.',
+      'Row 1, column 1 holds 1, 2 or 3. Each choice puts a 3 in this cell, in row 1, column 2 or in row 2, column 1.',
       'Remove 3 from the cells that share a row, column or box with all three of these cells.',
     ])
   })
@@ -373,7 +413,7 @@ describe('hintText, tier 2', () => {
     const candidates = struck(withDigits(empty, { 0: [1, 2], 13: [1, 2] }), [46, 47, 48, 50, 51, 52, 53], [1])
     expect(rungs(findWWings(candidates, board)[0]!)).toEqual([
       'Look at row 1, column 1 and row 2, column 5. They hold the same two digits.',
-      'W-wing: two cells with the same two digits, linked by a row, column or box where one of them fits in only two cells. One of the two cells must hold the other digit.',
+      'W-wing: two cells with the same two digits, linked by a row, column or box where one of the two digits fits in only two cells. One of the two cells must hold the other digit.',
       'In row 6, a 1 fits only in columns 1 and 5, so one of them holds it. ' +
         'That cell rules out 1 in row 1, column 1 or in row 2, column 5, so one of these holds 2.',
       'Remove 2 from the cells that share a row, column or box with both row 1, column 1 and row 2, column 5.',
