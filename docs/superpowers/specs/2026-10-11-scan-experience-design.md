@@ -80,9 +80,11 @@ When the first grid is found, the overlay does these steps:
 - After that, the gathered dots go free again. They return to free movement in 0.5 s.
 - When a grid is found again, the overlay does a new assignment.
 
-### Only the largest grid
+### The grid you aim at
 
-The detector already returns only the largest plausible grid. A smaller grid on the same page, such as last week's solution, gets no dots.
+The player chooses a grid by aiming at it. The first grid is the one nearest the centre of the view. A grid smaller than 60 % of the largest grid, such as last week's solution, gets no dots.
+
+The tracked grid stays chosen, also when another grid is about as near the centre. The dots move to another grid when it is nearer the centre by 15 % of the frame width, for 0.3 s. The frame processor does not know the view, so the rule measures in the frame. On an iPhone the view shows about 0.82 of the frame width. The dots then gather on the new grid. There is no crosshair. The rule is the grid chooser in the scan-pipeline concept.
 
 ## Stage 2: capture and transition
 

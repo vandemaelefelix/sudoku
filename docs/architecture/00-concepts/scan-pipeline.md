@@ -46,7 +46,7 @@ flowchart LR
 
 | Stage | Where it runs | Budget | Notes |
 | --- | --- | --- | --- |
-| Grid detection | Frame processor (ADR-002) | ≤ 15 ms per frame | On a frame downscaled to about 640 px. Returns `null` when no plausible quad is found |
+| Grid detection | Frame processor (ADR-002) | ≤ 15 ms per frame | On a frame downscaled to about 640 px. `findGrids` gives every plausible quad. The grid chooser picks one, or `null` (see "Choosing the grid") |
 | Corner smoothing | Scan UI, UI thread | negligible | A filter over recent frames, so the dots do not jitter. Tuned in the walking skeleton |
 | Live overlay | Scan UI, UI thread | ≤ 4 ms per frame for the scene and one effect | The active effect draws from the scene, which the engine computes once per frame from the smoothed corners. The default effect is Gathering dots. A development build switches effects with the dev pill (ADR-014). See the [effect lab design](../../superpowers/specs/2026-10-11-effect-lab-design.md) |
 | Lock-on | Scan UI, UI thread | — | The lock-on tracker owns the rule (`src/scan/utils/lockOn.utils.ts`). The engine gives it the grid of each frame. The scene and the effects get only the lock-on progress and the lock time. The tracker fires once, in the frame of lock-on. A shutter press can come in the same moment, so the lock latch of the capture session starts the scan for the first source only. Automatic: the same grid stays in view for `LOCK_DWELL` = 1.0 s, and the phone does not clearly move (ADR-019). A clear move is a drift above `DRIFT_LIMIT` = 150 pt/s. The drift is the largest net corner move over the last `DRIFT_WINDOW` = 0.3 s, measured in every frame. Noise and tremor cancel over the window, a pan does not. Lock-on happens only when the user means it. (1) The scene is older than `WARMUP` = 1.0 s. A Retake starts a new scene, so the warm-up runs again. (2) The grid is at least `MIN_GRID_WIDTH` = 0.35 of the view width (the mean of the top and bottom edges). A big grid stays big down to 0.32 (`GRID_WIDTH_HYSTERESIS` = 0.03). The dwell counts from the latest of the found time, the last clear move, the end of the warm-up and the time the grid became big enough. The lock-on progress resets when the grid is lost, found again or jumps. The gathered dots show the progress: they settle and brighten. A shutter button captures at any time. The steady values drive the overlay only. A hand-held iPhone gave a median step speed of 28.8 pt/s, so steady failed as a lock-on rule (issue #72). The other values are as built, to tune on the device. See the [capture flow design](../../superpowers/specs/2026-10-11-capture-flow-design.md) |
@@ -54,6 +54,39 @@ flowchart LR
 | Intersections | scanner, on capture | ≤ 50 ms | Classical first: search each of the 100 expected points in a small window. fast-opencv has no `cornerSubPix`, so the refinement is our own code. An ML keypoint model replaces this only if book pages need it (F-12) |
 | Per-cell flatten | scanner, on capture | ≤ 30 ms | 81 small perspective transforms. Falls back to the rough flatten for a cell whose intersections were not found |
 | Classification | scanner, on capture | ≤ 100 ms for 81 cells | Preprocessing in plain TypeScript, then one batched call on the CPU, see [model-contract](model-contract.md). Measured on the iPhone 17 Pro: 76 to 87 ms. The model call alone takes 29 to 51 ms. The whole capture, lock-on to result view, takes 512 to 539 ms |
+
+## Choosing the grid
+
+A page can hold several sudokus of almost the same size. The player chooses one by aiming at it. The grid chooser
+(`chooseGrid` in `src/scanner/chooseGrid.ts`) applies the rule in the frame processor, once per frame. Its state stays on the
+camera thread, so no corner goes through the JS thread.
+
+```mermaid
+stateDiagram-v2
+    [*] --> none
+    none --> tracked: first find
+    tracked --> tracked: the tracked grid is in the frame
+    tracked --> pending: another grid is nearer the centre by the margin
+    pending --> tracked: the margin breaks
+    pending --> tracked: switch, after SWITCH_DWELL
+    tracked --> held: the tracked grid is gone
+    pending --> held: the tracked grid is gone
+    held --> tracked: the tracked grid is back within LOSS_HOLD
+    held --> none: longer than LOSS_HOLD
+```
+
+| Rule | What the chooser does |
+| --- | --- |
+| Size | A grid smaller than `MIN_AREA_SHARE` = 0.6 of the area of the largest grid of the frame never counts, such as last week's solution |
+| First find | The grid nearest the frame centre, of the grids that count. The view shows the frame with a centred cover mapping, so the frame centre is the view centre. Distances are shares of the frame width |
+| Tracking | The tracked grid is the grid of the frame nearest it, within `TRACK_TOLERANCE` = 0.5 of the grid side. It stays chosen, also when another grid is about as near the centre |
+| Switch | Another grid must be nearer the centre by `SWITCH_MARGIN` = 0.15 of the frame width, for `SWITCH_DWELL` = 0.3 s. A break in the margin starts the dwell again |
+| Loss | A frame without the tracked grid gives no grid, so the outline does not jump to a neighbour. After `LOSS_HOLD` = 0.25 s, the next detection is a first find |
+
+A switch counts as lost and found. The detection carries `switched`, and `useFrameTracking` starts the corner smoothing new.
+The outline jumps in one frame, and the scene gives `found`, so the dots gather on the new grid. There is no extra UI.
+
+A still image and a shutter press without a grid have no aim. They use only the first find (`firstFind`).
 
 ## Threads and coordinates
 
@@ -173,7 +206,7 @@ flowchart LR
 | Pick | `useImageImport` opens `PHPickerViewController` through `expo-image-picker`. The picker runs outside the app, so the app gets only the picked image. The app asks for no photo library permission. The picker copies the original file to the cache folder without a new encode. The camera stops while the picker is open, so the lock-on cannot fire behind it |
 | Start | `startImport` of the capture session. The lock latch takes `import` as a third source. The attempt has the origin `library` and no locked quad, so the transition takes the cross-fade path |
 | Load | nitro-image loads the file on the JS thread. The scanner runtime gets the image. A resize draws it upright, as for a camera photo, so an EXIF orientation reads right. The full read caps the long side at `STILL_MAX_SIDE` = 4032 px, because a library image can have 48 MP. The transition does not draw an import, so the session makes no Skia image of it. One decoded copy exists at a time |
-| Detect | `recogniseStill` calls `locateStill`. It runs the same `findGrid` on the 640 px image. `findGrid` keeps only the outer contours, so a photo of a whole page finds the page. The search goes on inside each found quad while it finds one: the bounding box shrinks by `INNER_INSET` = 0.03 on each side, at most `MAX_DEPTH` = 3 times. Inside a grid the cut goes through the grid lines, so the search stops there |
+| Detect | `recogniseStill` calls `locateStill`. It runs the same `findGrids` on the 640 px image, and the first find of the grid chooser picks a grid. `findGrids` keeps only the outer contours, so a photo of a whole page finds the page. The search goes on inside each found quad while it finds one: the bounding box shrinks by `INNER_INSET` = 0.03 on each side, at most `MAX_DEPTH` = 3 times. Each level takes the grid nearest the centre, so a page of several sudokus gives the middle one. Inside a grid the cut goes through the grid lines, so the search stops there |
 | Flatten, classify | The same steps as for a camera photo |
 | No grid | The failure panel says "No sudoku found" and offers "Choose another image". It mounts a new camera screen, which opens the picker. Every other failure of an import shows its reason and offers the same button |
 | End | The session disposes the image and deletes the cache copy. An imported scan never uploads (ADR-030, amendment 2026-10-22) |
