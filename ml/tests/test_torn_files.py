@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
-from test_label_store import Clock, build
+from test_label_store import Clock, build, save_kinds
 
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
@@ -53,7 +53,7 @@ def test_a_torn_prelabels_file_counts_as_missing(tmp_path: Path):
     paths, _ = build(tmp_path, {"unlabeled": 1}, {})
     paths.prelabels.write_text('{"run": "r", "cel')
     store = LabelStore(paths, Clock())
-    assert store.digit_screen("1")["cells"] == []
+    assert store.check_digits("unknown")["left"] == 1
     assert store.status()["not_prelabelled"] == 1
 
 
@@ -71,17 +71,10 @@ def test_a_torn_prelabels_file_is_recomputed_by_write_prelabels(tmp_path: Path, 
     assert not list(paths.work.glob("*.part"))
 
 
-def test_a_torn_groups_file_counts_as_missing(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    paths.groups.write_text('{"folders": {"7": [')
-    store = LabelStore(paths, Clock())
-    assert store.groups == {} and store.next_screen()["folder"] == "7"
-
-
 def test_a_torn_suspects_file_counts_as_missing(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
     store = LabelStore(paths, Clock())
-    store.save([{"id": ids["7"][0], "kind": "printed"}], "groups")
+    save_kinds(store, [{"id": ids["7"][0], "kind": "printed"}])
     row = f"kind,{ids['7'][0][:16]},printed,handwritten,0.0"
     paths.suspects.write_text("field,file,label,predicted,p_label,p_predicted\n" + row)
     screen = store.review_screen()

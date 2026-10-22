@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from test_label_store import Clock, build
+from test_label_store import Clock, build, save_kinds
 
 from sudoku_ml import manifest
 from sudoku_ml.data_paths import DataPaths
@@ -19,7 +19,7 @@ HINT = "Check SUDOKU_IMAGES or restore the images. The table was not changed."
 @pytest.fixture
 def populated(tmp_path: Path) -> tuple[DataPaths, bytes]:
     paths, _ = build(tmp_path, {"7": 2, "unlabeled": 1}, {"7": [[0, 1]]})
-    LabelStore(paths, Clock()).save([], "groups")
+    save_kinds(LabelStore(paths, Clock()), [])
     return paths, paths.cells_csv.read_bytes()
 
 

@@ -24,7 +24,9 @@ class Line:
     new: (
         str | None
     )  # a source: "<photo_id> <row> <col>", row and col 0-8. An outline: see format_outline
-    screen: str  # "groups", "review", "digits", "undo", "repair", "photos", "outlines" or "scans"
+    # "digits" and "kinds": the Digits and Kind steps. "groups" and "scans": screens of older
+    # journals, still read. Also "review", "undo", "repair", "photos" and "outlines".
+    screen: str
 
 
 Source = tuple[str, int, int]  # full photo id, row, col (0-8)

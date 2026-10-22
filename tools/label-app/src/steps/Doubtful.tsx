@@ -23,7 +23,7 @@ export function reasonText(r: DoubtReason): string {
 
 const start = (item: DoubtfulItem): Entry => ({ digit: item.folder as Label, kind: item.kind })
 
-/** Flow B step 4: the labels that `just suspects` and the near copies doubt. */
+/** A tool outside the flow: the labels that `just suspects` and the near copies doubt. */
 export function Doubtful() {
   const [round, setRound] = useState(0)
   const page = useLoad(() => get<DoubtfulPage>('/api/doubtful'), `doubtful:${round}`)
@@ -87,7 +87,6 @@ export function Doubtful() {
   const items = data?.items ?? []
   return (
     <Frame
-      flow="b"
       step="doubtful"
       task="A check doubts these labels. Click a wrong one and fix it. Enter keeps the rest as they are."
       keys={[
@@ -125,7 +124,7 @@ export function Doubtful() {
               <button type="button" onClick={find}>
                 {data.suspects ? 'Look again' : 'Find doubtful labels'}
               </button>{' '}
-              <button type="button" className="primary" onClick={() => go('b/finish')}>
+              <button type="button" className="primary" onClick={() => go('finish')}>
                 Next: Finish
               </button>
             </>

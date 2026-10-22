@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,7 @@ from sudoku_ml.dataset import (
     stack,
 )
 from sudoku_ml.synthetic import Sample
+from sudoku_ml.tables import TRUSTED_LABEL_SOURCES, CellRow, PhotoRow, write_cells, write_photos
 
 
 def cell_tree(tmp_path: Path) -> DataPaths:
@@ -107,3 +109,30 @@ def test_a_digit_cell_missing_from_the_manifest_has_no_kind(tmp_path: Path):
 def test_cell_paths_follow_the_load_order(tmp_path: Path):
     data = cell_tree(tmp_path)
     assert [p.parent.name for p in cell_paths(data.cells)] == ["empty", "3", "7"]
+
+
+def test_training_uses_only_legacy_and_verified_cells(tmp_path: Path):
+    data = cell_tree(tmp_path)
+    rows = [
+        CellRow(f"{colour:016x}" + "0" * 48, folder, None, (PHOTO, 0, 0), source)
+        for (folder, colour), source in zip(
+            [("3", 10), ("empty", 200), ("7", 30)],
+            ["app-edited", "app-unedited", "verified"],
+            strict=True,
+        )
+    ]
+    write_cells(data.cells_csv, rows)
+    write_photos(data.photos_csv, [accepted_scan()])
+    assert [s.digit for s in load_cells(data)] == [7]
+    write_cells(data.cells_csv, [replace(r, label_source="") for r in rows])
+    assert sorted(s.digit for s in load_cells(data)) == [0, 3, 7]
+    assert TRUSTED_LABEL_SOURCES == ("", "verified")
+
+
+PHOTO = "a" * 64
+
+
+def accepted_scan() -> PhotoRow:
+    return PhotoRow(
+        PHOTO, "a.jpg", "app-scan", "player-contributed", "", "accepted", "1 2 3 4 5 6 7 8"
+    )

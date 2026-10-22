@@ -71,6 +71,35 @@ SUD-07 says that `ml/` and the TypeScript side share files only. SUD-12 lets the
    server and opens the browser.
 10. **ADR-029 decision 7 gets one more glob:** `tools/label-app`. The root does not change, so SUD-12 holds.
 
+## Amendment: one flow (2026-10-22)
+
+The first session in the app showed that two flows confuse. A loose cell and a scan cell need the same check. The
+developer also wants the cells with the highest doubt first (see the amendment of
+[ADR-030](adr-030-scan-collection.md)).
+
+| Option | For | Against |
+| --- | --- | --- |
+| **One flow: Fetch new scans, Outlines, Digits, Kind, Finish** | One path to learn. Every open cell is in one list | The Digits step mixes cells with and without a photo |
+| Keep two flows | Each flow is small | The developer has to know which flow holds a cell |
+
+Decision (this replaces decision 5):
+
+1. **The app has one flow:** Fetch new scans, Outlines, Digits, Kind, Finish.
+   - The **Digits step** holds every open digit cell. This is an open cell of a scan with an approved outline, or a
+     loose cell. A loose cell has no photo. Its side panel says "no photo".
+   - The **Kind step** holds the cells of 1 to 9 whose digit a person confirmed, and the cells of 1 to 9 without a kind.
+   - Both steps show the cell with the highest doubt first. A threshold button confirms the sure cells of one tab.
+2. **The pre-label is automatic.** The server runs the latest model at its start, after a fetch and after each approved
+   outline. It stores the probabilities of 10 digits and 4 kinds for each open cell, also for the cells in `empty/`. The
+   start page shows a line when no model is installed. There is no Pre-label step.
+3. **`just suspects` is a tool of the start page.** It finds doubtful older labels. It is outside the flow.
+4. **The routes of the old steps are gone.** The new routes are `/api/check/digits` and `/api/check/kinds` with their
+   `confirm` and `sure` routes. `/api/undo` answers with `digits` or `kinds` for the new steps.
+5. **The journal does not change.** Two new screen names, `digits` and `kinds`, join the old ones. An older journal still
+   loads.
+
+Reassessment trigger: the cells without a photo are so few that the developer wants to drop them from the flow.
+
 ## Consequences
 
 - The old page and every route that the app does not use are gone. The Python store lost the Check and Progress code.

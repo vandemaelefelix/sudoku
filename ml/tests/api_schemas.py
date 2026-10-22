@@ -7,6 +7,7 @@ STRING = {"type": "string"}
 BOOLEAN = {"type": "boolean"}
 NULLABLE_STRING = {"type": ["string", "null"]}
 SOURCE = {"enum": ["app", "photo"]}
+CELL_SOURCE = {"enum": ["app", "photo", "loose"]}
 CORNERS = {
     "type": ["array", "null"],
     "items": {"type": "array", "items": NUMBER, "minItems": 2, "maxItems": 2},
@@ -27,11 +28,10 @@ def strict(properties: dict, optional: tuple[str, ...] = ()) -> dict:
 START = strict(
     {
         "outlines": INTEGER,
-        "scans": INTEGER,
-        "scan_cells": INTEGER,
+        "digit_cells": INTEGER,
+        "kind_cells": INTEGER,
         "not_prelabelled": INTEGER,
-        "digits": INTEGER,
-        "kind": INTEGER,
+        "model": NULLABLE_STRING,
         "doubtful": {"type": ["integer", "null"]},
         "suspects": BOOLEAN,
         "changes": INTEGER,
@@ -61,82 +61,61 @@ OUTLINE = strict(
     }
 )
 
-CELLS = strict(
-    {
-        "digit": STRING,
-        "cells": {
-            "type": "array",
-            "items": strict(
-                {
-                    "id": STRING,
-                    "stem": STRING,
-                    "photo": STRING,
-                    "source": SOURCE,
-                    "row": INTEGER,
-                    "col": INTEGER,
-                    "digit": NULLABLE_STRING,
-                    "kind": NULLABLE_STRING,
-                    "edited": BOOLEAN,
-                    "model": {
-                        "oneOf": [
-                            {"type": "null"},
-                            strict({"digit": STRING, "p": NUMBER, "kind": STRING}),
-                        ]
-                    },
-                }
-            ),
-        },
-        "left": INTEGER,
-        "counts": {"type": "object", "additionalProperties": INTEGER},
-    }
-)
 
-DIGITS = strict(
-    {
-        "digit": STRING,
-        "kinds": STRING,
-        "cells": {
-            "type": "array",
-            "items": strict({"id": STRING, "stem": STRING, "p": NUMBER}),
-        },
-        "left": INTEGER,
-        "counts": {"type": "object", "additionalProperties": INTEGER},
-        "not_prelabelled": INTEGER,
-    }
-)
+def probabilities(size: int) -> dict:
+    return {"type": "array", "items": NUMBER, "minItems": size, "maxItems": size}
 
-KINDS = {
+
+def signal(name: str, **fields: dict) -> dict:
+    return strict({"signal": {"const": name}, **fields})
+
+
+REASON = {
     "oneOf": [
-        {"type": "null"},
-        strict(
-            {
-                "folder": STRING,
-                "group": INTEGER,
-                "groups": INTEGER,
-                "page": INTEGER,
-                "pages": INTEGER,
-                "ungrouped": BOOLEAN,
-                "predicted": NULLABLE_STRING,
-                "cells": {
-                    "type": "array",
-                    "items": strict(
-                        {
-                            "id": STRING,
-                            "stem": STRING,
-                            "kind": NULLABLE_STRING,
-                            "start": NULLABLE_STRING,
-                            "least_sure": BOOLEAN,
-                            "kp": NUMBER,
-                            "model_kind": STRING,
-                        },
-                        optional=("kp", "model_kind"),
-                    ),
-                },
-                "progress": strict({"cells": INTEGER, "labelled": INTEGER}),
-            }
-        ),
+        signal("low-p", p=NUMBER),
+        signal("model-differs", predicted=STRING, p=NUMBER),
+        signal("edited"),
+        signal("rule-break", unit={"enum": ["row", "col", "box"]}, index=INTEGER),
+        signal("not-unique"),
+        signal("no-guess"),
     ]
 }
+
+CHECK_CELL = strict(
+    {
+        "id": STRING,
+        "stem": STRING,
+        "photo": NULLABLE_STRING,
+        "source": CELL_SOURCE,
+        "row": {"type": ["integer", "null"]},
+        "col": {"type": ["integer", "null"]},
+        "digit": NULLABLE_STRING,
+        "kind": NULLABLE_STRING,
+        "edited": BOOLEAN,
+        "probs": {
+            "oneOf": [
+                {"type": "null"},
+                strict({"digit": probabilities(10), "kind": probabilities(4)}),
+            ]
+        },
+        "doubt": NUMBER,
+        "reasons": {"type": "array", "items": REASON},
+    }
+)
+
+CHECK = strict(
+    {
+        "digit": STRING,
+        "cells": {"type": "array", "items": CHECK_CELL},
+        "left": INTEGER,
+        "counts": {"type": "object", "additionalProperties": INTEGER},
+        "done": {"type": "object", "additionalProperties": INTEGER},
+        "sure": INTEGER,
+        "threshold": NUMBER,
+    }
+)
+
+SURE = strict({"cells": INTEGER})
 
 DOUBTFUL = strict(
     {

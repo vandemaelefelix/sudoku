@@ -17,6 +17,7 @@ const UNDONE: Record<string, string> = {
   outlines: 'an outline check of an uploaded scan',
   scans: 'a page of cells of the scans',
   digits: 'a page of digits',
+  kinds: 'a page of kinds',
   groups: 'a page of kinds',
   review: 'a page of doubtful labels',
 }

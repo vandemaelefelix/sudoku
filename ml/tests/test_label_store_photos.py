@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from photos import grid_photo, save_photo
-from test_label_store import Clock, build
+from test_label_store import Clock, build, save_kinds
 
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_import import import_folder
@@ -139,7 +139,7 @@ def test_undo_names_the_step_of_the_action_it_reverses(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
     store = LabelStore(paths, Clock())
     assert store.undo_target() is None
-    store.save([{"id": ids["7"][0], "kind": "printed"}], "groups")
+    save_kinds(store, [{"id": ids["7"][0], "kind": "printed"}])
     assert store.undo_target() == "groups"
     store.undo()
     assert store.undo_target() is None

@@ -35,11 +35,10 @@ export function fakeServer(routes: Record<string, Answer>): FakeServer {
 
 export const START = {
   outlines: 2,
-  scans: 1,
-  scan_cells: 81,
+  digit_cells: 12,
+  kind_cells: 3,
   not_prelabelled: 0,
-  digits: 12,
-  kind: 0,
+  model: 'run-1',
   doubtful: null,
   suspects: false,
   changes: 5,

@@ -70,7 +70,6 @@ def finish(store: LabelStore) -> dict:
         if path.exists():
             path.unlink()
             removed.append(path.name)
-    store.groups = {}
     detections = read_detections(paths.detections)
     if detections:
         pending = {r.photo_id for r in read_photos(paths.photos_csv) if r.status == "pending"}

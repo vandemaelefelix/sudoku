@@ -21,7 +21,7 @@ function takeCarried(): string | undefined {
 export function nextToFix(note?: string): void {
   const next = fixQueue.shift()
   if (!next) carried = note
-  go(next ? `a/outlines/${next}` : 'a/outlines')
+  go(next ? `outlines/${next}` : 'outlines')
 }
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
@@ -79,7 +79,6 @@ export function Outlines() {
   const open = page.data?.open ?? 0
   return (
     <Frame
-      flow="a"
       step="outlines"
       task="Click each outline that does not follow the grid. Enter approves the rest, then opens each marked one."
       keys={[
@@ -109,8 +108,8 @@ export function Outlines() {
         <Empty
           why="Every outline is checked."
           next={
-            <button type="button" className="primary" onClick={() => go('a/cells')}>
-              Next: Cells per digit
+            <button type="button" className="primary" onClick={() => go('digits')}>
+              Next: Digits
             </button>
           }
         />

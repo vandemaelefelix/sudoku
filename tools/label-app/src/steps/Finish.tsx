@@ -3,11 +3,10 @@ import { useState } from 'react'
 import { get, post } from '../api/client'
 import type { FinishResult, StartCounts } from '../api/types'
 import { Empty, Failure, Frame, Working } from '../components/Frame'
-import type { FlowId } from '../flows'
 import { go, useKeys, useLoad } from '../hooks'
 import { useAction } from '../useAction'
 
-export function Finish({ flow }: { flow: FlowId }) {
+export function Finish() {
   const counts = useLoad(() => get<StartCounts>('/api/start'), 'finish')
   const action = useAction(counts.reload)
   const [result, setResult] = useState<FinishResult | undefined>()
@@ -27,7 +26,6 @@ export function Finish({ flow }: { flow: FlowId }) {
 
   return (
     <Frame
-      flow={flow}
       step="finish"
       task="Finish folds the changes into the tables and checks the data. Then commit the tables."
       keys={[{ keys: 'Enter', does: 'Finish' }]}

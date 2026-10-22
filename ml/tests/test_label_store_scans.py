@@ -154,7 +154,7 @@ def test_a_fix_after_an_undone_fix_brings_the_cells_back(tmp_path: Path):
     assert all(store.folder[c["id"]] != "discarded" for c in cells)
     assert [(c["digit"], c["kind"]) for c in cells] == [(c["digit"], c["kind"]) for c in before]
     assert finish(store)["report"]["problems"] == []
-    assert len(load_cells(paths, include_unedited=True)) == 81
+    assert load_cells(paths) == []
 
 
 def test_a_discarded_cell_of_another_scan_stays_discarded_after_a_fix(tmp_path: Path):
@@ -173,7 +173,7 @@ def test_reject_moves_the_cells_out_of_training(tmp_path: Path):
     assert store.outline_screen()["open"] == 0
     assert finish(store)["report"]["problems"] == []
     assert statuses(paths) == [("rejected", False)]
-    assert load_cells(paths, include_unedited=True) == []
+    assert load_cells(paths) == []
     assert "verified" not in {r.label_source for r in read_cells(paths.cells_csv).values()}
 
 
@@ -185,12 +185,15 @@ def test_undo_of_a_reject_shows_the_scan_again(tmp_path: Path):
     assert store.outline_screen()["open"] == 2
 
 
-def test_training_leaves_out_the_cells_of_an_unchecked_outline(tmp_path: Path):
+def test_a_scan_cell_trains_only_after_its_outline_and_its_label_are_checked(tmp_path: Path):
     store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
-    assert load_cells(paths, include_unedited=True) == []
+    assert load_cells(paths) == []
     store.approve_outlines(photos)
     finish(store)
-    assert len(load_cells(paths, include_unedited=True)) == 81
+    assert load_cells(paths) == []
+    store.confirm_scan(photos[0], entries(store.scan_screen(photos[0])))
+    finish(store)
+    assert len(load_cells(paths)) == 81
 
 
 def test_a_shared_cell_shows_with_its_existing_label_not_as_a_gap(tmp_path: Path):
@@ -247,7 +250,7 @@ def test_the_reset_refuses_while_outline_checks_are_unfinished(tmp_path: Path):
     assert reset_main(paths) == 1
 
 
-def test_the_cells_screen_lists_approved_scans_from_an_unfinished_journal(tmp_path: Path):
+def test_the_scan_list_reads_approved_scans_from_an_unfinished_journal(tmp_path: Path):
     # The developer's journal holds outline approvals without a Finish. A new start reads it as is.
     store, paths, photos = pulled(tmp_path)
     store.approve_outlines(photos)
@@ -258,7 +261,7 @@ def test_the_cells_screen_lists_approved_scans_from_an_unfinished_journal(tmp_pa
     assert [s["photo"] for s in listed] == photos
     assert listed[0]["open"] == 81 and listed[0]["edited"] == 1
     assert listed[1]["open"] < 81  # the shared cells belong to the first scan
-    assert (again.status()["scans"], again.status()["scan_cells"]) == (2, 81 + listed[1]["open"])
+    assert again.status()["digit_cells"] == 81 + listed[1]["open"]
     again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
     assert [s["photo"] for s in again.scan_list()["scans"]] == photos[1:]
     assert finish(again)["report"]["problems"] == []
@@ -278,7 +281,7 @@ def test_a_confirmed_scan_leaves_the_cells_list_and_undo_brings_it_back(tmp_path
     for photo in photos:
         store.confirm_scan(photo, entries(store.scan_screen(photo)))
         assert photo not in [s["photo"] for s in store.scan_list()["scans"]]
-    assert store.scan_list()["scans"] == [] and store.status()["scan_cells"] == 0
+    assert store.scan_list()["scans"] == [] and store.status()["digit_cells"] == 0
     store.undo()
     assert [s["photo"] for s in store.scan_list()["scans"]] == photos[1:]
 
@@ -293,38 +296,3 @@ def test_a_cell_outside_the_digit_folders_is_locked_and_not_confirmed(tmp_path: 
     assert cells[0]["locked"] and not any(c["locked"] for c in cells[1:])
     again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
     assert again.scan_list()["scans"] == []
-
-
-def test_the_cell_check_shows_the_cells_of_approved_scans_per_digit_changed_ones_first(
-    tmp_path: Path,
-):
-    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
-    assert sum(store.cell_check("empty")["counts"].values()) == 0
-    store.approve_outlines(photos)
-    counts = store.cell_check("3")["counts"]
-    assert sum(counts.values()) == 81
-    edited = next(c for c in store.open_cells() if c["edited"])
-    first = store.cell_check(edited["digit"])["cells"][0]
-    assert first["id"] == edited["id"] and (first["row"], first["col"]) == (0, 2)
-    assert first["photo"] == photos[0] and first["model"] is None
-
-
-def test_verify_labels_open_cells_and_refuses_others(tmp_path: Path):
-    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
-    store.approve_outlines(photos)
-    one, two = store.cell_check("1")["cells"][:2]
-    entries = [
-        {"id": one["id"], "digit": "7", "kind": "handwritten"},
-        {"id": two["id"], "digit": "discarded"},
-    ]
-    assert store.verify_cells(entries) == 4
-    assert store.folder[one["id"]] == "7" and store.kinds()[one["id"]] == "handwritten"
-    assert store.folder[two["id"]] == "discarded"
-    assert one["id"] not in {c["id"] for c in store.open_cells()}
-    with pytest.raises(ValueError, match="not an open cell"):
-        store.verify_cells([{"id": one["id"], "digit": "7", "kind": "printed"}])
-    with pytest.raises(ValueError, match="needs a kind"):
-        three = store.cell_check("1")["cells"][0]
-        store.verify_cells([{"id": three["id"], "digit": "4"}])
-    finish(store)
-    assert read_cells(paths.cells_csv)[one["id"]].label_source == "verified"
