@@ -99,3 +99,10 @@ before the label check. The labels are not reviewed yet.
 | Wrong labels in the data | `just suspects` ranks 150 cells. 89 get under 5 % probability for their label |
 
 The split is by group: 16,206 labelled cells in 14,899 near-duplicate groups, 80/10/10.
+
+## 10.5 Measurements on the device
+
+The [quality measurements record](../research/2026-10-22-quality-measurements.md) holds the method and the results of
+QR-05 to QR-08 and QR-10 to QR-12 on the reference iPhone. The
+[measurement guide](../operations/measure-quality.md) gives the steps for one session. The development variant logs
+the timings, also in its Release build (ADR-022). The production variant logs nothing.

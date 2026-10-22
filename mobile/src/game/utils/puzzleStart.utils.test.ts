@@ -1,5 +1,6 @@
 import { createGame, generate, place, select, tick, type Digit, type Game, type Level } from '@sudoku/core'
 import { createMemoryStorage, type GameStorage, type SavedProgress } from '@/storage'
+import { startMeasures } from '@/utils/measure.utils'
 import { createPuzzleStart } from './puzzleStart.utils'
 import { scannedLevel } from './start.utils'
 
@@ -38,6 +39,16 @@ describe('newGame', () => {
     expect(started).toMatchObject({ level: 'hard', source: 'generated', seed: 500_000 })
     expect(started?.game.givens).toEqual(generate('hard', 500_000).givens)
     expect(await storage.puzzles.current()).toEqual(started)
+  })
+
+  it('marks the tap and the generation time for QR-12', async () => {
+    const tapped = jest.spyOn(startMeasures, 'levelTapped')
+    const generated = jest.spyOn(startMeasures, 'generated')
+    const { start } = setup()
+    await start.newGame('medium')
+    expect(tapped).toHaveBeenCalledWith('medium')
+    expect(generated).toHaveBeenCalledWith('medium', expect.any(Number))
+    jest.restoreAllMocks()
   })
 
   it('starts for the owner', async () => {
