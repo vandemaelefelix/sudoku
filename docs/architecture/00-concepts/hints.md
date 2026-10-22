@@ -36,8 +36,7 @@ and ends at a placed digit. The technique solver builds it. Each step is a `Step
 - Only the techniques with hint text take part: tier 1 and tier 2. `HINT_TECHNIQUES` in
   `@sudoku/core` holds the text, and the planner reads its order from it. Tier 3 has no text, so
   a board that needs it gets the fallback.
-- Until the hint card ships, the Hint tool fills the answer of the plan at once. For a wrong entry,
-  it selects that cell.
+- The Hint tool opens the hint card. The card leads the player through the rungs of each step.
 
 ### The planner API
 
@@ -52,7 +51,7 @@ The app keeps `shown`, the answers that this game session showed. The saved game
 
 ### The rungs
 
-Each step has four **rungs**. The player moves down one rung with each tap on Next.
+Each step has four **rungs**. The player moves down one rung with each tap on "More help".
 
 | Rung | The card says | Example |
 | --- | --- | --- |
@@ -72,6 +71,25 @@ card is not modal. The player can still tap the grid.
 "I'll do it" brings back the keypad. The **hint strip** then shows between the grid and the
 tools. It reminds the player of the hint. A tap on the strip brings back the card.
 
+The card has these parts:
+
+- The top row: "Hint", or the technique name from rung 2 on. Then "Step 1 of 2" when the plan has more than
+  one step, the four rung dots and a close button.
+- The text of the rung. It scrolls under Dynamic Type. VoiceOver reads each new text.
+- The buttons. They stay at the bottom and are at least 44 pt high.
+
+| Card | Buttons |
+| --- | --- |
+| Rungs 1 to 3 | More help, Show answer, Try it |
+| Rung 4 of an elimination step | Next step |
+| Rung 4 of the last step | Fill it, I'll do it |
+| A wrong entry | Erase it |
+| The fallback | Fill it, I'll do it |
+
+The card and the strip only fade, so Reduce Motion changes nothing. The open hint lives in the session
+reducer of the app: the plan, the step, the rung and the view (card, strip or "Nice."). The saved game
+does not keep it.
+
 ### Highlight roles
 
 Each role is a shape plus a colour. The colour never carries the meaning alone.
@@ -85,6 +103,18 @@ Each role is a shape plus a colour. The colour never carries the meaning alone.
 | Target cell | The cell that gets the digit |
 
 The technique table, with the roles of each technique, is in ADR-032 decision 12.
+
+The roles grow with the rungs, so the grid tells no more than the card:
+
+| Rung | The grid adds |
+| --- | --- |
+| Look | The focus unit: the first unit of the step |
+| Technique | The other units and the pattern cells |
+| Why | The support digits and the struck candidates |
+| Answer | The target cell |
+
+The candidates that earlier steps struck stay struck. A wrong entry shows as a pattern cell. The
+fallback shows only its target cell. The highlight stays while the strip shows.
 
 The grid draws each role with these shapes. The colours are the `components.cell.hint*` tokens of the theme.
 
