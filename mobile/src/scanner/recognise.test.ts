@@ -2,7 +2,7 @@ import type { TfliteModel } from './classifier'
 import { findGrid, findGrids } from './findGrid'
 import { downscaleSize, searchRect, toPhotoPixels } from './photoGeometry'
 import { FLAT_SIZE } from './pixels'
-import { INNER_INSET, type ImageSource, recognise, recogniseStill, SEARCH_GROW } from './recognise'
+import { INNER_INSET, type ImageSource, recognise, recogniseStill, SEARCH_GROW, STILL_MAX_SIDE } from './recognise'
 import { warpGrid } from './warp'
 import type { Rect, Quad } from '@/utils/geometry.utils'
 
@@ -242,6 +242,18 @@ describe('a still image', () => {
     find.mockReturnValue({ quad: LOCKED, score: 0.5 })
     recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
     expect(find).toHaveBeenCalledTimes(4)
+  })
+
+  it('reads a large image at most STILL_MAX_SIDE on its long side, upright', () => {
+    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    recogniseStill(image(8064, 6048, []), model(), OUTPUTS)
+    expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: STILL_MAX_SIDE, height: 3024 })
+  })
+
+  it('reads a small image at its own size', () => {
+    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    recogniseStill(image(1206, 2622, []), model(), OUTPUTS)
+    expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: 1206, height: 2622 })
   })
 
   it('fails when the image has no grid', () => {

@@ -87,9 +87,9 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const { actions, editable, looks, openCell, picking, scan, solution, solved, threshold } = correction
   const open = openCell?.cell ?? null
   const failed = correction.panel === 'failure'
-  // An import without a grid offers another image, not the camera.
-  const importNoGrid =
-    failed && capture.origin === 'library' && correction.failure === NO_GRID && exits.onChooseImage !== undefined
+  // A failed import offers another image, not the camera. Without a grid, the panel says what to pick.
+  const importFailed = failed && capture.origin === 'library' && exits.onChooseImage !== undefined
+  const importNoGrid = importFailed && correction.failure === NO_GRID
   const blockText = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
   const full = correction.fullGrid && {
     ...correction.fullGrid,
@@ -288,7 +288,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
                 <View testID="correction-failure" style={styles.failure}>
                   <Text style={styles.failureTitle}>{importNoGrid ? IMPORT_NO_GRID.title : 'The scan failed'}</Text>
                   <Text style={styles.failureReason}>{importNoGrid ? IMPORT_NO_GRID.reason : correction.failure}</Text>
-                  {importNoGrid ? (
+                  {importFailed ? (
                     <PanelButton
                       testID="choose-another"
                       label={IMPORT_NO_GRID.button}

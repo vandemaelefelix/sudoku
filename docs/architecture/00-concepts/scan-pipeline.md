@@ -172,10 +172,10 @@ flowchart LR
 | --- | --- |
 | Pick | `useImageImport` opens `PHPickerViewController` through `expo-image-picker`. The picker runs outside the app, so the app gets only the picked image. The app asks for no photo library permission. The picker copies the original file to the cache folder without a new encode. The camera stops while the picker is open, so the lock-on cannot fire behind it |
 | Start | `startImport` of the capture session. The lock latch takes `import` as a third source. The attempt has the origin `library` and no locked quad, so the transition takes the cross-fade path |
-| Load | nitro-image loads the file on the JS thread. The scanner runtime gets the image. A resize draws it upright, as for a camera photo, so an EXIF orientation reads right |
+| Load | nitro-image loads the file on the JS thread. The scanner runtime gets the image. A resize draws it upright, as for a camera photo, so an EXIF orientation reads right. The full read caps the long side at `STILL_MAX_SIDE` = 4032 px, because a library image can have 48 MP. The transition does not draw an import, so the session makes no Skia image of it. One decoded copy exists at a time |
 | Detect | `recogniseStill` calls `locateStill`. It runs the same `findGrid` on the 640 px image. `findGrid` keeps only the outer contours, so a photo of a whole page finds the page. The search goes on inside each found quad while it finds one: the bounding box shrinks by `INNER_INSET` = 0.03 on each side, at most `MAX_DEPTH` = 3 times. Inside a grid the cut goes through the grid lines, so the search stops there |
 | Flatten, classify | The same steps as for a camera photo |
-| No grid | The failure panel says "No sudoku found" and offers "Choose another image". It mounts a new camera screen, which opens the picker |
+| No grid | The failure panel says "No sudoku found" and offers "Choose another image". It mounts a new camera screen, which opens the picker. Every other failure of an import shows its reason and offers the same button |
 | End | The session disposes the image and deletes the cache copy. An imported scan never uploads (ADR-030, amendment 2026-10-22) |
 
 A picked file that does not load, for example a photo that is only in iCloud while the phone is offline, gives an alert.

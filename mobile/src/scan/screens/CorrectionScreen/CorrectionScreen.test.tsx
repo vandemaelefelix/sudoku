@@ -226,7 +226,7 @@ describe('CorrectionScreen in review', () => {
     expect(onRetake).not.toHaveBeenCalled()
   })
 
-  it('shows the reason and Retake when an import fails for another reason', () => {
+  it('shows the reason and offers another image when an import fails for another reason', () => {
     render(
       <CorrectionScreen
         session={review({ ok: false, reason: 'the file is not an image' }, 'library')}
@@ -237,7 +237,8 @@ describe('CorrectionScreen in review', () => {
     )
     expect(screen.getByTestId('correction-failure')).toHaveTextContent(/The scan failed/)
     expect(screen.getByText('the file is not an image')).toBeTruthy()
-    expect(screen.getByTestId('retake-failure')).toBeTruthy()
+    expect(screen.getByTestId('choose-another')).toBeTruthy()
+    expect(screen.queryByTestId('retake-failure')).toBeNull()
   })
 
   it('shows a spinner while it waits for the result', () => {
