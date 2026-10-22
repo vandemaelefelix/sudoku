@@ -1,6 +1,7 @@
 import { createGame, type Game, type Level, type NewGame, type Random } from '@sudoku/core'
 import type { PuzzleRepository, PuzzleSource, SavedProgress } from '@/storage'
 import { devWarn, errorMessage } from '@/utils/log.utils'
+import { startMeasures } from '@/utils/measure.utils'
 import { newGeneratedGame, scannedLevel } from './start.utils'
 
 type PuzzleStartDeps = {
@@ -76,16 +77,27 @@ export function createPuzzleStart({
     }
   }
 
-  const generated = (level: Level): Request => ({ level, source: 'generated', ...newGeneratedGame(level, random) })
+  const generated = (level: Level): Request => {
+    const started = Date.now()
+    const made = newGeneratedGame(level, random)
+    startMeasures.generated(level, Date.now() - started)
+    return { level, source: 'generated', ...made }
+  }
 
   return {
-    newGame: (level, opened) => run(() => generated(level), { ask: true, opened }),
+    newGame: (level, opened) => {
+      startMeasures.levelTapped(level)
+      return run(() => generated(level), { ask: true, opened })
+    },
     playScan: (grid, opened) =>
       run(() => ({ level: scannedLevel(grid.givens), source: 'scanned', seed: null, game: createGame(grid) }), {
         ask: true,
         opened,
       }),
-    newPuzzle: ({ level }) => run(() => generated(level), { ask: false }),
+    newPuzzle: ({ level }) => {
+      startMeasures.levelTapped(level)
+      return run(() => generated(level), { ask: false })
+    },
     retry: ({ level, source, seed, game }) =>
       run(
         () => ({

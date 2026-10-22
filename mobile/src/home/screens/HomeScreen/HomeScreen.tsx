@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Level } from '@sudoku/core'
 import { usePuzzleStart } from '@/game/hooks/usePuzzleStart'
 import { HomeMenu } from '@/home/components/HomeMenu'
@@ -8,6 +8,7 @@ import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { useOwner } from '@/storage/hooks/useOwner'
 import { devWarn, errorMessage } from '@/utils/log.utils'
+import { startMeasures } from '@/utils/measure.utils'
 
 export function HomeScreen() {
   const router = useRouter()
@@ -49,6 +50,11 @@ export function HomeScreen() {
       }
     }, [puzzles, stats, includeScanned, owner]),
   )
+
+  // QR-12: the menu is ready for a tap once it knows whether a game is in progress.
+  useEffect(() => {
+    if (continueLevel !== undefined) startMeasures.homeShown()
+  }, [continueLevel])
 
   // The game screen opens on peek() while the write runs, so the push follows the tap at once.
   const newGame = (level: Level) => puzzleStart.newGame(level, () => router.push('/game'))

@@ -12,6 +12,7 @@ import type { BestTimes, SavedProgress } from '@/storage'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { useOwner } from '@/storage/hooks/useOwner'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
+import { startMeasures } from '@/utils/measure.utils'
 import { styles } from './PlayScreen.styles'
 
 function logSave(game: Game, ms: number) {
@@ -37,6 +38,11 @@ export function PlayScreen() {
   const [best, setBest] = useState<BestTimes | null>(null)
 
   const home = useCallback(() => router.dismissTo('/'), [router])
+
+  // QR-12: the board is playable once the screen has the game. Only a level tap before it gives a log line.
+  useEffect(() => {
+    if (progress !== null) startMeasures.boardShown()
+  }, [progress])
 
   useEffect(() => {
     let live = true
