@@ -27,13 +27,17 @@ test-ts:
     node --test 'tools/delete-scans/*.test.mjs'
     node --test 'backend/infra/*.test.ts'
 
-# Time nextSteps on the bench set. The target is under 5 ms for one call
+# Time nextSteps on the bench set (under 5 ms for one call) and the generation of each level (QR-12)
 bench-core:
     pnpm --filter @sudoku/core bench
 
 # Measure how many generated puzzles the techniques of the solver solve. It takes minutes and prints Markdown tables
 technique-coverage:
     pnpm --filter @sudoku/core technique-coverage
+
+# Time the puzzle generation of each level on this machine (QR-12). It prints a table for the quality record
+bench-generate:
+    pnpm --filter @sudoku/core exec vitest bench --run --silent=false bench/generate.bench.ts
 
 # The DynamoDB Local image of the sync-api tests (ADR-027). Pin an exact tag
 dynamodb_image := "amazon/dynamodb-local:3.3.1"
@@ -107,6 +111,12 @@ ios-dev device:
 ios-release device:
     cd mobile && APP_VARIANT=production pnpm exec expo prebuild --platform ios --clean
     cd mobile && APP_VARIANT=production pnpm exec expo run:ios --device "{{device}}" --configuration Release
+
+# Build the development variant in Release and install it on a device, to measure the quality scenarios (ADR-022). It needs no Metro
+ios-measure device:
+    test -f mobile/assets/models/cell-classifier.tflite || { echo "The model is missing. Run: just install-model <run>" >&2; exit 1; }
+    cd mobile && APP_VARIANT=development pnpm exec expo prebuild --platform ios --clean
+    cd mobile && APP_VARIANT=development pnpm exec expo run:ios --device "{{device}}" --configuration Release
 
 # Build the development variant in Release for the iOS Simulator, without code signing (ADR-010). It needs no Metro
 ios-simulator:

@@ -1,5 +1,6 @@
 import { createGame, generate, place, select, tick, type Digit, type Game, type Level } from '@sudoku/core'
 import { createMemoryStorage, type GameStorage, type SavedProgress } from '@/storage'
+import { startMeasures } from '@/utils/measure.utils'
 import { createPuzzleStart } from './puzzleStart.utils'
 import { scannedLevel } from './start.utils'
 
@@ -38,6 +39,34 @@ describe('newGame', () => {
     expect(started).toMatchObject({ level: 'hard', source: 'generated', seed: 500_000 })
     expect(started?.game.givens).toEqual(generate('hard', 500_000).givens)
     expect(await storage.puzzles.current()).toEqual(started)
+  })
+
+  it('marks the tap and the generation time for QR-12', async () => {
+    const tapped = jest.spyOn(startMeasures, 'levelTapped')
+    const generated = jest.spyOn(startMeasures, 'generated')
+    const { start } = setup()
+    await start.newGame('medium')
+    expect(tapped).toHaveBeenCalledWith('medium')
+    expect(generated).toHaveBeenCalledWith('medium', expect.any(Number))
+    jest.restoreAllMocks()
+  })
+
+  it('restarts the tap mark when the player confirms the new game', async () => {
+    const confirmed = jest.spyOn(startMeasures, 'replaceConfirmed')
+    const { storage, start } = setup(true)
+    await begin(storage)
+    await start.newGame('hard')
+    expect(confirmed).toHaveBeenCalled()
+    jest.restoreAllMocks()
+  })
+
+  it('forgets the tap mark when the player keeps the game in progress', async () => {
+    const cancelled = jest.spyOn(startMeasures, 'tapCancelled')
+    const { storage, start } = setup(false)
+    await begin(storage)
+    await start.newGame('hard')
+    expect(cancelled).toHaveBeenCalled()
+    jest.restoreAllMocks()
   })
 
   it('starts for the owner', async () => {
