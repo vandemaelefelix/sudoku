@@ -28,6 +28,7 @@ import { DEFAULT_INDEX } from '@/scan/effects/registry'
 import { useCaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
 import { useImageImport } from '@/scan/hooks/useImageImport'
+import { useScanMeasures } from '@/scan/hooks/useScanMeasures'
 import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
 import type { CaptureResult, ScanOrigin } from '@/scan/utils/captureResult.utils'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
@@ -88,6 +89,7 @@ export function CameraScreen({
   const { frameOutput, detection, outline, frameQuad } = useFrameTracking(viewSize)
   const session = useCaptureSession({ photoOutput, layout, detection, viewSize })
   const { phase, origin, result, captureFrame } = session
+  useScanMeasures({ detection, outline, phase, origin, result })
   const library = useImageImport()
   const { theme } = useUnistyles()
   // True once the theme background covers the camera: the bar then takes the theme style, not the light style over the camera.
