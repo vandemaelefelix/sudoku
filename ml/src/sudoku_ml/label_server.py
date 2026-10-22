@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
+from sudoku_ml.doubt import current_run, read_doubt, write_doubt
 from sudoku_ml.finish import finish
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
@@ -37,6 +38,7 @@ def make_server(
     check: PhotoCheck | None = None,
     prelabel: Callable[[], int] | None = None,
     finish: Callable[[], dict] | None = None,
+    doubt: Callable[[], int] | None = None,
     host: str = "127.0.0.1",
     port: int = 8765,
 ) -> HTTPServer:
@@ -119,6 +121,8 @@ def make_server(
                 elif url.path.startswith(OUTLINE_PREFIX):
                     stem = url.path.removeprefix(OUTLINE_PREFIX).removesuffix(".jpg")
                     self._send(200, store.outline_jpeg(stem), "image/jpeg")
+                elif url.path == "/api/cells":
+                    self._json(store.cell_review(q["digit"], int(q.get("page", 0))))
                 elif url.path == "/api/scans":
                     self._json(store.scan_screen(q["photo"]))
                 elif url.path == "/api/status":
@@ -188,6 +192,8 @@ def make_server(
                 "/api/assign": lambda b: store.assign(b["cells"], b["screen"]),
                 "/api/scans/confirm": lambda b: store.confirm_scan(b["photo"], b["cells"]),
                 "/api/outlines/approve": lambda b: store.approve_outlines(b["photos"]),
+                "/api/cells/verify": lambda b: store.verify_cells(b["cells"]),
+                "/api/doubt": lambda b: doubt(),
                 "/api/outlines/fix": lambda b: store.fix_outline(b["photo"], b["corners"]),
                 "/api/outlines/reject": lambda b: store.reject_outline(b["photo"]),
                 "/api/prelabel": lambda b: prelabel(),
@@ -200,7 +206,11 @@ def make_server(
                 self._json({"error": "not found"}, 404)
                 return
             name = urlparse(self.path).path
-            if (name, None) in (("/api/prelabel", prelabel), ("/api/finish", finish)):
+            if (name, None) in (
+                ("/api/prelabel", prelabel),
+                ("/api/finish", finish),
+                ("/api/doubt", doubt),
+            ):
                 self._json({"error": f"no {name.removeprefix('/api/')}"}, 404)
                 return
             try:
@@ -232,6 +242,18 @@ def prelabel_new_cells(
         return write_prelabels(paths.cells, run, paths.prelabels)
     except (OSError, RuntimeError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise ValueError(f"The pre-label failed: {error}") from error
+
+
+def refresh_doubt(store: LabelStore, ml_root: Path = ML_ROOT, force: bool = False) -> int | None:
+    """Score the open app cells when the model run changed, when an open cell has no score (a
+    new pull or a new approval), or with `force`. Returns the number of scored cells, or None when
+    the stored scores are current."""
+    run = current_run(ml_root)
+    stored = read_doubt(store.paths.doubt)
+    current = stored.get("run") == (run.name if run else None)
+    if not force and current and set(store.open_app_cells()) <= set(stored["cells"]):
+        return None
+    return write_doubt(store, run)
 
 
 def waiting_line(store: LabelStore, check: PhotoCheck) -> str:
@@ -266,12 +288,16 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
         print(f"Pre-labelled {prelabel_new_cells(paths)} new cells.")
     except ValueError as error:
         print(error)
+    scored = refresh_doubt(store)
+    if scored is not None:
+        print(f"Scored the doubt of {scored} open app cells.")
     print(waiting_line(store, check))
     server = make_server(
         store,
         check=check,
         prelabel=lambda: prelabel_new_cells(paths),
         finish=lambda: finish(store),
+        doubt=lambda: refresh_doubt(store, force=True),
     )
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Session {store.session}. Open {url}. Stop with Ctrl-C.")

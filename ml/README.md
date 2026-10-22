@@ -21,6 +21,7 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just label-rollback <session>`: reverse every change of one unfinished labelling session. A finished session needs git.
 - `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
 - `just check-data`: check that the images and the tables agree. Exit code 1 on a problem.
+- `just doubt-cells [run]`: score the doubt of each open cell of the uploaded scans, for the Check cells screen.
 - `just reset-scan-outlines`: set the uploaded scans with the status `accepted` back to `unchecked`. Run it once, for the scans of the first pull.
 - `just migrate-layout <old_ml_root> [--apply] [--force] [--prefer-log]`: copy the old `ml/datasets/` and `ml/data/` layout into `ml/dataset/` (ADR-018). A dry run without `--apply`.
 
@@ -84,7 +85,7 @@ link.
 with the label from the app: `app-edited` or `app-unedited`. No cell of a scan trains the model before a person
 approves its outline. A wrong outline makes every cell label of the scan wrong.
 
-1. Run `just label-cells`. Open the **Outlines** screen. The badge counts the outlines to check.
+1. Run `just label-cells`. Open **Check outlines** under "Uploaded scans". The badge counts the outlines to check.
 2. The gallery shows each scan with its outline in green. The most doubtful outlines come first: the fit says how
    well the grid lines sit at the 9 × 9 places.
 3. Click each scan whose outline is not on the grid. Press Enter. The other scans are approved.
@@ -93,7 +94,8 @@ approves its outline. A wrong outline makes every cell label of the scan wrong.
    `discarded/`.
 5. No sudoku, or no fit? Press R to reject the scan. All of its cells move to `discarded/`, so training leaves them out.
 6. Press V to see the cells of a scan. Press Z to undo the last Enter, fix or reject.
-7. Press **Finish**. Finish writes `accepted` or `rejected` and the corners into `sudoku-photos.csv`.
+7. Open **Check cells**, as below.
+8. Press **Finish**. Finish writes `accepted` or `rejected` and the corners into `sudoku-photos.csv`.
 
 A cell with the same pixels as a cell of another scan is stored once. It has one label for both scans. The scan view
 marks it with `=`.
@@ -101,6 +103,23 @@ marks it with `=`.
 Run `just reset-scan-outlines` once after this change. The first pull stored its scans as `accepted`, before the
 Outlines screen existed. The command sets them back to `unchecked`. It refuses while the journal holds an unfinished
 outline check.
+
+## Check the cells of uploaded scans
+
+No cell of a scan trains the model before a person verifies it. Training takes only `verified` cells and the legacy
+cells without a label source.
+
+1. Open **Check cells** under "Uploaded scans". It shows the open cells of one digit. The digit bar shows the open
+   cells of each digit.
+2. The most doubtful cells come first. The note on a cell says why. Point at a cell to read the full reason.
+3. Digit wrong? Point at the cell and press the right digit. 0 means empty. X discards a bad cut.
+4. Kind wrong? Click the cell to switch between printed and handwritten. ⌥-click for unsure.
+5. Press Enter. Every cell on the screen is verified, with your changes. Press V to see the scan of a cell.
+6. Press **Finish**. Finish writes `verified` into `cells.csv`.
+
+The doubt score comes from the player's edit, the model, the sudoku rules and the solutions of the printed digits.
+`ml/dataset/work/doubt.json` holds it. The label server scores at its start when the model changed or an open cell has
+no score. The **Score cells** button and `just doubt-cells` do the same.
 
 ## Label the kind
 

@@ -17,6 +17,7 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import dhash, read_real_cells, split_cells
+from sudoku_ml.doubt import read_doubt
 from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright
 from sudoku_ml.journal import (
     KINDS,
@@ -74,6 +75,8 @@ _LABELLED = ("printed", "handwritten")
 PREDICTED = ("printed", "handwritten", "other")
 OUTLINE_SCREEN_SIZE = 48
 THUMBNAIL_SIZE = 320  # long side in pixels
+CELL_REVIEW_SIZE = 100
+APP_LABEL_SOURCES = ("app-edited", "app-unedited")
 PHOTO_CACHE = 8  # decoded scan photos
 
 
@@ -104,6 +107,7 @@ class LabelStore:
         self._suspects_ok = True
         self._pre_cache: tuple[tuple[int, int], dict[str, dict]] | None = None
         self._photos: OrderedDict[str, np.ndarray] = OrderedDict()
+        self._doubt_cache: tuple[int, dict] | None = None
 
     def _read_groups(self) -> dict:
         if not self.paths.groups.exists():
@@ -797,27 +801,134 @@ class LabelStore:
             if stray is not None:
                 raise ValueError(f"{stem_of(stray)}: not a cell of {photo}")
             raise ValueError(f"{photo}: send each of its {len(members)} cells once")
+        return self._label(cells, "scans", DIGIT_CLASSES)
+
+    def _label(self, cells: list[dict], screen: str, allowed: tuple[str, ...]) -> int:
+        """Label the cells as one action: a digit line per cell, also an unchanged one, and a
+        kind line per changed kind. Checks all entries before it writes."""
         kinds, t, action = self.kinds(), self._t(), self._action()
         lines = []
         for entry in cells:
             cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
-            if digit not in DIGIT_CLASSES:
+            if digit not in allowed:
                 raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
-            if digit == "empty":
+            if digit in NO_KIND_FOLDERS:
                 kind = None
             elif kind is None:
                 raise ValueError(f"{stem_of(cell)}: the digit {digit} has no kind")
             elif kind not in KINDS:
                 raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
             old = self.folder[cell]
-            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "scans"))
+            lines.append(Line(t, self.session, action, cell, "digit", old, digit, screen))
             if kinds.get(cell) != kind:
                 lines.append(
-                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "scans")
+                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, screen)
                 )
         self._apply_digits(lines)
         self._write(lines)
         return len(lines)
+
+    # Check cells screen
+
+    def _app_cells(self) -> tuple[list[str], list[str]]:
+        """(open, verified): the cells of the scans with an accepted outline in DIGIT_CLASSES,
+        sorted. Open: the label is from the app and no person has labelled it. A cell belongs to
+        the scan of its source, so a pixel-identical cell counts once."""
+        accepted = {s.row.photo_id for s in self._scan_states() if s.status == "accepted"}
+        label_sources, labelled = self.label_sources(), confirmed_cells(self.lines)
+        open_cells, verified = [], []
+        for cell, (photo, _, _) in self.sources().items():
+            if photo not in accepted or self.folder.get(cell) not in DIGIT_CLASSES:
+                continue
+            if label_sources.get(cell) == "verified" or cell in labelled:
+                verified.append(cell)
+            elif label_sources.get(cell) in APP_LABEL_SOURCES:
+                open_cells.append(cell)
+        return sorted(open_cells), sorted(verified)
+
+    def open_app_cells(self) -> list[str]:
+        return self._app_cells()[0]
+
+    def scan_grids(self) -> dict[str, list[dict | None]]:
+        """Photo id → the 81 places of the current cut of each scan with an accepted outline:
+        None for a place without a known cell, else {"id", "digit", "kind"}. A pixel-identical
+        cell sits in every scan that holds it."""
+        kinds = self.kinds()
+        grids = {}
+        for state in self._scan_states():
+            if state.status != "accepted":
+                continue
+            places = []
+            for _, cell in scan_cut(self._upright(state.row), state.corners):
+                where = self.folder.get(cell)
+                known = where in DIGIT_CLASSES
+                places.append(
+                    {"id": cell, "digit": where, "kind": kinds.get(cell)} if known else None
+                )
+            grids[state.row.photo_id] = places
+        return grids
+
+    def _doubt(self) -> dict:
+        path = self.paths.doubt
+        stamp = path.stat().st_mtime_ns if path.exists() else 0
+        if self._doubt_cache is None or self._doubt_cache[0] != stamp:
+            self._doubt_cache = (stamp, read_doubt(path))
+        return self._doubt_cache[1]
+
+    def cell_review(self, digit: str, page: int = 0) -> dict:
+        """One page of the open app cells of a digit, the highest doubt first. Cells without a
+        score come last."""
+        self._refresh()
+        if digit not in DIGIT_CLASSES:
+            raise ValueError(f"unknown digit {digit!r}")
+        open_cells, verified = self._app_cells()
+        doubt = self._doubt()["cells"]
+        sources, kinds = self.sources(), self.kinds()
+        members = sorted(
+            (c for c in open_cells if self.folder[c] == digit),
+            key=lambda c: (c not in doubt, -doubt.get(c, {}).get("score", 0.0), c),
+        )
+        pages = max(1, -(-len(members) // CELL_REVIEW_SIZE))
+        page = min(page, pages - 1)
+        chunk = members[page * CELL_REVIEW_SIZE : (page + 1) * CELL_REVIEW_SIZE]
+        counts = {
+            d: {
+                "open": sum(self.folder[c] == d for c in open_cells),
+                "verified": sum(self.folder[c] == d for c in verified),
+            }
+            for d in DIGIT_CLASSES
+        }
+        return {
+            "digit": digit,
+            "page": page,
+            "pages": pages,
+            "open": len(members),
+            "counts": counts,
+            "unscored": sum(c not in doubt for c in open_cells),
+            "run": self._doubt().get("run"),
+            "cells": [
+                {
+                    "id": c,
+                    "stem": stem_of(c),
+                    "digit": digit,
+                    "kind": kinds.get(c),
+                    "scan": stem_of(sources[c][0]),
+                    "score": doubt.get(c, {}).get("score"),
+                    "reasons": doubt.get(c, {}).get("reasons", []),
+                }
+                for c in chunk
+            ],
+        }
+
+    def verify_cells(self, cells: list[dict]) -> int:
+        """Verify open app cells as one action, with the fixes of the reviewer. `discarded`
+        takes a bad cut out of training."""
+        self._refresh()
+        open_cells = set(self.open_app_cells())
+        for entry in cells:
+            if entry["id"] not in open_cells:
+                raise ValueError(f"{stem_of(entry['id'])}: not an open app cell")
+        return self._label(cells, "cells", (*DIGIT_CLASSES, "discarded"))
 
     # Progress
 
@@ -876,6 +987,7 @@ class LabelStore:
             "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
             "outlines": sum(s.status == "unchecked" for s in scans),
             "scans": len(scans),
+            "cells": len(self.open_app_cells()),
         }
 
     def label_state(self) -> dict:

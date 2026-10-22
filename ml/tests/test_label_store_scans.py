@@ -149,7 +149,7 @@ def test_reject_moves_the_cells_out_of_training(tmp_path: Path):
     assert store.outline_screen()["open"] == 0
     assert finish(store)["report"]["problems"] == []
     assert statuses(paths) == [("rejected", False)]
-    assert load_cells(paths, include_unedited=True) == []
+    assert load_cells(paths) == []
     assert "verified" not in {r.label_source for r in read_cells(paths.cells_csv).values()}
 
 
@@ -161,12 +161,15 @@ def test_undo_of_a_reject_shows_the_scan_again(tmp_path: Path):
     assert store.outline_screen()["open"] == 2
 
 
-def test_training_leaves_out_the_cells_of_an_unchecked_outline(tmp_path: Path):
+def test_a_scan_cell_trains_only_after_its_outline_and_its_label_are_checked(tmp_path: Path):
     store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
-    assert load_cells(paths, include_unedited=True) == []
+    assert load_cells(paths) == []
     store.approve_outlines(photos)
     finish(store)
-    assert len(load_cells(paths, include_unedited=True)) == 81
+    assert load_cells(paths) == []
+    store.confirm_scan(photos[0], entries(store.scan_screen(photos[0])))
+    finish(store)
+    assert len(load_cells(paths)) == 81
 
 
 def test_a_shared_cell_shows_with_its_existing_label_not_as_a_gap(tmp_path: Path):

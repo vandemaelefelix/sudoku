@@ -27,31 +27,39 @@ NO_MODEL = (
 )
 
 
-def _predict(run: Path, paths: list[Path]) -> list[dict]:
+def predict_probs(run: Path, paths: list[Path]) -> tuple[np.ndarray, np.ndarray]:
+    """The model's probabilities for each cell file: digit (N, 10), calibrated with the
+    temperature of the run, and kind (N, 4). In the order of DIGIT_CLASSES and KIND_CLASSES."""
     model = CellClassifier()
     model.load_state_dict(torch.load(run / "model.pt", map_location="cpu"))
     model.eval()
     temperature = json.loads((run / "metrics.json").read_text())["temperature"]
+    if not paths:
+        return np.zeros((0, len(DIGIT_CLASSES))), np.zeros((0, len(KIND_CLASSES)))
     inputs = np.stack(
         [preprocess_cell(to_cell_image(np.asarray(Image.open(p).convert("RGB")))) for p in paths]
     )
-    results = []
+    digits, kinds = [], []
     with torch.no_grad():
         for start in range(0, len(inputs), BATCH):
             x = torch.from_numpy(inputs[start : start + BATCH])[:, None]
             digit_logits, kind_logits = model(x)
-            digit = (digit_logits / temperature).softmax(1)
-            kind = kind_logits.softmax(1)
-            for d, k in zip(digit, kind, strict=True):
-                results.append(
-                    {
-                        "digit": DIGIT_CLASSES[int(d.argmax())],
-                        "p": round(float(d.max()), 4),
-                        "kind": KIND_CLASSES[int(k.argmax())],
-                        "kp": round(float(k.max()), 4),
-                    }
-                )
-    return results
+            digits.append((digit_logits / temperature).softmax(1).numpy())
+            kinds.append(kind_logits.softmax(1).numpy())
+    return np.concatenate(digits), np.concatenate(kinds)
+
+
+def _predict(run: Path, paths: list[Path]) -> list[dict]:
+    digit, kind = predict_probs(run, paths)
+    return [
+        {
+            "digit": DIGIT_CLASSES[int(d.argmax())],
+            "p": round(float(d.max()), 4),
+            "kind": KIND_CLASSES[int(k.argmax())],
+            "kp": round(float(k.max()), 4),
+        }
+        for d, k in zip(digit, kind, strict=True)
+    ]
 
 
 def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:

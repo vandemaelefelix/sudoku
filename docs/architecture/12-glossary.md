@@ -23,7 +23,7 @@ status: DRAFT
 | Maestro | The tool that runs the end-to-end flows. It finds elements by `testID` (ADR-010) |
 | Holdout | The fixture split that is not looked at while training, only scored at promote (ADR-007) |
 | Near-duplicate group | Cells with almost the same image, found by a difference hash. The split keeps a group in one set, so near-twins do not leak between training and validation |
-| Test split | The cells that the model never trains on. `split_cells` in `ml/src/sudoku_ml/dataset.py` computes it. Training and the Check screen both call it, so they use the same cells. It leaves out the cells with the label source `app-unedited` and keeps the cells of one scan photo together |
+| Test split | The cells that the model never trains on. `split_cells` in `ml/src/sudoku_ml/dataset.py` computes it. Training and the Check screen both call it, so they use the same cells. It leaves out the cells that no person has verified and keeps the cells of one scan photo together |
 | Reference pair | A synthetic cell image in `shared/fixtures/preprocess/` with its expected 32 × 32 model input. Python and the app both test against it |
 | Temperature | A number that divides the digit logits before the softmax. Fitted on the validation set so that the confidence matches the accuracy |
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
@@ -91,7 +91,7 @@ status: DRAFT
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
 | Journal | `ml/dataset/work/journal.jsonl`: one line per change of the unfinished work, append-only: kinds, digits and the sources of cut cells. Undo and rollback work on it. Finish folds it into `cells.csv` and deletes it (ADR-018). It replaces the kind log of ADR-009 |
-| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Photos, Digits, Groups, Outlines, Review, Check and Progress, and the scan view |
+| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Two flows: your photos (Check photos, Confirm digits, Label kind) and uploaded scans (Check outlines, Check cells). Tools: Review, Check and Progress. The scan view |
 | Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
 | Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
@@ -293,12 +293,15 @@ status: DRAFT
 | Shared | The folder for code and files that more than one area uses (ADR-029) |
 | Contributor ID | A random ID that the app makes for the device. It names the owner of an uploaded scan. It has no link to a person, unless the player signs in (ADR-030) |
 | Scan record | The data of one finished scan: the cropped photo, the corners, the model answers, the final grid and the `edited` flags. The app uploads it when the setting "Help improve the app" is on (ADR-030) |
-| Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training uses it to filter cells (ADR-030) |
+| Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training takes only `verified` cells and the legacy cells without a value (ADR-030) |
 | Outlines screen | The screen of the labelling page that checks the outline of each uploaded scan: a gallery of the unchecked scans, the lowest outline fit first, and a large view to drag the corners or reject the scan (ADR-030) |
 | Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Outlines screen shows the lowest fit first |
 | Unchecked scan | An uploaded scan whose outline no person has checked: the status `unchecked` in `sudoku-photos.csv`. Its cells never train the model |
 | Rejected scan | An uploaded scan that the developer rejected on the Outlines screen: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
 | Scan view | The view of the labelling page that shows one uploaded scan: the photo with its outline and the 81 cells with their labels. A cell with the same pixels as a cell of another scan shows as shared |
+| Open app cell | A cell of an uploaded scan with an approved outline whose label is still from the app: `app-edited` or `app-unedited`. The Check cells screen shows it |
+| Check cells screen | The screen of the labelling page that verifies the open app cells of one digit at a time, the highest doubt score first. Enter verifies the screen (ADR-030) |
+| Doubt score | The sum of the weights of the signals that fire for an open app cell: the player's edit, the model, a sudoku rule and the solutions of the printed digits. It only sets the order of the Check cells screen. `ml/dataset/work/doubt.json` holds it |
 | Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
 | Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
 | Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |

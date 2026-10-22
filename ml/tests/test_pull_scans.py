@@ -13,7 +13,7 @@ from sudoku_ml.data_check import check_data
 from sudoku_ml.data_paths import REPO_ROOT, DataPaths
 from sudoku_ml.dataset import load_cells, read_real_cells, split_cells
 from sudoku_ml.pull_scans import main, pull_scans
-from sudoku_ml.tables import read_cells, read_photos, write_photos
+from sudoku_ml.tables import read_cells, read_photos, write_cells, write_photos
 
 FIXTURES = REPO_ROOT / "shared" / "fixtures" / "scan-records"
 SCAN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -201,15 +201,17 @@ def approve_all(paths: DataPaths) -> None:
     write_photos(paths.photos_csv, [replace(r, status="accepted") for r in rows])
 
 
-def test_unedited_scan_cells_are_left_out_of_training_by_default(paths: DataPaths):
+def test_scan_cells_never_train_before_a_person_verifies_them(paths: DataPaths):
     pull_scans(
         paths,
         FakeTable([record(SCAN_A, edited_cells=(0, 1))]),
         FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1)}),
     )
     approve_all(paths)
-    assert len(load_cells(paths)) == 2
-    assert len(load_cells(paths, include_unedited=True)) == 81
+    assert load_cells(paths) == []
+    rows = read_cells(paths.cells_csv)
+    write_cells(paths.cells_csv, [replace(r, label_source="verified") for r in rows.values()])
+    assert len(load_cells(paths)) == 81
 
 
 def test_the_cells_of_one_scan_stay_on_one_side_of_the_split(paths: DataPaths):
@@ -217,9 +219,11 @@ def test_the_cells_of_one_scan_stay_on_one_side_of_the_split(paths: DataPaths):
     bucket = FakeBucket({f"scans/{SCAN_A}.jpg": jpeg(1), f"scans/{SCAN_B}.jpg": jpeg(2)})
     pull_scans(paths, FakeTable(items), bucket)
     approve_all(paths)
+    rows = read_cells(paths.cells_csv)
+    write_cells(paths.cells_csv, [replace(r, label_source="verified") for r in rows.values()])
     cells = read_real_cells(paths)
     assert len(cells) > 81
-    sides = split_cells(cells, (0.5, 0.25, 0.25), seed=3, include_unedited=True)
+    sides = split_cells(cells, (0.5, 0.25, 0.25), seed=3)
     for photo in {c.sample.photo for c in cells}:
         owners = {k for k, side in enumerate(sides) for c in side if c.sample.photo == photo}
         assert len(owners) == 1
@@ -243,4 +247,4 @@ def test_main_reads_the_table_and_bucket_names(paths: DataPaths, monkeypatch, ca
     monkeypatch.setattr("sudoku_ml.pull_scans.aws_clients", lambda t, b: (f"T:{t}", f"B:{b}"))
     assert main(["--table", "tbl", "--bucket", "bkt"], paths) == 0
     assert seen == {"table": "T:tbl", "bucket": "B:bkt"}
-    assert "the Outlines screen" in capsys.readouterr().out
+    assert "Check outlines, then each cell on Check cells" in capsys.readouterr().out

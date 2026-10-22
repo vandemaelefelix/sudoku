@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from photos import grid_photo, save_photo
 from test_label_store import Clock, build
-from test_label_store_scans import entries, pulled
+from test_label_store_scans import CORNERS, entries, pulled
 
 from sudoku_ml.journal import read_journal
-from sudoku_ml.label_server import main, make_server, prelabel_new_cells
+from sudoku_ml.label_server import main, make_server, prelabel_new_cells, refresh_doubt
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import import_folder
@@ -143,6 +143,13 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "Approve the outline of this scan first.",
         "No cell of a scan trains the model before its outline is approved.",
         "These corners do not form a grid.",
+        "Every uploaded cell is checked. ✓ Next: press Finish.",
+        "No cells to check yet.",
+        "Only checked cells train the model.",
+        "You marked none.",
+        "Next: Check cells.",
+        "Uploaded scans",
+        "Your photos",
     ):
         assert text in page
 
@@ -274,6 +281,7 @@ def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
         "kind": 1,
         "outlines": 0,
         "scans": 0,
+        "cells": 0,
     }
     request(port, "POST", "/api/photos/reject", {"photo": served_photos[3]})
     assert json.loads(request(port, "GET", "/api/status")[1])["photos"] == 0
@@ -510,3 +518,41 @@ def test_the_start_refuses_a_table_that_does_not_parse(tmp_path: Path, capsys):
     assert main(["label_server"], paths) == 1
     assert "Restore it from git." in capsys.readouterr().err
     assert paths.cells_csv.read_text() == "id,label,kind\n"
+
+
+def test_the_cell_review_routes_round_trip(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
+    store.approve_outlines(photos)
+    scored = []
+    server = make_server(store, port=0, doubt=lambda: scored.append(1) or 81)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    port = server.server_port
+    try:
+        assert json.loads(request(port, "POST", "/api/doubt", {})[1]) == {"result": 81}
+        assert scored == [1]
+        page = json.loads(request(port, "GET", "/api/cells?digit=1")[1])
+        assert page["digit"] == "1" and page["cells"]
+        sent = [{"id": c["id"], "digit": "1", "kind": c["kind"]} for c in page["cells"]]
+        status, data = request(port, "POST", "/api/cells/verify", {"cells": sent})
+        assert status == 200 and json.loads(data)["result"] == len(sent)
+        assert json.loads(request(port, "GET", "/api/cells?digit=1")[1])["open"] == 0
+        assert json.loads(request(port, "GET", "/api/status")[1])["cells"] == 81 - len(sent)
+        status, _ = request(port, "GET", "/api/cells?digit=x")
+        assert status == 400
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_the_doubt_route_needs_a_doubt_function(served):
+    port, _, _ = served
+    assert request(port, "POST", "/api/doubt", {})[0] == 404
+
+
+def test_refresh_doubt_scores_new_open_cells_and_skips_current_scores(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
+    assert refresh_doubt(store, ml_root=tmp_path) is None
+    store.approve_outlines(photos)
+    assert refresh_doubt(store, ml_root=tmp_path) == 81
+    assert refresh_doubt(store, ml_root=tmp_path) is None
+    assert refresh_doubt(store, ml_root=tmp_path, force=True) == 81

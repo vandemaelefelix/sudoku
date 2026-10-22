@@ -6,7 +6,7 @@ import json
 import sys
 import time
 import tomllib
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -40,7 +40,6 @@ class Config:
     real_cells: bool
     split: list[float]
     augment: bool
-    app_unedited: bool = False  # also train on scan cells that the player left unedited
 
 
 def load_config(path: Path) -> Config:
@@ -163,7 +162,7 @@ def train(
         if missing:
             raise ValueError(f"the real data is not present: no folders {missing} in {cells_dir}")
         cells = read_real_cells(data)
-        real = [c.sample for c in training_cells(cells, config.app_unedited)]
+        real = [c.sample for c in training_cells(cells)]
         if not real:
             raise ValueError(f"the real data is not present: no cells in {cells_dir}")
     torch.manual_seed(config.seed)
@@ -173,9 +172,7 @@ def train(
     synthetic_val = generate(max(2, config.synthetic_per_class // 10), config.seed + 1, fonts)
 
     if real:
-        train_cells, val_cells, test_cells = split_cells(
-            cells, tuple(config.split), config.seed, config.app_unedited
-        )
+        train_cells, val_cells, test_cells = split_cells(cells, tuple(config.split), config.seed)
         real_train = [c.sample for c in train_cells]
         eval_sets = {
             "val": [c.sample for c in val_cells],
@@ -288,16 +285,8 @@ def train(
 def main(argv: list[str]) -> Path:
     parser = argparse.ArgumentParser(prog="just train")
     parser.add_argument("config", type=Path)
-    parser.add_argument(
-        "--app-unedited",
-        action="store_true",
-        help="also train on scan cells that the player left as the model answered",
-    )
     args = parser.parse_args(argv)
-    config = load_config(args.config)
-    if args.app_unedited:
-        config = replace(config, app_unedited=True)
-    return train(config)
+    return train(load_config(args.config))
 
 
 if __name__ == "__main__":

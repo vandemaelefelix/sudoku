@@ -128,6 +128,32 @@ Decision:
 Reassessment trigger: the app proves its outlines with a grid check on the device. Then the gallery can show only the
 scans that the check doubts.
 
+## Amendment: only verified cells train the model (2026-10-22)
+
+Decision 11 let `app-edited` cells train at once and `app-unedited` cells with a flag. A player can miss a misread
+digit, make a wrong correction, or not see a mistake that the model never flagged. A wrong label teaches the model the
+mistake, and that model then reads the next scans wrong.
+
+| Option | For | Against |
+| --- | --- | --- |
+| **A person verifies every cell. A doubt score sets the order** | No unchecked label trains. The errors come first, so the check is fast | Work for each cell |
+| Keep decision 11 | No work | Wrong labels train the model |
+| Verify only the cells with a high doubt | Less work | A mistake that no signal sees trains the model |
+
+Decision:
+
+1. **This replaces decision 11.** Training takes only `verified` cells and the legacy cells without a label source.
+   `app-edited` and `app-unedited` cells never train until a person verifies them. The `--app-unedited` flag is gone.
+2. **The Check cells screen verifies the cells of each digit.** It shows the highest doubt score first. Enter verifies
+   the screen with the fixes, as one action in the journal. Finish writes `verified`.
+3. **The doubt score only sets the order.** It adds the weights of the signals: the player's edit, a model that reads
+   another digit or kind, a low model confidence, a sudoku rule that breaks, and printed digits without one solution.
+   `ml/dataset/work/doubt.json` holds it, outside `cells.csv`.
+4. **A pixel-identical cell is one cell.** Its verdict counts for every scan that holds it.
+
+Reassessment trigger: the review history shows that a signal never finds an error. Then drop it. The trust per
+contributor (issue #254) can add a signal.
+
 ## Consequences
 
 - SUD-02 is weaker. The privacy policy and the notice carry the promise instead.
