@@ -50,7 +50,9 @@
     {
       "files": ["mobile/**"],
       "rules": {
-        "import/no-relative-parent-imports": "error"
+        "import/no-relative-parent-imports": "error",
+        "unicorn/no-array-sort": "off",
+        "unicorn/no-array-reverse": "off"
       }
     },
     {

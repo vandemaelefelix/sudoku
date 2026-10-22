@@ -45,6 +45,6 @@ it('does not add a scan twice', async () => {
 it('clears every row and returns the photo paths', async () => {
   await queue.enqueue(scan('a'), 10)
   await queue.enqueue(scan('b'), 20)
-  expect((await queue.clear()).toSorted()).toEqual(['/q/a.jpg', '/q/b.jpg'])
+  expect([...(await queue.clear())].sort()).toEqual(['/q/a.jpg', '/q/b.jpg'])
   expect(await queue.next(100)).toBeNull()
 })

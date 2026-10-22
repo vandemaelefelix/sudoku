@@ -129,7 +129,7 @@ describe('createSqliteStorage', () => {
         storage.history.applySyncPage(page([record(1, 60_000), record(2, 777), record(3, 50_000)])),
       ).resolves.toMatchObject({ changed: true })
       const ids = (await storage.history.list('user-alice')).map((entry) => entry.id)
-      expect(ids.toSorted()).toEqual([uuid(901), uuid(903)])
+      expect([...ids].sort()).toEqual([uuid(901), uuid(903)])
       await expect(storage.sync.cursor('user-alice')).resolves.toBe('next')
       warn.mockRestore()
     })
