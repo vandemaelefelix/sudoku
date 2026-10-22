@@ -1,0 +1,1 @@
+export { useSystemReduceMotion } from './useSystemReduceMotion'

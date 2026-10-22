@@ -143,6 +143,19 @@ The grid draws each role with these shapes. The colours are the `components.cell
 | Struck candidate | A bar in the danger tone across the note digit |
 | Target cell | A 3 pt outline and the digit as a ghost at 40 %. The outline pulses once. With Reduce Motion it stays still |
 
+The roles enter in order when a rung adds them. A role that is on the grid already does not play again.
+
+| Order | Role | Entrance | With Reduce Motion |
+| --- | --- | --- | --- |
+| 1 | Focus unit | The new cells sweep in, 30 ms apart in reading order. Then they pulse once together | A short fade, no pulse |
+| 2 | Pattern cell | Pops in after the sweep, 30 ms apart | A short fade |
+| 3 | Support digit | Its ring pops in after the pattern | A short fade |
+| 3 | Struck candidate | The bar draws from left to right, at the same time as the rings | A short fade |
+| 4 | Target cell | The ghost digit fades in last. The outline keeps its one pulse | A short fade. The outline stays still |
+
+The timings are constants in `hint.constants.ts`. `hintTimings` in `hint.utils.ts` gives the start of each role in each
+cell. The animations run on the UI thread, and a cell renders again only when its role changes.
+
 While a hint highlight shows, the assist shades step back: row and column, box and same numbers. The conflict fill and
 the selected cell stay. The contrast test checks every role colour at 3 : 1 and every digit on the focus tint at
 4.5 : 1, in all six themes.

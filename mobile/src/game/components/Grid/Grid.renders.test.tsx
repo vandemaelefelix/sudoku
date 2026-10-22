@@ -1,12 +1,15 @@
 import { act, render } from '@testing-library/react-native'
 import { useEffect } from 'react'
-import type { NewGame } from '@sudoku/core'
+import { createGame, planHint, type HintRung, type NewGame } from '@sudoku/core'
+import { DEFAULT_ASSISTS } from '@/game/constants/assists.constants'
 import { GameProvider } from '@/game/components/GameProvider'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import type { Pulse } from '@/game/hooks/usePulse'
 import type { GameActions } from '@/game/utils/gameSession.utils'
-import { sampleStart } from '@/game/utils/sample.utils'
+import { cellViews } from '@/game/utils/cell.utils'
+import { hintHighlight } from '@/game/utils/hint.utils'
+import { pointingStart, sampleStart } from '@/game/utils/sample.utils'
 import { Grid } from './Grid'
 
 const mockSeen = { renders: 0, pulses: new Set<Pulse | undefined>() }
@@ -76,4 +79,28 @@ it('renders only the cells whose role changes when a hint opens', () => {
   act(() => remote.actions?.hint())
   // The look rung marks only the focus unit: nine cells.
   expect(mockSeen.renders).toBe(9)
+})
+
+it('renders only the cells whose role changes on each rung change', () => {
+  const start = pointingStart()
+  const game = createGame(start)
+  const plan = planHint(game)
+  if (plan === null) throw new Error('expected a plan')
+  const views = (rung: HintRung) => cellViews(game, DEFAULT_ASSISTS, hintHighlight({ plan, step: 0, rung }))
+  const changed = (from: HintRung, to: HintRung) =>
+    views(to).filter((view, cell) => JSON.stringify(view) !== JSON.stringify(views(from)[cell])).length
+  render(
+    <GameProvider start={start}>
+      <Grid />
+      <Remote />
+    </GameProvider>,
+  )
+  act(() => remote.actions?.hint())
+  for (const rung of [2, 3] as const) {
+    mockSeen.renders = 0
+    act(() => remote.actions?.hintCard('hintMore'))
+    expect(mockSeen.renders).toBe(changed((rung - 1) as HintRung, rung))
+    act(() => jest.advanceTimersByTime(2000))
+    expect(mockSeen.renders).toBe(changed((rung - 1) as HintRung, rung))
+  }
 })
