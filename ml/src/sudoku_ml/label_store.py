@@ -696,7 +696,8 @@ class LabelStore:
 
         A new cell takes the digit and kind of the old cell at its place: the label from the app.
         Its file lands in discarded/ first and a digit line moves it, so an undo puts it back
-        there. A cell that exists already keeps its file and its label. The old cells of the scan
+        there. A cell that exists already keeps its file and its label, except a cell of this scan
+        in discarded/ from an undone cut: it comes back like a new cell. The old cells of the scan
         that the new cut lacks move to discarded/. A place without an old label gets no cell, as
         in `just pull-scans`."""
         state = self._unchecked(photo)
@@ -712,9 +713,10 @@ class LabelStore:
         sources = self.sources()
         for position, (image, cell) in enumerate(new_cut):
             where = self.folder.get(cell)
-            # An undone cut of this scan left this cell in discarded/: it comes back like a new one.
-            back = where == "discarded" and sources.get(cell, ("",))[0] == state.row.photo_id
-            if where is not None and not back:
+            own_discarded = (
+                where == "discarded" and sources.get(cell, ("",))[0] == state.row.photo_id
+            )
+            if where is not None and not own_discarded:
                 kept += 1
                 continue
             label = self.folder.get(old_cut[position])

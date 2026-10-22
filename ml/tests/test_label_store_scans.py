@@ -144,14 +144,25 @@ def test_undo_of_a_fix_puts_every_file_back(tmp_path: Path):
 
 def test_a_fix_after_an_undone_fix_brings_the_cells_back(tmp_path: Path):
     store, paths, photos = pulled(tmp_path, corners=(OFF,))
+    before = store.scan_screen(photos[0])["cells"]
     store.fix_outline(photos[0], GOOD_PIXELS)
     store.undo()
     result = store.fix_outline(photos[0], GOOD_PIXELS)
     assert result["cells"] == 81 and result["kept"] == 0
     cells = store.scan_screen(photos[0])["cells"]
     assert all(store.folder[c["id"]] != "discarded" for c in cells)
+    assert [(c["digit"], c["kind"]) for c in cells] == [(c["digit"], c["kind"]) for c in before]
     assert finish(store)["report"]["problems"] == []
     assert len(load_cells(paths, include_unedited=True)) == 81
+
+
+def test_a_discarded_cell_of_another_scan_stays_discarded_after_a_fix(tmp_path: Path):
+    store, _, photos = pulled(tmp_path, corners=(CORNERS, CORNERS))
+    shared = [c["id"] for c in store.scan_screen(photos[1])["cells"] if c["shared"]]
+    store.reject_outline(photos[0])
+    result = store.fix_outline(photos[1], GOOD_PIXELS)
+    assert result["kept"] >= len(shared)
+    assert all(store.folder[cell] == "discarded" for cell in shared)
 
 
 def test_reject_moves_the_cells_out_of_training(tmp_path: Path):
