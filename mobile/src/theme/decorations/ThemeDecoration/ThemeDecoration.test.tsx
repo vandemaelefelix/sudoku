@@ -56,7 +56,11 @@ it('redraws the wavy lines when their screen starts to show again', () => {
       return () => {}
     },
   }
-  render(ScreenShowLayout({ navigation, children: <ThemeDecoration slot="summaryEdge" /> }))
+  render(
+    <ScreenShowLayout navigation={navigation}>
+      <ThemeDecoration slot="summaryEdge" />
+    </ScreenShowLayout>,
+  )
   listeners.forEach((listener) => listener({ data: { closing: false } }))
   expect(canvasRedraw).toHaveBeenCalledWith('decoration-opart-summary-waves')
 })
