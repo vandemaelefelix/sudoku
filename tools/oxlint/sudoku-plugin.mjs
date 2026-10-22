@@ -19,10 +19,30 @@ const TEXT_MESSAGE = 'Player text belongs in the catalogues of src/i18n/messages
 
 function hasLetters(node) {
   if (node == null) return false
-  if (node.type === 'Literal') return typeof node.value === 'string' && LETTER.test(node.value)
-  if (node.type === 'TemplateLiteral') return node.quasis.some((quasi) => LETTER.test(quasi.value.cooked ?? ''))
-  if (node.type === 'JSXExpressionContainer') return hasLetters(node.expression)
-  return false
+  switch (node.type) {
+    case 'Literal':
+      return typeof node.value === 'string' && LETTER.test(node.value)
+    case 'TemplateLiteral':
+      return node.quasis.some((quasi) => LETTER.test(quasi.value.cooked ?? ''))
+    case 'JSXExpressionContainer':
+      return hasLetters(node.expression)
+    case 'ConditionalExpression':
+      return hasLetters(node.consequent) || hasLetters(node.alternate)
+    case 'LogicalExpression':
+      return hasLetters(node.left) || hasLetters(node.right)
+    default:
+      return false
+  }
+}
+
+// The buttons of an alert: [{ text: 'Cancel', style: 'cancel' }]. Only the text of a button is player text.
+function hasButtonText(node) {
+  if (node?.type !== 'ArrayExpression') return false
+  return node.elements.some(
+    (element) =>
+      element?.type === 'ObjectExpression' &&
+      element.properties.some((property) => property.key?.name === 'text' && hasLetters(property.value)),
+  )
 }
 
 function isAlert(callee) {
@@ -34,9 +54,28 @@ function isAlert(callee) {
   )
 }
 
+// A constants file holds keys and ids. A string that starts with a capital and has a space is a sentence for the player.
+const SENTENCE = /^\p{Lu}\p{Ll}*[ ,]/u
+
+function isSentence(text) {
+  return typeof text === 'string' && SENTENCE.test(text)
+}
+
 export default {
   meta: { name: 'sudoku' },
   rules: {
+    'no-constant-text': {
+      create(context) {
+        return {
+          Literal(node) {
+            if (isSentence(node.value)) context.report({ node, message: TEXT_MESSAGE })
+          },
+          TemplateLiteral(node) {
+            if (isSentence(node.quasis[0]?.value.cooked)) context.report({ node, message: TEXT_MESSAGE })
+          },
+        }
+      },
+    },
     'no-literal-text': {
       create(context) {
         return {
@@ -54,7 +93,9 @@ export default {
             }
           },
           CallExpression(node) {
-            if (isAlert(node.callee) && node.arguments.some(hasLetters)) context.report({ node, message: TEXT_MESSAGE })
+            if (isAlert(node.callee) && node.arguments.some((arg) => hasLetters(arg) || hasButtonText(arg))) {
+              context.report({ node, message: TEXT_MESSAGE })
+            }
           },
         }
       },

@@ -1,4 +1,13 @@
-import { HINT_MESSAGE_IDS, HINT_TECHNIQUE_IDS, type HintMessage, type HintPart, type HintValue } from '@sudoku/core'
+import {
+  HINT_MESSAGE_IDS,
+  HINT_TECHNIQUE_IDS,
+  HINT_TECHNIQUES,
+  type HintMessage,
+  type HintPart,
+  type HintTechniqueId,
+  type HintValue,
+  techniqueExample,
+} from '@sudoku/core'
 import { createAppIntl } from '@/i18n/utils/intl.utils'
 import { cellName, cellsName, hintText, listOf, techniqueExplanation, unitName } from './hintText.utils'
 
@@ -268,6 +277,132 @@ describe('the hint text of every message', () => {
       const sentences = techniqueExplanation(intl, technique).split(/(?<=\.)\s+/)
       expect([technique, sentences.length <= 4]).toEqual([technique, true])
       for (const sentence of sentences) expect([sentence, sentence.split(/\s+/).length <= 25]).toEqual([sentence, true])
+    }
+  })
+})
+
+describe('the hint text of the example of every technique, from a real plan to the words', () => {
+  // The look, the why and the answer of each technique page example. A wrong value in a template of the core shows here.
+  const ENGLISH: Record<HintTechniqueId, readonly [string, string, string]> = {
+    fullHouse: [
+      'Look at column 2. It has one empty cell.',
+      'Column 2 holds every digit but 6. So 6 goes in its empty cell.',
+      'Put 6 in row 9, column 2.',
+    ],
+    hiddenSingle: [
+      'Look at the top-middle box.',
+      'In the top-middle box, a 6 fits only in row 2, column 4. Every other empty cell has a 6 in its row, column or box.',
+      'Put 6 in row 2, column 4.',
+    ],
+    nakedSingle: [
+      'Look at row 6, column 6.',
+      'Its row, column and box hold every digit but 2. So only 2 fits.',
+      'Put 2 in row 6, column 6.',
+    ],
+    pointing: [
+      'Look where a 5 fits in the top-right box.',
+      'In the top-right box, a 5 fits only in column 8. So the 5 of column 8 must be in this box.',
+      'Remove 5 from column 8, outside the top-right box.',
+    ],
+    boxLine: [
+      'Look where a 2 fits in column 3.',
+      'In column 3, a 2 fits only in the bottom-left box. So the 2 of the bottom-left box must be in column 3.',
+      'Remove 2 from the bottom-left box, outside column 3.',
+    ],
+    nakedPair: [
+      'Look at the middle-left box.',
+      'In the middle-left box, row 4, column 2 and row 6, column 1 can hold only 3 and 7. So these two digits must go in these two cells.',
+      'Remove 3 and 7 from the other cells of the middle-left box.',
+    ],
+    nakedTriple: [
+      'Look at the top-right box.',
+      'In the top-right box, row 1, column 8; row 3, column 7 and row 3, column 9 can hold only 5, 6 and 7 between them. So these three digits must go in these three cells.',
+      'Remove 5, 6 and 7 from the other cells of the top-right box.',
+    ],
+    hiddenPair: [
+      'Look at column 9.',
+      'In column 9, 2 and 7 fit only in rows 8 and 9. So these two cells can hold no other digit.',
+      'Remove 4, 5, 8 and 9 from column 9, rows 8 and 9.',
+    ],
+    hiddenTriple: [
+      'Look at column 2.',
+      'In column 2, 6, 8 and 9 fit only in rows 5, 6 and 8. So these three cells can hold no other digit.',
+      'Remove 1, 2, 3 and 7 from column 2, rows 5, 6 and 8.',
+    ],
+    nakedQuad: [
+      'Look at row 4.',
+      'In row 4, columns 2, 3, 5 and 7 can hold only 3, 5, 8 and 9 between them. So these four digits must go in these four cells.',
+      'Remove 3, 5, 8 and 9 from the other cells of row 4.',
+    ],
+    hiddenQuad: [
+      'Look at row 7.',
+      'In row 7, 2, 4, 5 and 7 fit only in columns 1, 2, 3 and 8. So these four cells can hold no other digit.',
+      'Remove 9 from row 7, columns 1, 2, 3 and 8.',
+    ],
+    xWing: [
+      'Look where an 8 fits in rows 1 and 9.',
+      'In rows 1 and 9, an 8 fits only in columns 3 and 9. So columns 3 and 9 must hold their 8s in rows 1 and 9.',
+      'Remove 8 from columns 3 and 9, outside rows 1 and 9.',
+    ],
+    swordfish: [
+      'Look where a 5 fits in columns 3, 6 and 9.',
+      'In columns 3, 6 and 9, a 5 fits only in rows 1, 2 and 4. So rows 1, 2 and 4 must hold their 5s in columns 3, 6 and 9.',
+      'Remove 5 from rows 1, 2 and 4, outside columns 3, 6 and 9.',
+    ],
+    jellyfish: [
+      'Look where a 4 fits in columns 1, 3, 5 and 8.',
+      'In columns 1, 3, 5 and 8, a 4 fits only in rows 1, 3, 7 and 8. So rows 1, 3, 7 and 8 must hold their 4s in columns 1, 3, 5 and 8.',
+      'Remove 4 from rows 1, 3, 7 and 8, outside columns 1, 3, 5 and 8.',
+    ],
+    skyscraper: [
+      'Look where a 3 fits in rows 3 and 8.',
+      'Rows 3 and 8 each have only two cells for a 3, and both have one in column 1. At most one of those holds the 3, so row 3, column 6 or row 8, column 5 holds it.',
+      'Remove 3 from the cells that share a row, column or box with both row 3, column 6 and row 8, column 5.',
+    ],
+    twoStringKite: [
+      'Look where a 4 fits in row 9 and column 4.',
+      'Row 9 and column 4 each have only two cells for a 4, and both have one in the bottom-middle box. At most one of those holds the 4, so row 9, column 3 or row 4, column 4 holds it.',
+      'Remove 4 from the cells that share a row, column or box with both row 9, column 3 and row 4, column 4.',
+    ],
+    xyWing: [
+      'Look at row 5, column 5. It has only two digits.',
+      'Row 5, column 5 holds 1 or 3. Each choice puts an 8 in row 5, column 1 or row 6, column 6.',
+      'Remove 8 from the cells that share a row, column or box with both row 5, column 1 and row 6, column 6.',
+    ],
+    xyzWing: [
+      'Look at row 9, column 9. It has only three digits.',
+      'Row 9, column 9 holds 1, 8 or 9. Each choice puts a 9 in this cell, in row 6, column 9 or in row 9, column 8.',
+      'Remove 9 from the cells that share a row, column or box with all three of these cells.',
+    ],
+    wWing: [
+      'Look at row 5, column 1 and row 6, column 7. They hold the same two digits.',
+      'In row 4, a 3 fits only in columns 2 and 9, so one of them holds it. That cell rules out 3 in row 5, column 1 or in row 6, column 7, so one of these holds 6.',
+      'Remove 6 from the cells that share a row, column or box with both row 5, column 1 and row 6, column 7.',
+    ],
+  }
+
+  it.each(HINT_TECHNIQUE_IDS)('writes the example of %s in English', (id) => {
+    const example = techniqueExample(id)!
+    const technique = HINT_TECHNIQUES[example.step.technique]!
+    expect([
+      hintText(en, technique.look(example.step)),
+      hintText(en, technique.why(example.step, false)),
+      hintText(en, technique.answer(example.step)),
+    ]).toEqual(ENGLISH[id])
+  })
+
+  it.each(HINT_TECHNIQUE_IDS)('writes the example of %s in Dutch, with every value filled in', (id) => {
+    const example = techniqueExample(id)!
+    const technique = HINT_TECHNIQUES[example.step.technique]!
+    for (const hint of [
+      technique.look(example.step),
+      technique.why(example.step, false),
+      technique.answer(example.step),
+    ]) {
+      const text = hintText(nl, hint)
+      expect(text).toMatch(/^\p{Lu}/u)
+      expect(text).not.toMatch(/[{}]|undefined|NaN| een een /)
+      expect(text.split(/\.(?: |$)/).filter(Boolean).length).toBeLessThanOrEqual(2)
     }
   })
 })

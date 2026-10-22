@@ -8,6 +8,8 @@ import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { lostGame, newGame, wonGame } from '@/storage/repositories.contract'
 import type { Theme } from '@/theme/theme.types'
 import { THEMES } from '@/theme/themes/registry'
+import { IntlProvider } from 'react-intl'
+import { CATALOGUES } from '@/i18n/messages'
 import { StatsScreen } from './StatsScreen'
 
 jest.mock('@/utils/timeZone.utils', () => ({ deviceTimeZone: () => 'UTC' }))
@@ -53,6 +55,25 @@ it('shows the card and the table of all levels first', async () => {
   expect(screen.getByRole('tab', { name: 'All', selected: true })).toBeTruthy()
   expect(screen.getByLabelText('Medium, Played: 2')).toBeTruthy()
   expect(screen.getByRole('header', { name: /^Streak/ })).toBeTruthy()
+})
+
+it('shows the stats in Dutch', async () => {
+  const storage = await storageWithGames()
+  render(
+    <IntlProvider locale="nl-BE" messages={CATALOGUES.nl}>
+      <GameStorageContext value={storage}>
+        <StatsScreen onBack={jest.fn()} />
+      </GameStorageContext>
+    </IntlProvider>,
+  )
+  await waitFor(() => expect(screen.getByLabelText('50% gewonnen, 1 dag op rij')).toBeTruthy())
+  expect(screen.getByRole('tab', { name: 'Alle', selected: true })).toBeTruthy()
+  expect(screen.getByLabelText('Gemiddeld, Gespeeld: 2')).toBeTruthy()
+  fireEvent.press(screen.getByRole('tab', { name: 'Gemiddeld' }))
+  expect(screen.getByLabelText('Beste, zonder hints: 01:00')).toBeTruthy()
+  expect(screen.getByLabelText('Fouten, per spel: 1,5')).toBeTruthy()
+  fireEvent.press(screen.getByRole('tab', { name: 'Expert' }))
+  expect(screen.getByText('Nog geen spellen op niveau Expert.')).toBeTruthy()
 })
 
 it('shows the detail of a level on its tab, and the streak only on All', async () => {
