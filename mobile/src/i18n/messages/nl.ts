@@ -131,4 +131,12 @@ export const nl: Record<MessageId, string> = {
   'scan.pad.empty': 'Leeg',
   // Scan, more
   'scan.summary.startCheckHint': 'Opent het eerste vakje om na te kijken',
+  // Scan sharing (ADR-030)
+  'scanShare.title': 'Help de app verbeteren',
+  'scanShare.description': 'Stuur de foto van een afgewerkte scan en je verbeteringen door, zodat de scanner bijleert.',
+  'scanShare.policy': 'Privacybeleid',
+  'scanShare.notice.body': 'We gebruiken de foto van je scan en je verbeteringen om de scanner beter te maken.',
+  'scanShare.notice.accept': 'Begrepen',
+  'scanShare.notice.decline': 'Uitzetten',
+  'settings.scanning.title': 'Scannen',
 }
