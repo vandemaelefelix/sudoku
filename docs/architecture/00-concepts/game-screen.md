@@ -39,8 +39,11 @@ or off in Settings. All four are on by default.
 | --- | --- | --- |
 | Row and column | Shades the row and the column of the selected cell | No shade |
 | Box | Shades the 3 × 3 box of the selected cell | No shade |
-| Selected cell | Fills the **selected cell** | A thin ring in the accent colour marks it |
+| Selected cell | Fills the **selected cell** | A thinner frame alone marks it |
 | Same numbers | Shades every cell that holds the number of the selected cell | No shade |
+
+The grid marks the selected cell with a **selection frame** in the ring colour. The frame lies on the grid lines around
+the cell, above them, so no grid line shows beside it. It slides to a new cell. With Reduce Motion it jumps (ADR-026).
 
 A wrong entry keeps its conflict fill, whatever the assists are.
 
