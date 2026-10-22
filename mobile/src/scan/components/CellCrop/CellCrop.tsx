@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react'
 import { View } from 'react-native'
 import { useSharedValue, withTiming } from 'react-native-reanimated'
 import { FLAT_SIDE } from '@/scan/utils/flatImage.utils'
-import { cellPlace } from '@/scan/utils/correctionEdit.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
+import { cellRowColumn } from '@/scan/utils/correctionEdit.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { CROP_SIDE, FAR_OPACITY, PAN_MS } from './CellCrop.constants'
 import { styles } from './CellCrop.styles'
@@ -24,6 +25,7 @@ function offsetOf(cell: number) {
 
 /** The paper cell as the camera saw it, cut from the flattened grid and framed by 4 corner dots. */
 export function CellCrop({ image, cell, animate = false }: CellCropProps) {
+  const intl = useIntl()
   const scale = CROP_SIDE / (FLAT_SIDE / 9)
   const side = FLAT_SIDE * scale
   const start = offsetOf(cell)
@@ -63,7 +65,7 @@ export function CellCrop({ image, cell, animate = false }: CellCropProps) {
       <View
         accessible
         accessibilityRole="image"
-        accessibilityLabel={`The scanned cell at ${cellPlace(cell).toLowerCase()}`}
+        accessibilityLabel={intl.formatMessage({ id: 'scan.crop.label' }, cellRowColumn(cell))}
         style={styles.crop}
       >
         {image && (

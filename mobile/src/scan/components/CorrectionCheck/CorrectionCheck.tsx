@@ -7,6 +7,7 @@ import { useEased } from '@/game/hooks/useEased'
 import { CellCrop } from '@/scan/components/CellCrop'
 import { CorrectionPad } from '@/scan/components/CorrectionPad'
 import { PanelButton } from '@/components/PanelButton'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import type { CellLook, CellStyle } from '@/scan/utils/correction.utils'
 import { cellPlace, panelQuestion, yesLabel } from '@/scan/utils/correctionEdit.utils'
 import { swapInButtons } from '@/scan/utils/swap.utils'
@@ -80,6 +81,7 @@ export function CorrectionCheck({
   onClear,
   onKind,
 }: CorrectionCheckProps) {
+  const intl = useIntl()
   const done = flow.filter((n) => !looks[n]?.uncertain).length
   return (
     <View testID="correction-check" style={styles.check}>
@@ -88,7 +90,7 @@ export function CorrectionCheck({
           testID="correction-progress"
           accessible
           accessibilityRole="image"
-          accessibilityLabel={`${done} of ${flow.length} cells checked`}
+          accessibilityLabel={intl.formatMessage({ id: 'scan.check.progress' }, { done, total: flow.length })}
           style={styles.progress}
         >
           {flow.map((n) => (
@@ -107,14 +109,14 @@ export function CorrectionCheck({
           style={styles.text}
         >
           <Text testID="correction-question" style={styles.question}>
-            {panelQuestion(look, picking)}
+            {panelQuestion(intl, look, picking)}
           </Text>
-          <Text style={styles.place}>{cellPlace(cell)}</Text>
+          <Text style={styles.place}>{cellPlace(intl, cell)}</Text>
         </Animated.View>
         <Pressable
           testID="correction-close"
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={intl.formatMessage({ id: 'common.close' })}
           onPress={onClose}
           style={({ pressed }) => [styles.close, pressed && pressedStyles.pressed]}
         >
@@ -153,10 +155,16 @@ export function CorrectionCheck({
           />
         ) : (
           <View style={styles.answers}>
-            <PanelButton testID="correction-no" label="No" kind="second" grow onPress={onNo} />
+            <PanelButton
+              testID="correction-no"
+              label={intl.formatMessage({ id: 'scan.check.no' })}
+              kind="second"
+              grow
+              onPress={onNo}
+            />
             <PanelButton
               testID="correction-yes"
-              label={yesLabel(look)}
+              label={yesLabel(intl, look)}
               kind="primary"
               grow
               animateLabel={animate}

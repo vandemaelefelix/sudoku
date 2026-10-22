@@ -1,4 +1,7 @@
+import { createAppIntl } from '@/i18n/utils/intl.utils'
 import { formatSyncedAgo } from './syncedAgo.utils'
+
+const en = createAppIntl('en')
 
 const NOW = Date.parse('2026-10-15T12:00:00.000Z')
 const ago = (ms: number) => new Date(NOW - ms).toISOString()
@@ -18,5 +21,14 @@ it.each([
   [2 * DAY, 'Synced 2 days ago'],
   [-5 * MINUTE, 'Synced just now'],
 ])('formats %d ms as "%s"', (elapsed, text) => {
-  expect(formatSyncedAgo(ago(elapsed), NOW)).toBe(text)
+  expect(formatSyncedAgo(en, ago(elapsed), NOW)).toBe(text)
+})
+
+it.each([
+  [30 * SECOND, 'Net gesynchroniseerd'],
+  [5 * MINUTE, '5 min geleden gesynchroniseerd'],
+  [24 * HOUR, '1 dag geleden gesynchroniseerd'],
+  [3 * DAY, '3 dagen geleden gesynchroniseerd'],
+])('formats %d ms in Dutch as "%s"', (elapsed, text) => {
+  expect(formatSyncedAgo(createAppIntl('nl'), ago(elapsed), NOW)).toBe(text)
 })

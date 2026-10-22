@@ -13,7 +13,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
 import { PanelButton } from '@/components/PanelButton'
-import { LEVEL_NAMES } from '@/constants/level.constants'
+import { LEVEL_LABELS } from '@/constants/level.constants'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { Icon } from '@/game/components/Icon'
 import { CorrectionCell, type CellConfidence, type DigitSizes } from '@/scan/components/CorrectionCell'
 import { CorrectionCheck } from '@/scan/components/CorrectionCheck'
@@ -34,14 +35,11 @@ import { pressedStyles } from '@/theme/pressed.styles'
 import {
   DIGIT_SHARE,
   FAILURE_SLIDE_MS,
-  IMPORT_NO_GRID,
   KIND_TAG,
   WAITING_FADE_MS,
   PANEL_HIDDEN,
   PANEL_RESIZE_MS,
   PLAY_BLOCK_TEXT,
-  SOLVED_TITLE,
-  TITLE,
 } from './CorrectionScreen.constants'
 import { styles } from './CorrectionScreen.styles'
 import { PANEL_PADDING } from '@/scan/constants/correction.constants'
@@ -67,6 +65,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const waiting = transition?.waiting
   const resultsAt = transition?.resultsAt
   const { theme } = useUnistyles()
+  const intl = useIntl()
   const { bottom } = useSafeAreaInsets()
   const systemReduceMotion = useReducedMotion()
   const motion = !(reduceMotion || systemReduceMotion)
@@ -90,7 +89,16 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   // A failed import offers another image, not the camera. Without a grid, the panel says what to pick.
   const importFailed = failed && capture.origin === 'library' && exits.onChooseImage !== undefined
   const importNoGrid = importFailed && correction.failure === NO_GRID
-  const blockText = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
+  const blockId = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
+  const blockText = blockId === null ? null : intl.formatMessage({ id: blockId })
+  const heading = intl.formatMessage({ id: solved ? 'scan.correction.solved' : 'scan.correction.title' })
+  let failureText = ''
+  if (importNoGrid) failureText = intl.formatMessage({ id: 'scan.failure.importReason' })
+  else if (failed) {
+    failureText = intl.formatMessage({
+      id: correction.failure === NO_GRID ? 'scan.failure.noGrid' : 'scan.failure.other',
+    })
+  }
   const full = correction.fullGrid && {
     ...correction.fullGrid,
     onVerify: actions.verify,
@@ -189,17 +197,17 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
         <Pressable
           testID="retake"
           accessibilityRole="button"
-          accessibilityLabel="Retake the photo"
+          accessibilityLabel={intl.formatMessage({ id: 'scan.correction.retakeLabel' })}
           onPress={actions.retake}
           hitSlop={8}
           style={({ pressed }) => [styles.retake, pressed && pressedStyles.pressed]}
         >
           <Icon name="back" tone="text" />
-          <Text style={styles.retakeText}>Retake</Text>
+          <Text style={styles.retakeText}>{intl.formatMessage({ id: 'scan.correction.retake' })}</Text>
         </Pressable>
         {!largeTitle && (
           <Text accessibilityRole="header" style={styles.barTitle}>
-            {solved ? SOLVED_TITLE : TITLE}
+            {heading}
           </Text>
         )}
         <View style={styles.barEnd}>
@@ -207,7 +215,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
             <Pressable
               testID="dev-open"
               accessibilityRole="button"
-              accessibilityLabel="Developer menu"
+              accessibilityLabel={intl.formatMessage({ id: 'scan.correction.devMenu' })}
               onPress={() => setDevOpen(true)}
               style={({ pressed }) => [styles.wrench, pressed && pressedStyles.pressed]}
             >
@@ -226,7 +234,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           ]}
         >
           <Text accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.display}>
-            {solved ? SOLVED_TITLE : TITLE}
+            {heading}
           </Text>
         </Animated.View>
       )}
@@ -291,17 +299,24 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
             >
               {correction.panel === 'failure' ? (
                 <View testID="correction-failure" style={styles.failure}>
-                  <Text style={styles.failureTitle}>{importNoGrid ? IMPORT_NO_GRID.title : 'The scan failed'}</Text>
-                  <Text style={styles.failureReason}>{importNoGrid ? IMPORT_NO_GRID.reason : correction.failure}</Text>
+                  <Text style={styles.failureTitle}>
+                    {intl.formatMessage({ id: importNoGrid ? 'scan.failure.importTitle' : 'scan.failure.title' })}
+                  </Text>
+                  <Text style={styles.failureReason}>{failureText}</Text>
                   {importFailed ? (
                     <PanelButton
                       testID="choose-another"
-                      label={IMPORT_NO_GRID.button}
+                      label={intl.formatMessage({ id: 'scan.failure.chooseAnother' })}
                       kind="primary"
                       onPress={actions.chooseImage}
                     />
                   ) : (
-                    <PanelButton testID="retake-failure" label="Retake" kind="primary" onPress={actions.retake} />
+                    <PanelButton
+                      testID="retake-failure"
+                      label={intl.formatMessage({ id: 'scan.correction.retake' })}
+                      kind="primary"
+                      onPress={actions.retake}
+                    />
                   )}
                 </View>
               ) : openCell !== null && correction.panel !== 'summary' ? (
@@ -326,7 +341,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
                 <CorrectionSummary
                   toCheck={correction.toCheck}
                   conflictCount={correction.conflictCount}
-                  level={correction.level === null ? '' : LEVEL_NAMES[correction.level]}
+                  level={correction.level === null ? '' : intl.formatMessage({ id: LEVEL_LABELS[correction.level] })}
                   blockText={blockText}
                   canPlay={correction.canPlay}
                   animate={!clock && motion}
