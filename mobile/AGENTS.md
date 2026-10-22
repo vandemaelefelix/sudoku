@@ -22,7 +22,7 @@ React Native API:
 | Build the development variant in Release on a device, to measure the quality scenarios | `just ios-measure <UDID>`. It logs `[measure]` lines. See `docs/operations/measure-quality.md` |
 | Build for the iOS Simulator | `just ios-simulator`. A Release build of the development variant, without code signing and without Metro (ADR-010). CI runs the same build |
 | Check the native build in CI | `gh workflow run ios-simulator.yml --ref <branch>`. Start it before a pull request with a native change merges. A push to an open pull request starts no build (ADR-010) |
-| Run the end-to-end flows | `just ios-simulator`, then `just e2e`. One flow: `just e2e mobile/e2e/resume.yaml`. In CI: `gh workflow run e2e.yml --ref <branch>`. See "End-to-end flows" below |
+| Run the end-to-end flows | `just ios-simulator`, then `just e2e`. One flow: `just e2e mobile/e2e/resume.yaml`. In CI: add the label `run: e2e` to the pull request, or run `gh workflow run e2e.yml --ref <branch>`. See "End-to-end flows" below |
 | Render the app icons | `just icons`. Change the design in `tools/icons/geometry.mjs`, not in the PNGs |
 | Check the Expo setup | `pnpm dlx expo-doctor` |
 | Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |

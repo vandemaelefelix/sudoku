@@ -213,7 +213,7 @@ navigation, a native module that does not load, or a game that a restart loses (
 
 | Layer | What | Tool | Runs |
 | --- | --- | --- | --- |
-| 5. End to end | The Release app of `just ios-simulator`: start a game at each level, resume after a kill, finish a game, keep the look, scan a fixture image | **Maestro** flows in `mobile/e2e/` | `just e2e` on the Mac. In CI only on a manual run of `e2e.yml` |
+| 5. End to end | The Release app of `just ios-simulator`: start a game at each level, resume after a kill, finish a game, keep the look, scan a fixture image | **Maestro** flows in `mobile/e2e/` | `just e2e` on the Mac. In CI only on a manual step: the label `run: e2e` on a pull request, or a manual run of `e2e.yml` |
 
 1. **Maestro, not Detox or XCTest.** A flow is a YAML file, so it needs no test build of the app
    and no native test target. Maestro drives the Release build of `just ios-simulator` as it is.
@@ -230,7 +230,8 @@ navigation, a native module that does not load, or a game that a restart loses (
 6. **The scan flow needs the real model.** It has the tag `model`. CI has only the stub model
    (SUD-08), so `e2e.yml` leaves the tag out. `just e2e` puts the fixture image
    `shared/fixtures/imports/screenshot-digital.png` in the photo library of the simulator.
-7. **CI runs the flows only on a manual run.** One run builds the app and runs the flows: about 20
+7. **CI runs the flows only on a manual step.** The label `run: e2e` on a pull request starts `e2e.yml` on its
+   branch. A manual run (`workflow_dispatch`) works too, once the file is on `develop`. One run builds the app and runs the flows: about 20
    minutes, so about 200 of the 2,000 monthly minutes. The composite action
    `.github/actions/ios-simulator-build` holds the build for `ios-simulator.yml` and `e2e.yml`.
 
