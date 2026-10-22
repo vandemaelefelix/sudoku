@@ -129,11 +129,12 @@ it('stays a button with full-size digits by default', () => {
   expect(StyleSheet.flatten(screen.getByText('5').props.style).fontSize).toBe(cobalt.type.given.scale)
 })
 
-/** A tile at a row and a column, 40 points from one cell to the next. Cell 2 is row 0, column 2. */
-const tileAt = (row: number, column: number, shown = 1): SelectionTile => ({
+/** A tile at a row and a column: 40 points from one cell to the next, 1 more across a box line. Cell 2 is row 0, column 2. */
+const tileAt = (row: number, column: number, shown = 1, step = 40): SelectionTile => ({
   row: fixed(row),
   column: fixed(column),
-  pitch: fixed(40),
+  step: fixed(step),
+  boxExtra: fixed(1),
   shown: fixed(shown),
 })
 
@@ -148,12 +149,18 @@ describe('the selection tile (ADR-026)', () => {
     expect(StyleSheet.flatten(screen.getByTestId('cell-2').props.style).borderWidth).toBeUndefined()
   })
 
-  it('moves the tile by its distance in cells, so a tile on another cell lies outside this one', () => {
+  it('moves the tile by its distance in cells and box lines, so a tile on another cell lies outside this one', () => {
     render(<Cell {...base} tile={tileAt(1, 4)} onSelect={jest.fn()} />)
+    // From column 2 to column 4 crosses one box line.
     expect(StyleSheet.flatten(screen.getByTestId('cell-2-tile').props.style).transform).toEqual([
-      { translateX: 80 },
+      { translateX: 81 },
       { translateY: 40 },
     ])
+  })
+
+  it('hides the tile until the grid has its size, so no cell flashes it', () => {
+    render(<Cell {...base} tile={tileAt(1, 4, 1, 0)} onSelect={jest.fn()} />)
+    expect(StyleSheet.flatten(screen.getByTestId('cell-2-tile').props.style).opacity).toBe(0)
   })
 
   it('hides the tile while no cell is selected', () => {

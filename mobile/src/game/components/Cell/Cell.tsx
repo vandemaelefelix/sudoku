@@ -131,13 +131,17 @@ function CellFlash({ kind }: { kind: 'hint' | 'undo' }) {
 function TileLayer({ cell, tile }: { cell: number; tile: SelectionTile }) {
   const row = rowOf(cell)
   const column = columnOf(cell)
-  const style = useAnimatedStyle(() => ({
-    opacity: tile.shown.get(),
-    transform: [
-      { translateX: (tile.column.get() - column) * tile.pitch.get() },
-      { translateY: (tile.row.get() - row) * tile.pitch.get() },
-    ],
-  }))
+  const style = useAnimatedStyle(() => {
+    const step = tile.step.get()
+    const boxExtra = tile.boxExtra.get()
+    // The point where cell line x starts: one step per cell, and the extra width of each box line before it.
+    const at = (x: number) => x * step + Math.floor(x / 3) * boxExtra
+    return {
+      // Before the grid has its size, every cell would draw the tile at offset 0.
+      opacity: step > 0 ? tile.shown.get() : 0,
+      transform: [{ translateX: at(tile.column.get()) - at(column) }, { translateY: at(tile.row.get()) - at(row) }],
+    }
+  })
   return (
     <View style={styles.tileClip} pointerEvents="none">
       <Animated.View testID={`cell-${cell}-tile`} style={[styles.tile, style]} />

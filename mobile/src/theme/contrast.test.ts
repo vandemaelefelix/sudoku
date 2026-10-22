@@ -92,7 +92,7 @@ const LARGE_DIGIT_PAIRS: Pair[] = [
 ]
 
 /** The smallest contrast ratio between the selection tile and an assist shade, so the tile stands out. */
-const TILE_STEP = 1.14
+const TILE_STEP = 1.3
 
 /** Shapes that carry meaning need 3 : 1 (WCAG 1.4.11): the thumb of a toggle against its track, the ring of a cell against its fill. */
 const SHAPE_PAIRS: Pair[] = [
