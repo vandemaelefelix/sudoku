@@ -141,6 +141,7 @@ some plans shrank from 6 steps to 2.
 2. **The cap applies to the pruned plan.** The search may take up to 24 steps. The plan keeps at most 6. A pruned plan of
    more than 6 steps gives the fallback of point 9.
 3. **Equal weights form one rank.** Point 5 says "at the same rank". Techniques with the same Sudoku Explainer weight count
-   as one rank. Inside it, a placement comes before an elimination, then the step nearest the selected cell.
+   as one rank. Inside it, a placement comes before an elimination, then the step nearest the selected cell. The tier 1
+   weights all differ, so this rule acts only when tier 2 gets hint text.
 4. **The random hint is gone.** Until the hint card ships, the Hint tool fills the answer of the plan at once. For a wrong
    entry, it selects that cell. The concept [hints](../00-concepts/hints.md) has the details.

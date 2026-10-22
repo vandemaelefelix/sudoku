@@ -12,7 +12,10 @@ import type { HintPlan } from './types'
 /** ADR-032 point 4. */
 export const MAX_HINT_STEPS = 6
 
-/** The ranks of `HINT_ORDER`, in groups of the same weight. A group counts as one rank for the step choice. */
+/**
+ * The ranks of `HINT_ORDER`, in groups of the same weight. A group counts as one rank for the step choice.
+ * The tier 1 weights all differ, so each group holds one rank until tier 2 gets hint text.
+ */
 const HINT_GROUPS: readonly (readonly TechniqueRank[])[] = HINT_ORDER.reduce<TechniqueRank[][]>((groups, rank) => {
   const last = groups.at(-1)
   if (last !== undefined && last[0]!.weight === rank.weight) last.push(rank)
@@ -20,11 +23,14 @@ const HINT_GROUPS: readonly (readonly TechniqueRank[])[] = HINT_ORDER.reduce<Tec
   return groups
 }, [])
 
-/** A game puzzle has exactly one solution, so the unique rectangle may run (ADR-032, amendment). */
+/**
+ * A game puzzle has exactly one solution, so the unique rectangle may run once it has hint text
+ * (ADR-032, amendment). Tier 1 has no rank that needs it.
+ */
 const OPTIONS = { unique: true }
 
 /**
- * How far `cell` is from the selected cell: 0 to 16 in the same row, column or box, else 20 to 36.
+ * How far `cell` is from the selected cell: 0 to 8 in the same row, column or box, else 20 to 36.
  * A smaller number is nearer.
  */
 function distance(cell: number, selected: number | null): number {

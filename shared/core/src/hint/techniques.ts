@@ -83,7 +83,7 @@ export const HINT_TECHNIQUES: Readonly<Partial<Record<TechniqueId, HintTechnique
     why: (step, later) => {
       const { cell, digit } = placed(step)
       const others = later
-        ? `Every other empty cell has a ${digit} in its row, column or box, or lost it in a step before.`
+        ? `Every other empty cell has a ${digit} in its row, column or box, or an earlier step removed it.`
         : `Every other empty cell has a ${digit} in its row, column or box.`
       return `In ${focus(step)}, a ${digit} fits only in ${cell}. ${others}`
     },
@@ -96,7 +96,7 @@ export const HINT_TECHNIQUES: Readonly<Partial<Record<TechniqueId, HintTechnique
     why: (step, later) => {
       const { digit } = placed(step)
       return later
-        ? `Its row, column and box hold the other digits, or a step before removed them. So only ${digit} fits.`
+        ? `Its row, column and box hold the other digits, or earlier steps removed them. So only ${digit} fits.`
         : `Its row, column and box hold every digit but ${digit}. So only ${digit} fits.`
     },
     answer: put,

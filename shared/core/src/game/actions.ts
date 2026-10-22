@@ -116,7 +116,8 @@ export function undo(game: Game): MoveResult {
   })
 }
 
-function shownBefore(answer: CellDigit, shown: readonly CellDigit[]): boolean {
+/** True when `shown` holds the same cell and digit as `answer`. */
+export function shownBefore(answer: CellDigit, shown: readonly CellDigit[]): boolean {
   return shown.some((item) => item.cell === answer.cell && item.digit === answer.digit)
 }
 

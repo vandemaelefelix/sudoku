@@ -10,7 +10,19 @@ export { createGame } from './game/createGame'
 export type { NewGame } from './game/createGame'
 export { completeDigits, DIGITS, isSolved, isWrong, NOTHING_COMPLETED, valueAt } from './game/completion'
 export { hasMoves } from './game/progress'
-export { erase, fillHint, pause, place, resume, revealHint, select, tick, toggleNote, undo } from './game/actions'
+export {
+  erase,
+  fillHint,
+  pause,
+  place,
+  resume,
+  revealHint,
+  select,
+  shownBefore,
+  tick,
+  toggleNote,
+  undo,
+} from './game/actions'
 export { fromSavedGame, needsSave, SAVED_GAME_VERSION, toSavedGame } from './game/savedGame'
 export type { SavedGame } from './game/savedGame'
 export { generate, LEVELS } from './generator'
