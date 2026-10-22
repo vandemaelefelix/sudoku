@@ -1,4 +1,12 @@
-import { HINT_TECHNIQUES, hintMessage, UNITS, type HintTechniqueId, type Step, type TechniqueId } from '@sudoku/core'
+import {
+  GRID_CELLS,
+  HINT_TECHNIQUES,
+  hintMessage,
+  UNITS,
+  type HintTechniqueId,
+  type Step,
+  type TechniqueId,
+} from '@sudoku/core'
 import {
   FOCUS_FADE_MS,
   FOCUS_PULSE_PEAK,
@@ -49,7 +57,7 @@ export type HintRole = 'focus' | 'pattern' | 'support' | 'strike' | 'ghost'
  */
 export type HintTimings = Readonly<Record<HintRole, readonly number[]>> & { pulseAt: number; reduced: boolean }
 
-const STILL = Array.from({ length: 81 }, () => 0)
+const STILL = Array.from({ length: GRID_CELLS }, () => 0)
 
 /** The timings of no change. */
 export const NO_HINT_TIMINGS: HintTimings = {
@@ -68,7 +76,7 @@ const inOrder = (cells: readonly number[]): number[] => [...new Set(cells)].toSo
 const focusOf = (highlight: HintHighlight | null): number[] =>
   inOrder(highlight?.units.flatMap((unit) => UNITS[unit] ?? []) ?? [])
 
-/** The cells of after that before does not have, in reading order. */
+/** The cells that are in after and not in before, in reading order. */
 const added = (before: readonly number[], after: readonly number[]): number[] =>
   inOrder(after.filter((cell) => !before.includes(cell)))
 

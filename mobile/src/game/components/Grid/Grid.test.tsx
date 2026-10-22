@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import { Pressable, StyleSheet } from 'react-native'
+import * as Reanimated from 'react-native-reanimated'
+import { FOCUS_FADE_MS, ROLE_STEP_MS } from '@/game/constants/hint.constants'
 import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
@@ -75,6 +77,7 @@ function Moves() {
         }}
       />
       <Pressable testID="undo" onPress={undo} />
+      <Pressable testID="hint" onPress={hint} />
       <Pressable
         testID="fill"
         onPress={() => {
@@ -110,5 +113,21 @@ describe('the mark of the last move', () => {
     expect(within(screen.getByTestId('cell-2')).getByTestId('cell-flash-undo')).toBeTruthy()
     fireEvent.press(screen.getByTestId('fill'))
     expect(screen.queryByTestId('cell-flash-undo')).toBeNull()
+  })
+})
+
+describe('the role entrance (ADR-032)', () => {
+  afterEach(() => jest.restoreAllMocks())
+
+  // The cells start their roles in passive effects. The timings must be there by then, or every role starts at 0.
+  it('hands each focus cell its place in the sweep in the same commit that opens the hint', () => {
+    const delay = jest.spyOn(Reanimated, 'withDelay')
+    renderWithMoves()
+    fireEvent.press(screen.getByTestId('hint'))
+    const delays = delay.mock.calls.map(([ms]) => ms)
+    const sweep = Array.from({ length: 9 }, (_, index) => index * ROLE_STEP_MS)
+    expect(delays).toEqual(expect.arrayContaining(sweep))
+    // The look rung marks one unit of nine cells: they pulse together after the last one.
+    expect(delays).toContain(8 * ROLE_STEP_MS + FOCUS_FADE_MS)
   })
 })

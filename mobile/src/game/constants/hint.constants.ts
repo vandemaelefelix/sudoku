@@ -19,12 +19,16 @@ export const ROLE_STEP_MS = 30
 /** Milliseconds of the fade of one focus cell. */
 export const FOCUS_FADE_MS = 200
 
-/** Milliseconds of the one pulse of the new focus cells after the sweep, and its strongest opacity. */
+/** Milliseconds of the one pulse of the new focus cells after the sweep. */
 export const FOCUS_PULSE_MS = 420
+
+/** The strongest opacity of the glow of the focus pulse. */
 export const FOCUS_PULSE_PEAK = 0.3
 
-/** Milliseconds of the pop of a pattern cell or a support ring, and the scale that it starts from. */
+/** Milliseconds of the pop of a pattern cell or a support ring. */
 export const ROLE_POP_MS = 260
+
+/** The scale that a pop starts from. */
 export const ROLE_POP_FROM = 0.6
 
 /** Milliseconds that a strike takes to cross its note from left to right. */
