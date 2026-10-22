@@ -294,14 +294,11 @@ export const en = {
     'Two cells hold only the same two digits, X and Y. A row, column or box where X fits in only two cells links them: each end sees one of the two cells. So one of the two cells holds Y. A cell that sees both of them loses Y.',
   // Hints (ADR-032): the card, the messages of @sudoku/core and their parts
   'hint.title': 'Hint',
-  'hint.nice': 'Nice.',
   'hint.step': 'Step {step} of {total}',
   'hint.button.more': 'More help',
   'hint.button.answer': 'Show answer',
-  'hint.button.try': 'Try it',
   'hint.button.next': 'Next step',
   'hint.button.fill': 'Fill it',
-  'hint.button.doIt': "I'll do it",
   'hint.button.erase': 'Erase it',
   'hint.button.learnMore': 'Learn more',
   'hint.mistake': '{cell} holds a wrong digit. Erase it first.',
@@ -372,12 +369,9 @@ export const en = {
   'hint.part.rowsIn': '{count, plural, one {row {list}} other {rows {list}}}',
   'hint.part.rows': 'rows {list}',
   'hint.part.columns': 'columns {list}',
-  // Hints, more
+  // Hints, the card
   'hint.button.learnMoreLabel': 'Learn more about {technique}',
-  'hint.strip.label': 'Hint: {text}',
-  // Hints, the card and the strip
   'hint.close': 'Close the hint',
-  'hint.strip.openHint': 'Opens the hint card',
   // The techniques screen
   'techniques.title': 'Techniques',
   'techniques.intro': 'The ways to find a digit that the hints use, from the easiest to the hardest.',

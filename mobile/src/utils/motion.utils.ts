@@ -38,3 +38,21 @@ export function riseIn(delayMs: number, riseBy: number, durationMs: number): () 
     }
   }
 }
+
+/**
+ * An exiting animation, the reverse of riseIn: the element fades out and sinks sinkBy points over durationMs with easeIn.
+ * It plays with Reduce Motion on too: give sinkBy 0 then, so the element only fades.
+ */
+export function sinkOut(sinkBy: number, durationMs: number): () => LayoutAnimation {
+  return () => {
+    'worklet'
+    const timing = { duration: durationMs, easing: easeIn, reduceMotion: ReduceMotion.Never }
+    return {
+      initialValues: { opacity: 1, transform: [{ translateY: 0 }] },
+      animations: {
+        opacity: withTiming(0, timing),
+        transform: [{ translateY: withTiming(sinkBy, timing) }],
+      },
+    }
+  }
+}

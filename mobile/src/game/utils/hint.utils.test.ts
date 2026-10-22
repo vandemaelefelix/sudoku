@@ -26,12 +26,7 @@ function planOf(start: ReturnType<typeof sampleStart>): HintPlan {
 const pointing = planOf(pointingStart())
 if (pointing.kind !== 'steps') throw new Error('expected a steps plan')
 const [elimination, single] = pointing.steps as [(typeof pointing.steps)[0], (typeof pointing.steps)[0]]
-const at = (step: number, rung: HintRung, view: OpenHint['view'] = 'card'): OpenHint => ({
-  plan: pointing,
-  step,
-  rung,
-  view,
-})
+const at = (step: number, rung: HintRung): OpenHint => ({ plan: pointing, step, rung })
 
 describe('the highlight of each rung', () => {
   it('shows the focus unit on the look rung', () => {
@@ -64,18 +59,16 @@ describe('the highlight of each rung', () => {
     expect(hintHighlight(at(1, 1))?.eliminations).toEqual(elimination.eliminations)
   })
 
-  it('stays on the strip and goes with "Nice."', () => {
-    expect(hintHighlight(at(0, 2, 'strip'))).toEqual(hintHighlight(at(0, 2)))
-    expect(hintHighlight(at(1, 4, 'nice'))).toBeNull()
+  it('marks nothing without an open hint', () => {
     expect(hintHighlight(null)).toBeNull()
   })
 
   it('marks the wrong cell of a mistake and the target of a fallback', () => {
-    const mistake: OpenHint = { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' }
+    const mistake: OpenHint = { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1 }
     expect(hintHighlight(mistake)).toMatchObject({ pattern: [7], placements: [] })
     const fallback = planOf(stuckStart())
     if (fallback.kind !== 'fallback') throw new Error('expected a fallback')
-    expect(hintHighlight({ plan: fallback, step: 0, rung: 1, view: 'card' })).toEqual({
+    expect(hintHighlight({ plan: fallback, step: 0, rung: 1 })).toEqual({
       units: [],
       pattern: [],
       support: [],
@@ -98,36 +91,30 @@ describe('the hint card view', () => {
   it('has no step label for a plan of one step', () => {
     const plan = planOf(sampleStart())
     expect(plan.kind === 'steps' && plan.steps).toHaveLength(1)
-    expect(hintCardView(en, { plan, step: 0, rung: 1, view: 'card' }).stepLabel).toBeNull()
+    expect(hintCardView(en, { plan, step: 0, rung: 1 }).stepLabel).toBeNull()
   })
 
   it('offers the buttons of each rung', () => {
-    expect(labels(at(0, 1))).toEqual(['More help', 'Show answer', 'Try it'])
-    expect(labels(at(0, 3))).toEqual(['More help', 'Show answer', 'Try it'])
+    expect(labels(at(0, 1))).toEqual(['More help', 'Show answer'])
+    expect(labels(at(0, 3))).toEqual(['More help', 'Show answer'])
     expect(labels(at(0, 4))).toEqual(['Next step'])
-    expect(labels(at(1, 4))).toEqual(['Fill it', "I'll do it"])
+    expect(labels(at(1, 4))).toEqual(['Fill it'])
   })
 
   it('has one card for a mistake and one for a fallback, without rungs', () => {
-    const mistake = hintCardView(en, { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' })
+    const mistake = hintCardView(en, { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1 })
     expect(mistake).toMatchObject({ rung: null, stepLabel: null })
     expect(mistake.buttons.map((button) => button.action)).toEqual(['hintErase'])
     const fallback = planOf(stuckStart())
-    const card = hintCardView(en, { plan: fallback, step: 0, rung: 1, view: 'card' })
+    const card = hintCardView(en, { plan: fallback, step: 0, rung: 1 })
     expect(card).toMatchObject({ rung: null, text: textOf(fallback, 0, 1) })
-    expect(card.buttons.map((button) => button.action)).toEqual(['hintFill', 'hintTry'])
+    expect(card.buttons.map((button) => button.action)).toEqual(['hintFill'])
   })
 
   it('offers the technique page from rung 2 on', () => {
     expect(hintCardView(en, at(0, 1)).technique).toBeNull()
     expect(hintCardView(en, at(0, 2)).technique).toBe(elimination.technique)
     expect(hintCardView(en, at(1, 4)).technique).toBe(single.technique)
-    expect(
-      hintCardView(en, { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' }).technique,
-    ).toBeNull()
-  })
-
-  it('says "Nice." on the strip once the player placed the target', () => {
-    expect(hintCardView(en, at(1, 4, 'nice')).text).toBe('Nice.')
+    expect(hintCardView(en, { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1 }).technique).toBeNull()
   })
 })

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import * as Haptics from 'expo-haptics'
+import { StyleSheet } from 'react-native'
 import { LOST_HOLD_MS } from '@/game/components/GameOverSheet/GameOverSheet.constants'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { GameScreen } from './GameScreen'
@@ -127,18 +128,43 @@ it('asks for a new puzzle from New puzzle on the sheet', () => {
   expect(onNewPuzzle).toHaveBeenCalledTimes(1)
 })
 
+/**
+ * What decides the place of the grid: the board box, the square of the grid, and the tool row and the keypad, which give
+ * the dock its height. The hint card is absolute, so it moves nothing.
+ */
+const gridLayout = () => ({
+  board: StyleSheet.flatten(screen.getByTestId('board', hidden).props.style),
+  square: StyleSheet.flatten(screen.getByTestId('board-square', hidden).props.style),
+  tools: StyleSheet.flatten(screen.getByTestId('tools', hidden).props.style),
+  keypad: StyleSheet.flatten(screen.getByTestId('keypad', hidden).props.style),
+})
+
 describe('the hint (ADR-032)', () => {
-  it('opens the card in place of the keypad, and hands the move back with Try it', () => {
+  it('opens the card over the tool row and the keypad, and closes it with the close button', () => {
     renderScreen()
     fireEvent.press(screen.getByLabelText('Hint'))
     expect(screen.getByTestId('hint-card')).toBeTruthy()
     expect(screen.queryByLabelText('Enter 9')).toBeNull()
+    expect(screen.queryByLabelText('Undo')).toBeNull()
+    expect(screen.getByTestId('dock-controls', hidden).props.pointerEvents).toBe('none')
     expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
-    fireEvent.press(screen.getByRole('button', { name: 'Try it' }))
+    fireEvent.press(screen.getByLabelText('Close the hint'))
     expect(screen.queryByTestId('hint-card')).toBeNull()
     expect(screen.getByLabelText('Enter 9')).toBeTruthy()
-    expect(screen.getByTestId('hint-strip')).toBeTruthy()
-    expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Undo')).toBeTruthy()
+    expect(screen.queryAllByTestId(/^cell-\d+-hint-edges$/)).toHaveLength(0)
+  })
+
+  it('keeps the grid in place when a hint opens, changes rung and closes', () => {
+    renderScreen()
+    const before = gridLayout()
+    fireEvent.press(screen.getByLabelText('Hint'))
+    expect(StyleSheet.flatten(screen.getByTestId('hint-card').props.style).position).toBe('absolute')
+    expect(gridLayout()).toEqual(before)
+    fireEvent.press(screen.getByRole('button', { name: 'More help' }))
+    expect(gridLayout()).toEqual(before)
+    fireEvent.press(screen.getByLabelText('Close the hint'))
+    expect(gridLayout()).toEqual(before)
   })
 
   it('fills the answer from the card and brings back the keypad', () => {
@@ -147,7 +173,6 @@ describe('the hint (ADR-032)', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Show answer' }))
     fireEvent.press(screen.getByRole('button', { name: 'Fill it' }))
     expect(screen.queryByTestId('hint-card')).toBeNull()
-    expect(screen.queryByTestId('hint-strip')).toBeNull()
     expect(screen.getByLabelText('Enter 9')).toBeTruthy()
     expect(screen.getAllByTestId('cell-flash-hint')).toHaveLength(1)
   })

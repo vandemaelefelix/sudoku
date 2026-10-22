@@ -144,7 +144,7 @@ describe('the open hint (ADR-032)', () => {
   it('opens the card at rung 1 of step 1 and changes nothing in the game', () => {
     const before = start()
     const session = opened(before)
-    expect(session.hint).toMatchObject({ plan: planHint(before.game), step: 0, rung: 1, view: 'card' })
+    expect(session.hint).toEqual({ plan: planHint(before.game), step: 0, rung: 1 })
     expect(session.game).toBe(before.game)
   })
 
@@ -190,22 +190,6 @@ describe('the open hint (ADR-032)', () => {
     expect(run(elimination, { type: 'hintFill' })).toBe(elimination)
   })
 
-  it('ignores the card buttons while the strip says "Nice."', () => {
-    const answer = answerOf(start().game)
-    const nice = run(opened(start()), { type: 'select', cell: answer.cell }, { type: 'digit', digit: answer.digit })
-    for (const type of [
-      'hintMore',
-      'hintAnswer',
-      'hintNext',
-      'hintFill',
-      'hintTry',
-      'hintOpen',
-      'hintErase',
-    ] as const) {
-      expect(run(nice, { type })).toBe(nice)
-    }
-  })
-
   it('counts the same answer once in a game session', () => {
     const session = run(
       opened(start()),
@@ -222,30 +206,49 @@ describe('the open hint (ADR-032)', () => {
     expect(session.shownAnswers).toHaveLength(1)
   })
 
-  it('hands the move back with Try it, and opens the card again at the same rung', () => {
-    const strip = run(opened(start()), { type: 'hintMore' }, { type: 'hintTry' })
-    expect(strip.hint).toMatchObject({ rung: 2, view: 'strip' })
-    expect(run(strip, { type: 'hintOpen' }).hint).toMatchObject({ rung: 2, view: 'card' })
-    expect(run(strip, { type: 'hint' }).hint).toMatchObject({ rung: 2, view: 'card' })
-  })
-
-  it('ends the hint with the close button or a tap on the active Hint tool', () => {
+  it('ends the hint with the close button or a tap on the Hint tool', () => {
     expect(run(opened(start()), { type: 'hintClose' }).hint).toBeNull()
     expect(run(opened(start()), { type: 'hint' }).hint).toBeNull()
-    expect(run(opened(start()), { type: 'hintTry' }, { type: 'hintClose' }).hint).toBeNull()
   })
 
-  it('says "Nice." when the player places the target digit, without a count', () => {
+  describe('counts a close as before (ADR-032 point 7)', () => {
+    it('does not count a close at rung 1, 2 or 3', () => {
+      for (const rung of [1, 2, 3]) {
+        const session = run(opened(start()), ...more(rung - 1), { type: 'hintClose' })
+        expect(session.hint).toBeNull()
+        expect(session.game.hintsUsed).toBe(0)
+      }
+    })
+
+    it('keeps the count of the answer rung of the last step after a close', () => {
+      const session = run(opened(start()), ...more(3), { type: 'hintClose' })
+      expect(session.game.hintsUsed).toBe(1)
+    })
+
+    it('does not count a close at the answer rung of an elimination step', () => {
+      const session = run(opened(pointing()), ...more(3), { type: 'hintClose' })
+      expect(session.game.hintsUsed).toBe(0)
+    })
+
+    it('keeps the count of the fallback after a close', () => {
+      expect(run(opened(startSession(stuckStart())), { type: 'hintClose' }).game.hintsUsed).toBe(1)
+    })
+
+    it('does not count a close of the wrong-entry card', () => {
+      expect(run(opened(wrongEntry()), { type: 'hintClose' }).game.hintsUsed).toBe(0)
+    })
+  })
+
+  it('does not count the target digit that the player places after a close', () => {
     const answer = answerOf(start().game)
     const session = run(
       opened(start()),
-      { type: 'hintTry' },
+      { type: 'hintClose' },
       { type: 'select', cell: answer.cell },
       { type: 'digit', digit: answer.digit },
     )
-    expect(session.hint).toMatchObject({ view: 'nice' })
+    expect(session.game.entries[answer.cell]).toBe(answer.digit)
     expect(session.game.hintsUsed).toBe(0)
-    expect(run(session, { type: 'hintClose' }).hint).toBeNull()
   })
 
   it('ends on any other entry, an erase, an undo or a pause', () => {
@@ -269,7 +272,7 @@ describe('the open hint (ADR-032)', () => {
       { type: 'digit', digit: 3 },
     )
     expect(session.game.notes[OPEN]).toEqual([3])
-    expect(session.hint).toMatchObject({ rung: 2, view: 'card' })
+    expect(session.hint).toMatchObject({ rung: 2 })
   })
 
   it('ends when the target digit wins the game', () => {
