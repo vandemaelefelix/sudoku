@@ -11,9 +11,11 @@ import { bitOf } from '../technique/masks'
 import { nextSteps } from '../technique/nextSteps'
 import { boardFromString } from '../technique/testKit'
 import type { Candidates, Step } from '../technique/types'
-import { BOX_OF, COL_OF, PEERS, ROW_OF } from '../units'
+import { BOX_OF, COL_OF, PEERS, ROW_OF, UNITS } from '../units'
+import { unitName } from './names'
 import { byChoice, MAX_HINT_STEPS, planHint } from './plan'
 import { HINT_ORDER, HINT_TECHNIQUES } from './techniques'
+import { hintText } from './text'
 
 /** A game at `board`, a position of the puzzle `givens`. */
 function gameAt(givens: string, board: string, selected: number | null = null): Game {
@@ -92,6 +94,21 @@ describe('planHint', () => {
     expect(plan.steps.map((step) => step.technique)).toEqual(['pointing', 'hiddenSingle'])
     expect(plan.steps[0]!.placements).toEqual([])
     expect(plan.steps[0]!.eliminations.length).toBeGreaterThan(0)
+  })
+
+  it('gives a real pointing step the units that its text names: the box, then the line', () => {
+    const plan = planHint(gameAt(...POINTING_THEN_SINGLE))
+    if (plan?.kind !== 'steps') throw new Error('expected a steps plan')
+    const [box, line] = plan.steps[0]!.units as [number, number]
+    expect(UNITS[box]).toEqual(expect.arrayContaining([...plan.steps[0]!.pattern]))
+    for (const { cell } of plan.steps[0]!.eliminations) {
+      expect(UNITS[line]).toContain(cell)
+      expect(UNITS[box]).not.toContain(cell)
+    }
+    expect(hintText(plan, 0, 4)).toBe(
+      `Remove ${plan.steps[0]!.digits[0]} from ${unitName(line)}, outside ${unitName(box)}.`,
+    )
+    expect(box).toBeGreaterThanOrEqual(18)
   })
 
   it('keeps only the eliminations that the placement needs', () => {

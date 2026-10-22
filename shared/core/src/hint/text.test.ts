@@ -98,7 +98,7 @@ describe('hintText', () => {
   it('names the steps before in the why of a later hidden single', () => {
     expect(rungs(placement('hiddenSingle', 20, 1, [18]), 1)[2]).toBe(
       'In the top-left box, a 1 fits only in row 3, column 3. ' +
-        'Every other empty cell has a 1 in its row, column or box, or lost it in a step before.',
+        'Every other empty cell has a 1 in its row, column or box, or an earlier step removed it.',
     )
   })
 
@@ -110,7 +110,7 @@ describe('hintText', () => {
       'Put 9 in row 9, column 9.',
     ])
     expect(rungs(placement('nakedSingle', 80, 9, [8, 17, 26]), 1)[2]).toBe(
-      'Its row, column and box hold the other digits, or a step before removed them. So only 9 fits.',
+      'Its row, column and box hold the other digits, or earlier steps removed them. So only 9 fits.',
     )
   })
 

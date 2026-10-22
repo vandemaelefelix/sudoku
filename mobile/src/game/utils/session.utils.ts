@@ -4,6 +4,7 @@ import {
   fillHint,
   pause,
   planHint,
+  shownBefore,
   place,
   resume,
   select,
@@ -115,8 +116,7 @@ function hintMove(session: Session): Session {
   if (plan === null) return session
   if (plan.kind === 'mistake') return withGame(session, select(session.game, plan.cell))
   const next = moved(session, 'hint', fillHint(session.game, plan, session.shownAnswers))
-  const { cell, digit } = plan.answer
-  if (next === session || session.shownAnswers.some((item) => item.cell === cell && item.digit === digit)) return next
+  if (next === session || shownBefore(plan.answer, session.shownAnswers)) return next
   return { ...next, shownAnswers: [...session.shownAnswers, plan.answer] }
 }
 
