@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-006: One cell classifier with a digit head and a kind head
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
@@ -77,3 +77,13 @@ only. A cell whose kind is unknown adds no kind loss.
 
 - Kind accuracy plateaus while digit accuracy is fine. Consider weighting the losses or a
   separate kind model.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `CellClassifier` in `ml/src/sudoku_ml/model.py` has three convolution stages, global average pooling and the two
+  heads `digit` and `kind` (#13).
+- `mobile/src/scanner/classifier.ts` reads both heads on the iPhone (#25, #29).
+- [ADR-020](adr-020-full-cell-input.md) changed the part of the cell that the model reads (contract 2.0, #80). The
+  network and the two heads stay.

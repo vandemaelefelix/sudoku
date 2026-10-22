@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-001: Polyglot monorepo with pnpm, uv and one justfile
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
@@ -49,3 +49,12 @@ One repository, `sudoku`, with:
 
 - The backend arrives in a third language. Re-check whether `just` still holds it together.
 - A second app or package makes CI or local runs slow enough that caching pays. Add Turborepo.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- #8 added `pnpm-workspace.yaml`, the uv project `ml/pyproject.toml` and the root `justfile`.
+- `just --list` is the one command list for both sides. Turborepo is still not added.
+- [ADR-029](adr-029-repository-layout.md) moved the folders. The shared files are now in `shared/`.
+- `just eval` and `just promote-model` do not exist yet. They come with [ADR-007](adr-007-model-promotion.md).

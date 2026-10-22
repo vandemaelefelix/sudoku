@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-031: A display grid takes its fill colours from the theme hook
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-21 |
 | Contact | Felix      |
 
@@ -50,3 +50,12 @@ close relative: a view that mounts after a theme change gets the styles of the o
 
 - A Unistyles release fixes the stale styles. Then the fill layers can use the cell styles again.
 - A display grid shows on a screen where 81 renders on a theme switch are too slow.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- A display cell reads its colours from `useUnistyles()`. `displayFill` in `mobile/src/game/utils/cell.utils.ts`
+  turns them into fills (#187).
+- The criteria of issue #175 for the grid preview are met, also after Settings opens a second time.
+- The wavy lines of the stats card are still open in #175. They are not part of this decision.

@@ -9,8 +9,8 @@ tool-specific file.
 An ad-free iOS sudoku game. It can scan a paper sudoku with the camera, recognise printed and
 handwritten digits on the device, and load the puzzle to play, solve or get a hint.
 
-- **Status:** milestone M0 (walking skeleton). The repository is scaffolded. Work on an issue
-  only after its implementation plan is approved.
+- **Status:** the game, the scanner and the backend run. Open work is in milestones M0 to M4.
+  Work on an issue only after its implementation plan is approved.
 - **Goal:** learning and portfolio first. It also replaces an ad-heavy sudoku app. An App Store
   release is possible, not a goal.
 
@@ -122,7 +122,11 @@ Work is tracked in GitHub issues. Use the `gh` CLI.
 
 1. Every change starts from an issue. If no issue exists, propose one to the developer. Do not
    create it without approval.
-2. Each issue has one `type:` label, one `area:` label and a milestone (`M0` to `M3`).
+2. Each issue has one `type:` label, one `area:` label and a milestone (`M0` to `M4`). An open issue
+   also has one `priority:` label:
+   - `priority: high`: do this next.
+   - `priority: medium`: do this after the high-priority work.
+   - `priority: low`: do this when there is time.
 3. Use the templates in `.github/ISSUE_TEMPLATE/`. Acceptance criteria are a checklist.
 4. An epic groups the issues of one player goal. It uses the `epic.md` template and the label
    `type: epic`. Each issue of the epic is a GitHub sub-issue, with "blocked by" links for its

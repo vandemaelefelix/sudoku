@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-016: Expo Router with a native stack, thin route files
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-12 |
 | Contact | Felix      |
 
@@ -74,3 +74,11 @@ ADR decides the navigation.
   Unistyles 3, Reanimated 4 or VisionCamera 5 on the iPhone.
 - The thin route files become a second home for logic.
 - The app needs tabs, a modal flow or more than about eight routes.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/src/app/` holds the routes and `_layout.tsx` with one `Stack` without a native header (#68).
+- Each route file renders one feature screen. The stack now also has `stats`, `sign-in` and `sign-up`.
+- #51 is closed, with every acceptance criterion met. Its criteria use the routes of this ADR.

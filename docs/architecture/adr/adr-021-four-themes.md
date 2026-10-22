@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-021: Four themes, one theme registry and the first theme decorations
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-13 |
 | Contact | Felix      |
 
@@ -149,3 +149,14 @@ A given used Instrument Serif and a typed digit used Instrument Sans Medium. The
 1. **A typed digit uses Instrument Serif Italic.** The `entry` role of Op-art is `InstrumentSerif-Italic`, weight 400, at 28 points. The upright reads as print and the italic reads as a hand. So the style, not only the colour, tells a typed digit from a given.
 2. **A fifth Op-art file.** `InstrumentSerif-Italic.ttf` joins the bundled fonts. It uses the licence file of Instrument Serif. A change of the font list needs a new development build.
 3. **Notes stay in Instrument Sans Medium.** A serif italic at 11 points is hard to read.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- Decisions 1, 2 and 3 are superseded by [ADR-025](adr-025-opart-colourways.md) and
+  [ADR-026](adr-026-appearance.md). The other points stand.
+- `mobile/src/theme/themes/registry.ts` is the one theme registry (#85).
+- `mobile/src/theme/decorations/registry.ts` holds the theme decorations (#85).
+- `mobile/assets/fonts/` holds the static fonts with their OFL licences. ADR-025 removed the fonts of Progressive.
+- #188 built the amendment of 2026-10-21: typed digits in Instrument Serif Italic.
