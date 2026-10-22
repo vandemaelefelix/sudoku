@@ -31,5 +31,8 @@ export const styles = StyleSheet.create((theme) => ({
   close: { alignItems: 'center', justifyContent: 'center' },
   textBox: { flex: 1 },
   text: { ...roleText(theme.type.body), color: theme.colors.text },
+  // A link under the text, so it scrolls with the text under Dynamic Type. Its height is a touch target.
+  learn: { flexDirection: 'row', alignItems: 'center', gap: theme.space.xs, minHeight: theme.size.touch },
+  learnText: { ...roleText(theme.type.label), color: theme.colors.accent },
   buttons: { flexDirection: 'row', gap: theme.space.sm },
 }))

@@ -6,7 +6,7 @@ import { Stack } from 'expo-router'
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library'
 import { Alert, type AlertButton } from 'react-native'
 import { useReducedMotion } from 'react-native-reanimated'
-import { createGame, generate, grade, type Game } from '@sudoku/core'
+import { createGame, generate, grade, hintText, planHint, type Game } from '@sudoku/core'
 import { formatPuzzleNumber } from '@/game/utils/finish.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { newGame, wonGame } from '@/storage/repositories.contract'
@@ -14,6 +14,8 @@ import GameRoute from '@/app/game'
 import HomeRoute from '@/app/index'
 import ScanRoute from '@/app/scan'
 import SettingsRoute from '@/app/settings'
+import TechniqueRoute from '@/app/techniques/[technique]'
+import TechniquesRoute from '@/app/techniques/index'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
 
@@ -39,6 +41,8 @@ function renderApp(storage: GameStorage = createMemoryStorage(), owner: string |
     game: GameRoute,
     scan: ScanRoute,
     settings: SettingsRoute,
+    'techniques/index': TechniquesRoute,
+    'techniques/[technique]': TechniqueRoute,
   })
   return storage
 }
@@ -458,4 +462,32 @@ it('starts and finishes a game for the signed-in owner', async () => {
     expect(await storage.history.list('user-alice')).toMatchObject([{ id: lost.id, result: 'lost' }]),
   )
   expect(await storage.history.list(null)).toEqual([])
+})
+
+describe('the techniques screen', () => {
+  it('opens from Settings, and lists the pages of the techniques', async () => {
+    renderApp()
+    fireEvent.press(await screen.findByRole('button', { name: 'Settings' }))
+    fireEvent.press(await screen.findByRole('button', { name: 'Techniques' }))
+    await waitFor(() => expect(screen).toHavePathname('/techniques'))
+    fireEvent.press(screen.getByRole('button', { name: 'X-wing' }))
+    await waitFor(() => expect(screen).toHavePathname('/techniques/xWing'))
+    expect(screen.getByRole('header', { name: 'X-wing' })).toBeTruthy()
+  })
+
+  it('opens the page of the hint technique from the card, and Back returns to the open hint', async () => {
+    const storage = renderApp()
+    const { game } = await startGame(storage)
+    const plan = planHint(game)
+    if (plan?.kind !== 'steps') throw new Error('expected a plan with steps')
+    const technique = plan.steps[0]!.technique
+    fireEvent.press(screen.getByLabelText('Hint'))
+    fireEvent.press(screen.getByRole('button', { name: 'More help' }))
+    fireEvent.press(screen.getByRole('link', { name: /^Learn more about / }))
+    await waitFor(() => expect(screen).toHavePathname(`/techniques/${technique}`))
+    fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+    await waitFor(() => expect(screen).toHavePathname('/game'))
+    expect(screen.getByTestId('hint-card')).toBeTruthy()
+    expect(screen.getByText(hintText(plan, 0, 2))).toBeTruthy()
+  })
 })

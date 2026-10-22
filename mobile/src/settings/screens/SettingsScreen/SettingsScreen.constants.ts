@@ -17,3 +17,5 @@ export const HAPTICS_ROW = {
   label: 'Haptics',
   description: 'Feel a tap for numbers, mistakes, hints and wins.',
 } as const
+
+export const TECHNIQUES_ROW = { description: 'How each hint finds its digit, with an example board.' } as const

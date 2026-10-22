@@ -111,6 +111,13 @@ describe('the hint card view', () => {
     expect(card.buttons.map((button) => button.action)).toEqual(['hintFill', 'hintTry'])
   })
 
+  it('offers the technique page from rung 2 on', () => {
+    expect(hintCardView(at(0, 1)).technique).toBeNull()
+    expect(hintCardView(at(0, 2)).technique).toBe(elimination.technique)
+    expect(hintCardView(at(1, 4)).technique).toBe(single.technique)
+    expect(hintCardView({ plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' }).technique).toBeNull()
+  })
+
   it('says "Nice." on the strip once the player placed the target', () => {
     expect(hintCardView(at(1, 4, 'nice')).text).toBe('Nice.')
   })
