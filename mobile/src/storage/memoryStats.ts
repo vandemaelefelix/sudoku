@@ -50,7 +50,7 @@ export function createMemoryStatsRepository(
       )
       return wins
         .slice(0, count)
-        .toReversed()
+        .reverse()
         .map((entry) => entry.playedMs)
     },
     async streak(timeZone, filter) {

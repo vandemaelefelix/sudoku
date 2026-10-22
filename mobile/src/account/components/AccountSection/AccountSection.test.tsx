@@ -230,7 +230,11 @@ describe('delete account', () => {
   })
 
   it('disables both rows and shows a hint while it deletes, and takes one tap only', async () => {
-    const gate = Promise.withResolvers<DeleteAccountResult>()
+    let resolveGate!: (result: DeleteAccountResult) => void
+    const gate = {
+      promise: new Promise<DeleteAccountResult>((resolve) => (resolveGate = resolve)),
+      resolve: (result: DeleteAccountResult) => resolveGate(result),
+    }
     const { control } = await setup(gate.promise)
     answerAlert('Delete account')
     await press()

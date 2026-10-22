@@ -48,6 +48,13 @@ Run lint, typecheck and tests before you say a task is done.
   and the Dutch message to `nl.ts` in the same change. Use a word of `nl.words.md` for each term. Read the formatter with
   `useIntl` from `@/i18n/hooks/useIntl`. A util gets it as a `Formatter` parameter. `just lint` refuses literal text
   (`sudoku/no-literal-text`). `expo-localization` is a native module, so a change to it needs a new development build.
+- Do not call a method of ES2023 or later: `toSorted`, `toReversed`, `toSpliced`, `with`, `findLast`, `findLastIndex`,
+  `Object.groupBy` or `Promise.withResolvers`. The app runs on Hermes, which lacks them.
+  - `mobile/tsconfig.json` sets `lib` to ES2022, so `just typecheck` refuses them. The rule holds in tests too: Jest runs
+    on Node, which has them, so a test hides the crash.
+  - Sort or reverse a copy: `[...items].sort(...)`. `.oxlintrc.json` turns off `unicorn/no-array-sort` and
+    `unicorn/no-array-reverse` for `mobile/`, because both ask for `toSorted` and `toReversed`. So no lint rule checks
+    the copy. Make sure the array is not shared before `sort` or `reverse` changes it.
 - Navigation follows ADR-016: Expo Router 57. A route file in `src/app/` only renders one screen
   from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
   state, styles or tests in `src/app/`. A route param is a URL string. Load data from a

@@ -103,7 +103,8 @@ describe('migrate', () => {
     const first = openNodeDatabase(file.path)
     const second = openNodeDatabase(file.path)
     try {
-      const gate = Promise.withResolvers<void>()
+      let openGate!: () => void
+      const gate = { promise: new Promise<void>((resolve) => (openGate = resolve)), resolve: () => openGate() }
       const late: SqlDatabase = {
         ...second,
         withExclusiveTransactionAsync: async (task) => {

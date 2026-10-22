@@ -334,7 +334,7 @@ describe('capture', () => {
     const falseBefore = new Set(calls.filter(([prepare]) => prepare() === false))
     runFrames(0.4)
     // The status bar reaction is the one whose condition the dim turns from false to true.
-    const [, react] = calls.findLast((call) => falseBefore.has(call) && call[0]() === true)!
+    const [, react] = [...calls].reverse().find((call) => falseBefore.has(call) && call[0]() === true)!
     await act(async () => react(true, false))
     expect(screen.getByTestId('status-bar').props.accessibilityLabel).toBe('dark')
   })

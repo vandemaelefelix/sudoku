@@ -71,7 +71,7 @@ export const NO_HINT_TIMINGS: HintTimings = {
 }
 
 /** Each cell once, in reading order. */
-const inOrder = (cells: readonly number[]): number[] => [...new Set(cells)].toSorted((a, b) => a - b)
+const inOrder = (cells: readonly number[]): number[] => [...new Set(cells)].sort((a, b) => a - b)
 
 const focusOf = (highlight: HintHighlight | null): number[] =>
   inOrder(highlight?.units.flatMap((unit) => UNITS[unit] ?? []) ?? [])

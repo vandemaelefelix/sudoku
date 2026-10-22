@@ -32,8 +32,8 @@ describe('the catalogues', () => {
 
   it('give the Dutch message the same arguments and tags as the English one', () => {
     for (const id of ids) {
-      const english = [...argumentsOf(parse(CATALOGUES.en[id]))].toSorted()
-      const dutch = [...argumentsOf(parse(CATALOGUES.nl[id]))].toSorted()
+      const english = [...argumentsOf(parse(CATALOGUES.en[id]))].sort()
+      const dutch = [...argumentsOf(parse(CATALOGUES.nl[id]))].sort()
       expect([id, dutch]).toEqual([id, english])
     }
   })
