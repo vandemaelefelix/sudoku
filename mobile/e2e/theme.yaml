@@ -12,6 +12,9 @@ appId: com.vandemaelefelix.sudoku.dev
     id: theme-forest
 - tapOn:
     id: appearance-colour
+- assertVisible:
+    id: theme-forest
+    selected: true
 - killApp
 - launchApp
 - tapOn:
