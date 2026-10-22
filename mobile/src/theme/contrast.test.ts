@@ -14,8 +14,6 @@ const TEXT_PAIRS: Pair[] = [
   ['accent on background', (t) => t.colors.accent, (t) => t.colors.background],
   ['accent on surface', (t) => t.colors.accent, (t) => t.colors.surface],
   ['accent on accent soft', (t) => t.colors.accent, (t) => t.colors.accentSoft],
-  // The hint strip: its text on its fill.
-  ['text on accent soft', (t) => t.colors.text, (t) => t.colors.accentSoft],
   ['on-accent on accent', (t) => t.colors.onAccent, (t) => t.colors.accent],
   ['warning text on warning surface', (t) => t.colors.warningText, (t) => t.colors.warningSurface],
   ['danger on surface', (t) => t.colors.danger, (t) => t.colors.surface],
@@ -81,7 +79,6 @@ const SHAPE_PAIRS: Pair[] = [
   // The worst case of the hatch: a white digit over a stripe, which is the stripe colour laid over the conflict fill.
   ['conflict digit on a stripe of the hatch', (t) => t.components.cell.conflict, hatchStripe],
   ['selection ring on the selected cell', (t) => t.components.cell.ring, (t) => t.components.cell.selected],
-  ['close icon of the hint strip on its fill', (t) => t.colors.textMuted, (t) => t.colors.accentSoft],
   ['filled rung dot of the hint card on its surface', (t) => t.colors.accent, (t) => t.colors.surface],
   // A hint role can land on a plain cell, inside a focus unit or on the selected cell.
   ...(['hintFocusLine', 'hintPattern', 'hintSupport', 'hintStrike', 'hintTarget'] as const).flatMap((role) =>

@@ -50,12 +50,10 @@ it('turns notes mode on and off', () => {
   expect(screen.getByLabelText('Notes')).not.toBeSelected()
 })
 
-it('marks the Hint tool as active while a hint is open, and ends the hint on a second tap', () => {
+it('opens a hint on the grid with the Hint tool', () => {
   renderTools()
   fireEvent.press(screen.getByLabelText('Hint'))
-  expect(screen.getByLabelText('Hint')).toBeSelected()
-  fireEvent.press(screen.getByLabelText('Hint'))
-  expect(screen.getByLabelText('Hint')).not.toBeSelected()
+  expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
 })
 
 it('makes every tool a touch target of 52 pt', () => {

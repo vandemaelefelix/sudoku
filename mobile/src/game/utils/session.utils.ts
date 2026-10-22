@@ -52,17 +52,11 @@ export type Session = {
   hint: OpenHint | null
 }
 
-/**
- * The hint that the player reads (ADR-032). step: the index of the step that shows.
- * - card: the hint card replaces the keypad.
- * - strip: the player tries the step alone. The hint strip and the highlight stay.
- * - nice: the player placed the target digit. The hint is over, and the strip says so for a moment.
- */
+/** The hint that the player reads on the hint card (ADR-032). step: the index of the step that shows. */
 export type OpenHint = {
   plan: HintPlan
   step: number
   rung: HintRung
-  view: 'card' | 'strip' | 'nice'
 }
 
 export type SessionAction =
@@ -78,18 +72,10 @@ export type SessionAction =
   | { type: 'tick'; elapsedMs: number }
 
 /**
- * The buttons of the hint card and the strip. hintMore: the next rung. hintAnswer: the answer rung of the last step.
- * hintNext: the next step. hintTry: "Try it" and "I'll do it". hintOpen: a tap on the strip. hintErase: "Erase it".
+ * The buttons of the hint card. hintMore: the next rung. hintAnswer: the answer rung of the last step.
+ * hintNext: the next step. hintErase: "Erase it".
  */
-export type HintCardAction =
-  | 'hintMore'
-  | 'hintAnswer'
-  | 'hintNext'
-  | 'hintFill'
-  | 'hintTry'
-  | 'hintOpen'
-  | 'hintClose'
-  | 'hintErase'
+export type HintCardAction = 'hintMore' | 'hintAnswer' | 'hintNext' | 'hintFill' | 'hintClose' | 'hintErase'
 
 /** A new game from its givens, or a saved game to resume as it is. */
 export type GameStart = NewGame | Game
@@ -164,15 +150,13 @@ function showRung(session: Session, hint: OpenHint, index: number, rung: HintRun
   return revealed(next, hint.plan.answer)
 }
 
-/** The Hint tool: plans a new hint, opens the card from the strip, or ends the hint while the card shows. */
+/** The Hint tool: plans a new hint, or ends the open one. */
 function hintTool(session: Session): Session {
-  const hint = session.hint
-  if (hint?.view === 'card') return withHint(session, null)
-  if (hint?.view === 'strip') return withHint(session, { ...hint, view: 'card' })
+  if (session.hint !== null) return withHint(session, null)
   if (session.game.status !== 'playing') return session
   const plan = planHint(session.game)
-  if (plan === null) return withHint(session, null)
-  const next = withHint(session, { plan, step: 0, rung: 1, view: 'card' })
+  if (plan === null) return session
+  const next = withHint(session, { plan, step: 0, rung: 1 })
   // The fallback card shows its answer at once.
   return plan.kind === 'fallback' ? revealed(next, plan.answer) : next
 }
@@ -195,7 +179,6 @@ function eraseMistake(session: Session, plan: HintPlan): Session {
 function hintCard(session: Session, type: HintCardAction): Session {
   const hint = session.hint
   if (hint === null) return session
-  if (hint.view === 'nice') return type === 'hintClose' ? withHint(session, null) : session
   const { plan, step: index, rung } = hint
   const steps = plan.kind === 'steps'
   switch (type) {
@@ -210,10 +193,6 @@ function hintCard(session: Session, type: HintCardAction): Session {
     case 'hintFill':
       // The card offers Fill it only once the answer shows: on the fallback, or on rung 4 of the last step.
       return plan.kind === 'fallback' || (rung === 4 && index === lastStep(plan)) ? fillAnswer(session, plan) : session
-    case 'hintTry':
-      return withHint(session, { ...hint, view: 'strip' })
-    case 'hintOpen':
-      return withHint(session, { ...hint, view: 'card' })
     case 'hintClose':
       return withHint(session, null)
     case 'hintErase':
@@ -222,19 +201,14 @@ function hintCard(session: Session, type: HintCardAction): Session {
 }
 
 /**
- * The open hint after an action (ADR-032 point 14). The target digit gives "Nice.". Any other entry, an erase, an undo,
- * a pause and the end of the game end the hint. A notes edit and a selection keep it.
+ * The open hint after an action (ADR-032 point 14). An entry, an erase, an undo, a pause and the end of the game end
+ * the hint. A notes edit and a selection keep it.
  */
 function hintAfter(before: Session, after: Session, action: SessionAction): OpenHint | null {
   const hint = after.hint
   if (hint === null || after.game.status !== 'playing') return null
   const boardMove = (action.type === 'digit' && !before.notesMode) || action.type === 'erase' || action.type === 'undo'
-  if (!boardMove || after.game === before.game) return hint
-  if (action.type === 'digit' && hint.plan.kind !== 'mistake' && hint.view !== 'nice') {
-    const { cell, digit } = hint.plan.answer
-    if (after.game.entries[cell] === digit && before.game.entries[cell] !== digit) return { ...hint, view: 'nice' }
-  }
-  return null
+  return boardMove && after.game !== before.game ? null : hint
 }
 
 function step(session: Session, action: SessionAction): Session {
@@ -253,8 +227,6 @@ function step(session: Session, action: SessionAction): Session {
     case 'hintAnswer':
     case 'hintNext':
     case 'hintFill':
-    case 'hintTry':
-    case 'hintOpen':
     case 'hintClose':
     case 'hintErase':
       return hintCard(session, action.type)

@@ -67,36 +67,45 @@ Each step has four **rungs**. The player moves down one rung with each tap on "M
 "Show answer" jumps to the answer of the last step. Cell names are plain words, such as "row 4,
 column 9". A box has the name of its place, such as "the top-left box".
 
-### The card and the strip
+### The card
 
-The **hint card** replaces the keypad. It has the same height, so the grid does not move. The
-card is not modal. The player can still tap the grid.
-
-"I'll do it" brings back the keypad. The **hint strip** then shows between the grid and the
-tools. It reminds the player of the hint. A tap on the strip brings back the card.
+The **hint card** replaces the tool row and the keypad. Both stay in the layout under the card, so
+the grid does not move. The card sizes to its content. Its largest height is the height of the tool
+row plus the keypad. The card is not modal. The player can still tap the grid.
 
 The card has these parts:
 
 - The top row: "Hint", or the technique name from rung 2 on. Then "Step 1 of 2" when the plan has more than
   one step, the four rung dots and a close button.
-- The text of the rung. It scrolls under Dynamic Type. VoiceOver reads each new text.
-- The buttons. They stay at the bottom and are at least 44 pt high.
+- The text of the rung. It scrolls only when Dynamic Type makes it taller than the card. VoiceOver reads each new text.
+- The buttons. One filled main button sits on the right. The other actions are text buttons on the left. Each button
+  is at least 44 pt high, and no label wraps onto two lines.
 
-| Card | Buttons |
-| --- | --- |
-| Rungs 1 to 3 | More help, Show answer, Try it |
-| Rung 4 of an elimination step | Next step |
-| Rung 4 of the last step | Fill it, I'll do it |
-| A wrong entry | Erase it |
-| The fallback | Fill it, I'll do it |
+| Card | Main button | Text buttons |
+| --- | --- | --- |
+| Rung 1 | More help | Show answer |
+| Rungs 2 and 3 | More help | Learn more, Show answer |
+| Rung 4 of an elimination step | Next step | Learn more |
+| Rung 4 of the last step | Fill it | Learn more |
+| A wrong entry | Erase it | |
+| The fallback | Fill it | |
 
-From rung 2 on, "Learn more" under the text opens the **technique page** of the step. The game
-stays under the page, so Back returns to the game with the hint still open. The clock counts
-while the page shows.
+A hint has two ways out. Close (X) ends the hint and clears the highlight. The player then finds the
+digit alone. "Fill it" places the answer.
 
-The card and the strip only fade, so Reduce Motion changes nothing. The open hint lives in the session
-reducer of the app: the plan, the step, the rung and the view (card, strip or "Nice."). The saved game
-does not keep it.
+"Learn more" opens the **technique page** of the step. The game stays under the page, so Back
+returns to the game with the hint still open. The clock counts while the page shows.
+
+The card moves with the motion of the game screen:
+
+| Event | Motion | With Reduce Motion |
+| --- | --- | --- |
+| Open | The tool row and the keypad sink and fade. The card rises into their place | Fades only |
+| Close | The card sinks and fades. The tool row and the keypad rise back | Fades only |
+| Rung change | The card height eases to the new text. The text cross-fades. The rung dots fill in turn | The height changes at once. The fades stay |
+
+The open hint lives in the session reducer of the app: the plan, the step and the rung. The saved
+game does not keep it.
 
 ### Highlight roles
 
@@ -122,7 +131,7 @@ The roles grow with the rungs, so the grid tells no more than the card:
 | Answer | The target cell |
 
 The candidates that earlier steps struck stay struck. A wrong entry shows as a pattern cell. The
-fallback shows only its target cell. The highlight stays while the strip shows.
+fallback shows only its target cell. The highlight goes when the hint ends.
 
 The grid draws each role with these shapes. The colours are the `components.cell.hint*` tokens of the theme.
 
@@ -158,9 +167,8 @@ The screens track and send nothing (SUD-02).
 
 ### Special cases
 
-- **A wrong entry.** The hint starts with one card: "Erase it first". The card has two
-  buttons. "Erase it" erases the entry and ends the hint. Close ends the hint and leaves the
-  entry. The player taps Hint again for the real hint. This card does not count.
+- **A wrong entry.** The hint starts with one card: "Erase it first". "Erase it" erases the
+  entry and ends the hint. Close ends the hint and leaves the entry. The player taps Hint again for the real hint. This card does not count.
 - **The fallback.** The planner decides it before the card opens. It applies when no technique
   fits, or when no placement appears within 6 steps. The card says so. It reveals the empty cell
   with the fewest candidates. This hint counts once, when the fallback card shows.
@@ -189,49 +197,40 @@ stateDiagram-v2
     [*] --> Look: Hint
     [*] --> Fallback: Hint, the planner finds no plan
     Erase --> [*]: Erase it
-    Erase --> [*]: Close
-    Look --> Technique: Next
-    Technique --> Why: Next
-    Why --> Answer: Next
+    Look --> Technique: More help
+    Technique --> Why: More help
+    Why --> Answer: More help
     Look --> Answer: Show answer
     Technique --> Answer: Show answer
     Why --> Answer: Show answer
-    Look --> Strip: I'll do it
-    Technique --> Strip: I'll do it
-    Why --> Strip: I'll do it
-    Strip --> Look: strip tapped
     Answer --> Look: Next step, an elimination step
     Answer --> [*]: Fill it, a placement step
-    Strip --> Look: elimination applied, next step
-    Strip --> [*]: the player places the target digit
     Fallback --> [*]: Fill it
-    Erase --> [*]: Undo
-    Look --> [*]: Close or Undo
-    Technique --> [*]: Close or Undo
-    Why --> [*]: Close or Undo
-    Answer --> [*]: Close or Undo
-    Strip --> [*]: Close or Undo
-    Fallback --> [*]: Close or Undo
+    Erase --> [*]: Close
+    Look --> [*]: Close
+    Technique --> [*]: Close
+    Why --> [*]: Close
+    Answer --> [*]: Close
+    Fallback --> [*]: Close
 ```
 
-Look, Technique, Why and Answer show the hint card. Strip shows the hint strip. A tap on the strip
-returns the card at the rung where the player left it.
+Every state shows the hint card.
 
 A hint ends in these cases:
 
-- **Fill it, or the target digit placed.** The hint ends at a placed digit.
-- **Close.** The player closes the card or the strip.
-- **Undo.** Undo ends an open hint. Undo never changes the hints used, as it never changes the
-  mistakes. A counted answer stays counted.
+- **Fill it.** The hint ends at a placed digit.
+- **Close.** The player closes the card, and then finds the digit alone.
 - **A pause.** A pause ends the hint. The game does not save a hint in progress. A new Hint
   builds a new plan.
-- **A stale plan.** The player changes the board so that the plan no longer fits. The hint
-  ends. A new Hint builds a new plan.
 - **The game ends.** A lost or won game ends the hint.
 
+The card covers the tool row and the keypad, so the player cannot enter, erase or undo while it
+shows. The reducer still ends the hint on an entry, an erase or an undo, as decision 14 of ADR-032
+says. A selection on the grid keeps the hint open.
+
 Counting happens when the Answer rung opens, when the player taps "Fill it", and when the
-fallback card shows. Close never counts. If the player places the target digit alone, the hint
-counts only if the Answer rung was open.
+fallback card shows. Close never counts. A close at the answer rung keeps the count that the answer
+rung made. A digit that the player places after a close does not count.
 
 An elimination step has no placement. At its Answer rung, "Next step" opens the Look rung of the
 next step. The plan has at most 6 steps. If no placement appears within 6 steps, the planner
@@ -243,7 +242,7 @@ makes the fallback card before the hint opens.
 | --- | --- |
 | The shape and the colour of each role | Decided: the shape table under "Highlight roles" and the `components.cell.hint*` tokens |
 | The text of each technique | Decided: the messages of `HINT_TECHNIQUES` in `@sudoku/core`, written from the catalogues of the app (ADR-033) |
-| The layout of the card on a small phone | Issue #196 |
+| The layout of the card on a small phone | Decided: the card sizes to its text, up to the height of the tools and the keypad. The text scrolls above that (ADR-032, amendment of 2026-10-22) |
 | Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |
 | VoiceOver reading of the card and the highlights | Not planned |
 

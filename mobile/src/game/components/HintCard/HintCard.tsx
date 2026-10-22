@@ -1,16 +1,29 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { AccessibilityInfo, Pressable, ScrollView, Text, View } from 'react-native'
-import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  ReduceMotion,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated'
+import { useUnistyles } from 'react-native-unistyles'
 import type { TechniqueId } from '@sudoku/core'
 import { PanelButton } from '@/components/PanelButton'
 import { Icon } from '@/game/components/Icon'
+import { HINT_SLIDE } from '@/game/constants/hint.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { hintCardView } from '@/game/utils/hint.utils'
-import { useIntl } from '@/i18n/hooks/useIntl'
 import type { OpenHint } from '@/game/utils/session.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
-import { easeOut } from '@/utils/motion.utils'
-import { CARD_FADE_MS, CLOSE_SLOP, RUNGS, TOP_MAX_SCALE } from './HintCard.constants'
+import { easeOut, riseIn, sinkOut } from '@/utils/motion.utils'
+import { CLOSE_SLOP, CONTROL_MAX_SCALE, DOT_FILL_MS, RUNGS } from './HintCard.constants'
 import { styles } from './HintCard.styles'
 
 type HintCardProps = {
@@ -19,44 +32,67 @@ type HintCardProps = {
   onLearn?: ((technique: TechniqueId) => void) | undefined
 }
 
+/** hint-<action> for the end-to-end flows, such as hint-more for hintMore. */
+const testIdOf = (action: string) => `hint-${action.slice('hint'.length).toLowerCase()}`
+
 /**
- * The hint card, in place of the keypad (ADR-032 point 6). It is not modal: the grid stays live. The text scrolls under
- * Dynamic Type, and the buttons stay at the bottom. The card only fades in, so Reduce Motion needs nothing more.
- * VoiceOver reads each new text through an announcement: iOS has no live region.
+ * The hint card, in place of the tool row and the keypad (ADR-032, amendment of 2026-10-22). It is not modal: the grid
+ * stays live. It rises in and sinks out, its height eases to each new text, and the text cross-fades. With Reduce Motion,
+ * only the fades stay. VoiceOver focus moves to the title when the card opens, because the Hint tool that had it is now
+ * hidden. VoiceOver reads each new text through an announcement: iOS has no live region.
  */
 export function HintCard({ hint, onLearn }: HintCardProps) {
   const { hintCard } = useGameActions()
   const intl = useIntl()
+  const { theme } = useUnistyles()
+  const reduceMotion = useReducedMotion()
   const { title, text, rung, stepLabel, buttons, technique } = hintCardView(intl, hint)
   const spoken = stepLabel === null ? text : `${stepLabel}. ${text}`
+  const titleRef = useRef<Text>(null)
+  useEffect(() => {
+    if (titleRef.current) AccessibilityInfo.sendAccessibilityEvent(titleRef.current, 'focus')
+  }, [])
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(spoken)
   }, [spoken])
-  const opacity = useSharedValue(0)
+  const filled = useSharedValue(rung ?? 0)
   useEffect(() => {
-    opacity.set(withTiming(1, { duration: CARD_FADE_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }))
-  }, [opacity])
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }))
+    const target = rung ?? 0
+    const duration = Math.abs(target - filled.get()) * DOT_FILL_MS
+    filled.set(withTiming(target, { duration, easing: Easing.linear, reduceMotion: ReduceMotion.Never }))
+  }, [rung, filled])
+  const slide = reduceMotion ? 0 : HINT_SLIDE
+  const fadeIn = FadeIn.duration(theme.motion.short).easing(easeOut).reduceMotion(ReduceMotion.Never)
+  const fadeOut = FadeOut.duration(theme.motion.short).easing(easeOut).reduceMotion(ReduceMotion.Never)
+  const [main, ...others] = buttons
+  const learn = technique !== null && onLearn !== undefined
   return (
-    <Animated.View testID="hint-card" style={[styles.card, fadeStyle]}>
+    <Animated.View
+      testID="hint-card"
+      entering={riseIn(0, slide, theme.motion.medium)}
+      exiting={sinkOut(slide, theme.motion.medium)}
+      // The height glide moves the top edge, so Reduce Motion drops it.
+      layout={LinearTransition.duration(theme.motion.medium).easing(easeOut)}
+      style={styles.card}
+    >
       <View style={styles.top}>
-        <Text accessibilityRole="header" maxFontSizeMultiplier={TOP_MAX_SCALE} style={styles.title}>
-          {title}
-        </Text>
+        <Animated.View key={title} entering={fadeIn} style={styles.titleBox}>
+          <Text
+            ref={titleRef}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={CONTROL_MAX_SCALE}
+            style={styles.title}
+          >
+            {title}
+          </Text>
+        </Animated.View>
         <View style={styles.progress}>
           {stepLabel !== null && (
-            <Text maxFontSizeMultiplier={TOP_MAX_SCALE} style={styles.step}>
+            <Text maxFontSizeMultiplier={CONTROL_MAX_SCALE} style={styles.step}>
               {stepLabel}
             </Text>
           )}
-          {rung !== null &&
-            RUNGS.map((dot) => (
-              <View
-                key={dot}
-                testID={`hint-rung-${dot}${dot <= rung ? '-on' : ''}`}
-                style={[styles.dot, dot <= rung && styles.dotOn]}
-              />
-            ))}
+          {rung !== null && RUNGS.map((dot) => <RungDot key={dot} dot={dot} on={dot <= rung} filled={filled} />)}
         </View>
         <Pressable
           accessibilityRole="button"
@@ -69,32 +105,82 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
         </Pressable>
       </View>
       <ScrollView style={styles.textBox}>
-        <Text style={styles.text}>{text}</Text>
-        {technique !== null && onLearn !== undefined && (
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel={intl.formatMessage({ id: 'hint.button.learnMoreLabel' }, { technique: title })}
-            onPress={() => onLearn(technique)}
-            style={({ pressed }) => [styles.learn, pressed && pressedStyles.pressed]}
-          >
-            <Text style={styles.learnText}>{intl.formatMessage({ id: 'hint.button.learnMore' })}</Text>
-            <Icon name="next" tone="accent" size={16} />
-          </Pressable>
-        )}
+        <Animated.View key={text} entering={fadeIn} exiting={fadeOut}>
+          <Text style={styles.text}>{text}</Text>
+        </Animated.View>
       </ScrollView>
       <View testID="hint-buttons" style={styles.buttons}>
-        {buttons.map((button, index) => (
-          <PanelButton
+        {learn && (
+          <TextButton
+            testID="hint-learn"
+            role="link"
+            label={intl.formatMessage({ id: 'hint.button.learnMore' })}
+            accessibilityLabel={intl.formatMessage({ id: 'hint.button.learnMoreLabel' }, { technique: title })}
+            onPress={() => onLearn(technique)}
+          >
+            <Icon name="next" tone="accent" size={16} />
+          </TextButton>
+        )}
+        {others.map((button) => (
+          <TextButton
             key={button.action}
-            testID={`hint-${button.action.slice('hint'.length).toLowerCase()}`}
+            testID={testIdOf(button.action)}
+            role="button"
             label={button.label}
-            kind={index === 0 ? 'primary' : 'second'}
-            grow
-            compact
             onPress={() => hintCard(button.action)}
           />
         ))}
+        {main !== undefined && (
+          <View style={styles.main}>
+            <PanelButton
+              testID={testIdOf(main.action)}
+              label={main.label}
+              kind="primary"
+              compact
+              onPress={() => hintCard(main.action)}
+            />
+          </View>
+        )}
       </View>
     </Animated.View>
+  )
+}
+
+type RungDotProps = { dot: number; on: boolean; filled: SharedValue<number> }
+
+/** filled counts the filled dots and eases between rungs, so each dot fills after the one before it. */
+function RungDot({ dot, on, filled }: RungDotProps) {
+  const fillStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, filled.get() - (dot - 1))) }))
+  return (
+    <View testID={`hint-rung-${dot}${on ? '-on' : ''}`} style={styles.dot}>
+      <Animated.View style={[styles.dotFill, fillStyle]} />
+    </View>
+  )
+}
+
+type TextButtonProps = {
+  testID: string
+  role: 'button' | 'link'
+  label: string
+  accessibilityLabel?: string
+  onPress(): void
+  children?: ReactNode
+}
+
+/** An action next to the main button: the accent text alone, with a touch target of 44 pt. */
+function TextButton({ testID, role, label, accessibilityLabel, onPress, children }: TextButtonProps) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole={role}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({ pressed }) => [styles.textButton, pressed && pressedStyles.pressed]}
+    >
+      <Text numberOfLines={1} maxFontSizeMultiplier={CONTROL_MAX_SCALE} style={styles.textButtonText}>
+        {label}
+      </Text>
+      {children}
+    </Pressable>
   )
 }
