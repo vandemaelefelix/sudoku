@@ -22,7 +22,7 @@ _DIGIT_KIND_TARGETS = {k: kind_index(k) for k in ("printed", "handwritten")}
 class RealCell:
     path: Path
     sample: Sample
-    trusted: bool  # False for a scan cell that the player left as the model answered
+    trusted: bool  # False for a scan cell that no person has verified
 
 
 def cell_paths(cells_dir: Path) -> list[Path]:
@@ -36,7 +36,8 @@ def read_real_cells(data: DataPaths) -> list[RealCell]:
 
     A cell of a scan photo carries the id of that photo, so that its cells stay on one side of the
     split. Other cells keep their old grouping, so a new scan does not move them. A cell of a scan
-    whose outline is not `accepted` is left out: an unchecked outline can cut every cell wrong."""
+    whose first source photo has an outline that is not `accepted` is left out, unless a person
+    verified the cell: an unchecked outline can cut every cell wrong."""
     table = {stem_of(c): row for c, row in read_cells(data.cells_csv).items()}
     photos = [p for p in read_photos(data.photos_csv) if p.source == APP_SCAN]
     scans = {p.photo_id for p in photos}
@@ -44,7 +45,9 @@ def read_real_cells(data: DataPaths) -> list[RealCell]:
     cells = []
     for path in cell_paths(data.cells):
         row = table.get(path.stem)
-        if row and row.source and row.source[0] in unchecked:
+        # The code reads only the first source photo of the row. It keeps a verified cell: a person
+        # checked its pixels, so a later unchecked outline of the same pixels does not drop it.
+        if row and row.source and row.source[0] in unchecked and row.label_source != "verified":
             continue
         label = path.parent.name
         if label == "empty":
@@ -58,14 +61,14 @@ def read_real_cells(data: DataPaths) -> list[RealCell]:
     return cells
 
 
-def training_cells(cells: list[RealCell], include_unedited: bool = False) -> list[RealCell]:
-    """The cells that training uses. A cell with the label source `app-unedited` is left out
-    unless `include_unedited` is set: the player only left the model's own answer."""
-    return [c for c in cells if include_unedited or c.trusted]
+def training_cells(cells: list[RealCell]) -> list[RealCell]:
+    """The cells that training uses. A scan cell with the label source `app-edited` or
+    `app-unedited` is left out until a person verifies it (ADR-030, amendment 2026-10-22)."""
+    return [c for c in cells if c.trusted]
 
 
-def load_cells(data: DataPaths, include_unedited: bool = False) -> list[Sample]:
-    return [c.sample for c in training_cells(read_real_cells(data), include_unedited)]
+def load_cells(data: DataPaths) -> list[Sample]:
+    return [c.sample for c in training_cells(read_real_cells(data))]
 
 
 def dhash(image: np.ndarray) -> int:
@@ -112,12 +115,10 @@ def split_cells(
     cells: list[RealCell],
     fractions: tuple[float, float, float],
     seed: int,
-    include_unedited: bool = False,
 ) -> tuple[list[RealCell], list[RealCell], list[RealCell]]:
     """Train, validation and test cells. Training and the Check screen both call this function,
-    so that they agree on the test split. The Check screen cannot know the training flag
-    and uses the default."""
-    chosen = training_cells(cells, include_unedited)
+    so that they agree on the test split."""
+    chosen = training_cells(cells)
     sides = split_by_group(group_ids([c.sample for c in chosen]), fractions, seed)
     return tuple([chosen[i] for i in side] for side in sides)
 

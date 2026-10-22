@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from test_label_store import Clock, add_cell, build, pattern
+from test_label_store import Clock, add_cell, build, pattern, save_kinds
 
 from sudoku_ml.label_server import main
 from sudoku_ml.label_store import LabelStore
@@ -15,18 +15,18 @@ def reopened(paths) -> LabelStore:
 
 
 def test_every_save_is_in_the_files_when_its_call_returns(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2, "unlabeled": 3}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2, "unlabeled": 3})
     store = LabelStore(paths, Clock())
     waiting = ids["unlabeled"]
 
-    store.assign(
-        [{"id": waiting[0], "digit": "2"}, {"id": waiting[1], "digit": "discarded"}], "digits"
+    store.confirm_digits(
+        [{"id": waiting[0], "digit": "2"}, {"id": waiting[1], "digit": "discarded"}]
     )
     again = reopened(paths)
     assert (again.folder[waiting[0]], again.folder[waiting[1]]) == ("2", "discarded")
     assert again.folder[waiting[2]] == "unlabeled"
 
-    store.save([{"id": ids["7"][0], "kind": "printed"}], "groups")
+    save_kinds(store, [{"id": ids["7"][0], "kind": "printed"}])
     assert reopened(paths).kinds()[ids["7"][0]] == "printed"
 
     store.move(ids["7"][1], "3", "groups")
@@ -39,9 +39,9 @@ def test_every_save_is_in_the_files_when_its_call_returns(tmp_path: Path):
 
 
 def test_a_stop_between_the_file_move_and_the_log_line_is_repaired(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     cell = ids["7"][0]
-    LabelStore(paths, Clock()).save([{"id": cell, "kind": "handwritten"}], "groups")
+    save_kinds(LabelStore(paths, Clock()), [{"id": cell, "kind": "handwritten"}])
     # The process dies after the move and before the log line.
     move_cells(paths.cells, {cell[:16]: "empty"})
     store = reopened(paths)
@@ -53,7 +53,7 @@ def test_a_stop_between_the_file_move_and_the_log_line_is_repaired(tmp_path: Pat
 
 
 def test_cells_that_the_manifest_does_not_list_are_read_after_a_stop(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     stray = add_cell(paths.cells, "unlabeled", pattern(777))
     store = reopened(paths)
     assert store.folder[stray] == "unlabeled"
@@ -61,7 +61,7 @@ def test_cells_that_the_manifest_does_not_list_are_read_after_a_stop(tmp_path: P
 
 
 def test_a_leftover_temporary_file_does_not_break_the_store_or_the_manifest(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     tmp = paths.work / "tmp"
     tmp.mkdir()
     (tmp / "half.png").write_bytes(b"not a png")
@@ -70,7 +70,7 @@ def test_a_leftover_temporary_file_does_not_break_the_store_or_the_manifest(tmp_
 
 
 def test_the_start_cleans_leftovers_and_prints_what_waits(tmp_path: Path, monkeypatch, capsys):
-    paths, _ = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1, "unlabeled": 2})
     tmp = paths.work / "tmp"
     tmp.mkdir()
     (tmp / "half.png").write_bytes(b"x")

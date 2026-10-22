@@ -7,7 +7,7 @@ import pickle
 import sys
 import traceback
 import webbrowser
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -55,7 +55,7 @@ def make_server(
     }
 
     def prelabel_quietly() -> None:
-        # The cut of an imported photo adds cells to unlabeled/. Without a model they show "?".
+        # An approved outline makes its cells open. Without probabilities they have no order.
         if prelabel is not None:
             try:
                 prelabel()
@@ -63,11 +63,12 @@ def make_server(
                 print(error, file=sys.stderr)
 
     def cut(photos: list[str], decide: Callable[[], object]):
-        imported = any(store.source_of(photo) == "photo" for photo in photos)
         result = decide()
-        if imported:
-            prelabel_quietly()
+        prelabel_quietly()
         return result
+
+    def sure_threshold(body: dict) -> tuple[float, ...]:
+        return (float(body["threshold"]),) if "threshold" in body else ()
 
     def undo() -> dict:
         what = store.undo_target()
@@ -124,6 +125,10 @@ def make_server(
                 kind += "; charset=utf-8"
             self._send(200, target.read_bytes(), kind)
 
+        @staticmethod
+        def _threshold(q: dict) -> tuple[float, ...]:
+            return (float(q["threshold"]),) if "threshold" in q else ()
+
         def _image(self, prefix: str, suffix: str) -> str:
             return urlparse(self.path).path.removeprefix(prefix).removesuffix(suffix)
 
@@ -157,15 +162,10 @@ def make_server(
                     self._json(store.outline_screen(int(q.get("page", 0))))
                 elif url.path == "/api/outline":
                     self._json(store.outline(q["photo"]))
-                elif url.path == "/api/cells":
-                    self._json(store.cell_check(q["digit"]))
-                elif url.path == "/api/digits":
-                    self._json(store.digit_screen(q["digit"], "all"))
-                elif url.path == "/api/kinds":
-                    after = (
-                        (q["folder"], int(q["group"]), int(q["page"])) if "folder" in q else None
-                    )
-                    self._json(store.next_screen(after))
+                elif url.path == "/api/check/digits":
+                    self._json(store.check_digits(q["digit"], *self._threshold(q)))
+                elif url.path == "/api/check/kinds":
+                    self._json(store.check_kinds(q["digit"], *self._threshold(q)))
                 elif url.path == "/api/doubtful":
                     self._json(store.review_screen())
                 elif url.path.startswith("/api/"):
@@ -192,9 +192,14 @@ def make_server(
                     [b["photo"]], lambda: store.fix_outline(b["photo"], b["corners"])
                 ),
                 "/api/outlines/reject": lambda b: store.reject_outline(b["photo"]),
-                "/api/cells/verify": lambda b: store.verify_cells(b["cells"]),
-                "/api/digits/assign": lambda b: store.assign(b["cells"], "digits"),
-                "/api/kinds/save": lambda b: store.save(b["cells"], "groups"),
+                "/api/check/digits/confirm": lambda b: store.confirm_digits(b["cells"]),
+                "/api/check/kinds/confirm": lambda b: store.confirm_kinds(b["cells"]),
+                "/api/check/digits/sure": lambda b: {
+                    "cells": store.sure_digits(b["digit"], *sure_threshold(b))
+                },
+                "/api/check/kinds/sure": lambda b: {
+                    "cells": store.sure_kinds(b["digit"], *sure_threshold(b))
+                },
                 "/api/doubtful/save": lambda b: store.review_save(b["cells"]),
                 "/api/undo": lambda b: undo(),
                 "/api/prelabel": lambda b: prelabel(),
@@ -230,11 +235,15 @@ def make_server(
 
 
 def prelabel_new_cells(
-    paths: DataPaths, ml_root: Path = ML_ROOT, artifacts: Path = ARTIFACTS
+    paths: DataPaths,
+    ml_root: Path = ML_ROOT,
+    artifacts: Path = ARTIFACTS,
+    wanted: Collection[str] | None = None,
 ) -> int:
+    """Guess the `wanted` cells (full ids) with the latest model. Without `wanted`: all cells
+    of unlabeled/ and the digit folders. Raises ValueError without a model or when it fails."""
     # torch loads slowly. Import it here so the server starts fast and the tests need no model.
-    from sudoku_ml.grouping import default_run
-    from sudoku_ml.prelabel import NO_MODEL, write_prelabels
+    from sudoku_ml.prelabel import NO_MODEL, default_run, write_prelabels
 
     try:
         run = default_run(ml_root, artifacts)
@@ -243,7 +252,7 @@ def prelabel_new_cells(
     if run is None or not (run / "model.pt").exists():
         raise ValueError(NO_MODEL)
     try:
-        return write_prelabels(paths.cells, run, paths.prelabels)
+        return write_prelabels(paths.cells, run, paths.prelabels, wanted)
     except (OSError, RuntimeError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise ValueError(f"The pre-label failed: {error}") from error
 
@@ -278,13 +287,21 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
         return 1
     if repaired:
         print(f"Repaired {repaired} kinds of cells outside the digit folders after a stop.")
+
+    def prelabel_open_cells() -> int:
+        try:
+            return prelabel_new_cells(paths, wanted=store.prelabel_targets())
+        finally:
+            # The sudoku signals need the guesses, and their first cut is slow: do it here.
+            store.sudoku_reasons()
+
     try:
-        print(f"Pre-labelled {prelabel_new_cells(paths)} new cells.")
+        print(f"Pre-labelled {prelabel_open_cells()} new cells.")
     except ValueError as error:
         print(error)
     server = make_server(
         store,
-        prelabel=lambda: prelabel_new_cells(paths),
+        prelabel=prelabel_open_cells,
         finish=lambda: finish(store),
         fetch=lambda stage: fetch(paths, stage, BotoAws()),
         sign_in=start_sign_in,

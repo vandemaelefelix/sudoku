@@ -65,7 +65,7 @@ must also accept a signed-out player.
     A scan that the player uploaded while signed out stays under the contributor ID. Account delete does not remove
     it. Deletion by email covers it.
     A retry after a lost response can leave two rows for one scan.
-11. **Training takes `verified` and `app-edited` cells by default.** `app-unedited` cells need a flag. The label
+11. **Training takes `verified` and `app-edited` cells by default.** *(Replaced by the amendment of 2026-10-22: only `verified` cells train.)* `app-unedited` cells need a flag. The label
     provenance is a new column in `cells.csv`. Scan cells never become fixtures. A fixture never enters a training dataset (SUD-10). Scan photos stay out of git
     (SUD-08).
 12. **App Store privacy labels (amends ADR-013).** The labels declare photos and the device ID as data linked to the
@@ -118,15 +118,57 @@ Decision:
 
 1. **The pull stores a scan as `unchecked`.** This is a new status of `sudoku-photos.csv`. It has corners, like
    `accepted`. Training leaves out every cell of a scan that is not `accepted`.
-2. **The Outlines screen of the labelling page checks each outline.** The lowest outline fit comes first. A person
+2. **The Outlines step of the labelling app checks each outline.** The lowest outline fit comes first. A person
    approves it, drags the corners or rejects the scan.
 3. **A corner fix cuts the cells again.** A new cell keeps the digit, the kind and the label provenance of the old cell
    at its place. The old cells move to `discarded/`. A rejected scan moves all of its cells to `discarded/`.
 4. **The journal holds each check.** Undo reverses it. Finish writes the status and the corners into
-   `sudoku-photos.csv`. A move of the Outlines screen never makes a cell `verified`.
+   `sudoku-photos.csv`. A move of the Outlines step never makes a cell `verified`.
 
 Reassessment trigger: the app proves its outlines with a grid check on the device. Then the gallery can show only the
 scans that the check doubts.
+
+## Amendment: only verified cells train the model (2026-10-22)
+
+Decision 11 let `app-edited` cells train at once and `app-unedited` cells with a flag. A player can miss a wrong digit.
+A player can also make a wrong correction. A wrong label teaches the model the mistake. That model then reads the next
+scans wrong.
+
+| Option | For | Against |
+| --- | --- | --- |
+| **A person verifies every cell. A doubt score sets the order** | No unchecked label trains. The errors come first, so the check is fast | Work for each cell |
+| Keep decision 11 | No work | Wrong labels train the model |
+| Verify only the cells with a high doubt | Less work | A mistake that no signal sees trains the model |
+
+Decision:
+
+1. **This replaces decision 11.** Training takes only `verified` cells and the legacy cells without a label source.
+   `app-edited` and `app-unedited` cells never train until a person verifies them. The `--app-unedited` flag is gone.
+2. **The Digits and Kind steps of the labelling app verify the cells.** A confirmed cell gets a digit line or a kind
+   line in the journal. Finish writes `verified` for each confirmed cell.
+3. **The doubt score only sets the order.** A person still checks every cell. The score of a cell is 0 (sure) to 1
+   (doubtful). The server computes it from the model probabilities and the sudoku. It stores no score.
+   - **Digits step:** `(1 − p) + 0.5·differs + 0.3·edited + 0.2·rule break + 0.1·not unique`. `p` is the
+     probability of the label digit. A cell without probabilities has the score 1.
+   - **Kind step:** `(1 − p) + 0.5·differs`. `p` is the probability of the label kind, renormalised over printed
+     and handwritten.
+   - **Two values.** The API and the tile colour use the sum clamped to 1: `min(1, sum)`. The order uses the
+     unclamped sum, highest first, then the cell id. A clamp would tie every cell that the model reads differently.
+   - Each signal keeps its evidence, so the app can name it.
+4. **The sudoku signals need no model.** A rule break is a digit twice in a row, a column or a box of a scan. A scan is
+   not unique when its printed givens have more than one solution. A small solution counter in
+   `ml/src/sudoku_ml/doubt.py` finds this. SUD-07 forbids an import of the TypeScript solver. The signals only nudge the
+   order. They never block a cell, because some photos do not give a solvable grid.
+   `ml/dataset/work/doubt-sudoku.json` caches them per scan, keyed by the corners and the labels.
+5. **A bulk confirm needs a threshold.** "Confirm the sure cells" takes the cells where the model reads the label with
+   at least 98 % (digits) or 95 % (kind). A cell that the player changed, or that breaks a rule, is never sure. A cell
+   without probabilities is never sure. For a cell in `unlabeled/` the label is the model's own guess. So "Confirm the
+   sure ones" accepts the model's answer when p is at least the threshold. The person sees the count and the
+   threshold before the confirm.
+6. **A pixel-identical cell is one cell.** Its verdict counts for every scan that holds it.
+
+Reassessment trigger: the review history shows that a signal never finds an error. Then drop it. The trust per
+contributor (issue #254) can add a signal.
 
 ## Consequences
 

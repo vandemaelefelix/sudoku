@@ -2,7 +2,7 @@
 
 Run `just label-cells` and follow the start page.
 
-The labelling app turns sudoku photos and loose cells into labelled cells. It runs on your Mac
+The labelling app turns sudoku photos and loose cells into verified cells. It runs on your Mac
 only, on 127.0.0.1 (SUD-02). A **sudoku photo** is a photo of a whole sudoku. A **cell** is one
 square cut from it. The app lives in `tools/label-app/`. The Python label server holds the data
 (ADR-034).
@@ -11,38 +11,42 @@ square cut from it. The app lives in `tools/label-app/`. The Python label server
 
 1. `just label-cells` builds the app when a source changed. Then it starts the server and opens
    `http://127.0.0.1:8765/`. `just label-cells port=8799` uses another port.
-2. The start page shows the two flows. Each step shows what waits. The highlighted step is next.
+2. The start page shows the steps of the one flow. Each step shows what waits. The highlighted
+   step is next. The start page also has the tool for doubtful older labels (`just suspects`). It
+   is outside the flow.
 3. Each step says in one sentence what to do. Press **?** for the keys of the step.
 
-## Flow A: from sudoku photos
+## The flow
 
-Uploaded app scans and the photos of `just import-photos <folder>` go through the same steps.
+Uploaded app scans, imported photos (`just import-photos <folder>`) and loose cells go through the
+same steps. A **loose cell** is a cell in `unlabeled/` that no photo holds. Its side panel says
+"no photo".
+
+The model guesses every open cell by itself: at the start of the server, after a fetch and after
+each approved outline. The start page shows a line when no model is installed. Then the cells have
+no order.
 
 | Step | What you do |
 | --- | --- |
 | 1 Fetch new scans | Pick the stage (`production` by default) and press Enter. The app finds the table and the bucket of the stage. An expired AWS session shows **Sign in to AWS**. |
 | 2 Outlines | A gallery of the outlines to check, the most doubtful first. Click each bad outline. Enter approves the rest. Then each clicked photo opens large: drag the 4 corners and press Enter, or press R to reject the photo. |
-| 3 Cells per digit | The cells of the approved scans, one gallery per digit (Empty, 1 to 9, and No guess). The cells that the player changed come first, then those that the model reads differently. Point at a cell: the side panel shows its whole sudoku with the cell marked, the cell large, its label, the model's guess and your fix. The whole grid helps to tell a 1 from a 7. Click a wrong cell and type its digit, or press P, H or U for its kind. Enter confirms the page. |
-| 4 Finish | See "Undo and Finish". |
+| 3 Digits | The open digit cells, one gallery per tab (Empty, 1 to 9, and No guess). The most doubtful cell comes first. A cell sits in the tab of its label: yours for an app scan, the model's for an imported photo or a loose cell. Point at a cell: the side panel shows its whole sudoku with the cell marked, the cell large, its label, the model's probabilities, the reasons for the doubt and your fix. Click a cell to select it, type a digit to fix the selection, and press X to discard a bad cut. Enter confirms the page. **Confirm the sure ones** confirms every cell of the tab that the model reads as labelled with at least the threshold (98 %). |
+| 4 Kind | The cells of 1 to 9 whose digit you confirmed, and the cells without a kind. One gallery per digit, the most doubtful first. Press P, H or U for the selected cells. Enter confirms the page. **Confirm the sure ones** uses the threshold of 95 %. |
+| 5 Finish | See "Undo and Finish". |
+
+A tile edge runs from red (doubtful) to green (sure). The reasons name each signal: a low
+probability, a model that reads another digit or kind, a label that the player changed, a digit
+twice in a row, a column or a box, and printed givens with more than one solution. The signals only
+set the order. You still check every cell. [Scan collection](../docs/architecture/00-concepts/scan-collection.md)
+holds the formula.
 
 No cell of a scan trains the model before a person approved its outline. A wrong outline makes
 every cell label of the scan wrong. A cut again keeps the label of each place. A rejected app scan
-moves all of its cells to `discarded/`.
+moves all of its cells to `discarded/`. Training uses only the cells that a person verified.
+Finish writes `verified` for each cell that you confirmed.
 
 A cell with the same pixels as a cell of another scan is stored once. It has one label for both
 scans, and it shows once in the gallery.
-
-## Flow B: from loose cells
-
-These are the cells in `unlabeled/` that no photo holds.
-
-| Step | What you do |
-| --- | --- |
-| 1 Pre-label | The model guesses a digit and a kind for each loose cell. The server does this at its start. |
-| 2 Digits | One gallery per digit, the least sure first. Click a wrong cell and type its digit. X discards a bad cut. Enter confirms the page. |
-| 3 Kind | A page of cells of one digit without a kind. Press P or H for the page. Click each cell that differs. Enter saves the page. |
-| 4 Doubtful labels | The app runs `just suspects` and lists the labels that the model or a near copy doubts. Fix the wrong ones. Enter keeps the rest. |
-| 5 Finish | See "Undo and Finish". |
 
 ## Keys
 
@@ -57,8 +61,8 @@ These are the cells in `unlabeled/` that no photo holds.
 
 ## Stop at any time
 
-Every Enter is saved at once in the journal. Press Ctrl-C whenever you want. Loose cells stay in
-`unlabeled/`. Unchecked outlines stay unchecked. The next start continues where you stopped. The
+Every Enter is saved at once in the journal. Press Ctrl-C whenever you want. Open cells stay
+where they are. Unchecked outlines stay unchecked. The next start continues where you stopped. The
 journal of the old labelling page loads in the app as it is.
 
 ## Undo and Finish
@@ -69,6 +73,9 @@ journal of the old labelling page loads in the app as it is.
   `sudoku-photos.csv` at once.
 - **Finish folds the journal** into `ml/dataset/cells.csv`, runs the data check, writes
   `ml/dataset/STATUS.md`, and deletes the journal and the derived files.
+- **Finish refuses while cells wait in the Kind step.** It stops before it writes anything and says how many
+  cells wait. The Finish step shows the count and an **Open Kind** button. Finish stays disabled until the Kind step
+  is done.
 - After Finish, Z can no longer undo these changes. Git keeps the old tables. A rollback of a
   finished session says: "This session is finished. Use git to go back."
 - Finish closes every open doubtful label. Only new evidence opens one again.
@@ -113,5 +120,5 @@ Git never adds the images or `ml/dataset/work/`.
   with the images.
 - `just label-rollback <session>` reverses one unfinished labelling session.
 - `just pull-scans <table> <bucket>` is the Fetch step without the app.
-- The model guesses need a trained run in `ml/artifacts/`. Without it the app still works: you
-  type each digit.
+- The model guesses need a trained run in `ml/artifacts/`. Without it the app still works: the
+  cells have no order and you type each digit.

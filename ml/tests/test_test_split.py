@@ -31,7 +31,8 @@ def add_cell(paths: DataPaths, digit: str, seed: int) -> str:
 
 
 def scan_dataset(tmp_path: Path, config: Path) -> DataPaths:
-    """Twelve scan photos with three cells each, a third of them unedited, and ten plain cells."""
+    """Twelve scan photos with three cells each, a third of them not verified, and ten plain
+    cells."""
     paths = replace(DataPaths.under(tmp_path / "data", tmp_path / "images"), config=config)
     for digit in DIGIT_CLASSES:
         (paths.cells / digit).mkdir(parents=True, exist_ok=True)
@@ -44,7 +45,7 @@ def scan_dataset(tmp_path: Path, config: Path) -> DataPaths:
         for row in range(3):
             seed += 1
             digit = DIGIT_CLASSES[1 + seed % 9]
-            label = "app-unedited" if seed % 3 == 0 else "app-edited"
+            label = "app-unedited" if seed % 3 == 0 else "verified"
             rows.append(
                 CellRow(add_cell(paths, digit, seed), digit, None, (photo_id, row, 0), label)
             )
@@ -71,7 +72,7 @@ def test_training_and_the_check_screen_have_the_same_test_split(tmp_path: Path):
     assert json.loads((run / "metrics.json").read_text())["n_test"] == len(check_screen_test)
 
 
-def test_the_test_split_leaves_out_unedited_scan_cells_and_keeps_a_photo_together(tmp_path: Path):
+def test_the_test_split_leaves_out_unverified_scan_cells_and_keeps_a_photo_together(tmp_path: Path):
     config = smoke_config(tmp_path, real_cells=True, split=SPLIT)
     paths = scan_dataset(tmp_path, config)
     cells = read_real_cells(paths)

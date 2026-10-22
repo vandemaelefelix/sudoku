@@ -1,9 +1,11 @@
-"""The model's digit and kind for each cell in cells/unlabeled/ and in the digit folders, for
-the Digits and Label kind screens. Writes ml/dataset/work/prelabels.json. A pre-label is a proposal:
-only a person's confirmation is a label."""
+"""The model's guess for each cell in cells/unlabeled/ and in the digit folders, for the Digits
+and Kind steps: the top digit and kind, and the full probabilities (10 digits, 4 kinds). Writes
+ml/dataset/work/prelabels.json. A pre-label is a proposal: only a person's confirmation is a
+label."""
 
 import json
 import sys
+from collections.abc import Collection
 from pathlib import Path
 
 import numpy as np
@@ -11,23 +13,25 @@ import torch
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
-from sudoku_ml.data_paths import ML_ROOT, DataPaths
-from sudoku_ml.grouping import default_run
+from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
 from sudoku_ml.manifest import warn_unreadable
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
-from sudoku_ml.tables import DIGIT_FOLDERS, pixel_id, write_atomic
+from sudoku_ml.tables import pixel_id, stem_of, write_atomic
 
 BATCH = 1024
-# The kind needs a pre-label after the digit pass moved a cell out of unlabeled/.
-PRELABEL_FOLDERS = ("unlabeled", *DIGIT_FOLDERS)
+# empty/ too: an app cell that the player left empty can hide a digit. The Kind step needs a
+# pre-label after the Digits step moved a cell out of unlabeled/.
+PRELABEL_FOLDERS = ("unlabeled", *DIGIT_CLASSES)
 NO_MODEL = (
-    "No model run found, so no pre-labels. The Digits step stays empty. "
+    "No model run found, so no pre-labels. The Digits and Kind steps have no order. "
     "Install a model with just install-model, or pass a run: just prelabel-cells <run>"
 )
 
 
-def _predict(run: Path, paths: list[Path]) -> list[dict]:
+def predict_probs(run: Path, paths: list[Path]) -> tuple[np.ndarray, np.ndarray]:
+    """The digit probabilities (N, 10) and kind probabilities (N, 4) of the cell images, in the
+    order of DIGIT_CLASSES and KIND_CLASSES. The digit head uses the temperature of the run."""
     model = CellClassifier()
     model.load_state_dict(torch.load(run / "model.pt", map_location="cpu"))
     model.eval()
@@ -35,29 +39,41 @@ def _predict(run: Path, paths: list[Path]) -> list[dict]:
     inputs = np.stack(
         [preprocess_cell(to_cell_image(np.asarray(Image.open(p).convert("RGB")))) for p in paths]
     )
-    results = []
+    digits, kinds = [], []
     with torch.no_grad():
         for start in range(0, len(inputs), BATCH):
             x = torch.from_numpy(inputs[start : start + BATCH])[:, None]
             digit_logits, kind_logits = model(x)
-            digit = (digit_logits / temperature).softmax(1)
-            kind = kind_logits.softmax(1)
-            for d, k in zip(digit, kind, strict=True):
-                results.append(
-                    {
-                        "digit": DIGIT_CLASSES[int(d.argmax())],
-                        "p": round(float(d.max()), 4),
-                        "kind": KIND_CLASSES[int(k.argmax())],
-                        "kp": round(float(k.max()), 4),
-                    }
-                )
-    return results
+            digits.append((digit_logits / temperature).softmax(1).numpy())
+            kinds.append(kind_logits.softmax(1).numpy())
+    return np.concatenate(digits), np.concatenate(kinds)
 
 
-def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:
+def _entry(digit: np.ndarray, kind: np.ndarray) -> dict:
+    return {
+        "digit": DIGIT_CLASSES[int(digit.argmax())],
+        "p": round(float(digit.max()), 4),
+        "kind": KIND_CLASSES[int(kind.argmax())],
+        "kp": round(float(kind.max()), 4),
+        "probs": {
+            "digit": [round(float(v), 4) for v in digit],
+            "kind": [round(float(v), 4) for v in kind],
+        },
+    }
+
+
+def _predict(run: Path, paths: list[Path]) -> list[dict]:
+    digits, kinds = predict_probs(run, paths)
+    return [_entry(d, k) for d, k in zip(digits, kinds, strict=True)]
+
+
+def write_prelabels(
+    cells_dir: Path, run: Path, out: Path, wanted: Collection[str] | None = None
+) -> int:
     """Pre-label the cells in unlabeled/ and in the digit folders that have no current pre-label
-    of this run. Drop the pre-labels of cells that left those folders. An entry without `kp`
-    is old and is computed again. Returns the number of new pre-labels."""
+    of this run. `wanted` (full cell ids) limits it to the cells that wait for a person. Drop the
+    pre-labels of other cells. An entry without `probs` is old and is computed again. Returns the
+    number of new pre-labels."""
     stored = {}
     if out.exists():
         try:
@@ -67,15 +83,27 @@ def write_prelabels(cells_dir: Path, run: Path, out: Path) -> int:
     if not isinstance(stored, dict):
         stored = {}
     known = stored.get("cells", {}) if stored.get("run") == run.name else {}
-    paths = sorted(p for f in PRELABEL_FOLDERS for p in (cells_dir / f).glob("*.png"))
+    stems = None if wanted is None else {stem_of(cell) for cell in wanted}
+    paths = sorted(
+        p
+        for f in PRELABEL_FOLDERS
+        for p in (cells_dir / f).glob("*.png")
+        if stems is None or p.stem in stems
+    )
     ids = {p: pixel_id(p) for p in paths}
-    cells = {ids[p]: known[ids[p]] for p in paths if "kp" in known.get(ids[p], {})}
+    cells = {ids[p]: known[ids[p]] for p in paths if "probs" in known.get(ids[p], {})}
     todo = [p for p in paths if ids[p] not in cells]
     if todo:
         for path, entry in zip(todo, _predict(run, todo), strict=True):
             cells[ids[path]] = entry
     write_atomic(out, json.dumps({"run": run.name, "cells": cells}))
     return len(todo)
+
+
+def default_run(ml_root: Path = ML_ROOT, artifacts: Path = ARTIFACTS) -> Path:
+    """The run of the model that the app uses."""
+    manifest = ml_root.parent / "mobile" / "assets" / "models" / "manifest.json"
+    return artifacts / json.loads(manifest.read_text())["run"]
 
 
 def main(argv: list[str], paths: DataPaths | None = None, ml_root: Path = ML_ROOT) -> int:

@@ -3,18 +3,18 @@ import { useState } from 'react'
 import { get, post } from '../api/client'
 import type { FinishResult, StartCounts } from '../api/types'
 import { Empty, Failure, Frame, Working } from '../components/Frame'
-import type { FlowId } from '../flows'
 import { go, useKeys, useLoad } from '../hooks'
 import { useAction } from '../useAction'
 
-export function Finish({ flow }: { flow: FlowId }) {
+export function Finish() {
   const counts = useLoad(() => get<StartCounts>('/api/start'), 'finish')
   const action = useAction(counts.reload)
   const [result, setResult] = useState<FinishResult | undefined>()
   const changes = counts.data?.changes ?? 0
+  const kindCells = counts.data?.kind_cells ?? 0
 
   const finish = async (): Promise<void> => {
-    if (!changes || action.busy) return
+    if (!changes || kindCells > 0 || action.busy) return
     const done = await action.run(
       () => post<FinishResult>('/api/finish'),
       () => 'Finished. Z can no longer undo these changes. Git keeps the old tables.',
@@ -27,16 +27,27 @@ export function Finish({ flow }: { flow: FlowId }) {
 
   return (
     <Frame
-      flow={flow}
       step="finish"
       task="Finish folds the changes into the tables and checks the data. Then commit the tables."
       keys={[{ keys: 'Enter', does: 'Finish' }]}
       note={action.note}
       action={
         changes && !result ? (
-          <button type="button" className="primary" onClick={finish} disabled={action.busy}>
-            Finish {changes} changes <kbd>Enter</kbd>
-          </button>
+          <>
+            {kindCells > 0 ? (
+              <>
+                <span className="summary">
+                  {kindCells} {kindCells === 1 ? 'cell waits' : 'cells wait'} in the Kind step. Check them first.
+                </span>
+                <button type="button" onClick={() => go('kinds')}>
+                  Open Kind
+                </button>
+              </>
+            ) : null}
+            <button type="button" className="primary" onClick={finish} disabled={action.busy || kindCells > 0}>
+              Finish {changes} changes <kbd>Enter</kbd>
+            </button>
+          </>
         ) : undefined
       }
     >
