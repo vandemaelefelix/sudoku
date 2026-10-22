@@ -88,3 +88,17 @@ it('tells the splash that it is ready when the store has answered, and not befor
   )
   expect(markReady).toHaveBeenCalledTimes(1)
 })
+
+it('gives every button the stable test ID of the end-to-end flows', () => {
+  const { onNewGame, onContinue, onScan, onSettings } = renderMenu('medium')
+  for (const level of ['easy', 'medium', 'hard', 'expert']) {
+    fireEvent.press(screen.getByTestId(`new-game-${level}`))
+    expect(onNewGame).toHaveBeenLastCalledWith(level)
+  }
+  fireEvent.press(screen.getByTestId('continue'))
+  fireEvent.press(screen.getByTestId('home-scan'))
+  fireEvent.press(screen.getByTestId('home-settings'))
+  expect(onContinue).toHaveBeenCalledTimes(1)
+  expect(onScan).toHaveBeenCalledTimes(1)
+  expect(onSettings).toHaveBeenCalledTimes(1)
+})

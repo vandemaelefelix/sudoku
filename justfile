@@ -128,6 +128,32 @@ ios-simulator:
 ios-simulator-build:
     cd mobile/ios && xcodebuild -workspace SudokuDev.xcworkspace -scheme SudokuDev -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -quiet build
 
+# The simulator of the end-to-end flows. The flows clear the app data, so they never run on a simulator of daily use
+e2e_simulator := "Sudoku E2E iOS 26"
+
+# Run the Maestro flows of mobile/e2e on the app of just ios-simulator. Pass one flow file, or flags such as --exclude-tags model
+e2e flow="mobile/e2e" *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app=mobile/ios/DerivedData/Build/Products/Release-iphonesimulator/SudokuDev.app
+    test -d "$app" || { echo "The app is missing. Run: just ios-simulator" >&2; exit 1; }
+    udid=$(xcrun simctl list devices available | grep -F "{{e2e_simulator}} (" | grep -oE '[0-9A-F-]{36}' | head -1 || true)
+    # iOS 27 refuses an app without the UIScene life cycle when Xcode 27 builds it. Expo SDK 57 has none, so the flows use iOS 26.
+    if [ -z "$udid" ]; then
+      runtime=$(xcrun simctl list runtimes available | grep -E '^iOS 26\.' | tail -1 | awk '{print $NF}')
+      test -n "$runtime" || { echo "No iOS 26 simulator runtime. Install one in Xcode: Settings > Components" >&2; exit 1; }
+      udid=$(xcrun simctl create "{{e2e_simulator}}" "iPhone 17" "$runtime")
+    fi
+    xcrun simctl bootstatus "$udid" -b >/dev/null
+    xcrun simctl install "$udid" "$app"
+    xcrun simctl addmedia "$udid" shared/fixtures/imports/screenshot-digital.png
+    # Homebrew installs the Java of Maestro keg-only, so java is not on the PATH.
+    if [ -z "${JAVA_HOME:-}" ] && command -v brew >/dev/null; then
+      jdk="$(brew --prefix openjdk)/libexec/openjdk.jdk/Contents/Home"
+      if [ -d "$jdk" ]; then export JAVA_HOME="$jdk"; fi
+    fi
+    MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true maestro --device "$udid" test {{flow}} {{flags}}
+
 # Lint the GitHub Actions workflows and actions. Needs actionlint: brew install actionlint
 lint-workflows:
     actionlint

@@ -1,0 +1,32 @@
+# A game ends on the finish card. Each round opens a hint, shows its answer and fills it, so the flow needs no solution.
+appId: com.vandemaelefelix.sudoku.dev
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: new-game-easy
+- repeat:
+    while:
+      notVisible:
+        id: finish-card
+    times: 81
+    commands:
+      - tapOn:
+          id: tool-hint
+      # The card fades in. A when check does not wait, so the flow waits for the buttons first.
+      - extendedWaitUntil:
+          visible:
+            id: hint-buttons
+          timeout: 5000
+      # A step hint shows its answer on request. The fallback card shows it at once.
+      - runFlow:
+          when:
+            visible:
+              id: hint-answer
+          commands:
+            - tapOn:
+                id: hint-answer
+      - tapOn:
+          id: hint-fill
+- assertVisible:
+    id: finish-card

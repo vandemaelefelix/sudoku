@@ -1,0 +1,42 @@
+# A fixture image scans to a game. The simulator has no camera, so the flow picks a photo.
+# just e2e puts shared/fixtures/imports/screenshot-digital.png in the photo library. Maestro reads no file outside mobile/e2e.
+# The tag model marks the flows that need the real model. CI has only the stub model (SUD-08).
+appId: com.vandemaelefelix.sudoku.dev
+tags:
+  - model
+---
+- launchApp:
+    clearState: true
+    permissions:
+      camera: deny
+- tapOn:
+    id: home-scan
+- tapOn:
+    id: choose-image
+# The photo picker of iOS runs outside the app, so it has no testID. The fixture is the one screenshot in the library:
+# Photos calls it a screenshot because it has the screen size of an iPhone 17, the device of just e2e.
+- tapOn:
+    text: 'Screenshot, [^,]+, [^,]+'
+# The correction screen shows at once. Play shows when the scan is done.
+- extendedWaitUntil:
+    visible:
+      id: play
+    timeout: 30000
+- tapOn:
+    id: play
+# The fixture puzzle is in shared/fixtures/imports/README.md. These cells check each end of the grid.
+- assertVisible:
+    id: cell-0
+    text: 'Row 1, column 1, empty'
+- assertVisible:
+    id: cell-3
+    text: 'Row 1, column 4, given 7'
+- assertVisible:
+    id: cell-44
+    text: 'Row 5, column 9, given 6'
+- assertVisible:
+    id: cell-74
+    text: 'Row 9, column 3, given 7'
+- assertVisible:
+    id: cell-80
+    text: 'Row 9, column 9, empty'

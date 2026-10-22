@@ -1,0 +1,41 @@
+name: e2e
+# The Maestro flows on the iOS Simulator (ADR-010, amendment 2026-10-22). Only a manual step starts them:
+# one run costs about 200 of the 2,000 monthly minutes, because a macOS minute counts ten times.
+# The label "run: e2e" on a pull request starts a run of its branch. A manual run of a branch needs this file on develop.
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each label starts the workflow. The label name in the group keeps another label from cancelling a run.
+concurrency:
+  group: e2e-${{ github.ref }}-${{ github.event.label.name || 'manual' }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    if: "github.event_name == 'workflow_dispatch' || github.event.label.name == 'run: e2e'"
+    runs-on: macos-26
+    # A run takes about 20 minutes. A hung run stops before it costs a fifth of the monthly minutes.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/ios-simulator-build
+      # The SHA-256 is the digest of the release asset (maestro.zip of cli-2.11.0). The image has Java 17 or later.
+      - name: Install Maestro
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.11.0/maestro.zip
+          echo "5384593cb4e7a106489e75a821d157dd43f4e438df6bc308b72e82c685e1283a  $RUNNER_TEMP/maestro.zip" | shasum -a 256 --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/maestro/bin" >> "$GITHUB_PATH"
+      # The scan flow needs the real model. CI has only the stub model (SUD-08).
+      - run: just e2e mobile/e2e --exclude-tags model
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: maestro-debug
+          path: ~/.maestro/tests
+          retention-days: 7

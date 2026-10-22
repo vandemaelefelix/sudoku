@@ -6,12 +6,5 @@ type AppearancePickerProps = { value: AppearancePreference; onChange(appearance:
 
 /** The appearance: Auto follows the iOS setting, Light is a white page, Colour has the accent as the page (ADR-026). */
 export function AppearancePicker({ value, onChange }: AppearancePickerProps) {
-  return (
-    <SegmentedControl
-      options={APPEARANCE_OPTIONS}
-      value={value}
-      onChange={onChange}
-      indicatorTestID="appearance-indicator"
-    />
-  )
+  return <SegmentedControl options={APPEARANCE_OPTIONS} value={value} onChange={onChange} testID="appearance" />
 }

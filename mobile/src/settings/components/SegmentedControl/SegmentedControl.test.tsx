@@ -12,12 +12,12 @@ const options = [
 ] as const
 
 const control = (value: 'a' | 'b' | 'c' = 'a', kind: 'buttons' | 'tabs' = 'buttons') => (
-  <SegmentedControl options={options} value={value} onChange={jest.fn()} indicatorTestID="indicator" kind={kind} />
+  <SegmentedControl options={options} value={value} onChange={jest.fn()} testID="control" kind={kind} />
 )
 
 /** The cells view has the inner box of the frame. A layout event gives it its width, like the device does. */
 function layOut(width: number) {
-  fireEvent(screen.getByTestId('indicator-cells'), 'layout', {
+  fireEvent(screen.getByTestId('control-indicator-cells'), 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width, height: 44 } },
   })
 }
@@ -57,12 +57,12 @@ describe('the look of a row of grid cells (ADR-026)', () => {
 
   it('draws the selected cell with the fill and the ring of the selected grid cell', () => {
     render(control())
-    expect(flat(screen.getByTestId('indicator'))).toMatchObject({
+    expect(flat(screen.getByTestId('control-indicator'))).toMatchObject({
       backgroundColor: cobalt.components.cell.selected,
       borderWidth: cobalt.shape.stroke.ring,
       borderColor: cobalt.components.cell.ring,
     })
-    expect(flat(screen.getByTestId('indicator')).borderRadius).toBeUndefined()
+    expect(flat(screen.getByTestId('control-indicator')).borderRadius).toBeUndefined()
   })
 
   it('writes the selected label in the accent and the other labels in muted text', () => {
@@ -73,7 +73,7 @@ describe('the look of a row of grid cells (ADR-026)', () => {
 
   it('gives each cell a 44 pt touch target: the row is 44 pt high and the cells fill it', () => {
     render(control())
-    expect(flat(screen.getByTestId('indicator-cells')).minHeight).toBeGreaterThanOrEqual(44)
+    expect(flat(screen.getByTestId('control-indicator-cells')).minHeight).toBeGreaterThanOrEqual(44)
     for (const name of ['One', 'Two', 'Three']) {
       expect(flat(screen.getByRole('button', { name })).flex).toBe(1)
     }
@@ -82,7 +82,7 @@ describe('the look of a row of grid cells (ADR-026)', () => {
 
 it('reports the value of the cell that is tapped', () => {
   const onChange = jest.fn()
-  render(<SegmentedControl options={options} value="a" onChange={onChange} indicatorTestID="indicator" />)
+  render(<SegmentedControl options={options} value="a" onChange={onChange} testID="control" />)
   fireEvent.press(screen.getByRole('button', { name: 'Three' }))
   expect(onChange).toHaveBeenCalledWith('c')
 })
@@ -94,7 +94,7 @@ it('is a tab bar for VoiceOver when asked', () => {
 })
 
 const frame = () => {
-  const style = flat(screen.getByTestId('indicator')) as { width: number; transform: [{ translateX: number }] }
+  const style = flat(screen.getByTestId('control-indicator')) as { width: number; transform: [{ translateX: number }] }
   return { x: style.transform[0].translateX, width: style.width }
 }
 
@@ -109,7 +109,12 @@ describe('the indicator is exactly the selected cell', () => {
     settle(value)
     expect(frame()).toEqual({ x, width: 100 })
     // Top, bottom and left come from the same box as the cells: the ring is inside the cell, never outside it.
-    expect(flat(screen.getByTestId('indicator'))).toMatchObject({ position: 'absolute', top: 0, bottom: 0, left: 0 })
+    expect(flat(screen.getByTestId('control-indicator'))).toMatchObject({
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      left: 0,
+    })
   })
 
   it('uses equal cell widths that fill the content box with a width that is not a whole number', () => {
@@ -123,7 +128,7 @@ describe('the indicator is exactly the selected cell', () => {
 
   it('shows nothing before the first layout', () => {
     render(control())
-    expect(flat(screen.getByTestId('indicator')).opacity).toBe(0)
+    expect(flat(screen.getByTestId('control-indicator')).opacity).toBe(0)
   })
 
   it('places the indicator at once on the first layout, with no timing', () => {
@@ -161,4 +166,13 @@ describe('the indicator is exactly the selected cell', () => {
     expect(timing).not.toHaveBeenCalled()
     timing.mockRestore()
   })
+})
+
+it('gives each cell the test ID <testID>-<value>, with its selected state', () => {
+  const onChange = jest.fn()
+  render(<SegmentedControl options={options} value="a" onChange={onChange} testID="control" />)
+  expect(screen.getByTestId('control-a')).toHaveProp('accessibilityState', { selected: true })
+  expect(screen.getByTestId('control-b')).toHaveProp('accessibilityState', { selected: false })
+  fireEvent.press(screen.getByTestId('control-c'))
+  expect(onChange).toHaveBeenCalledWith('c')
 })
