@@ -183,8 +183,27 @@ describe('the open hint (ADR-032)', () => {
     expect(session.move).toMatchObject({ kind: 'hint', cell: answer.cell })
   })
 
-  it('counts Fill it on a hint that never showed the answer', () => {
-    expect(run(opened(start()), { type: 'hintFill' }).game.hintsUsed).toBe(1)
+  it('ignores Fill it before the answer shows', () => {
+    const session = opened(pointing())
+    expect(run(session, { type: 'hintFill' })).toBe(session)
+    const elimination = run(session, ...more(3))
+    expect(run(elimination, { type: 'hintFill' })).toBe(elimination)
+  })
+
+  it('ignores the card buttons while the strip says "Nice."', () => {
+    const answer = answerOf(start().game)
+    const nice = run(opened(start()), { type: 'select', cell: answer.cell }, { type: 'digit', digit: answer.digit })
+    for (const type of [
+      'hintMore',
+      'hintAnswer',
+      'hintNext',
+      'hintFill',
+      'hintTry',
+      'hintOpen',
+      'hintErase',
+    ] as const) {
+      expect(run(nice, { type })).toBe(nice)
+    }
   })
 
   it('counts the same answer once in a game session', () => {
@@ -256,7 +275,12 @@ describe('the open hint (ADR-032)', () => {
   it('ends when the target digit wins the game', () => {
     const near = sampleStart()
     const entries = near.solution.map((value, cell) => (cell === OPEN || near.givens[cell] !== 0 ? 0 : value))
-    const session = run(startSession({ ...near, entries }), { type: 'hint' }, { type: 'hintFill' })
+    const session = run(
+      startSession({ ...near, entries }),
+      { type: 'hint' },
+      { type: 'hintAnswer' },
+      { type: 'hintFill' },
+    )
     expect(session.game.status).toBe('won')
     expect(session.hint).toBeNull()
   })
@@ -268,6 +292,8 @@ describe('the open hint (ADR-032)', () => {
     expect(run(session, { type: 'hintFill' })).toBe(session)
     const erased = run(session, { type: 'hintErase' })
     expect(erased.game.entries[OPEN]).toBe(0)
+    expect(erased.game.selected).toBe(OPEN)
+    expect(erased.move).toMatchObject({ kind: 'erase', cell: OPEN })
     expect(erased.hint).toBeNull()
     expect(erased.game.hintsUsed).toBe(0)
   })

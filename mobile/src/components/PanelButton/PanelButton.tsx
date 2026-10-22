@@ -4,7 +4,7 @@ import { useUnistyles } from 'react-native-unistyles'
 import { useEased } from '@/game/hooks/useEased'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
-import { LABEL_FADE_MS } from './PanelButton.constants'
+import { COMPACT_MAX_SCALE, LABEL_FADE_MS } from './PanelButton.constants'
 import { styles } from './PanelButton.styles'
 
 type PanelButtonProps = {
@@ -66,6 +66,7 @@ export function PanelButton({
           {...(animateLabel
             ? { entering: FadeIn.duration(LABEL_FADE_MS).easing(easeOut).reduceMotion(ReduceMotion.Never) }
             : {})}
+          {...(compact ? { maxFontSizeMultiplier: COMPACT_MAX_SCALE } : {})}
           style={kind === 'primary' ? styles.primaryText : styles.secondText}
         >
           {label}

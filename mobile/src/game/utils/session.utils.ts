@@ -208,7 +208,8 @@ function hintCard(session: Session, type: HintCardAction): Session {
         ? withHint(session, { ...hint, step: index + 1, rung: 1 })
         : session
     case 'hintFill':
-      return fillAnswer(session, plan)
+      // The card offers Fill it only once the answer shows: on the fallback, or on rung 4 of the last step.
+      return plan.kind === 'fallback' || (rung === 4 && index === lastStep(plan)) ? fillAnswer(session, plan) : session
     case 'hintTry':
       return withHint(session, { ...hint, view: 'strip' })
     case 'hintOpen':
