@@ -1,5 +1,6 @@
 import { type CellResult, decodeOutputs, type OutputIndex, runModel, type TfliteModel } from './classifier'
-import { findGrid, findGrids } from './findGrid'
+import { firstFind } from './chooseGrid'
+import { findGrids } from './findGrid'
 import { cornerOffset, downscaleSize, fromCrop, searchRect, toPhotoPixels } from './photoGeometry'
 import { cropRgb, FLAT_SIZE, type RawPixels, sliceCells, toRgb } from './pixels'
 import { preprocessCells } from './preprocess'
@@ -86,7 +87,8 @@ function nearest(candidates: Quad[], quad: Quad, width: number, height: number):
 export function locateGrid(small: Uint8Array, width: number, height: number, quad: Quad | null): Located | null {
   'worklet'
   if (quad == null) {
-    const found = findGrid(small, width, height)
+    // No aim: the grid nearest the centre, of the grids that pass the area rule of the live chooser.
+    const found = firstFind(findGrids(small, width, height), width / height)
     return found == null ? null : { quad: found.quad, corners: 'found', cornerOffset: null }
   }
   // The box search is cheaper, so it comes first. The search of the whole photo finds a grid that moved out of the box.
@@ -109,17 +111,18 @@ export function locateGrid(small: Uint8Array, width: number, height: number, qua
 }
 
 /**
- * small: the RGB still image, width × height. findGrid keeps only the outer contours, so a photo of a whole page finds the page.
- * The grid lies inside it, so the search goes on inside each found quad while it finds one. Null when the image has no grid.
+ * small: the RGB still image, width × height. findGrids keeps only the outer contours, so a photo of a whole page finds the page.
+ * The grid lies inside it, so the search goes on inside each found quad while it finds one. At each level firstFind takes the
+ * grid nearest the centre, so a page of several sudokus gives the middle one. Null when the image has no grid.
  */
 export function locateStill(small: Uint8Array, width: number, height: number): Located | null {
   'worklet'
-  const found = findGrid(small, width, height)
+  const found = firstFind(findGrids(small, width, height), width / height)
   if (found == null) return null
   let quad = found.quad
   for (let depth = 0; depth < MAX_DEPTH; depth++) {
     const rect = searchRect(quad, width, height, -INNER_INSET)
-    const inner = findGrid(cropRgb(small, width, rect), rect.width, rect.height)
+    const inner = firstFind(findGrids(cropRgb(small, width, rect), rect.width, rect.height), rect.width / rect.height)
     if (inner == null) break
     quad = fromCrop(inner.quad, rect, width, height)
   }
@@ -210,7 +213,7 @@ export function recognise(
 }
 
 /**
- * A still image from the photo library. It has no locked quad, so findGrid searches the whole image, then inside the quad it finds
+ * A still image from the photo library. It has no locked quad, so findGrids searches the whole image, then inside the quad it finds
  * (locateStill). The caller keeps the image and disposes it. Never throws.
  */
 export function recogniseStill(image: ImageSource, model: TfliteModel, outputs: OutputIndex): RecogniseResult {

@@ -1,5 +1,5 @@
 import type { TfliteModel } from './classifier'
-import { findGrid, findGrids } from './findGrid'
+import { findGrids } from './findGrid'
 import { downscaleSize, searchRect, toPhotoPixels } from './photoGeometry'
 import { FLAT_SIZE } from './pixels'
 import { INNER_INSET, type ImageSource, recognise, recogniseStill, SEARCH_GROW, STILL_MAX_SIDE } from './recognise'
@@ -9,7 +9,6 @@ import type { Rect, Quad } from '@/utils/geometry.utils'
 jest.mock('./findGrid', () => ({ findGrid: jest.fn(), findGrids: jest.fn() }))
 jest.mock('./warp', () => ({ warpGrid: jest.fn() }))
 
-const find = jest.mocked(findGrid)
 const findAll = jest.mocked(findGrids)
 const warp = jest.mocked(warpGrid)
 const OUTPUTS = { digit: 0, kind: 1 }
@@ -69,6 +68,17 @@ function inCrop(quad: Quad, rect: Rect): Quad {
     y: (p.y * SMALL.height - rect.y) / rect.height,
   })
   return [map(quad[0]), map(quad[1]), map(quad[2]), map(quad[3])]
+}
+
+/** A grid across the middle of the photo, from y top to top + 0.2. score: the share of the photo it covers. */
+function band(top: number) {
+  const quad: Quad = [
+    { x: 0.3, y: top },
+    { x: 0.7, y: top },
+    { x: 0.7, y: top + 0.2 },
+    { x: 0.3, y: top + 0.2 },
+  ]
+  return { quad, score: 0.08 }
 }
 
 function moved(quad: Quad, dx: number, dy: number): Quad {
@@ -172,15 +182,25 @@ it('flattens the full photo to the flat size', () => {
 })
 
 it('searches the whole photo when there is no quad', () => {
-  find.mockReturnValue({ quad: LOCKED, score: 0.5 })
+  findAll.mockReturnValue([{ quad: LOCKED, score: 0.5 }])
   const result = recognise(photo(), null, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
   expect(result.corners).toBe('found')
-  expect(at(find.mock.calls, 0).slice(1)).toEqual([SMALL.width, SMALL.height])
+  expect(at(findAll.mock.calls, 0).slice(1)).toEqual([SMALL.width, SMALL.height])
+})
+
+it('takes the grid nearest the centre when there is no quad, not the largest', () => {
+  // The centre grid has more than 60 % of the area of the larger one, so it counts.
+  const larger = { ...band(0.05), score: 0.1 }
+  findAll.mockReturnValue([larger, band(0.4)])
+  const result = recognise(photo(), null, model(), OUTPUTS)
+  if (!result.ok) throw new Error(result.reason)
+  expect(result.corners).toBe('found')
+  expectQuad(result.quad, band(0.4).quad)
 })
 
 it('fails when there is no quad and no grid in the photo', () => {
-  find.mockReturnValue(null)
+  findAll.mockReturnValue([])
   expect(recognise(photo(), null, model(), OUTPUTS)).toEqual({ ok: false, reason: 'no grid in the photo' })
 })
 
@@ -208,13 +228,12 @@ it('gives the time of each step', () => {
 
 describe('a still image', () => {
   it('searches the whole image with findGrid, as after a shutter press without a grid', () => {
-    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    findAll.mockReturnValueOnce([{ quad: LOCKED, score: 0.5 }]).mockReturnValue([])
     const result = recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
     if (!result.ok) throw new Error(result.reason)
     expect(result).toMatchObject({ corners: 'found', cornerOffset: null })
     expectQuad(result.quad, LOCKED)
-    expect(at(find.mock.calls, 0).slice(1)).toEqual([SMALL.width, SMALL.height])
-    expect(findAll).not.toHaveBeenCalled()
+    expect(at(findAll.mock.calls, 0).slice(1)).toEqual([SMALL.width, SMALL.height])
     expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
   })
 
@@ -226,38 +245,46 @@ describe('a still image', () => {
       { x: 0.1, y: 0.9 },
     ]
     const inside = searchRect(page, SMALL.width, SMALL.height, -INNER_INSET)
-    find
-      .mockReturnValueOnce({ quad: page, score: 0.64 })
-      .mockReturnValueOnce({ quad: inCrop(LOCKED, inside), score: 0.3 })
-      .mockReturnValue(null)
+    findAll
+      .mockReturnValueOnce([{ quad: page, score: 0.64 }])
+      .mockReturnValueOnce([{ quad: inCrop(LOCKED, inside), score: 0.3 }])
+      .mockReturnValue([])
     const result = recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
     if (!result.ok) throw new Error(result.reason)
     expectQuad(result.quad, LOCKED)
-    expect(at(find.mock.calls, 1).slice(1)).toEqual([inside.width, inside.height])
+    expect(at(findAll.mock.calls, 1).slice(1)).toEqual([inside.width, inside.height])
     // The search stops when the inside of the grid has no quad.
-    expect(find).toHaveBeenCalledTimes(3)
+    expect(findAll).toHaveBeenCalledTimes(3)
   })
 
   it('stops after the deepest search it allows', () => {
-    find.mockReturnValue({ quad: LOCKED, score: 0.5 })
+    findAll.mockReturnValue([{ quad: LOCKED, score: 0.5 }])
     recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
-    expect(find).toHaveBeenCalledTimes(4)
+    expect(findAll).toHaveBeenCalledTimes(4)
   })
 
   it('reads a large image at most STILL_MAX_SIDE on its long side, upright', () => {
-    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    findAll.mockReturnValueOnce([{ quad: LOCKED, score: 0.5 }]).mockReturnValue([])
     recogniseStill(image(8064, 6048, []), model(), OUTPUTS)
     expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: STILL_MAX_SIDE, height: 3024 })
   })
 
   it('reads a small image at its own size', () => {
-    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    findAll.mockReturnValueOnce([{ quad: LOCKED, score: 0.5 }]).mockReturnValue([])
     recogniseStill(image(1206, 2622, []), model(), OUTPUTS)
     expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: 1206, height: 2622 })
   })
 
+  it('takes the grid nearest the image centre on a page of three equal grids, not the first one', () => {
+    findAll.mockReturnValueOnce([band(0.1), band(0.4), band(0.7)]).mockReturnValue([])
+    const result = recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
+    if (!result.ok) throw new Error(result.reason)
+    expect(result.corners).toBe('found')
+    expectQuad(result.quad, band(0.4).quad)
+  })
+
   it('fails when the image has no grid', () => {
-    find.mockReturnValue(null)
+    findAll.mockReturnValue([])
     expect(recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)).toEqual({
       ok: false,
       reason: 'no grid in the photo',
@@ -265,7 +292,7 @@ describe('a still image', () => {
   })
 
   it('disposes the images it makes, but not the image of the caller', () => {
-    find.mockReturnValue({ quad: LOCKED, score: 0.5 })
+    findAll.mockReturnValue([{ quad: LOCKED, score: 0.5 }])
     const disposed: string[] = []
     const still = image(PHOTO.width, PHOTO.height, disposed)
     const own = jest.spyOn(still, 'dispose')
