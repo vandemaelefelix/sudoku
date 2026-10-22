@@ -2,7 +2,17 @@ import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import * as Reanimated from 'react-native-reanimated'
 import { useReducedMotion, type SharedValue } from 'react-native-reanimated'
-import { HINT_EDGE, TARGET_PULSE_MS } from '@/game/constants/hint.constants'
+import {
+  FOCUS_PULSE_MS,
+  GHOST_FADE_MS,
+  HINT_EDGE,
+  ROLE_FADE_MS,
+  ROLE_POP_MS,
+  STRIKE_DRAW_MS,
+  TARGET_PULSE_MS,
+} from '@/game/constants/hint.constants'
+import type { HintMotion } from '@/game/hooks/useHintMotion'
+import { NO_HINT_TIMINGS, type HintRole, type HintTimings } from '@/game/utils/hint.utils'
 import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
 import type { Pulse } from '@/game/hooks/usePulse'
 import { pulseLook } from '@/game/utils/pulse.utils'
@@ -29,6 +39,7 @@ const base = {
   notes: '',
   fill: 'plain',
   ring: false,
+  hintFocus: false,
   hintEdges: 0,
   hintPattern: false,
   hintSupport: false,
@@ -204,8 +215,9 @@ describe('the hint roles (ADR-032)', () => {
   })
 
   it('tints a focus unit and outlines only the sides where the unit ends', () => {
-    render(<Cell {...base} fill="focus" hintEdges={HINT_EDGE.top | HINT_EDGE.left} onSelect={jest.fn()} />)
-    expect(styleOf('cell-2')).toMatchObject({ backgroundColor: colours.hintFocus })
+    render(<Cell {...base} fill="focus" hintFocus hintEdges={HINT_EDGE.top | HINT_EDGE.left} onSelect={jest.fn()} />)
+    expect(styleOf('cell-2')).toMatchObject({ backgroundColor: colours.fill })
+    expect(styleOf('cell-2-hint-tint')).toMatchObject({ backgroundColor: colours.hintFocus })
     expect(styleOf('cell-2-hint-edges')).toMatchObject({
       borderColor: colours.hintFocusLine,
       borderTopWidth: colours.hintLineWidth,
@@ -216,8 +228,14 @@ describe('the hint roles (ADR-032)', () => {
   })
 
   it('draws no outline inside a focus unit', () => {
-    render(<Cell {...base} fill="focus" onSelect={jest.fn()} />)
+    render(<Cell {...base} fill="focus" hintFocus onSelect={jest.fn()} />)
     expect(screen.queryByTestId('cell-2-hint-edges')).toBeNull()
+  })
+
+  it('hides the tint where the selected fill wins, and keeps the outline', () => {
+    render(<Cell {...base} fill="selected" hintFocus hintEdges={HINT_EDGE.top} onSelect={jest.fn()} />)
+    expect(screen.queryByTestId('cell-2-hint-tint')).toBeNull()
+    expect(screen.getByTestId('cell-2-hint-edges')).toBeTruthy()
   })
 
   it('marks a pattern cell with an inner outline and a corner dot', () => {
@@ -284,12 +302,67 @@ describe('the hint roles (ADR-032)', () => {
     const theming = jest.spyOn(unistyles, 'useUnistyles')
     render(
       <>
-        <Cell {...base} cell={1} fill="focus" hintEdges={HINT_EDGE.top} hintPattern onSelect={jest.fn()} />
+        <Cell {...base} cell={1} fill="focus" hintFocus hintEdges={HINT_EDGE.top} hintPattern onSelect={jest.fn()} />
         <Cell {...base} cell={2} digit={5} digitStyle="given" hintSupport onSelect={jest.fn()} />
         <Cell {...base} cell={3} notes="12" hintStruck="1" onSelect={jest.fn()} />
         <Cell {...base} cell={4} hintTarget={8} onSelect={jest.fn()} />
       </>,
     )
     expect(theming).not.toHaveBeenCalled()
+  })
+})
+
+/** A motion where the given role of cell 2 starts at delay. */
+const motionOf = (role: HintRole, delay: number, extra: Partial<HintTimings> = {}): HintMotion => ({
+  current: { ...NO_HINT_TIMINGS, [role]: NO_HINT_TIMINGS[role].map((_, cell) => (cell === 2 ? delay : 0)), ...extra },
+})
+
+describe('the entrance of the hint roles', () => {
+  afterEach(() => jest.restoreAllMocks())
+
+  it.each([
+    ['pattern', ROLE_POP_MS, { hintPattern: true }],
+    ['support', ROLE_POP_MS, { digit: 7, digitStyle: 'given', hintSupport: true }],
+    ['strike', STRIKE_DRAW_MS, { notes: '39', hintStruck: '3' }],
+    ['ghost', GHOST_FADE_MS, { hintTarget: 4 }],
+  ] as const)('starts the %s role at the delay of its cell', (role, duration, props) => {
+    const delay = jest.spyOn(Reanimated, 'withDelay')
+    const timing = jest.spyOn(Reanimated, 'withTiming')
+    render(<Cell {...base} {...props} hintMotion={motionOf(role, 90)} onSelect={jest.fn()} />)
+    expect(delay).toHaveBeenCalledWith(90, expect.anything())
+    expect(timing).toHaveBeenCalledWith(1, expect.objectContaining({ duration }))
+  })
+
+  it('sweeps a focus cell in and pulses it once at pulseAt', () => {
+    const delay = jest.spyOn(Reanimated, 'withDelay')
+    const timing = jest.spyOn(Reanimated, 'withTiming')
+    const motion = motionOf('focus', 60, { pulseAt: 400 })
+    render(<Cell {...base} fill="focus" hintFocus hintMotion={motion} onSelect={jest.fn()} />)
+    expect(delay).toHaveBeenCalledWith(60, expect.anything())
+    expect(delay).toHaveBeenCalledWith(400, expect.anything())
+    expect(timing).toHaveBeenCalledWith(1, expect.objectContaining({ duration: FOCUS_PULSE_MS }))
+  })
+
+  it('only fades the roles with Reduce Motion, and does not pulse', () => {
+    const timing = jest.spyOn(Reanimated, 'withTiming')
+    const motion = motionOf('pattern', 0, { reduced: true })
+    render(<Cell {...base} hintFocus hintPattern hintMotion={motion} onSelect={jest.fn()} />)
+    const durations = timing.mock.calls.map(([, config]) => config?.duration)
+    expect(durations.length).toBeGreaterThan(0)
+    expect(durations.every((duration) => duration === ROLE_FADE_MS)).toBe(true)
+  })
+
+  it('shows the roles at once without a motion, as in a display grid', () => {
+    const delay = jest.spyOn(Reanimated, 'withDelay')
+    render(<Cell {...base} hintFocus hintPattern notes="3" hintStruck="3" onSelect={jest.fn()} />)
+    expect(delay).not.toHaveBeenCalled()
+  })
+
+  it('does not play a role again when its cell renders for another reason', () => {
+    const delay = jest.spyOn(Reanimated, 'withDelay')
+    const motion = motionOf('pattern', 90)
+    render(<Cell {...base} hintPattern hintMotion={motion} onSelect={jest.fn()} />)
+    screen.rerender(<Cell {...base} hintPattern ring hintMotion={motion} onSelect={jest.fn()} />)
+    expect(delay).toHaveBeenCalledTimes(1)
   })
 })

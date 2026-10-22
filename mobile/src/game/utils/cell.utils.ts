@@ -20,7 +20,11 @@ export type CellView = {
   fill: CellFill
   /** A thin ring marks the selected cell when the selected-cell assist is off. */
   ring: boolean
-  /** The hint roles (ADR-032). hintEdges: HINT_EDGE bits of the focus outline. */
+  /**
+   * The hint roles (ADR-032). hintFocus: the cell is in a focus unit, even where the conflict or the selected fill
+   * hides the tint. hintEdges: HINT_EDGE bits of the focus outline.
+   */
+  hintFocus: boolean
   hintEdges: number
   hintPattern: boolean
   hintSupport: boolean
@@ -36,7 +40,14 @@ export type CellView = {
  */
 export type HintHighlight = Pick<Step, 'units' | 'pattern' | 'support' | 'eliminations' | 'placements'>
 
-const NO_HINT = { hintEdges: 0, hintPattern: false, hintSupport: false, hintStruck: '', hintTarget: 0 } as const
+const NO_HINT = {
+  hintFocus: false,
+  hintEdges: 0,
+  hintPattern: false,
+  hintSupport: false,
+  hintStruck: '',
+  hintTarget: 0,
+} as const
 
 const HIDDEN: CellView = { digit: 0, digitStyle: 'entry', notes: '', fill: 'plain', ring: false, ...NO_HINT }
 
@@ -89,6 +100,7 @@ export function cellViews(game: Game, assists: Assists, highlight: HintHighlight
       notes: target === 0 ? notes.join('') : '',
       fill,
       ring: cell === selected && !assists.selectedCell,
+      hintFocus: focus.has(cell),
       hintEdges: edges[cell] ?? 0,
       hintPattern: highlight?.pattern.includes(cell) ?? false,
       hintSupport: digit !== 0 && (highlight?.support.includes(cell) ?? false),

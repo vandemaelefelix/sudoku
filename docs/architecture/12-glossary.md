@@ -146,6 +146,7 @@ status: DRAFT
 | Rung | One level of detail in a step: look, technique, why or answer |
 | Hint card | The card that replaces the tools and the keypad while the player reads a hint. It shows one rung |
 | Dock | The bottom of the game screen: the tools and the keypad, or the hint card in their place. Its height never changes, so the grid does not move (ADR-032) |
+| Role entrance | The motion that brings a hint role onto the grid: the focus cells sweep in and pulse once, a pattern cell or a support ring pops in, a strike draws across its note, and the ghost digit fades in. Only the roles that a rung adds play. With Reduce Motion each role only fades (ADR-032) |
 | Focus unit | The row, column or box that a hint tells the player to look at |
 | Pattern cell | A cell that forms the pattern of a technique, such as a cell of a pair |
 | Support digit | A digit that the pattern uses to prove the step |
