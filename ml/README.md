@@ -93,7 +93,10 @@ approves its outline. A wrong outline makes every cell label of the scan wrong.
    `discarded/`.
 5. No sudoku, or no fit? Press R to reject the scan. All of its cells move to `discarded/`, so training leaves them out.
 6. Press V to see the cells of a scan. Press Z to undo the last Enter, fix or reject.
-7. Press **Finish**. Finish writes `accepted` or `rejected` and the corners into `sudoku-photos.csv`.
+7. Open **Scans 2 · Cells**. It lists each approved scan with cells to confirm, oldest first. Click a scan, check
+   its 81 cells and press Enter. The next scan opens.
+8. Press **Finish**. Finish writes `accepted` or `rejected` and the corners into `sudoku-photos.csv`, and `verified`
+   for the confirmed cells.
 
 A cell with the same pixels as a cell of another scan is stored once. It has one label for both scans. The scan view
 marks it with `=`.

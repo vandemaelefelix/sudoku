@@ -119,6 +119,8 @@ def make_server(
                 elif url.path.startswith(OUTLINE_PREFIX):
                     stem = url.path.removeprefix(OUTLINE_PREFIX).removesuffix(".jpg")
                     self._send(200, store.outline_jpeg(stem), "image/jpeg")
+                elif url.path == "/api/scan-list":
+                    self._json(store.scan_list())
                 elif url.path == "/api/scans":
                     self._json(store.scan_screen(q["photo"]))
                 elif url.path == "/api/status":

@@ -782,6 +782,33 @@ class LabelStore:
             "cells": cells,
         }
 
+    def _unconfirmed(self) -> dict[str, list[str]]:
+        """Photo id → the own cells in DIGIT_CLASSES of each scan with an accepted outline that no
+        person has labelled, in pull order. A scan without such a cell is left out."""
+        accepted = [s.row.photo_id for s in self._scan_states() if s.status == "accepted"]
+        label_sources, labelled = self.label_sources(), confirmed_cells(self.lines)
+        found: dict[str, list[str]] = {photo: [] for photo in accepted}
+        for cell, (photo, _, _) in self.sources().items():
+            if photo not in found or self.folder.get(cell) not in DIGIT_CLASSES:
+                continue
+            if label_sources.get(cell) != "verified" and cell not in labelled:
+                found[photo].append(cell)
+        return {photo: cells for photo, cells in found.items() if cells}
+
+    def scan_list(self) -> dict:
+        """The Cells screen: each approved scan with cells to confirm, oldest first."""
+        label_sources = self.label_sources()
+        return {
+            "scans": [
+                {
+                    "photo": stem_of(photo),
+                    "open": len(cells),
+                    "edited": sum(label_sources.get(c) == "app-edited" for c in cells),
+                }
+                for photo, cells in self._unconfirmed().items()
+            ],
+        }
+
     def confirm_scan(self, photo: str, cells: list[dict]) -> int:
         """Label every own cell of a scan with an approved outline as one action: a digit line
         per cell, also an unchanged one, and a kind line per changed kind. A shared cell belongs
@@ -875,6 +902,7 @@ class LabelStore:
             "digit_cells": sum(f in DIGIT_FOLDERS for f in self.folder.values()),
             "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
             "outlines": sum(s.status == "unchecked" for s in scans),
+            "scan_cells": len(self._unconfirmed()),
             "scans": len(scans),
         }
 
