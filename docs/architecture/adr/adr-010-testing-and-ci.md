@@ -132,3 +132,32 @@ CI no longer only checks. Two new workflows deploy the backend to AWS (ADR-027, 
   workflow lacks the claim. Then use a separate branch rule or an environment, or the fallback in
   `infra/README.md`.
 - The OIDC subject customization of the repository changes. The trust `sub` must then change with it.
+
+## Amendment 2026-10-22: CI builds the iOS app for the simulator
+
+The decision "No iOS build in CI in v1" changes. An Expo SDK or native-module upgrade can break
+the native build, and before this amendment only the developer's Mac showed it (R-08). A new
+workflow, `ios-simulator`, builds the app for the iOS Simulator on a macOS runner. A simulator build
+needs no code signing, so it needs no paid Apple Developer account.
+
+| Job | Trigger | Steps |
+| --- | --- | --- |
+| `ios-simulator` | A pull request that changes `mobile/package.json`, `mobile/app.json`, `mobile/app.config.ts`, `mobile/ios/` or the workflow. A manual run | Install, stub model, `expo prebuild`, `pod install`, `just ios-simulator-build`, upload the `.app` |
+
+1. **The runner is `macos-26` with Xcode 26.6.** Expo SDK 57 needs Xcode 26.4 or later. The
+   workflow pins Xcode through `DEVELOPER_DIR`, so a new default on the image does not change the build.
+2. **The build is the development variant in the Release configuration.** Release bundles the
+   JavaScript, so the app runs without Metro. The development variant talks to the development Clerk
+   instance and the development sync API, so a test run sends no traffic to production (ADR-022).
+   Both variants have the same native modules.
+3. **The build uses the stub model, as `ts` does.** The private model never enters CI (SUD-08).
+4. **The paths filter keeps the cost low.** The repository is private on the Free plan: 2,000 minutes a
+   month, and a macOS minute counts ten times. `pnpm-lock.yaml`, `pnpm-workspace.yaml` and the
+   `justfile` are not trigger paths. Each changes in many pull requests that touch no native code.
+   An upgrade that changes only the lockfile needs a manual run.
+5. **No weekly run.** Nothing changes the native build between two pull requests. A weekly run would
+   cost about a third of the monthly minutes.
+6. **CocoaPods and DerivedData are cached.** A pull request reads the caches of its own runs and of
+   `develop`. A manual run on `develop` seeds the caches for every pull request.
+7. **The `.app` is an artifact for the end-to-end tests.** It keeps 7 days, because the Free plan has
+   500 MB of artifact storage for a private repository.

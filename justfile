@@ -108,6 +108,16 @@ ios-release device:
     cd mobile && APP_VARIANT=production pnpm exec expo prebuild --platform ios --clean
     cd mobile && APP_VARIANT=production pnpm exec expo run:ios --device "{{device}}" --configuration Release
 
+# Build the development variant in Release for the iOS Simulator, without code signing (ADR-010). It needs no Metro
+ios-simulator:
+    test -f mobile/assets/models/cell-classifier.tflite || { echo "The model is missing. Run: just install-model <run>" >&2; exit 1; }
+    cd mobile && APP_VARIANT=development pnpm exec expo prebuild --platform ios --clean
+    just ios-simulator-build
+
+# Run xcodebuild on a prebuilt mobile/ios. The app lands in mobile/ios/DerivedData/Build/Products/Release-iphonesimulator/SudokuDev.app
+ios-simulator-build:
+    cd mobile/ios && xcodebuild -workspace SudokuDev.xcworkspace -scheme SudokuDev -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -quiet build
+
 # Lint the GitHub Actions workflows and actions. Needs actionlint: brew install actionlint
 lint-workflows:
     actionlint
