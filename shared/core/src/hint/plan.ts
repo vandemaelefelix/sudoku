@@ -12,16 +12,22 @@ import type { HintPlan } from './types'
 /** ADR-032 point 4. */
 export const MAX_HINT_STEPS = 6
 
+type Groups = readonly (readonly TechniqueRank[])[]
+
 /**
- * The ranks of `HINT_ORDER`, in groups of the same weight. A group counts as one rank for the step choice.
- * The tier 1 weights all differ, so each group holds one rank until tier 2 gets hint text.
+ * The ranks in groups of the same weight. A group counts as one rank for the step choice. In tier 2,
+ * the hidden triple and the skyscraper share a group, and so do the XYZ-wing and the W-wing.
  */
-const HINT_GROUPS: readonly (readonly TechniqueRank[])[] = HINT_ORDER.reduce<TechniqueRank[][]>((groups, rank) => {
-  const last = groups.at(-1)
-  if (last !== undefined && last[0]!.weight === rank.weight) last.push(rank)
-  else groups.push([rank])
-  return groups
-}, [])
+function groupsOf(ranks: readonly TechniqueRank[]): Groups {
+  return ranks.reduce<TechniqueRank[][]>((groups, rank) => {
+    const last = groups.at(-1)
+    if (last !== undefined && last[0]!.weight === rank.weight) last.push(rank)
+    else groups.push([rank])
+    return groups
+  }, [])
+}
+
+const HINT_GROUPS = groupsOf(HINT_ORDER)
 
 /**
  * A game puzzle has exactly one solution, so the unique rectangle may run once it has hint text
@@ -61,8 +67,8 @@ export function byChoice(selected: number | null) {
 }
 
 /** Every step of the easiest group of hint techniques that applies. */
-function easiestSteps(candidates: Candidates, board: readonly number[]): Step[] {
-  for (const group of HINT_GROUPS) {
+function easiestSteps(candidates: Candidates, board: readonly number[], groups: Groups): Step[] {
+  for (const group of groups) {
     const steps = group.flatMap((rank) => nextSteps(candidates, board, [rank], OPTIONS))
     if (steps.length > 0) return steps
   }
@@ -114,12 +120,17 @@ function pruned(steps: readonly Step[], start: Candidates, board: readonly numbe
 const SEARCH_STEPS = 4 * MAX_HINT_STEPS
 
 /** At most `MAX_HINT_STEPS` steps that end at a placement, or null when no such plan comes. */
-function search(start: Candidates, board: readonly number[], selected: number | null): readonly Step[] | null {
+function search(
+  start: Candidates,
+  board: readonly number[],
+  selected: number | null,
+  groups: Groups,
+): readonly Step[] | null {
   const steps: Step[] = []
   let candidates = start
   while (steps.length < SEARCH_STEPS) {
     // oxlint-disable-next-line unicorn/no-array-sort -- sorts the fresh array of easiestSteps
-    const step = easiestSteps(candidates, board).sort(byChoice(selected))[0]
+    const step = easiestSteps(candidates, board, groups).sort(byChoice(selected))[0]
     if (step === undefined) return null
     steps.push(step)
     if (step.placements.length > 0) {
@@ -152,8 +163,9 @@ function fallbackCell(candidates: Candidates, board: readonly number[], selected
  * The plan of one hint for the board of `game`. Candidates come from the givens and the entries,
  * never from the notes (ADR-032 point 2). The plan changes nothing in the game.
  * Returns null when the grid has no empty cell and no wrong entry.
+ * `ranks` is `HINT_ORDER` unless a caller measures a smaller set. Each rank needs hint text.
  */
-export function planHint(game: Game): HintPlan | null {
+export function planHint(game: Game, ranks: readonly TechniqueRank[] = HINT_ORDER): HintPlan | null {
   const board = game.givens.map((_, cell) => valueAt(game, cell))
   const selected = game.selected
   const wrong = board.flatMap((_, cell) => (isWrong(game, cell) ? [cell] : []))
@@ -161,7 +173,7 @@ export function planHint(game: Game): HintPlan | null {
   if (wrong.length > 0) return { kind: 'mistake', cell: wrong.sort(nearestFirst(selected))[0]! }
   if (!board.includes(0)) return null
   const start = computeCandidates(board)
-  const steps = search(start, board, selected)
+  const steps = search(start, board, selected, ranks === HINT_ORDER ? HINT_GROUPS : groupsOf(ranks))
   if (steps !== null) return { kind: 'steps', steps, answer: steps.at(-1)!.placements[0]! }
   const cell = fallbackCell(start, board, selected)
   // createGame checks that every solution value is 1 to 9.

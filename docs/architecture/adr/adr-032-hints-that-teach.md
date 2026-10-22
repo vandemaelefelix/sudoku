@@ -145,3 +145,16 @@ some plans shrank from 6 steps to 2.
    weights all differ, so this rule acts only when tier 2 gets hint text.
 4. **The random hint is gone.** Until the hint card ships, the Hint tool fills the answer of the plan at once. For a wrong
    entry, it selects that cell. The concept [hints](../00-concepts/hints.md) has the details.
+
+## Amendment 2026-10-22: tier 2 joins the hint plan
+
+The tier 2 techniques now have hint text: the naked and hidden quad, X-wing, swordfish, jellyfish, skyscraper,
+two-string kite, XY-wing, XYZ-wing and W-wing. The hint plan uses tier 1 and tier 2. Tier 3 still has no text,
+so a board that needs it gets the fallback of point 9.
+
+- Rule 3 of the amendment above now acts. The hidden triple and the skyscraper share the weight 4.0. The XYZ-wing
+  and the W-wing share 4.4. Inside each pair, a placement wins, then the step nearest the selected cell.
+- On hard positions, where the next digit needs an elimination first, a hint now teaches in 79.1 % of the expert
+  cases and 75.0 % of the hard cases. With tier 1 alone, it was 53.8 % and 38.9 %. The record is in
+  [the technique coverage](../../research/2026-10-21-technique-coverage.md#hint-coverage).
+- The next step for coverage is hint text for the XY-chain. It needs a new amendment, as the amendment of the solver says.

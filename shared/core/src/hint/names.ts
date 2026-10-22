@@ -29,10 +29,10 @@ export function unitName(unit: number): string {
   }
 }
 
-/** "a", "a and b", "a, b and c". */
-export function listOf(items: readonly (string | number)[]): string {
+/** "a", "a and b", "a, b and c". With `or`: "a, b or c". */
+export function listOf(items: readonly (string | number)[], joiner: 'and' | 'or' = 'and'): string {
   if (items.length <= 1) return items.join('')
-  return `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+  return `${items.slice(0, -1).join(', ')} ${joiner} ${items.at(-1)}`
 }
 
 /**
@@ -59,6 +59,22 @@ export function cellsIn(unit: number, cells: readonly number[]): string {
     case 'box':
       return cellsName(cells)
   }
+}
+
+/** Rows read "rows 2 and 7", columns read "columns 1, 4 and 8". Other units are listed by name. */
+export function linesName(units: readonly number[]): string {
+  if (units.length > 1 && units.every((unit) => unitKindOf(unit) === 'row')) {
+    return `rows ${listOf(units.map((unit) => unit + 1))}`
+  }
+  if (units.length > 1 && units.every((unit) => unitKindOf(unit) === 'column')) {
+    return `columns ${listOf(units.map((unit) => unit - 8))}`
+  }
+  return listOf(units.map(unitName))
+}
+
+/** "a 5", but "an 8". */
+export function aDigit(digit: number): string {
+  return `${digit === 8 ? 'an' : 'a'} ${digit}`
 }
 
 export function capitalised(text: string): string {
