@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { erase, hint, pause, place, select, tick, toggleNote, undo } from './actions'
+import { erase, fillHint, pause, place, select, tick, toggleNote, undo } from './actions'
 import { createGame } from './createGame'
 import { SAMPLE_GIVENS, SAMPLE_SOLUTION, solvedExcept } from './samplePuzzle'
 import { fromSavedGame, needsSave, SAVED_GAME_VERSION, toSavedGame } from './savedGame'
@@ -10,7 +10,7 @@ function gameInProgress() {
   let game = select(createGame({ givens: SAMPLE_GIVENS, solution: SAMPLE_SOLUTION, entries }), 3)
   game = place(game, 4).game
   game = toggleNote(select(game, 40), 8).game
-  game = hint(game, () => 0).game
+  game = fillHint(game, { kind: 'fallback', answer: { cell: 2, digit: 4 } }, []).game
   return pause(tick(game, 61_500))
 }
 
@@ -147,7 +147,7 @@ describe('needsSave', () => {
     ['a note', (game: Game) => toggleNote(select(game, OPEN), 3).game],
     ['an undo', (game: Game) => undo(place(select(game, OPEN), 4).game).game],
     ['an erase', (game: Game) => erase(place(select(game, OPEN), 4).game).game],
-    ['a hint', (game: Game) => hint(game, () => 0).game],
+    ['a hint', (game: Game) => fillHint(game, { kind: 'fallback', answer: { cell: 2, digit: 4 } }, []).game],
     ['a pause', (game: Game) => pause(game)],
   ])('%s needs a save', (_name, act) => {
     const game = fresh()

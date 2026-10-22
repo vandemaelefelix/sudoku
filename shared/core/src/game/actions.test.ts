@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { erase, hint, pause, place, resume, select, tick, toggleNote, undo } from './actions'
+import type { HintPlan } from '../hint/types'
+import { erase, fillHint, pause, place, resume, revealHint, select, tick, toggleNote, undo } from './actions'
 import { NOTHING_COMPLETED } from './completion'
 import { UNDO_LIMIT } from './constants'
 import { createGame } from './createGame'
@@ -16,8 +17,12 @@ const placed = (game: Game, digit: Digit): Game => place(game, digit).game
 const noted = (game: Game, ...digits: Digit[]): Game =>
   digits.reduce((current, digit) => toggleNote(current, digit).game, game)
 
-const first = () => 0
-const last = () => 0.999_999
+/** A plan whose answer is the solution of `cell`. */
+const planFor = (cell: number): HintPlan => {
+  const answer = { cell, digit: SAMPLE_SOLUTION[cell] as Digit }
+  return { kind: 'fallback', answer }
+}
+const filled = (game: Game, cell: number): Game => fillHint(game, planFor(cell), []).game
 
 describe('select', () => {
   it('selects a cell and clears the selection', () => {
@@ -169,7 +174,8 @@ describe('a lost game', () => {
     expect(erase(lost).game).toBe(lost)
     expect(select(lost, 40)).toBe(lost)
     expect(undo(lost).game).toBe(lost)
-    expect(hint(lost, first).game).toBe(lost)
+    expect(fillHint(lost, planFor(2), []).game).toBe(lost)
+    expect(revealHint(lost, { cell: 2, digit: 4 }, [])).toBe(lost)
     expect(pause(lost)).toBe(lost)
   })
 })
@@ -199,7 +205,8 @@ describe('more rules of place and erase', () => {
     place(game, 4)
     erase(game)
     toggleNote(game, 5)
-    hint(game, first)
+    fillHint(game, planFor(3), [])
+    revealHint(game, { cell: 3, digit: 6 }, [])
     expect(game).toEqual(copy)
   })
 })
@@ -237,63 +244,84 @@ describe('undo', () => {
   })
 
   it('takes back a hint entry but keeps the hint count', () => {
-    const game = undo(hint(at(2), first).game).game
+    const game = undo(filled(at(2), 2)).game
     expect(game.entries[2]).toBe(0)
     expect(game.hintsUsed).toBe(1)
   })
 })
 
-describe('hint', () => {
-  const openCells = SAMPLE_GIVENS.flatMap((given, cell) => (given === 0 ? [cell] : []))
+describe('revealHint', () => {
+  const answer = { cell: 2, digit: 4 } as const
 
-  it('fills a random open cell with its correct number and counts one hint', () => {
-    const result = hint(newGame(), first)
+  it('counts one hint for an answer that this session did not show yet', () => {
+    const game = revealHint(newGame(), answer, [])
+    expect(game.hintsUsed).toBe(1)
+    expect({ ...game, hintsUsed: 0 }).toEqual(newGame())
+  })
+
+  it('counts an answer once in a game session', () => {
+    const game = newGame()
+    expect(revealHint(game, answer, [answer])).toBe(game)
+    expect(revealHint(game, { cell: 2, digit: 5 }, [answer]).hintsUsed).toBe(1)
+    expect(revealHint(game, { cell: 3, digit: 4 }, [answer]).hintsUsed).toBe(1)
+  })
+})
+
+describe('fillHint', () => {
+  it('places the answer, selects its cell and counts one hint', () => {
+    const result = fillHint(newGame(), planFor(2), [])
     expect(result.game.entries[2]).toBe(4)
-    expect(result.game.hintsUsed).toBe(1)
     expect(result.game.selected).toBe(2)
+    expect(result.game.hintsUsed).toBe(1)
     expect(result.game.mistakes).toBe(0)
+    expect(result.game.undoSteps).toHaveLength(1)
   })
 
-  it('takes the cell from the random source', () => {
-    const cell = openCells[openCells.length - 1] ?? -1
-    const game = hint(newGame(), last).game
-    expect(game.selected).toBe(cell)
-    expect(game.entries[cell]).toBe(SAMPLE_SOLUTION[cell])
+  it('places the last step of a steps plan', () => {
+    const step = {
+      technique: 'fullHouse' as const,
+      placements: [{ cell: 2, digit: 4 as Digit }],
+      eliminations: [],
+      units: [0],
+      pattern: [2],
+      support: [],
+      digits: [4 as Digit],
+    }
+    const plan: HintPlan = { kind: 'steps', steps: [step], answer: step.placements[0]! }
+    expect(fillHint(newGame(solvedExcept(2)), plan, []).game.entries[2]).toBe(4)
   })
 
-  it('can pick a wrong cell and correct it, without a mistake', () => {
-    const wrong = placed(at(3, solvedExcept(2, 3)), 4)
-    const game = hint(wrong, last).game
-    expect(game.entries[3]).toBe(6)
-    expect(game.mistakes).toBe(1)
+  it('does not count an answer that this session showed already', () => {
+    const result = fillHint(newGame(), planFor(2), [{ cell: 2, digit: 4 }])
+    expect(result.game.entries[2]).toBe(4)
+    expect(result.game.hintsUsed).toBe(0)
   })
 
-  it('picks a wrong entry from the start', () => {
-    const entries = solvedExcept()
-    entries[3] = 1
-    const game = hint(newGame(entries), first).game
-    expect(game.entries[3]).toBe(6)
-    expect(game.mistakes).toBe(0)
+  it('does nothing for a mistake plan', () => {
+    const game = newGame()
+    expect(fillHint(game, { kind: 'mistake', cell: 2 }, []).game).toBe(game)
+  })
+
+  it('does nothing for a stale plan', () => {
+    const game = placed(at(2), 4)
+    expect(fillHint(game, planFor(2), []).game).toBe(game)
+    const wrong: HintPlan = { kind: 'fallback', answer: { cell: 3, digit: 1 } }
+    expect(fillHint(game, wrong, []).game).toBe(game)
   })
 
   it('removes the number from the notes of its peers', () => {
-    const game = hint(noted(at(3), 4), first).game
-    expect(game.notes[3]).toEqual([])
+    expect(filled(noted(at(3), 4), 2).notes[3]).toEqual([])
   })
 
   it('reports what it completed and wins the game on the last cell', () => {
-    const result = hint(newGame(solvedExcept(2)), first)
+    const result = fillHint(newGame(solvedExcept(2)), planFor(2), [])
     expect(result.completed.grid).toBe(true)
     expect(result.game.status).toBe('won')
   })
 
   it('does nothing when the game is won', () => {
     const won = newGame(solvedExcept())
-    expect(hint(won, first).game).toBe(won)
-  })
-
-  it('takes the first open cell when the random source is below 0', () => {
-    expect(hint(newGame(), () => -0.5).game.selected).toBe(2)
+    expect(fillHint(won, planFor(2), []).game).toBe(won)
   })
 })
 
@@ -311,7 +339,7 @@ describe('pause and resume', () => {
     expect(toggleNote(paused, 5).game).toBe(paused)
     expect(erase(paused).game).toBe(paused)
     expect(undo(paused).game).toBe(paused)
-    expect(hint(paused, first).game).toBe(paused)
+    expect(fillHint(paused, planFor(3), []).game).toBe(paused)
     expect(pause(paused)).toBe(paused)
   })
 
@@ -355,7 +383,7 @@ describe('start entries', () => {
     game = toggleNote(select(game, 40), 8).game
     game = erase(select(game, 3)).game
     game = undo(game).game
-    game = hint(game, () => 0).game
+    game = filled(game, 2)
     game = resume(pause(tick(game, 1_000)))
     expect(game.startEntries).toEqual(start)
   })
