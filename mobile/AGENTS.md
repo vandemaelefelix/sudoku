@@ -35,7 +35,7 @@ Run lint, typecheck and tests before you say a task is done.
   `pnpm exec expo run:ios`. Cloud builds (EAS) are not used yet (ADR-010).
 - Keep the folders: `src/app/` (routes), `src/home/` (home UI), `src/game/` (game UI),
   `src/settings/` (settings UI and `SettingsRepository`: screens, components, hooks, utils,
-  constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/scan/` (scan UI), `src/components/` (UI that more than one feature uses, for example `PanelButton`), `src/scanner/` (scanner, entered only through
+  constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/techniques/` (the techniques screen and the technique pages: screens, components, utils, constants), `src/scan/` (scan UI), `src/components/` (UI that more than one feature uses, for example `PanelButton`), `src/scanner/` (scanner, entered only through
   `src/scanner/index.ts`), `src/storage/` (game storage), `src/splash/` (the animated splash) and `src/account/` (the
   Clerk account: the provider, the sign-in screens and the Settings section) and `src/sync/` (the history sync:
   the service, the API client and the provider) and `src/scanShare/` (the scan upload, ADR-030: the record, the crop, the queue, the uploader
@@ -49,7 +49,7 @@ Run lint, typecheck and tests before you say a task is done.
 
 ## Layout inside a feature
 
-A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/stats/`, `src/scan/`, `src/storage/`, `src/splash/`, `src/account/`, `src/sync/`, `src/scanShare/`) has these folders. Create a folder only when it
+A feature folder (`src/home/`, `src/game/`, `src/settings/`, `src/stats/`, `src/techniques/`, `src/scan/`, `src/storage/`, `src/splash/`, `src/account/`, `src/sync/`, `src/scanShare/`) has these folders. Create a folder only when it
 has a file.
 
 | Folder | Holds |

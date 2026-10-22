@@ -1,4 +1,4 @@
-import { HINT_TECHNIQUES, hintText, type Step } from '@sudoku/core'
+import { HINT_TECHNIQUES, hintText, type Step, type TechniqueId } from '@sudoku/core'
 import { HINT_LABELS, HINT_NICE, HINT_TITLE, TARGET_PULSE_SCALE } from '@/game/constants/hint.constants'
 import type { HintHighlight } from './cell.utils'
 import type { HintCardAction, OpenHint } from './session.utils'
@@ -45,6 +45,7 @@ export type HintButton = { action: HintCardAction; label: string }
 /**
  * What the hint card and the strip show. rung: the filled rung dots, null for the one card of a mistake or a fallback.
  * stepLabel: "Step 1 of 2", null for a plan of one step. The first button is the main one.
+ * technique: the technique of "Learn more", from rung 2 on. Null before the card names it.
  */
 export type HintCardView = {
   title: string
@@ -52,6 +53,7 @@ export type HintCardView = {
   rung: number | null
   stepLabel: string | null
   buttons: readonly HintButton[]
+  technique: TechniqueId | null
 }
 
 const FILL: readonly HintButton[] = [
@@ -76,9 +78,10 @@ export function hintCardView(hint: OpenHint): HintCardView {
         rung: null,
         stepLabel: null,
         buttons: [{ action: 'hintErase', label: HINT_LABELS.hintErase }],
+        technique: null,
       }
     case 'fallback':
-      return { title: HINT_TITLE, text, rung: null, stepLabel: null, buttons: FILL }
+      return { title: HINT_TITLE, text, rung: null, stepLabel: null, buttons: FILL, technique: null }
     case 'steps':
       break
   }
@@ -93,5 +96,6 @@ export function hintCardView(hint: OpenHint): HintCardView {
     rung,
     stepLabel: plan.steps.length > 1 ? `Step ${step + 1} of ${plan.steps.length}` : null,
     buttons,
+    technique: rung >= 2 && name !== undefined ? (technique ?? null) : null,
   }
 }
