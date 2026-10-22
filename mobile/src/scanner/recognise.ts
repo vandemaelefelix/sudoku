@@ -60,6 +60,11 @@ export const SEARCH_GROW = 0.1
 export const INNER_INSET = 0.03
 /** The most searches inside a found quad: a grid on a page on a sheet. */
 export const MAX_DEPTH = 3
+/**
+ * The long side of the full read of a still image, in px. A library image can have 48 MP, and its RGBA read alone takes about
+ * 190 MB. The camera photo has about 8 MP. The flatten needs only FLAT_SIZE px of grid.
+ */
+export const STILL_MAX_SIDE = 4032
 
 type Located = { quad: Quad; corners: CornerSource; cornerOffset: number | null }
 type Match = { quad: Quad; offset: number }
@@ -122,13 +127,14 @@ export function locateStill(small: Uint8Array, width: number, height: number): L
 }
 
 /**
- * image: the photo, or a still image. The steps after the first image read the same for both. Disposes every image it makes, never
- * the image it gets. Never throws.
+ * image: the photo, or a still image. The steps after the first image read the same for both. maxSide: the long side of the full
+ * read, in px. Disposes every image it makes, never the image it gets. Never throws.
  */
 function recogniseImage(
   image: ImageSource,
   quad: Quad | null,
   still: boolean,
+  maxSide: number,
   model: TfliteModel,
   outputs: OutputIndex,
   started: number,
@@ -143,7 +149,8 @@ function recogniseImage(
     const smallRgb = toRgb(smallRaw)
     // The raw pixels of the photo image keep the sensor orientation. A resize draws them upright. A still image keeps its EXIF
     // orientation the same way.
-    const upright = image.resize(image.width, image.height)
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
+    const upright = image.resize(Math.round(image.width * scale), Math.round(image.height * scale))
     images.push(upright)
     const full = upright.toRawPixelData()
     const imageMs = Date.now() - started
@@ -196,7 +203,7 @@ export function recognise(
     return { ok: false, reason: errorMessage(error) }
   }
   try {
-    return recogniseImage(image, quad, false, model, outputs, started)
+    return recogniseImage(image, quad, false, Infinity, model, outputs, started)
   } finally {
     image.dispose()
   }
@@ -208,5 +215,5 @@ export function recognise(
  */
 export function recogniseStill(image: ImageSource, model: TfliteModel, outputs: OutputIndex): RecogniseResult {
   'worklet'
-  return recogniseImage(image, null, true, model, outputs, Date.now())
+  return recogniseImage(image, null, true, STILL_MAX_SIDE, model, outputs, Date.now())
 }

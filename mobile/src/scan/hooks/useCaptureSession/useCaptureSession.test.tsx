@@ -270,31 +270,68 @@ describe('the lock latch', () => {
 
 describe('an image from the photo library', () => {
   it('recognises the picked image without a quad and cross-fades', async () => {
-    const { session, output, recogniseStill, startImport, giveImage, giveResult } = setup()
+    const { session, output, recogniseStill, startImport, giveResult } = setup()
     await startImport()
     expect(stillPhoto).toHaveBeenCalledWith(PICKED)
     expect(output.capturePhoto).not.toHaveBeenCalled()
     expect(recogniseStill).toHaveBeenCalledWith(mockStillImage)
-    expect(photoToSkImage).toHaveBeenCalledWith(mockStill, 1600)
     expect(session()).toMatchObject({ phase: 'capturing', origin: 'library', quad: null, crossFade: true })
-    await giveImage()
     await giveResult({ ...OK, corners: 'found', cornerOffset: null })
     expect(session().result).toMatchObject({ ok: true, corners: 'found', imported: true })
+    // The transition does not draw an import, so no second copy of a large image exists.
+    expect(photoToSkImage).not.toHaveBeenCalled()
+    expect(session().photoShown).toBe(false)
   })
 
-  it('keeps the image only in development builds, never for the upload', async () => {
-    const { startImport, giveResult } = setup()
+  it('keeps the image only in development builds, after the scanner let go of its copy', async () => {
+    const { session, startImport, giveResult } = setup()
     await startImport()
+    expect(saveUprightPhoto).not.toHaveBeenCalled()
     await giveResult()
     // Jest runs as a development build.
     expect(saveUprightPhoto).toHaveBeenCalledWith(mockStill)
+    expect(mockStillImage.dispose.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(saveUprightPhoto).mock.invocationCallOrder[0]!,
+    )
+    expect(session().result).toMatchObject({ photoPath: '/tmp/photo.jpg', imported: true })
+  })
+
+  it('keeps no image of an import without a grid', async () => {
+    const { startImport, giveResult } = setup()
+    await startImport()
+    await giveResult(FAILED)
+    expect(saveUprightPhoto).not.toHaveBeenCalled()
+  })
+
+  it('keeps no image of an import in a release build', async () => {
+    const dev = __DEV__
+    Object.assign(globalThis, { __DEV__: false })
+    try {
+      const { session, startImport, giveResult } = setup()
+      await startImport()
+      await giveResult()
+      expect(saveUprightPhoto).not.toHaveBeenCalled()
+      expect(session().result).not.toHaveProperty('photoPath')
+    } finally {
+      Object.assign(globalThis, { __DEV__: dev })
+    }
+  })
+
+  it('starts no scan when the picker closes after unmount, and deletes the picked file', async () => {
+    const { hook, recogniseStill } = setup()
+    const { startImport } = hook.result.current
+    hook.unmount()
+    startImport(PICKED)
+    await act(async () => undefined)
+    expect(recogniseStill).not.toHaveBeenCalled()
+    expect(Haptics.impactAsync).not.toHaveBeenCalled()
+    expect(deletePickedImage).toHaveBeenCalledWith(PICKED)
   })
 
   it('disposes the loaded image and deletes the picked file when the scan is done', async () => {
-    const { startImport, giveImage, giveResult } = setup()
+    const { startImport, giveResult } = setup()
     await startImport()
     expect(deletePickedImage).not.toHaveBeenCalled()
-    await giveImage()
     await giveResult()
     expect(mockStillImage.dispose).toHaveBeenCalledTimes(1)
     expect(deletePickedImage).toHaveBeenCalledWith(PICKED)

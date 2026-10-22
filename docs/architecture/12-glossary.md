@@ -65,7 +65,9 @@ status: DRAFT
 | Draw kit | The paints, the star sprite and the compiled runtime shaders that the engine makes once and gives to every effect |
 | Lock-on progress | 0 to 1: how long the grid has been in view without a clear move, divided by `LOCK_DWELL`. It resets when the grid is lost, found again, jumps or clearly moves. At 1 the scan locks on. The gathered dots show it. The lock-on tracker gives it to the scene, and the effects read it there |
 | Shutter | The button on the camera screen that captures at any time, also without lock-on |
-| Library button | The button at the left of the shutter that opens the photo picker of iOS, for an import |
+| Library button | The button at the left of the shutter that opens the photo picker, for an import |
+| Photo picker | The system screen of iOS (`PHPickerViewController`) where the player picks an image. It runs outside the app, so the app sees only the picked image and needs no photo library permission. `useImageImport` opens it through `expo-image-picker` |
+| Scan origin | Where the image of a scan comes from: `camera` (the live camera) or `library` (an imported image). The capture session holds it |
 | Imported image | An image that the player picks from the photo library for a scan: a photo from earlier or a screenshot. Its capture result has `imported`. It never uploads (ADR-030, amendment 2026-10-22) |
 | Still path | The scan of an imported image: `recogniseStill` and `locateStill` in the scanner. It searches the whole image, then inside each quad it finds |
 | Scanner runtime | The worklet runtime on which `recognise()` and the classifier run, off the JS thread and the UI thread |
@@ -77,7 +79,7 @@ status: DRAFT
 | Transition gate | A point on the capture transition's timeline where the clock holds until an input is ready: the photo at 0.05 s, the results at 0.70 s |
 | Transition clock | The clock on the UI thread that drives the capture transition. It holds at the transition gates |
 | Capture session | The module that owns the state from lock-on to the review: the capture attempt, the transition gates, the transition clock, the plan, the phase and the photo image. It disposes the photo image. The flattened grid image has no dispose call: it goes with the result. The screens and canvases of the scan read it. `useCaptureSession` |
-| Capture result | The scanner result plus what the scan UI adds to an ok result: the flattened grid as a Skia image and the photo file. `src/scan/utils/captureResult.utils.ts` |
+| Capture result | The scanner result plus what the scan UI adds to an ok result: the flattened grid as a Skia image, the photo file and, for an import, `imported`. `src/scan/utils/captureResult.utils.ts` |
 | Cross-fade path | The capture transition without movement. The layers fade in place. It runs with Reduce Motion, after a shutter press without a grid, after an import, and when the photo conversion fails |
 | Install (model) | `just install-model <run>`: copies an exported run into the app without the promote gate. M0 only (ADR-007) |
 | Reference outputs | `reference-outputs.json`: the PyTorch probabilities for the 81 reference cells. The phone's outputs must match them (ADR-005) |

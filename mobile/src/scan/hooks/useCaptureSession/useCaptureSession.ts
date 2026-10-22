@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { type SharedValue, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import type { CameraPhotoOutput, Photo } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
-import { createScanner, type Scanner } from '@/scanner'
+import { createScanner, type RecogniseResult, type Scanner } from '@/scanner'
 import { GATE_RESULTS, SPINNER_DELAY } from '@/scan/constants/transition.constants'
 import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
 import { type CaptureResult, formatScanLog, type ScanOrigin, toCaptureResult } from '@/scan/utils/captureResult.utils'
@@ -62,7 +62,8 @@ export type CapturePhase = 'live' | 'capturing' | 'review'
  * the lock latch refuses the other one, so a second call does nothing. A retake mounts a new camera screen with a new session.
  *
  * startImport: the same for an image from the photo library. uri: the cache copy of the picker. The session deletes it when the
- * attempt is done, also when the latch refuses the import. An import has no locked quad, so the transition cross-fades.
+ * attempt is done, also when the latch refuses the import or the screen has unmounted. An import has no locked quad and no photo
+ * image, so the transition cross-fades.
  *
  * stepClock: a worklet. The overlay calls it first in each UI frame, so the overlay draws the grid of this frame.
  */
@@ -187,6 +188,7 @@ export function useCaptureSession({
   const held = useSharedValue(0)
   const shownVersion = useSharedValue(-1)
   const ended = useSharedValue(false)
+  const mounted = useRef(true)
 
   const crossFade = crossFadeOf(attempt, reduceMotion)
   const { photo: photoReady, results: resultsReady } = gatesOf(attempt)
@@ -199,6 +201,13 @@ export function useCaptureSession({
   useEffect(() => {
     latest.current = attempt
   }, [attempt])
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   // The model loads at start, so the first scan does not wait for it. A load failure shows at the first capture.
   useEffect(() => {
@@ -320,9 +329,11 @@ export function useCaptureSession({
 
   const runImport = useCallback(
     (uri: string) => {
-      const { current, settle, convert } = begin()
+      const { current, settle } = begin()
       const still = stillPhoto(uri)
 
+      // One decoded copy of the image at a time: a library image can be far larger than a camera photo. The transition does not
+      // draw an import, so the session makes no Skia image of it.
       void (async () => {
         try {
           let picked: Image
@@ -335,27 +346,24 @@ export function useCaptureSession({
             settle(0, { ok: false, reason: errorMessage(error) })
             return
           }
-          // An imported image never uploads (ADR-030, amendment 2026-10-22). Only development builds keep it, for the dev menu.
-          const saved = __DEV__
-            ? saveUprightPhoto(still).catch((error) => {
-                devWarn('scan', `the image is not saved: ${errorMessage(error)}`)
-                return null
-              })
-            : Promise.resolve(null)
+          let result: RecogniseResult
           try {
-            await Promise.all([
-              scanner.recogniseStill(picked).then(
-                async (result) => {
-                  const captured = toCaptureResult(result, await saved)
-                  settle(0, captured.ok ? { ...captured, imported: true } : captured)
-                },
-                (error) => settle(0, { ok: false, reason: errorMessage(error) }),
-              ),
-              convert(still),
-            ])
+            result = await scanner.recogniseStill(picked)
+          } catch (error) {
+            result = { ok: false, reason: errorMessage(error) }
           } finally {
             picked.dispose()
           }
+          // An imported image never uploads (ADR-030, amendment 2026-10-22). Only development builds keep it, for the dev menu.
+          const photoPath =
+            __DEV__ && result.ok
+              ? await saveUprightPhoto(still).catch((error) => {
+                  devWarn('scan', `the image is not saved: ${errorMessage(error)}`)
+                  return null
+                })
+              : null
+          const captured = toCaptureResult(result, photoPath)
+          settle(0, captured.ok ? { ...captured, imported: true } : captured)
         } finally {
           deletePickedImage(uri)
         }
@@ -383,7 +391,8 @@ export function useCaptureSession({
 
   const startImport = useCallback(
     (uri: string) => {
-      if (!claimLock(latch.current, 'import', Date.now())) {
+      // The picker can close after the screen unmounted. A dead session must not start a scan.
+      if (!mounted.current || !claimLock(latch.current, 'import', Date.now())) {
         deletePickedImage(uri)
         return
       }
