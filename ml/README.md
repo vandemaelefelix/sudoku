@@ -15,10 +15,9 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just export <run>`: export a run to TFLite. The run path is relative to `ml/`, for example `just export artifacts/<run>`.
 - `just preprocess-fixtures`: regenerate the synthetic reference pairs in `shared/fixtures/preprocess/`. This overwrites the committed files. The app tests against the same files.
 - `just dataset-manifest [--forget-missing]`: rewrite `ml/dataset/cells.csv` from the cell folders and the journal. It refuses a missing or wrong image store. `--forget-missing` drops the rows of cells whose file is gone.
-- `just suspects`: rank the cells whose digit or kind label the model doubts most. The Doubtful labels step of the labelling app shows them. The app runs it too.
-- `just group-cells [run]`: group similar cells per digit folder for the Kind step of the labelling app.
+- `just suspects`: rank the cells whose digit or kind label the model doubts most. The start page of the labelling app has a tool for them. The app runs it too.
 - `just import-photos <folder> [--source S] [--licence L]`: copy new sudoku photos into the image store and find the grid in each.
-- `just prelabel-cells [run]`: let a model propose a digit and a kind for each cell in `unlabeled/` and a kind for each cell in the digit folders. `just label-cells` runs it first.
+- `just prelabel-cells [run]`: let a model propose a digit and a kind, with the full probabilities, for each cell in `unlabeled/` and the digit folders. The labelling app does this by itself, for the open cells.
 - `just label-cells`: build the labelling app if needed and open it on 127.0.0.1 (ADR-034).
 - `just label-rollback <session>`: reverse every change of one unfinished labelling session. A finished session needs git.
 - `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
@@ -53,25 +52,22 @@ Count the rows of `cells.csv` and `sudoku-photos.csv` to get the size of the dat
 
 ## Label cells
 
-Run `just label-cells` and follow the start page. [LABELLING.md](LABELLING.md) describes the two
-flows of the labelling app:
-
-- **From sudoku photos:** fetch the uploaded scans, check the outline of each scan and imported
-  photo, then check the cells of each scan.
-- **From loose cells:** confirm the digit per digit gallery, label the kind, and check the
-  doubtful labels.
-
-Both flows end with **Finish**. Finish folds the journal into `cells.csv`, checks the data, writes
-`ml/dataset/STATUS.md` and deletes the journal and the derived files in `ml/dataset/work/`. Then
-commit the tables: `git add ml/dataset` and commit. Git never adds the images or `ml/dataset/work/`.
+Run `just label-cells` and follow the start page. [LABELLING.md](LABELLING.md) describes the one
+flow of the labelling app: fetch the uploaded scans, check the outline of each scan and imported
+photo, confirm the digit of each open cell, confirm its kind, then press **Finish**. Both cell
+steps show the most doubtful cell first (ADR-030). Finish folds the journal into `cells.csv`,
+checks the data, writes `ml/dataset/STATUS.md` and deletes the journal and the derived files in
+`ml/dataset/work/`. Then commit the tables: `git add ml/dataset` and commit. Git never adds the
+images or `ml/dataset/work/`.
 
 The app works on the real data in `ml/dataset/` and the image store. It has no scratch copy. You
 can stop at any time: Ctrl-C, a closed terminal or a crash. Every label you saved stays in the
 journal. The next start repairs what the stop left and deletes leftover files in
 `ml/dataset/work/tmp/`.
 
-No cell of an uploaded scan trains the model before a person approves its outline. A wrong outline
-makes every cell label of the scan wrong. Run `just reset-scan-outlines` once for the scans of the
+No cell of an uploaded scan trains the model before a person approves its outline and verifies
+its label. Training takes only `verified` cells and legacy cells without a label provenance. A
+wrong outline makes every cell label of the scan wrong. Run `just reset-scan-outlines` once for the scans of the
 first pull: they were stored as `accepted` before the outline check existed. The command refuses
 while the journal holds an unfinished outline check.
 

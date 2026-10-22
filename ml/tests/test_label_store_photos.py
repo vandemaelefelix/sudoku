@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from photos import grid_photo, save_photo
-from test_label_store import Clock, build
+from test_label_store import Clock, build, save_kinds
 
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_import import import_folder
@@ -16,7 +16,7 @@ FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 
 def imported(tmp_path: Path, photos: int = 1) -> tuple[LabelStore, list[str]]:
     """One loose cell, and `photos` imported photos that wait for their outline."""
-    paths, _ = build(tmp_path, {"unlabeled": 1}, {})
+    paths, _ = build(tmp_path, {"unlabeled": 1})
     for n in range(photos):
         save_photo(grid_photo(seed=n), tmp_path / "in" / f"p{n}.png")
     import_folder(tmp_path / "in", paths, source="phone", licence="own")
@@ -99,7 +99,7 @@ def test_a_legacy_photo_is_never_offered(tmp_path: Path):
 
 
 def test_the_doubtful_save_settles_a_page_as_one_action(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2})
     store = LabelStore(paths, Clock())
     a, b = ids["7"]
     entries = [{"id": a, "digit": "1", "kind": "printed"}, {"id": b, "digit": "discarded"}]
@@ -136,10 +136,10 @@ def test_a_batch_with_a_photo_whose_corners_give_no_grid_writes_nothing(tmp_path
 
 
 def test_undo_names_the_step_of_the_action_it_reverses(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     store = LabelStore(paths, Clock())
     assert store.undo_target() is None
-    store.save([{"id": ids["7"][0], "kind": "printed"}], "groups")
+    save_kinds(store, [{"id": ids["7"][0], "kind": "printed"}])
     assert store.undo_target() == "groups"
     store.undo()
     assert store.undo_target() is None

@@ -91,14 +91,13 @@ export function OutlineLarge({ photo }: { photo: string }) {
     z: action.undo,
     Escape: () => {
       fixQueue.length = 0
-      go('a/outlines')
+      go('outlines')
     },
   })
 
   const waiting = fixQueue.length
   return (
     <Frame
-      flow="a"
       step="outlines"
       task="Drag the 4 corners onto the outer corners of the grid. Enter cuts the 81 cells again. R rejects the photo."
       keys={[

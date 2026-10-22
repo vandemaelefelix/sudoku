@@ -34,8 +34,8 @@ NO_KIND_FOLDERS = ("empty", "unlabeled", "discarded")
 CELL_FIELDS = ["cell_id", "digit", "kind", "photo_id", "row", "col", "label_source"]
 # Empty for a cell that predates the column: it counts as trusted, like `verified`.
 LABEL_SOURCES = ("app-edited", "app-unedited", "verified")
-# The labels that training trusts by default.
-TRUSTED_LABEL_SOURCES = ("", "verified", "app-edited")
+# The labels that training uses: a person checked them. Empty is a legacy cell without a scan.
+TRUSTED_LABEL_SOURCES = ("", "verified")
 
 PHOTO_SOURCES = ("phone", "web", "wicht", "openverse", "commons", "lexski", "app-scan")
 APP_SCAN = "app-scan"

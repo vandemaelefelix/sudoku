@@ -166,9 +166,9 @@ docs-check:
 preprocess-fixtures:
     uv run --directory ml python -m sudoku_ml.fixtures ../shared/fixtures/preprocess
 
-# Train a model from a config in ml/configs/ (default: the cell classifier). Flag: --app-unedited adds scan cells that the player did not edit
-train config="cell-classifier" *flags:
-    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml {{flags}}
+# Train a model from a config in ml/configs/ (default: the cell classifier). It uses only the cells that a person verified (ADR-030)
+train config="cell-classifier":
+    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
 
 # Export a training run to TFLite and check it against PyTorch and TFLite 2.17
 export run:
@@ -208,19 +208,15 @@ relabel file:
     file="$(realpath "{{file}}")" && uv run --directory ml python -m sudoku_ml.relabel "$file"
     just dataset-manifest
 
-# Rank the likely wrong digit and kind labels into ml/dataset/work/suspects.csv, for the Doubtful labels step. The app runs it too
+# Rank the likely wrong digit and kind labels into ml/dataset/work/suspects.csv, for the doubtful labels tool of the start page. The app runs it too
 suspects:
     uv run --directory ml python -m sudoku_ml.suspects
 
-# Group the cells of each digit folder for the Kind step of the labelling app. The run path is relative to ml/
-group-cells run="":
-    uv run --directory ml python -m sudoku_ml.grouping {{run}}
-
-# Pre-label the cells in cells/unlabeled/ for the Digits step. The run path is relative to ml/
+# Pre-label the cells of unlabeled/ and the digit folders with the full probabilities. The labelling app does this by itself. The run path is relative to ml/
 prelabel-cells run="":
     uv run --directory ml python -m sudoku_ml.prelabel {{run}}
 
-# Open the labelling app on 127.0.0.1 (ADR-034). It builds the app when a source is newer than the build. At the start the server repairs a stopped session, rewrites ml/dataset/cells.csv and pre-labels new cells. Option: port=8799
+# Open the labelling app on 127.0.0.1 (ADR-034). It builds the app when a source is newer than the build. At the start the server repairs a stopped session, rewrites ml/dataset/cells.csv and pre-labels the open cells. Option: port=8799
 label-cells port="8765":
     #!/usr/bin/env bash
     set -euo pipefail
