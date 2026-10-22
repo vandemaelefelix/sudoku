@@ -170,7 +170,7 @@ function FocusMark({ cell, edges, motion }: RoleProps & { edges: number }) {
   const glowStyle = useAnimatedStyle(() => ({ opacity: focusPulseOpacity(glow.get()) }))
   return (
     <Animated.View style={[styles.hintLayer, markStyle]}>
-      <Animated.View style={[styles.hintLayer, styles.hintGlow, glowStyle]} />
+      {motion !== undefined && <Animated.View style={[styles.hintLayer, styles.hintGlow, glowStyle]} />}
       {edges !== 0 && (
         <View
           testID={`cell-${cell}-hint-edges`}

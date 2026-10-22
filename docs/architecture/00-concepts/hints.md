@@ -143,7 +143,7 @@ The grid draws each role with these shapes. The colours are the `components.cell
 | Struck candidate | A bar in the danger tone across the note digit |
 | Target cell | A 3 pt outline and the digit as a ghost at 40 %. The outline pulses once. With Reduce Motion it stays still |
 
-The roles enter in order when a rung adds them. A role that is on the grid already does not play again.
+Each role has a **role entrance** when a rung adds it. A role that is on the grid already does not play again.
 
 | Order | Role | Entrance | With Reduce Motion |
 | --- | --- | --- | --- |
