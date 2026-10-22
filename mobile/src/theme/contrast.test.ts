@@ -22,16 +22,19 @@ const TEXT_PAIRS: Pair[] = [
     [`given on ${fill}`, (t) => t.components.cell.given, (t) => t.components.cell[fill]],
     [`entry on ${fill}`, (t) => t.components.cell.entry, (t) => t.components.cell[fill]],
   ]),
-  ...(['fill', 'peer', 'selected', 'hintFocus'] as const).map((fill): Pair => [
+  ...(['fill', 'peer', 'selected', 'hintFocusFill', 'hintPatternFill'] as const).map((fill): Pair => [
     `note on ${fill}`,
     (t) => t.components.cell.note,
     (t) => t.components.cell[fill],
   ]),
-  ...(['given', 'entry'] as const).map((digit): Pair => [
-    `${digit} on hintFocus`,
-    (t) => t.components.cell[digit],
-    (t) => t.components.cell.hintFocus,
-  ]),
+  // A hint fill lies under the digits of its cell. A support digit sits on the focus fill, or on the plain fill below it.
+  ...(['given', 'entry', 'hintSupport'] as const).flatMap((digit) =>
+    (['fill', 'hintFocusFill', 'hintPatternFill'] as const).map((fill): Pair => [
+      `${digit} on ${fill}`,
+      (t) => t.components.cell[digit],
+      (t) => t.components.cell[fill],
+    ]),
+  ),
   // A segmented control and a tab bar draw their selected cell with the fill of the selected grid cell.
   ['accent label on the selected cell', (t) => t.colors.accent, (t) => t.components.cell.selected],
   ['muted label on a segment', (t) => t.colors.textMuted, (t) => t.colors.surface],
@@ -64,6 +67,9 @@ const TEXT_PAIRS: Pair[] = [
   ],
 ]
 
+/** The smallest contrast ratio between two neighbouring hint fills. */
+const HINT_FILL_STEP = 1.08
+
 const ALL_THEMES = [...THEME_NAMES.map((name) => THEMES[name]), ...THEME_NAMES.map((name) => COLOUR_THEMES[name])]
 
 /** The colour of a stripe of the hatch over the conflict fill. The Light themes have no hatch: the fill alone. */
@@ -80,14 +86,18 @@ const SHAPE_PAIRS: Pair[] = [
   ['conflict digit on a stripe of the hatch', (t) => t.components.cell.conflict, hatchStripe],
   ['selection ring on the selected cell', (t) => t.components.cell.ring, (t) => t.components.cell.selected],
   ['filled rung dot of the hint card on its surface', (t) => t.colors.accent, (t) => t.colors.surface],
-  // A hint role can land on a plain cell, inside a focus unit or on the selected cell.
-  ...(['hintFocusLine', 'hintPattern', 'hintSupport', 'hintStrike', 'hintTarget'] as const).flatMap((role) =>
-    (['fill', 'hintFocus', 'selected'] as const).map((fill): Pair => [
-      `${role} on ${fill}`,
-      (t) => t.components.cell[role],
-      (t) => t.components.cell[fill],
-    ]),
-  ),
+  // A struck note can lie on a plain cell, in a focus unit or on a pattern cell.
+  ...(['fill', 'hintFocusFill', 'hintPatternFill'] as const).map((fill): Pair => [
+    `hintStrike on ${fill}`,
+    (t) => t.components.cell.hintStrike,
+    (t) => t.components.cell[fill],
+  ]),
+  // The ghost is a cell digit, so large text: 3 : 1. It is drawn at its opacity over the target fill.
+  [
+    'ghost digit on the target fill',
+    (t) => mixHex(t.components.cell.hintTargetFill, t.components.cell.hintGhost, t.components.cell.hintGhostOpacity),
+    (t) => t.components.cell.hintTargetFill,
+  ],
 ]
 
 describe.each(ALL_THEMES)('$name $appearance', (theme) => {
@@ -97,6 +107,15 @@ describe.each(ALL_THEMES)('$name $appearance', (theme) => {
 
   it.each(SHAPE_PAIRS)('%s meets 3 : 1', (_label, foreground, background) => {
     expect(contrastRatio(foreground(theme), background(theme))).toBeGreaterThanOrEqual(3)
+  })
+
+  // The hint fills are lightness steps (ADR-032, amendment of 2026-10-22), so a step must not depend on the hue alone.
+  it('keeps the hint fills apart: plain, focus, pattern, target', () => {
+    const { fill, hintFocusFill, hintPatternFill, hintTargetFill } = theme.components.cell
+    const steps = [fill, hintFocusFill, hintPatternFill, hintTargetFill]
+    for (let step = 1; step < steps.length; step++) {
+      expect(contrastRatio(steps[step - 1] ?? '', steps[step] ?? '')).toBeGreaterThanOrEqual(HINT_FILL_STEP)
+    }
   })
 })
 

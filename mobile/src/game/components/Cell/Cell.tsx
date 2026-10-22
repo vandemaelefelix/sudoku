@@ -2,12 +2,12 @@ import { memo, useEffect, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
 import Animated, {
-  Easing,
+  FadeIn,
+  FadeOut,
   ReduceMotion,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
@@ -22,29 +22,25 @@ import {
   SHAKE_STEPS,
   UNDO_PEAK,
 } from '@/game/constants/mark.constants'
-import { FOCUS_PULSE_MS, HINT_EDGE, NO_FOCUS_PULSE, TARGET_PULSE_MS } from '@/game/constants/hint.constants'
+import { HINT_FADE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import type { Intro } from '@/game/hooks/useGridIntro'
-import type { HintMotion } from '@/game/hooks/useHintMotion'
 import type { Pulse } from '@/game/hooks/usePulse'
-import { useRoleIn } from '@/game/hooks/useRoleIn'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
 import { displayFill, type CellView, type DigitSize } from '@/game/utils/cell.utils'
 import { columnOf, rowOf } from '@/game/utils/grid.utils'
-import { focusPulseOpacity, rolePopScale, targetPulseScale } from '@/game/utils/hint.utils'
 import { introCellAlpha } from '@/game/utils/intro.utils'
 import type { MarkKind } from '@/game/utils/mark.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { NOTE_PLACES } from './Cell.constants'
 import { styles } from './Cell.styles'
 
-/** Without a pulse, an intro and a hint motion, the cell stays still: a grid outside a game has no moves and no entrance. */
+/** Without a pulse and an intro, the cell stays still: a grid outside a game has no moves and no entrance. */
 type CellProps = CellView & {
   cell: number
   label: string
   pulse?: Pulse
   intro?: Intro
-  hintMotion?: HintMotion
   onSelect(cell: number): void
   /** false: the cell only shows the board. No tap, no focus, no VoiceOver stop. */
   interactive?: boolean
@@ -125,123 +121,11 @@ function CellFlash({ kind }: { kind: 'hint' | 'undo' }) {
   )
 }
 
-/** The thick outline of the target cell. It pulses once, inward. Reduce Motion keeps it still. */
-function TargetOutline({ cell }: { cell: number }) {
-  const reduceMotion = useReducedMotion()
-  const progress = useSharedValue(0)
-  useEffect(() => {
-    if (reduceMotion) return
-    progress.set(withTiming(1, { duration: TARGET_PULSE_MS, easing: easeOut }))
-  }, [progress, reduceMotion])
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: targetPulseScale(progress.get()) }] }))
-  return <Animated.View testID={`cell-${cell}-hint-target`} style={[styles.hintTarget, style]} />
-}
+// A hint role fades in and out. A layout animation follows the system setting, so with Reduce Motion a role shows at once.
+const ROLE_IN = FadeIn.duration(HINT_FADE_MS).easing(easeOut)
+const ROLE_OUT = FadeOut.duration(HINT_FADE_MS).easing(easeOut)
 
-type RoleProps = { cell: number; motion: HintMotion | undefined }
-
-/**
- * The tint of a focus cell, under every other layer. It stays while the cell is in a focus unit, so a selection that
- * hides the tint does not play the sweep again.
- */
-function FocusTint({ cell, tinted, motion }: RoleProps & { tinted: boolean }) {
-  const { progress } = useRoleIn(motion, 'focus', cell)
-  const style = useAnimatedStyle(() => ({ opacity: easeOut(progress.get()) }))
-  return (
-    <Animated.View style={[styles.fillLayer, style]} pointerEvents="none">
-      {tinted && <View testID={`cell-${cell}-hint-tint`} style={[styles.fillLayer, styles.hintTint]} />}
-    </Animated.View>
-  )
-}
-
-/**
- * The outline of the focus units, on the sides of this cell where they end, and the glow of the one pulse after the
- * sweep. It sweeps in with the tint.
- */
-function FocusMark({ cell, edges, motion }: RoleProps & { edges: number }) {
-  const { progress } = useRoleIn(motion, 'focus', cell)
-  const glow = useSharedValue(0)
-  useEffect(() => {
-    const pulseAt = motion?.current.pulseAt ?? NO_FOCUS_PULSE
-    if (pulseAt === NO_FOCUS_PULSE) return
-    const timing = { duration: FOCUS_PULSE_MS, easing: Easing.linear, reduceMotion: ReduceMotion.Never }
-    glow.set(withDelay(pulseAt, withTiming(1, timing)))
-  }, [motion, glow])
-  const markStyle = useAnimatedStyle(() => ({ opacity: easeOut(progress.get()) }))
-  const glowStyle = useAnimatedStyle(() => ({ opacity: focusPulseOpacity(glow.get()) }))
-  return (
-    <Animated.View style={[styles.hintLayer, markStyle]}>
-      {motion !== undefined && <Animated.View style={[styles.hintLayer, styles.hintGlow, glowStyle]} />}
-      {edges !== 0 && (
-        <View
-          testID={`cell-${cell}-hint-edges`}
-          style={[
-            styles.hintEdges,
-            (edges & HINT_EDGE.top) !== 0 && styles.hintEdgeTop,
-            (edges & HINT_EDGE.right) !== 0 && styles.hintEdgeRight,
-            (edges & HINT_EDGE.bottom) !== 0 && styles.hintEdgeBottom,
-            (edges & HINT_EDGE.left) !== 0 && styles.hintEdgeLeft,
-          ]}
-        />
-      )}
-    </Animated.View>
-  )
-}
-
-/** The inner outline and the corner dot of a pattern cell. They pop in after the sweep. */
-function PatternMark({ cell, motion }: RoleProps) {
-  const { progress, reduced } = useRoleIn(motion, 'pattern', cell)
-  const style = useAnimatedStyle(() => ({
-    opacity: easeOut(progress.get()),
-    transform: [{ scale: reduced.get() ? 1 : rolePopScale(progress.get()) }],
-  }))
-  return (
-    <Animated.View style={[styles.hintLayer, style]}>
-      <View testID={`cell-${cell}-hint-pattern`} style={styles.hintPattern} />
-      <View testID={`cell-${cell}-hint-dot`} style={styles.hintDot} />
-    </Animated.View>
-  )
-}
-
-/** The ring around a support digit. It pops in with the strikes. */
-function SupportRing({ cell, motion }: RoleProps) {
-  const { progress, reduced } = useRoleIn(motion, 'support', cell)
-  const style = useAnimatedStyle(() => ({
-    opacity: easeOut(progress.get()),
-    transform: [{ scale: reduced.get() ? 1 : rolePopScale(progress.get()) }],
-  }))
-  return (
-    <Animated.View style={[styles.hintLayer, style]}>
-      <View testID={`cell-${cell}-hint-support`} style={styles.hintSupport} />
-    </Animated.View>
-  )
-}
-
-/** The bar across a struck note. It draws from left to right. With Reduce Motion it fades in whole. */
-function StrikeLine({ cell, place, motion }: RoleProps & { place: string }) {
-  const { progress, reduced } = useRoleIn(motion, 'strike', cell)
-  const style = useAnimatedStyle(() => ({
-    opacity: reduced.get() ? progress.get() : 1,
-    transform: [{ scaleX: reduced.get() ? 1 : easeOut(progress.get()) }],
-  }))
-  return (
-    <View style={styles.noteStrike} pointerEvents="none">
-      <Animated.View testID={`note-strike-${place}`} style={[styles.noteStrikeLine, style]} />
-    </View>
-  )
-}
-
-/** The answer digit as a ghost in the target cell. It fades in after the other roles. */
-function GhostDigit({ cell, digit, motion }: RoleProps & { digit: number }) {
-  const { progress } = useRoleIn(motion, 'ghost', cell)
-  const style = useAnimatedStyle(() => ({ opacity: easeOut(progress.get()) }))
-  return (
-    <Animated.View style={style}>
-      <Text allowFontScaling={false} style={styles.ghost}>
-        {digit}
-      </Text>
-    </Animated.View>
-  )
-}
+const HINT_FILL_STYLE = { focus: 'hintFocusFill', pattern: 'hintPatternFill', target: 'hintTargetFill' } as const
 
 /**
  * One cell. The props are primitives, plus onSelect, pulse and intro, which keep their identity for the whole game.
@@ -254,16 +138,13 @@ export const Cell = memo(function Cell({
   notes,
   fill,
   ring,
-  hintFocus,
-  hintEdges,
-  hintPattern,
+  hintFill,
   hintSupport,
   hintStruck,
   hintTarget,
   label,
   pulse,
   intro,
-  hintMotion,
   onSelect,
   interactive = true,
   digitSize = 'full',
@@ -287,20 +168,30 @@ export const Cell = memo(function Cell({
   const digitKey = digitSize === 'small' ? (`${digitStyle}Small` as const) : digitStyle
   const digitView = digit !== 0 && (
     <Animated.View style={introStyle}>
-      <Animated.Text allowFontScaling={false} style={[styles[digitKey], popStyle]}>
+      <Animated.Text
+        key={hintSupport ? 'support' : 'digit'}
+        allowFontScaling={false}
+        {...(hintSupport ? { entering: ROLE_IN, exiting: ROLE_OUT } : {})}
+        style={[styles[digitKey], hintSupport && styles.hintSupport, popStyle]}
+      >
         {digit}
       </Animated.Text>
     </Animated.View>
   )
   const content = (
     <>
-      {interactive && hintFocus && <FocusTint cell={cell} tinted={fill === 'focus'} motion={hintMotion} />}
+      {hintFill !== 'none' && (
+        <Animated.View
+          key={hintFill}
+          testID={`cell-${cell}-hint-${hintFill}`}
+          entering={ROLE_IN}
+          exiting={ROLE_OUT}
+          style={[styles.hintLayer, styles[HINT_FILL_STYLE[hintFill]]]}
+        />
+      )}
       {fill === 'conflict' && <ConflictHatch />}
       {pulse && <Animated.View testID={`cell-${cell}-wave`} style={[styles.wave, waveStyle]} />}
       {(markKind === 'hint' || markKind === 'undo') && <CellFlash key={markId} kind={markKind} />}
-      {hintFocus && <FocusMark cell={cell} edges={hintEdges} motion={hintMotion} />}
-      {hintPattern && <PatternMark cell={cell} motion={hintMotion} />}
-      {hintSupport && digit !== 0 && <SupportRing cell={cell} motion={hintMotion} />}
       {markKind === 'mistake' && digitView ? <MistakeShake key={markId}>{digitView}</MistakeShake> : digitView}
       {digit === 0 && notes !== '' && digitSize === 'full' && (
         <Animated.View style={[styles.notes, introStyle]}>
@@ -311,16 +202,28 @@ export const Cell = memo(function Cell({
                   {place}
                 </Text>
               )}
-              {hintStruck.includes(place) && <StrikeLine cell={cell} place={place} motion={hintMotion} />}
+              {hintStruck.includes(place) && (
+                <Animated.View
+                  testID={`note-strike-${place}`}
+                  entering={ROLE_IN}
+                  exiting={ROLE_OUT}
+                  style={styles.noteStrike}
+                />
+              )}
             </View>
           ))}
         </Animated.View>
       )}
       {digit === 0 && hintTarget !== 0 && digitSize === 'full' && (
-        <>
-          <TargetOutline key={hintTarget} cell={cell} />
-          <GhostDigit key={`ghost-${hintTarget}`} cell={cell} digit={hintTarget} motion={hintMotion} />
-        </>
+        <Animated.Text
+          key={hintTarget}
+          allowFontScaling={false}
+          entering={ROLE_IN}
+          exiting={ROLE_OUT}
+          style={styles.ghost}
+        >
+          {hintTarget}
+        </Animated.Text>
       )}
     </>
   )
@@ -339,8 +242,7 @@ export const Cell = memo(function Cell({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => onSelect(cell)}
-      // The focus tint is a layer of its own, so it can sweep in.
-      style={[styles.cell, styles[fill === 'focus' ? 'plain' : fill], ring && styles.ring]}
+      style={[styles.cell, styles[fill], ring && styles.ring]}
     >
       {content}
     </Pressable>

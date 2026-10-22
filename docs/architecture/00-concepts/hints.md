@@ -70,23 +70,30 @@ column 9". A box has the name of its place, such as "the top-left box".
 ### The card
 
 The **hint card** replaces the tool row and the keypad. Both stay in the layout under the card, so
-the grid does not move. The card sizes to its content. Its largest height is the height of the tool
-row plus the keypad. The card is not modal. The player can still tap the grid.
+the grid does not move. The card covers the whole dock from edge to edge:
+
+- It has the width of the grid and the same side margins.
+- The gap between the grid and the card is the gap above the grid.
+- Its height does not change between rungs.
+- Its padding is the grid margin (16 pt).
+
+The card is not modal. The player can still tap the grid.
 
 The card has these parts:
 
 - The top row: "Hint", or the technique name from rung 2 on. Then "Step 1 of 2" when the plan has more than
   one step, the four rung dots and a close button.
-- The text of the rung. It scrolls only when Dynamic Type makes it taller than the card. VoiceOver reads each new text.
-- The buttons. One filled main button sits on the right. The other actions are text buttons on the left. Each button
-  is at least 44 pt high, and no label wraps onto two lines.
+- The text of the rung, with a line height of about 1.45 times its size. From rung 2 on, "Learn more" is an inline
+  link at the end of the text. The text scrolls only when Dynamic Type makes it taller than the card. VoiceOver reads
+  each new text.
+- The footer: at most one filled main button on the right and at most one text button on the left. Each button is at
+  least 44 pt high, and no label wraps onto two lines.
 
-| Card | Main button | Text buttons |
+| Card | Main button | Text button |
 | --- | --- | --- |
-| Rung 1 | More help | Show answer |
-| Rungs 2 and 3 | More help | Learn more, Show answer |
-| Rung 4 of an elimination step | Next step | Learn more |
-| Rung 4 of the last step | Fill it | Learn more |
+| Rungs 1 to 3 | More help | Show answer |
+| Rung 4 of an elimination step | Next step | |
+| Rung 4 of the last step | Fill it | |
 | A wrong entry | Erase it | |
 | The fallback | Fill it | |
 
@@ -102,14 +109,15 @@ The card moves with the motion of the game screen:
 | --- | --- | --- |
 | Open | The tool row and the keypad sink and fade. The card rises into their place | Fades only |
 | Close | The card sinks and fades. The tool row and the keypad rise back | Fades only |
-| Rung change | The card height eases to the new text. The text cross-fades. The rung dots fill in turn | The height changes at once. The fades stay |
+| Rung change | The text cross-fades. The rung dots fill in turn | The fades stay |
 
 The open hint lives in the session reducer of the app: the plan, the step and the rung. The saved
 game does not keep it.
 
 ### Highlight roles
 
-Each role is a shape plus a colour. The colour never carries the meaning alone.
+The roles keep the look of the app: fills and the accent colour, no extra lines
+([ADR-032](../adr/adr-032-hints-that-teach.md), amendment of 2026-10-22). The card text explains. The grid only points.
 
 | Role | What it marks |
 | --- | --- |
@@ -128,37 +136,35 @@ The roles grow with the rungs, so the grid tells no more than the card:
 | Look | The focus unit: the first unit of the step |
 | Technique | The other units and the pattern cells |
 | Why | The support digits and the struck candidates |
-| Answer | The target cell |
+| Answer | The target cell and its ghost digit |
 
-The candidates that earlier steps struck stay struck. A wrong entry shows as a pattern cell. The
+The candidates that earlier steps struck stay struck. A wrong entry keeps its conflict fill and gets no hint fill. The
 fallback shows only its target cell. The highlight goes when the hint ends.
 
-The grid draws each role with these shapes. The colours are the `components.cell.hint*` tokens of the theme.
+The grid draws each role like this. The colours are the `components.cell.hint*` tokens of the theme.
 
-| Role | Shape |
+| Role | Look |
 | --- | --- |
-| Focus unit | A tint, and a 2 pt outline around all the focus units together |
-| Pattern cell | An inner outline and a small dot in the top-right corner |
-| Support digit | A round ring around the digit |
-| Struck candidate | A bar in the danger tone across the note digit |
-| Target cell | A 3 pt outline and the digit as a ghost at 40 %. The outline pulses once. With Reduce Motion it stays still |
+| Focus unit | A soft tint, the step of the row and column assist. Two units that overlap give one tint |
+| Pattern cell | A tint one step stronger than the focus unit |
+| Support digit | The digit in the accent colour, on the focus tint |
+| Struck candidate | A bar in the danger tone across the note digit: the only line-shaped mark |
+| Target cell | The strongest tint, and the digit as a ghost at the answer rung |
 
-Each role has a **role entrance** when a rung adds it. A role that is on the grid already does not play again.
+A cell with more than one role takes the strongest fill: target, then pattern, then focus. A support cell takes the focus
+tint too. The accent colour is close to the colour of an entry, and the Colour look draws both givens and the accent in
+white. The fill marks the cell where the colour does not.
 
-| Order | Role | Entrance | With Reduce Motion |
-| --- | --- | --- | --- |
-| 1 | Focus unit | The new cells sweep in, 30 ms apart in reading order. Then they pulse once together | A short fade, no pulse |
-| 2 | Pattern cell | Pops in after the sweep, 30 ms apart | A short fade |
-| 3 | Support digit | Its ring pops in after the pattern | A short fade |
-| 3 | Struck candidate | The bar draws from left to right, at the same time as the rings | A short fade |
-| 4 | Target cell | The ghost digit fades in last. The outline keeps its one pulse | A short fade. The outline stays still |
+Each role has a **role entrance**: a fade of 150 ms in and out. A role that stays through a rung change does not fade
+again. With Reduce Motion, a role shows and goes at once.
 
-The timings are constants in `hint.constants.ts`. `hintTimings` in `hint.utils.ts` gives the start of each role in each
-cell. The animations run on the UI thread, and a cell renders again only when its role changes.
+While a hint is open, the assist shades step back: row and column, box and same numbers. The selected fill and its ring
+step back too. The conflict fill stays. The contrast test checks, in all six themes:
 
-While a hint highlight shows, the assist shades step back: row and column, box and same numbers. The conflict fill and
-the selected cell stay. The contrast test checks every role colour at 3 : 1 and every digit on the focus tint at
-4.5 : 1, in all six themes.
+- every digit and note on each hint fill at 4.5 : 1, and the support digit on its fill at 4.5 : 1,
+- the ghost digit on the target fill at 3 : 1 (a cell digit is large text),
+- the strike on each fill at 3 : 1,
+- each step of the fills (plain, focus, pattern, target) at a contrast ratio of 1.08 or more.
 
 ### Technique pages
 
@@ -253,9 +259,9 @@ makes the fallback card before the hint opens.
 
 | Question | Decided by |
 | --- | --- |
-| The shape and the colour of each role | Decided: the shape table under "Highlight roles" and the `components.cell.hint*` tokens |
+| The look of each role | Decided: the fills under "Highlight roles" and the `components.cell.hint*` tokens (ADR-032, amendment of 2026-10-22) |
 | The text of each technique | Decided: the messages of `HINT_TECHNIQUES` in `@sudoku/core`, written from the catalogues of the app (ADR-033) |
-| The layout of the card on a small phone | Decided: the card sizes to its text, up to the height of the tools and the keypad. The text scrolls above that (ADR-032, amendment of 2026-10-22) |
+| The layout of the card on a small phone | Decided: the card covers the dock from edge to edge. The text scrolls when it is taller (ADR-032, amendment "calm highlights with fills only") |
 | Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |
 | VoiceOver reading of the card and the highlights | Not planned |
 

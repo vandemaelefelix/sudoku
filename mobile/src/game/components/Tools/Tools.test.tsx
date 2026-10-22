@@ -53,7 +53,7 @@ it('turns notes mode on and off', () => {
 it('opens a hint on the grid with the Hint tool', () => {
   renderTools()
   fireEvent.press(screen.getByLabelText('Hint'))
-  expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
+  expect(screen.getAllByTestId(/^cell-\d+-hint-focus$/).length).toBeGreaterThan(0)
 })
 
 it('makes every tool a touch target of 52 pt', () => {

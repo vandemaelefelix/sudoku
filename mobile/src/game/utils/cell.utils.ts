@@ -1,11 +1,12 @@
 import { isWrong, UNITS, valueAt, type Game, type Step } from '@sudoku/core'
 import type { Assists } from '@/game/constants/assists.constants'
-import { HINT_EDGE } from '@/game/constants/hint.constants'
 import type { Theme } from '@/theme/theme.types'
 import { boxOf, columnOf, rowOf } from './grid.utils'
 
-/** focus: the tint of a focus unit while a hint is open. */
-export type CellFill = 'plain' | 'peer' | 'same' | 'focus' | 'conflict' | 'selected'
+export type CellFill = 'plain' | 'peer' | 'same' | 'conflict' | 'selected'
+
+/** The fill of a hint role over the cell fill. The strongest role of a cell wins: target, then pattern, then focus. */
+export type HintFill = 'none' | 'focus' | 'pattern' | 'target'
 
 export type DigitStyle = 'given' | 'entry' | 'wrong'
 
@@ -20,13 +21,8 @@ export type CellView = {
   fill: CellFill
   /** A thin ring marks the selected cell when the selected-cell assist is off. */
   ring: boolean
-  /**
-   * The hint roles (ADR-032). hintFocus: the cell is in a focus unit, even where the conflict or the selected fill
-   * hides the tint. hintEdges: HINT_EDGE bits of the focus outline.
-   */
-  hintFocus: boolean
-  hintEdges: number
-  hintPattern: boolean
+  /** The hint roles (ADR-032). hintSupport: the digit takes the support colour. */
+  hintFill: HintFill
   hintSupport: boolean
   /** The struck note digits in order, for example "26". */
   hintStruck: string
@@ -40,53 +36,38 @@ export type CellView = {
  */
 export type HintHighlight = Pick<Step, 'units' | 'pattern' | 'support' | 'eliminations' | 'placements'>
 
-const NO_HINT = {
-  hintFocus: false,
-  hintEdges: 0,
-  hintPattern: false,
-  hintSupport: false,
-  hintStruck: '',
-  hintTarget: 0,
-} as const
+const NO_HINT = { hintFill: 'none', hintSupport: false, hintStruck: '', hintTarget: 0 } as const
 
 const HIDDEN: CellView = { digit: 0, digitStyle: 'entry', notes: '', fill: 'plain', ring: false, ...NO_HINT }
 
-/** For each cell, the HINT_EDGE bits of the sides where the region ends. */
-function regionEdges(region: ReadonlySet<number>): number[] {
-  const inside = (row: number, column: number) =>
-    row >= 0 && row < 9 && column >= 0 && column < 9 && region.has(row * 9 + column)
-  return Array.from({ length: 81 }, (_, cell) => {
-    if (!region.has(cell)) return 0
-    const row = rowOf(cell)
-    const column = columnOf(cell)
-    return (
-      (inside(row - 1, column) ? 0 : HINT_EDGE.top) |
-      (inside(row, column + 1) ? 0 : HINT_EDGE.right) |
-      (inside(row + 1, column) ? 0 : HINT_EDGE.bottom) |
-      (inside(row, column - 1) ? 0 : HINT_EDGE.left)
-    )
-  })
+/**
+ * The hint fill of a cell. A support digit takes the focus fill too: its accent colour is close to the colour of an entry,
+ * so the fill marks it where the colour alone does not. A wrong entry keeps its conflict fill.
+ */
+function hintFillOf(cell: number, wrong: boolean, highlight: HintHighlight, focus: ReadonlySet<number>): HintFill {
+  if (wrong) return 'none'
+  if (highlight.placements.some((placement) => placement.cell === cell)) return 'target'
+  if (highlight.pattern.includes(cell)) return 'pattern'
+  return focus.has(cell) || highlight.support.includes(cell) ? 'focus' : 'none'
 }
 
 /**
  * The view of each cell, row by row. A paused game hides the whole board. While a hint highlight is set, the assist
- * shades step back: only the hint roles, the conflict fill and the selected cell show.
+ * shades and the selected cell step back: only the hint roles and the conflict fill show.
  */
 export function cellViews(game: Game, assists: Assists, highlight: HintHighlight | null = null): CellView[] {
   if (game.status === 'paused') return game.givens.map(() => HIDDEN)
-  const selected = game.selected
+  const selected = highlight === null ? game.selected : null
   const selectedValue = selected === null ? 0 : valueAt(game, selected)
+  // A set, so two focus units that overlap give one tint.
   const focus = new Set(highlight?.units.flatMap((unit) => UNITS[unit] ?? []))
-  const edges = regionEdges(focus)
   return game.givens.map((given, cell) => {
     const digit = valueAt(game, cell)
     const wrong = isWrong(game, cell)
     const notes = digit === 0 ? (game.notes[cell] ?? []) : []
     const target = digit === 0 ? (highlight?.placements.find((placement) => placement.cell === cell)?.digit ?? 0) : 0
     let fill: CellFill = 'plain'
-    if (highlight !== null) {
-      if (focus.has(cell)) fill = 'focus'
-    } else if (selected !== null) {
+    if (selected !== null) {
       const sameLine = rowOf(cell) === rowOf(selected) || columnOf(cell) === columnOf(selected)
       if (assists.rowColumn && sameLine) fill = 'peer'
       if (assists.box && boxOf(cell) === boxOf(selected)) fill = 'peer'
@@ -100,10 +81,9 @@ export function cellViews(game: Game, assists: Assists, highlight: HintHighlight
       notes: target === 0 ? notes.join('') : '',
       fill,
       ring: cell === selected && !assists.selectedCell,
-      hintFocus: focus.has(cell),
-      hintEdges: edges[cell] ?? 0,
-      hintPattern: highlight?.pattern.includes(cell) ?? false,
-      hintSupport: digit !== 0 && (highlight?.support.includes(cell) ?? false),
+      hintFill: highlight === null ? 'none' : hintFillOf(cell, wrong, highlight, focus),
+      // A wrong entry keeps its conflict colours, so it never reads as a support digit.
+      hintSupport: digit !== 0 && !wrong && (highlight?.support.includes(cell) ?? false),
       hintStruck: notes
         .filter((note) => highlight?.eliminations.some((struck) => struck.cell === cell && struck.digit === note))
         .join(''),
@@ -123,8 +103,6 @@ export function displayFill(colours: CellColours, fill: CellFill) {
       return { backgroundColor: colours.peer }
     case 'same':
       return { backgroundColor: colours.same }
-    case 'focus':
-      return { backgroundColor: colours.hintFocus }
     case 'conflict':
       return { backgroundColor: colours.conflictFill }
     case 'selected':
