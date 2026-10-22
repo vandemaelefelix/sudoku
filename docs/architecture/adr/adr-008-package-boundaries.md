@@ -56,5 +56,5 @@ The code on `develop` proves this decision. The status moves from Proposed to Ac
 - `@sudoku/core` is the internal package in `shared/core/`. [ADR-029](adr-029-repository-layout.md) moved it from
   `packages/sudoku-core/`.
 - The scanner is `mobile/src/scanner/`. `mobile/src/scanner/index.ts` is its only entry point.
-- `.dependency-cruiser.cjs` checks SUD-03, SUD-04 and SUD-05. `just boundaries` runs it as part of `just lint`, in CI
-  on every push (#8, #31).
+- `.dependency-cruiser.cjs` checks SUD-03, SUD-04 and SUD-05. `just boundaries` runs it as part of `just lint`. CI runs
+  it on every pull request that changes TypeScript files (#8, #31).

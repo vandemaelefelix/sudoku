@@ -9,8 +9,8 @@ tool-specific file.
 An ad-free iOS sudoku game. It can scan a paper sudoku with the camera, recognise printed and
 handwritten digits on the device, and load the puzzle to play, solve or get a hint.
 
-- **Status:** milestone M0 (walking skeleton). The repository is scaffolded. Work on an issue
-  only after its implementation plan is approved.
+- **Status:** the game, the scanner and the backend run. Open work is in milestones M0 to M4.
+  Work on an issue only after its implementation plan is approved.
 - **Goal:** learning and portfolio first. It also replaces an ad-heavy sudoku app. An App Store
   release is possible, not a goal.
 
