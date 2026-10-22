@@ -10,6 +10,8 @@ export const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.components.button.radius,
   },
   grow: { flex: 1 },
+  // Grows with Dynamic Type, never below a touch target.
+  compact: { height: 'auto', minHeight: theme.size.touch, paddingHorizontal: theme.space.sm },
   primary: { backgroundColor: theme.components.button.primary },
   second: {
     backgroundColor: theme.components.button.second,

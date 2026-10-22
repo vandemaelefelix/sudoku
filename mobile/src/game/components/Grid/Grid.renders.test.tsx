@@ -5,7 +5,6 @@ import { GameProvider } from '@/game/components/GameProvider'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import type { Pulse } from '@/game/hooks/usePulse'
-import type { HintHighlight } from '@/game/utils/cell.utils'
 import type { GameActions } from '@/game/utils/gameSession.utils'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { Grid } from './Grid'
@@ -67,27 +66,14 @@ it('renders only the changed cells on a move that completes a row, and nothing w
 })
 
 it('renders only the cells whose role changes when a hint opens', () => {
-  // A hint on row 1, the top row: cell 2 gets the 4. Cell 9 holds a given 6.
-  const highlight: HintHighlight = {
-    units: [0],
-    pattern: [],
-    support: [9],
-    eliminations: [],
-    placements: [{ cell: 2, digit: 4 }],
-  }
-  const screen = render(
+  render(
     <GameProvider start={sampleStart()}>
       <Grid />
       <Remote />
     </GameProvider>,
   )
   mockSeen.renders = 0
-  screen.rerender(
-    <GameProvider start={sampleStart()}>
-      <Grid highlight={highlight} />
-      <Remote />
-    </GameProvider>,
-  )
-  // The nine cells of row 1 and the support cell.
-  expect(mockSeen.renders).toBe(10)
+  act(() => remote.actions?.hint())
+  // The look rung marks only the focus unit: nine cells.
+  expect(mockSeen.renders).toBe(9)
 })

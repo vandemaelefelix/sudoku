@@ -11,9 +11,9 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   <DisplayGameProvider board={board}>{children}</DisplayGameProvider>
 )
 
-it('gives the board with no move and no notes mode', () => {
+it('gives the board with no move, no notes mode and no hint', () => {
   const { result } = renderHook(() => useGameState(), { wrapper })
-  expect(result.current).toEqual({ board, notesMode: false, move: null })
+  expect(result.current).toEqual({ board, notesMode: false, move: null, hint: null })
 })
 
 it('ignores every action, so the board never changes', () => {

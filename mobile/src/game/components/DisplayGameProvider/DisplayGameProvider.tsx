@@ -13,6 +13,7 @@ const NO_ACTIONS: GameActions = {
   erase: ignore,
   undo: ignore,
   hint: ignore,
+  hintCard: ignore,
   toggleNotesMode: ignore,
   pause: ignore,
   resume: ignore,
@@ -22,10 +23,10 @@ type DisplayGameProviderProps = { board: Game; children: ReactNode }
 
 /**
  * A game context that only shows a board, for a Grid with interactive false.
- * No clock and no moves: move stays null, so no pulse and no haptic. No time context: a TimerPill throws here.
+ * No clock and no moves: move stays null, so no pulse and no haptic. No hint opens. No time context: a TimerPill throws here.
  */
 export function DisplayGameProvider({ board, children }: DisplayGameProviderProps) {
-  const state = useMemo<GameState>(() => ({ board, notesMode: false, move: null }), [board])
+  const state = useMemo<GameState>(() => ({ board, notesMode: false, move: null, hint: null }), [board])
   return (
     <GameActionsContext value={NO_ACTIONS}>
       <GameStateContext value={state}>{children}</GameStateContext>

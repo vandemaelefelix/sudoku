@@ -64,7 +64,7 @@ it('keeps the game grid open to VoiceOver by default', () => {
 })
 
 function Moves() {
-  const { select, digit, undo, hint } = useGameActions()
+  const { select, digit, undo, hint, hintCard } = useGameActions()
   return (
     <>
       <Pressable
@@ -75,7 +75,14 @@ function Moves() {
         }}
       />
       <Pressable testID="undo" onPress={undo} />
-      <Pressable testID="hint" onPress={hint} />
+      <Pressable
+        testID="fill"
+        onPress={() => {
+          hint()
+          hintCard('hintAnswer')
+          hintCard('hintFill')
+        }}
+      />
     </>
   )
 }
@@ -89,9 +96,9 @@ const renderWithMoves = () =>
   )
 
 describe('the mark of the last move', () => {
-  it('glows on the cell of a hint', () => {
+  it('glows on the cell that a hint fills', () => {
     renderWithMoves()
-    fireEvent.press(screen.getByTestId('hint'))
+    fireEvent.press(screen.getByTestId('fill'))
     expect(screen.getAllByTestId('cell-flash-hint')).toHaveLength(1)
   })
 
@@ -101,7 +108,7 @@ describe('the mark of the last move', () => {
     expect(screen.queryByTestId(/^cell-flash-/)).toBeNull()
     fireEvent.press(screen.getByTestId('undo'))
     expect(within(screen.getByTestId('cell-2')).getByTestId('cell-flash-undo')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('hint'))
+    fireEvent.press(screen.getByTestId('fill'))
     expect(screen.queryByTestId('cell-flash-undo')).toBeNull()
   })
 })
