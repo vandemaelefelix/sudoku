@@ -99,17 +99,15 @@ export function colourLook(p: OpartPalette): Look {
         // Notes also sit on the selected fill, where muted text is too faint, so they are nearly white.
         note: white(0.9),
         selectedRingWidth: 3,
-        // The hint roles are white over the page, as the assist shades are. The shape tells them apart.
-        hintFocus: white(0.2),
-        hintFocusLine: w.white,
-        hintPattern: w.white,
+        // The hint fills are white over the page, in the steps of the assist shades. The notes keep 4.5 : 1 on the pattern fill.
+        hintFocusFill: peer,
+        hintPatternFill: white(0.2),
+        hintTargetFill: white(0.3),
         hintSupport: w.white,
         hintStrike: DANGER,
-        hintTarget: w.white,
-        hintGhost: p.colourEntry,
-        hintGhostOpacity: 0.4,
-        hintLineWidth: 2,
-        hintTargetWidth: 3,
+        hintStrikeWidth: 2,
+        hintGhost: w.white,
+        hintGhostOpacity: 0.75,
       },
       key: { fill: white(0.14), digit: w.white, noteDigit: w.white },
       // Boxy toggle: a white track with a page-coloured thumb when on, an outlined track with a white thumb when off.

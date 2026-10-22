@@ -147,12 +147,12 @@ describe('the hint (ADR-032)', () => {
     expect(screen.queryByLabelText('Enter 9')).toBeNull()
     expect(screen.queryByLabelText('Undo')).toBeNull()
     expect(screen.getByTestId('dock-controls', hidden).props.pointerEvents).toBe('none')
-    expect(screen.getAllByTestId(/^cell-\d+-hint-edges$/).length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId(/^cell-\d+-hint-focus$/).length).toBeGreaterThan(0)
     fireEvent.press(screen.getByLabelText('Close the hint'))
     expect(screen.queryByTestId('hint-card')).toBeNull()
     expect(screen.getByLabelText('Enter 9')).toBeTruthy()
     expect(screen.getByLabelText('Undo')).toBeTruthy()
-    expect(screen.queryAllByTestId(/^cell-\d+-hint-edges$/)).toHaveLength(0)
+    expect(screen.queryAllByTestId(/^cell-\d+-hint-focus$/)).toHaveLength(0)
   })
 
   it('gives VoiceOver focus back to the Hint tool when the card closes', () => {
