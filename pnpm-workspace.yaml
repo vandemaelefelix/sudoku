@@ -6,6 +6,7 @@ packages:
   - shared/core
   - shared/sync-contract
   - shared/scan-contract
+  - tools/label-app
 
 allowBuilds:
   '@shopify/react-native-skia': true

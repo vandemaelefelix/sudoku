@@ -1,31 +1,62 @@
 import http.client
 import json
 import threading
-from datetime import UTC, datetime
 from pathlib import Path
 
+import api_schemas as schema
+import jsonschema
 import pytest
 from photos import grid_photo, save_photo
 from test_label_store import Clock, build
 from test_label_store_scans import entries, pulled
 
+from sudoku_ml.fetch_scans import SignInNeeded
 from sudoku_ml.journal import read_journal
 from sudoku_ml.label_server import main, make_server, prelabel_new_cells
 from sudoku_ml.label_store import LabelStore
-from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import import_folder
 from sudoku_ml.prelabel import NO_MODEL
+
+
+class Served:
+    """A label server on a free port, in a thread."""
+
+    def __init__(self, store: LabelStore, **options):
+        self.server = make_server(store, port=0, **options)
+        self.port = self.server.server_port
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def get(self, path: str, shape: dict | None = None, status: int = 200):
+        code, data = request(self.port, "GET", path)
+        assert code == status, data
+        value = json.loads(data)
+        if shape is not None:
+            jsonschema.validate(value, shape)
+        return value
+
+    def post(self, path: str, body: dict, shape: dict | None = None, status: int = 200):
+        code, data = request(self.port, "POST", path, body)
+        assert code == status, data
+        value = json.loads(data)
+        if shape is not None:
+            jsonschema.validate(value, schema.result(shape) if status == 200 else shape)
+        return value["result"] if status == 200 else value
+
+    def close(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
 
 
 @pytest.fixture
 def served(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
-    server = make_server(LabelStore(paths, Clock()), port=0)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    yield server.server_port, paths, ids
-    server.shutdown()
-    server.server_close()
+    app = tmp_path / "app"
+    (app / "assets").mkdir(parents=True)
+    (app / "index.html").write_text("<title>Labels</title>")
+    (app / "assets" / "main.js").write_text("export {}")
+    one = Served(LabelStore(paths, Clock()), app_dir=app)
+    yield one, paths, ids
+    one.close()
 
 
 def request(port, method, path, body=None, host=None, content_type="application/json"):
@@ -47,107 +78,270 @@ def test_the_server_refuses_any_address_but_localhost(tmp_path: Path):
 
 
 def test_a_foreign_host_header_is_refused(served):
-    port, _, _ = served
-    status, _ = request(port, "GET", "/api/next", host="evil.example:80")
+    one, _, _ = served
+    status, _ = request(one.port, "GET", "/api/start", host="evil.example:80")
     assert status == 403
 
 
 def test_a_post_without_json_content_type_is_refused_and_writes_nothing(served):
-    port, paths, ids = served
-    body = {"screen": "groups", "cells": [{"id": ids["7"][0], "kind": "printed"}]}
-    status, _ = request(port, "POST", "/api/save", body, content_type="text/plain")
+    one, paths, ids = served
+    body = {"cells": [{"id": ids["7"][0], "kind": "printed"}]}
+    status, _ = request(one.port, "POST", "/api/kinds/save", body, content_type="text/plain")
     assert status == 415
     assert read_journal(paths.journal) == []
 
 
-def test_a_save_round_trips(served):
-    port, paths, ids = served
-    body = {"screen": "groups", "cells": [{"id": ids["7"][0], "kind": "printed"}]}
-    status, data = request(port, "POST", "/api/save", body)
-    assert status == 200 and json.loads(data) == {"result": 1}
+def test_the_built_app_is_served_and_nothing_outside_it(served):
+    one, _, _ = served
+    status, data = request(one.port, "GET", "/")
+    assert status == 200 and data == b"<title>Labels</title>"
+    status, data = request(one.port, "GET", "/assets/main.js")
+    assert status == 200 and data == b"export {}"
+    # An unknown path and a path out of the folder get the app, never another file.
+    for path in ("/flow-a/outlines", "/../../data/cells.csv", "/assets/%2e%2e/%2e%2e/x"):
+        assert request(one.port, "GET", path) == (200, b"<title>Labels</title>")
+
+
+def test_a_missing_build_says_how_to_build(tmp_path: Path):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    one = Served(LabelStore(paths, Clock()), app_dir=tmp_path / "none")
+    try:
+        status, data = request(one.port, "GET", "/")
+        assert status == 503 and b"just label-cells" in data
+    finally:
+        one.close()
+
+
+def test_an_unknown_api_route_is_a_404(served):
+    one, _, _ = served
+    one.get("/api/progress", status=404)
+    assert one.post("/api/save", {}, status=404) == {"error": "not found"}
+
+
+def test_the_start_counts(served):
+    one, _, _ = served
+    counts = one.get("/api/start", schema.START)
+    assert (counts["kind"], counts["outlines"], counts["changes"]) == (2, 0, 0)
+    assert counts["doubtful"] is None and not counts["suspects"]
+
+
+def test_a_kind_save_round_trips(served):
+    one, paths, ids = served
+    screen = one.get("/api/kinds", schema.KINDS)
+    assert [c["id"] for c in screen["cells"]] == ids["7"]
+    body = {"cells": [{"id": ids["7"][0], "kind": "printed"}]}
+    assert one.post("/api/kinds/save", body) == 1
     assert [x.new for x in read_journal(paths.journal)] == ["printed"]
-    status, data = request(port, "GET", "/api/screen?folder=7&group=0&page=0")
-    assert ids["7"][0] not in [c["id"] for c in json.loads(data)["cells"]]
+    after = one.get("/api/kinds?folder=7&group=0&page=0", schema.KINDS)
+    assert ids["7"][0] not in [c["id"] for c in after["cells"]]
+    assert one.post("/api/undo", {}) == 1
+    assert one.get("/api/start")["kind"] == 2
 
 
 def test_cell_images_are_served_and_unknown_cells_are_not(served):
-    port, _, ids = served
-    status, data = request(port, "GET", f"/cell/{ids['7'][0][:16]}.png")
+    one, _, ids = served
+    status, data = request(one.port, "GET", f"/cell/{ids['7'][0][:16]}.png")
     assert status == 200 and data[:4] == b"\x89PNG"
-    status, _ = request(port, "GET", "/cell/../../etc/passwd")
+    status, _ = request(one.port, "GET", "/cell/../../etc/passwd")
     assert status == 404
 
 
 def test_a_bad_request_gets_a_400_with_a_reason(served):
-    port, _, ids = served
-    body = {"screen": "groups", "cells": [{"id": ids["7"][0], "kind": "notes"}]}
-    status, data = request(port, "POST", "/api/save", body)
-    assert status == 400 and "unknown kind" in json.loads(data)["error"]
+    one, _, ids = served
+    body = {"cells": [{"id": ids["7"][0], "kind": "notes"}]}
+    error = one.post("/api/kinds/save", body, schema.ERROR, status=400)
+    assert "unknown kind" in error["error"]
 
 
-def test_the_page_is_served(served):
-    port, _, _ = served
-    status, data = request(port, "GET", "/")
-    assert status == 200 and b"<title>Cell labels</title>" in data
+def test_the_doubtful_step_lists_and_settles_the_suspects(tmp_path: Path):
+    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    store = LabelStore(paths, Clock())
+    store.save([{"id": c, "kind": "printed"} for c in ids["7"]], "groups")
+    cell = ids["7"][0]
+
+    def rank() -> None:
+        paths.suspects.write_text(
+            f"field,file,label,predicted,p_label,p_predicted\ndigit,{cell[:16]},7,1,0.02,0.97\n"
+        )
+
+    store._dups = ([], set())  # no cell reads: the test has no near-duplicates
+    one = Served(store, suspects=rank)
+    try:
+        assert one.post("/api/suspects", {}) == {"open": 1}
+        screen = one.get("/api/doubtful", schema.DOUBTFUL)
+        assert [(i["id"], i["field"]) for i in screen["items"]] == [(cell, "digit")]
+        body = {"cells": [{"id": cell, "digit": "1", "kind": "handwritten"}]}
+        assert one.post("/api/doubtful/save", body) == 2
+        assert one.get("/api/doubtful")["open"] == 0
+        assert store.folder[cell] == "1" and store.kinds()[cell] == "handwritten"
+        assert one.get("/api/start")["doubtful"] == 0
+    finally:
+        one.close()
 
 
-def test_the_page_explains_each_screen_and_the_kinds(served):
-    port, _, _ = served
-    _, data = request(port, "GET", "/")
-    page = data.decode()
-    for text in (
-        "What to do",
-        "Made by a printer or a screen.",
-        "Written by a person with a pen or a pencil.",
-        "You cannot decide. Training ignores it.",
-        "Run <code>just suspects</code>",
-        "This cell is in folder",
-        "An empty cell has no kind.",
-        "The model thinks these cells are printed. Click each cell that is not. Then press Enter.",
-        "The model thinks these cells are handwritten.",
-        "The model sees no printed or handwritten digit in these cells. Press P or H, click",
-        "none or notes",
-        "cells still need a kind. Press a button in the To do column.",
-        "Every cell has a kind. ✓ Next: Review.",
-        "Loading…",
-        "This takes about 30 seconds the first time.",
-        "No sudoku photos yet. Run just import-photos <folder>, then restart the server.",
-        "All sudoku photos are checked. ✓ Next: Confirm digits.",
-        "Z can no longer undo these changes. Git keeps the old tables.",
-        "Finish closed the open Review items.",
-        "open Review items.`",
-        "Commit the tables: git add ml/dataset, then commit.",
-        "Finish sets it back to 0.",
-        "No cells to confirm yet. Check photos first.",
-        "All digits are confirmed. ✓ Next: Label kind.",
-        "No cells to label yet. Confirm digits first.",
-        "Nothing to review. ✓ All labels look fine.",
-        "Not enough labels to test yet.",
-        "Cannot reach the server. Start it again with just label-cells. ",
-        "Something went wrong in the page. Reload the page.",
-        "Wait for the current action to finish.",
-        "Not enough labels to test yet. Label more cells first.",
-        "Open Progress",
-        "The server did not answer in time. Press Try again.",
-        "Try again",
-        "Without a kind",
-        "Digit corrected",
-        "Look again",
-        "Check: not done yet. Do it after 7 days.",
-        "Read the sentence above the table.",
-        "Nothing to review yet. Stop the server. Run just suspects. Start the server again.",
-        "The model reads ${cell.model_kind} (",
-        "no model guess yet.",
-        "No uploaded scans yet. Run just pull-scans, then restart the server.",
-        "Every outline is checked. ✓ Next: press Finish.",
-        "Approve the outline of this scan first.",
-        "No cell of a scan trains the model before its outline is approved.",
-        "These corners do not form a grid.",
-        "Next: confirm the cells of each scan (Cells).",
-        "No approved scan has cells to confirm. ✓ Next: press Finish.",
-        "Finish marks the confirmed cells as verified.",
-    ):
-        assert text in page
+FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
+
+
+@pytest.fixture
+def served_photos(tmp_path: Path):
+    """Two loose cells with pre-labels and one imported photo that waits for its outline."""
+    paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
+    u = ids["unlabeled"]
+    prelabels = {
+        u[0]: {"digit": "2", "p": 0.6, "kind": "handwritten", "kp": 0.9},
+        u[1]: {"digit": "2", "p": 0.9, "kind": "handwritten", "kp": 0.9},
+    }
+    paths.prelabels.write_text(json.dumps({"run": "test", "cells": prelabels}))
+    save_photo(grid_photo(), tmp_path / "in" / "p.png")
+    import_folder(tmp_path / "in", paths, source="phone", licence="own")
+    store = LabelStore(paths, Clock())
+    prelabelled = []
+    one = Served(store, prelabel=lambda: prelabelled.append(1) or 0)
+    yield one, paths, u, store.check.pending()[0], prelabelled
+    one.close()
+
+
+def test_the_digit_step_and_assign_round_trip(served_photos):
+    one, paths, u, _, _ = served_photos
+    screen = one.get("/api/digits?digit=2", schema.DIGITS)
+    assert [c["id"] for c in screen["cells"]] == [u[0], u[1]]
+    body = {"cells": [{"id": u[0], "digit": "2"}, {"id": u[1], "digit": "discarded"}]}
+    assert one.post("/api/digits/assign", body) == 2
+    assert (paths.cells / "2" / f"{u[0][:16]}.png").exists()
+    assert one.get("/api/start")["digits"] == 0
+
+
+def test_an_imported_photo_goes_through_flow_a(served_photos):
+    one, paths, u, stem, prelabelled = served_photos
+    gallery = one.get("/api/outlines", schema.OUTLINES)
+    assert [(s["photo"], s["source"]) for s in gallery["scans"]] == [(stem, "photo")]
+    one.get(f"/api/outline?photo={stem}", schema.OUTLINE)
+    for path, magic in ((f"/outline/{stem}.jpg", b"\xff\xd8"), (f"/photo/{stem}.jpg", b"\xff\xd8")):
+        status, data = request(one.port, "GET", path)
+        assert status == 200 and data[:2] == magic
+    query = ",".join(str(v) for point in FULL for v in point)
+    status, data = request(one.port, "GET", f"/flat/{stem}.png?c={query}")
+    assert status == 200 and data[:4] == b"\x89PNG"
+    assert request(one.port, "GET", f"/flat/{stem}.png?c=1,2,3")[0] == 400
+    result = one.post("/api/outlines/fix", {"photo": stem, "corners": FULL}, schema.FIX)
+    assert result["cells"] > 0 and prelabelled == [1]
+    listed = one.get("/api/scans", schema.SCANS)["scans"]
+    assert [(s["photo"], s["source"], s["open"]) for s in listed] == [
+        (stem, "photo", result["cells"])
+    ]
+    # The cells of the photo wait in Flow A, so Flow B still counts only its own 2 cells.
+    assert one.get("/api/start")["digits"] + one.get("/api/start")["not_prelabelled"] == 2
+    screen = one.get(f"/api/scan?photo={stem}", schema.SCAN)
+    own = [c for c in screen["cells"] if "id" in c and not c["shared"]]
+    assert len(own) == result["cells"] and all(c["suggested"] for c in own)
+    cells = [{"id": c["id"], "digit": "5", "kind": "printed"} for c in own]
+    assert one.post("/api/scans/confirm", {"photo": stem, "cells": cells}) == 2 * len(own)
+    assert one.get("/api/scans")["scans"] == []
+    assert len(list((paths.cells / "5").glob("*.png"))) == len(own)
+
+
+def test_the_outline_and_scan_routes_of_uploaded_scans_round_trip(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path)
+    one = Served(store)
+    try:
+        gallery = one.get("/api/outlines", schema.OUTLINES)
+        assert gallery["open"] == 2 and {s["source"] for s in gallery["scans"]} == {"app"}
+        large = one.get(f"/api/outline?photo={photos[0]}", schema.OUTLINE)
+        assert large["status"] == "unchecked" and len(large["corners"]) == 4
+        assert one.post("/api/outlines/approve", {"photos": photos[:1]}) == 1
+        body = {"photo": photos[1], "corners": large["corners"]}
+        one.post("/api/outlines/fix", body, schema.FIX)
+        assert one.get("/api/start", schema.START)["outlines"] == 0
+        listed = one.get("/api/scans", schema.SCANS)["scans"]
+        assert [s["photo"] for s in listed] == photos
+        screen = one.get(f"/api/scan?photo={photos[0]}", schema.SCAN)
+        body = {"photo": photos[0], "cells": entries(screen)}
+        assert one.post("/api/scans/confirm", body) == 81
+        error = one.post("/api/outlines/reject", {"photo": photos[0]}, schema.ERROR, 400)
+        assert "already checked" in error["error"]
+        one.get("/api/outline?photo=0000000000000000", schema.ERROR, status=400)
+        assert not paths.detections.exists()
+    finally:
+        one.close()
+
+
+def test_a_journal_of_the_old_page_loads_with_no_finish(tmp_path: Path):
+    """The old page wrote these lines: outline approvals, a confirmed scan and a kind of the
+    Groups screen. The app reads them as they are."""
+    store, paths, photos = pulled(tmp_path)
+    store.approve_outlines(photos)
+    store.confirm_scan(photos[0], entries(store.scan_screen(photos[0])))
+    cell = next(c for c in store.folder if store.folder[c] not in ("empty", "discarded"))
+    old_line = {
+        "t": "2026-10-21T18:00:00Z",
+        "session": "20261021-170000",
+        "action": "20261021-170000-1",
+        "cell": cell,
+        "field": "kind",
+        "old": store.kinds().get(cell),
+        "new": "handwritten",
+        "screen": "groups",
+    }
+    with paths.journal.open("a") as journal:
+        journal.write(json.dumps(old_line) + "\n")
+    before = paths.journal.read_bytes()
+    one = Served(LabelStore(paths, Clock()))
+    try:
+        counts = one.get("/api/start", schema.START)
+        assert (counts["outlines"], counts["scans"]) == (0, 1)
+        assert counts["changes"] == len(read_journal(paths.journal))
+        assert [s["photo"] for s in one.get("/api/scans")["scans"]] == photos[1:]
+        screen = one.get(f"/api/scan?photo={photos[1]}", schema.SCAN)
+        one.post("/api/scans/confirm", {"photo": photos[1], "cells": entries(screen)})
+        assert paths.journal.read_bytes().startswith(before)
+        assert one.get("/api/start")["scans"] == 0
+    finally:
+        one.close()
+
+
+class FakeFetch:
+    def __init__(self, answers: list):
+        self.answers, self.stages = answers, []
+
+    def __call__(self, stage: str) -> dict:
+        self.stages.append(stage)
+        answer = self.answers.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+
+REPORT = {
+    "pulled": 2,
+    "already_pulled": 0,
+    "cells": 160,
+    "invalid": [],
+    "fixture": [],
+    "missing_photo": [],
+    "stage": "production",
+    "table": "sudoku-production-SyncTableTable-x",
+    "bucket": "sudoku-production-scansbucketbucket-x",
+}
+
+
+def test_fetch_reports_the_pull_and_asks_for_a_sign_in_when_the_session_expired(tmp_path: Path):
+    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    fake = FakeFetch([REPORT, SignInNeeded("Token has expired")])
+    signed_in = []
+    one = Served(LabelStore(paths, Clock()), fetch=fake, sign_in=lambda: signed_in.append(1))
+    try:
+        assert one.post("/api/fetch", {"stage": "production"}, schema.FETCH) == REPORT
+        error = one.post("/api/fetch", {"stage": "dev"}, schema.ERROR, status=401)
+        assert error["sign_in"] and fake.stages == ["production", "dev"]
+        assert one.post("/api/aws-login", {}) is None and signed_in == [1]
+    finally:
+        one.close()
+
+
+@pytest.mark.parametrize("route", ["prelabel", "finish", "fetch", "aws-login", "suspects"])
+def test_a_route_without_its_function_answers_404(served, route):
+    one, _, _ = served
+    assert one.post(f"/api/{route}", {"stage": "dev"}, status=404) == {"error": f"no {route}"}
 
 
 def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeypatch):
@@ -169,85 +363,10 @@ def test_stopping_the_server_with_ctrl_c_rewrites_the_manifest(tmp_path, monkeyp
     assert paths.cells_csv.read_text().splitlines()[1].endswith(",handwritten,,,,verified")
 
 
-FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
-
-
-@pytest.fixture
-def served_photos(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
-    u = ids["unlabeled"]
-    prelabels = {
-        u[0]: {"digit": "2", "p": 0.6, "kind": "handwritten"},
-        u[1]: {"digit": "2", "p": 0.9, "kind": "handwritten"},
-    }
-    paths.prelabels.write_text(json.dumps({"run": "test", "cells": prelabels}))
-    save_photo(grid_photo(), tmp_path / "in" / "p.png")
-    import_folder(tmp_path / "in", paths, source="phone", licence="own")
-    store = LabelStore(paths, Clock())
-    moment = datetime(2026, 10, 12, tzinfo=UTC)
-    check = PhotoCheck(paths, store.session, lambda: moment)
-    server = make_server(store, check, port=0)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    yield server.server_port, paths, u, check.pending()[0]
-    server.shutdown()
-    server.server_close()
-
-
-def corner_query() -> str:
-    return ",".join(str(v) for point in FULL for v in point)
-
-
-def test_the_digit_screen_and_assign_round_trip(served_photos):
-    port, paths, u, _ = served_photos
-    status, data = request(port, "GET", "/api/digits?digit=2&kinds=handwritten")
-    assert status == 200 and [c["id"] for c in json.loads(data)["cells"]] == [u[0], u[1]]
-    body = {"screen": "digits", "cells": [{"id": u[0], "digit": "2"}]}
-    status, data = request(port, "POST", "/api/assign", body)
-    assert status == 200 and json.loads(data) == {"result": 1}
-    assert (paths.cells / "2" / f"{u[0][:16]}.png").exists()
-
-
-def test_the_photo_routes_serve_the_photo_and_the_preview(served_photos):
-    port, _, _, stem = served_photos
-    status, data = request(port, "GET", "/api/photos/next")
-    assert status == 200 and json.loads(data)["stem"] == stem
-    status, data = request(port, "GET", f"/photo/{stem}.jpg")
-    assert status == 200 and data[:2] == b"\xff\xd8"
-    status, data = request(port, "GET", f"/flat/{stem}.png?c={corner_query()}")
-    assert status == 200 and data[:4] == b"\x89PNG"
-    status, data = request(port, "GET", f"/api/photos/usable?photo={stem}&c={corner_query()}")
-    assert json.loads(data) == {"usable": 81}
-    status, _ = request(port, "GET", "/photo/0000000000000000.jpg")
-    assert status == 404
-    status, _ = request(port, "GET", f"/flat/{stem}.png?c=1,2,3")
-    assert status == 400
-    status, _ = request(port, "GET", f"/api/photos/usable?photo={stem}&c=1,2,3")
-    assert status == 400
-
-
-def test_an_accepted_photo_serves_its_new_cells(served_photos):
-    port, _, _, stem = served_photos
-    status, data = request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
-    result = json.loads(data)["result"]
-    assert status == 200 and result["cells"] > 0
-    new = result["new_cells"][0]
-    status, data = request(port, "GET", f"/cell/{new[:16]}.png")
-    assert status == 200 and data[:4] == b"\x89PNG"
-    status, data = request(port, "GET", "/api/photos/next")
-    assert json.loads(data) is None
-
-
-def test_a_rejected_photo_leaves_the_queue(served_photos):
-    port, _, _, stem = served_photos
-    status, _ = request(port, "POST", "/api/photos/reject", {"photo": stem})
-    assert status == 200
-    assert json.loads(request(port, "GET", "/api/photos/next")[1]) is None
-
-
-def test_the_server_starts_without_groups(tmp_path, monkeypatch):
+def test_the_server_starts_without_groups_and_on_the_port_given(tmp_path, monkeypatch):
     paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
     paths.groups.unlink()
+    ports = []
 
     class Interrupted:
         server_port = 0
@@ -258,121 +377,38 @@ def test_the_server_starts_without_groups(tmp_path, monkeypatch):
         def server_close(self):
             pass
 
-    monkeypatch.setattr("sudoku_ml.label_server.make_server", lambda store, **_: Interrupted())
+    def fake(store, **options):
+        ports.append(options["port"])
+        return Interrupted()
+
+    monkeypatch.setattr("sudoku_ml.label_server.make_server", fake)
     monkeypatch.setattr("sudoku_ml.label_server.webbrowser.open", lambda url: None)
-    assert main(["label_server"], paths) == 0
+    assert main(["label_server", "--port", "8799"], paths) == 0
+    assert ports == [8799]
 
 
-def test_the_status_counts_photos_cells_and_missing_kinds(served_photos):
-    port, _, u, _ = served_photos
-    status, data = request(port, "GET", "/api/status")
-    assert status == 200
-    assert json.loads(data) == {
-        "photos": 1,
-        "photos_total": 1,
-        "digits": 2,
-        "not_prelabelled": 0,
-        "kind_not_prelabelled": 1,
-        "digit_cells": 1,
-        "kind": 1,
-        "outlines": 0,
-        "scan_cells": 0,
-        "scans": 0,
-    }
-    request(port, "POST", "/api/photos/reject", {"photo": served_photos[3]})
-    assert json.loads(request(port, "GET", "/api/status")[1])["photos"] == 0
-
-
-def test_the_status_counts_cells_without_a_pre_label_apart(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1, "unlabeled": 2}, {"7": [[0]]})
-    server = make_server(LabelStore(paths, Clock()), port=0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    try:
-        data = json.loads(request(server.server_port, "GET", "/api/status")[1])
-        assert data["digits"] == 0 and data["not_prelabelled"] == 2
-    finally:
-        server.shutdown()
-        server.server_close()
-
-
-def test_the_outline_and_scan_routes_round_trip(tmp_path: Path):
-    store, paths, photos = pulled(tmp_path)
-    server = make_server(store, PhotoCheck(paths, store.session, Clock()), port=0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    port = server.server_port
-    try:
-        gallery = json.loads(request(port, "GET", "/api/outlines")[1])
-        assert gallery["open"] == 2 and len(gallery["scans"]) == 2
-        status, data = request(port, "GET", f"/outline/{photos[0]}.jpg")
-        assert status == 200 and data[:2] == b"\xff\xd8"
-        one = json.loads(request(port, "GET", f"/api/outline?photo={photos[0]}")[1])
-        assert one["status"] == "unchecked" and len(one["corners"]) == 4
-        query = ",".join(str(v) for point in one["corners"] for v in point)
-        status, data = request(port, "GET", f"/flat/{photos[0]}.png?c={query}")
-        assert status == 200 and data[:4] == b"\x89PNG"
-        assert not paths.detections.exists()
-        status, _ = request(port, "POST", "/api/outlines/approve", {"photos": photos[:1]})
-        assert status == 200
-        body = {"photo": photos[1], "corners": one["corners"]}
-        status, data = request(port, "POST", "/api/outlines/fix", body)
-        assert status == 200 and "kept" in json.loads(data)["result"]
-        assert json.loads(request(port, "GET", "/api/status")[1])["outlines"] == 0
-        listed = json.loads(request(port, "GET", "/api/scan-list")[1])["scans"]
-        assert [s["photo"] for s in listed] == photos
-        screen = json.loads(request(port, "GET", f"/api/scans?photo={photos[0]}")[1])
-        status, data = request(
-            port, "POST", "/api/scans/confirm", {"photo": photos[0], "cells": entries(screen)}
-        )
-        assert status == 200 and json.loads(data) == {"result": 81}
-        status, data = request(port, "POST", "/api/outlines/reject", {"photo": photos[0]})
-        assert status == 400 and b"already checked" in data
-        status, data = request(port, "GET", "/api/outline?photo=0000000000000000")
-        assert status == 400 and b"not an uploaded scan" in data
-    finally:
-        server.shutdown()
-        server.server_close()
-
-
-def test_the_status_without_a_photo_check_counts_zero_photos(served):
-    port, _, _ = served
-    status, data = request(port, "GET", "/api/status")
-    assert status == 200 and json.loads(data)["photos"] == 0
-
-
-def serve_with(tmp_path: Path, prelabel):
+def serve_with(tmp_path: Path, prelabel) -> Served:
     paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    server = make_server(LabelStore(paths, Clock()), prelabel=prelabel, port=0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    return server
+    return Served(LabelStore(paths, Clock()), prelabel=prelabel)
 
 
 def test_prelabel_returns_the_number_from_the_stub(tmp_path: Path):
-    server = serve_with(tmp_path, lambda: 5)
+    one = serve_with(tmp_path, lambda: 5)
     try:
-        status, data = request(server.server_port, "POST", "/api/prelabel", {})
-        assert status == 200 and json.loads(data) == {"result": 5}
+        assert one.post("/api/prelabel", {}) == 5
     finally:
-        server.shutdown()
-        server.server_close()
-
-
-def test_prelabel_without_a_function_answers_404(served):
-    port, _, _ = served
-    status, data = request(port, "POST", "/api/prelabel", {})
-    assert status == 404 and json.loads(data) == {"error": "no prelabel"}
+        one.close()
 
 
 def test_a_missing_model_gets_a_400_with_the_message(tmp_path: Path):
     def refuse() -> int:
         raise ValueError(NO_MODEL)
 
-    server = serve_with(tmp_path, refuse)
+    one = serve_with(tmp_path, refuse)
     try:
-        status, data = request(server.server_port, "POST", "/api/prelabel", {})
-        assert status == 400 and json.loads(data)["error"] == NO_MODEL
+        assert one.post("/api/prelabel", {}, schema.ERROR, status=400)["error"] == NO_MODEL
     finally:
-        server.shutdown()
-        server.server_close()
+        one.close()
 
 
 def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
@@ -385,86 +421,28 @@ def test_a_corrupt_model_file_gets_a_400_with_a_message(tmp_path: Path):
     run.mkdir(parents=True)
     (run / "model.pt").write_bytes(b"not a model")
     (run / "metrics.json").write_text(json.dumps({"temperature": 1.0}))
-    server = serve_with(
+    one = serve_with(
         tmp_path / "other",
         lambda: prelabel_new_cells(paths, root, root / "artifacts"),
     )
     try:
-        status, data = request(server.server_port, "POST", "/api/prelabel", {})
-        assert status == 400 and json.loads(data)["error"].startswith("The pre-label failed")
+        error = one.post("/api/prelabel", {}, status=400)["error"]
+        assert error.startswith("The pre-label failed")
     finally:
-        server.shutdown()
-        server.server_close()
-
-
-def test_a_prelabel_error_gets_a_400_with_the_reason(tmp_path: Path):
-    def refuse() -> int:
-        raise ValueError("No model run found")
-
-    server = serve_with(tmp_path, refuse)
-    try:
-        status, data = request(server.server_port, "POST", "/api/prelabel", {})
-        assert status == 400 and "No model run" in json.loads(data)["error"]
-    finally:
-        server.shutdown()
-        server.server_close()
-
-
-def test_the_page_explains_the_photos_and_digits_screens(served):
-    port, _, _ = served
-    page = request(port, "GET", "/")[1].decode()
-    for text in (
-        'data-mode="photos"',
-        'data-mode="digits"',
-        "Click the 4 corners: top left, top right, bottom right, bottom left.",
-        "Click each cell that is not this digit.",
-        "Press <b>X</b> to discard the pointed-at cell",
-        "Press <b>Pre-label new cells</b>",
-        "Stop the server with Ctrl-C.",
-        "1 Check photos",
-        "T · Turn grid 90°",
-        "Digits sideways? Press T.",
-        "From sudoku photo ${found.photo}, row ${found.row + 1}, ",
-        "Press T after the 4 corners to turn the grid.",
-        "Click the 4 corners first. Then press T to turn the grid.",
-        "Finish the 4 corners first. Then press T.",
-        "Do the red lines follow the grid?",
-    ):
-        assert text in page
-
-
-def test_a_cell_of_an_accepted_photo_serves_its_source(served_photos):
-    port, _, _, stem = served_photos
-    status, data = request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
-    cell = json.loads(data)["result"]["new_cells"][0][:16]
-    status, data = request(port, "GET", f"/api/source?cell={cell}")
-    assert status == 200 and json.loads(data)["photo"] == stem
-    status, data = request(port, "GET", f"/source/{cell}.png")
-    assert status == 200 and data[:4] == b"\x89PNG"
-    assert request(port, "GET", f"/source/{'0' * 16}.png")[0] == 404
-    assert json.loads(request(port, "GET", f"/api/source?cell={'0' * 16}")[1]) is None
-
-
-def test_the_source_routes_answer_404_without_a_photo_check(served):
-    port, _, _ = served
-    for path in ("/api/source?cell=abc", "/source/abc.png"):
-        status, data = request(port, "GET", path)
-        assert status == 404 and json.loads(data) == {"error": "no photo check"}
+        one.close()
 
 
 def test_an_unexpected_error_gets_a_500_with_a_message_and_the_server_keeps_serving(tmp_path: Path):
     def crash() -> int:
         raise RuntimeError("boom")
 
-    server = serve_with(tmp_path, crash)
+    one = serve_with(tmp_path, crash)
     try:
-        port = server.server_port
-        status, data = request(port, "POST", "/api/prelabel", {})
-        assert status == 500 and json.loads(data)["error"] == "The server failed: boom"
-        assert request(port, "GET", "/api/status")[0] == 200
+        error = one.post("/api/prelabel", {}, status=500)
+        assert error == {"error": "The server failed: boom"}
+        one.get("/api/start")
     finally:
-        server.shutdown()
-        server.server_close()
+        one.close()
 
 
 def test_the_finish_route_answers_with_the_result_or_a_plain_error(tmp_path: Path):
@@ -477,31 +455,12 @@ def test_the_finish_route_answers_with_the_result_or_a_plain_error(tmp_path: Pat
             raise answer
         return answer
 
-    server = make_server(LabelStore(paths, Clock()), finish=finish, port=0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    one = Served(LabelStore(paths, Clock()), finish=finish)
     try:
-        status, data = request(server.server_port, "POST", "/api/finish", {})
-        assert status == 200 and json.loads(data) == {"result": {"removed": ["groups.json"]}}
-        status, data = request(server.server_port, "POST", "/api/finish", {})
-        assert status == 400 and "deleted nothing" in json.loads(data)["error"]
+        assert one.post("/api/finish", {}) == {"removed": ["groups.json"]}
+        assert "deleted nothing" in one.post("/api/finish", {}, status=400)["error"]
     finally:
-        server.shutdown()
-        server.server_close()
-
-
-def test_the_finish_route_is_missing_without_a_finish_function(served):
-    port, _, _ = served
-    status, data = request(port, "POST", "/api/finish", {})
-    assert status == 404 and json.loads(data) == {"error": "no finish"}
-
-
-def test_the_progress_route_says_how_many_cells_are_linked(served_photos):
-    port, _, _, stem = served_photos
-    _, data = request(port, "GET", "/api/progress")
-    assert json.loads(data)["link_line"].startswith("Linked 0 of 3 cells. Cells without a link")
-    request(port, "POST", "/api/photos/accept", {"photo": stem, "corners": FULL})
-    _, data = request(port, "GET", "/api/progress")
-    assert json.loads(data)["link_line"].startswith("Linked 35 of 38 cells.")
+        one.close()
 
 
 def test_a_rollback_of_a_finished_session_says_to_use_git(tmp_path: Path, capsys):

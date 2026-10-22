@@ -80,7 +80,7 @@ def test_the_large_view_and_the_thumbnail(tmp_path: Path):
     store, _, photos = pulled(tmp_path)
     one = store.outline(photos[0])
     assert (one["width"], one["height"]) == PHOTO_SIZE and one["status"] == "unchecked"
-    assert store.outline_jpeg(photos[0])[:2] == b"\xff\xd8"
+    assert store.photo_jpeg(photos[0])[:2] == b"\xff\xd8"
 
 
 def test_approve_is_one_action_and_finish_writes_accepted(tmp_path: Path):
@@ -258,7 +258,7 @@ def test_the_cells_screen_lists_approved_scans_from_an_unfinished_journal(tmp_pa
     assert [s["photo"] for s in listed] == photos
     assert listed[0]["open"] == 81 and listed[0]["edited"] == 1
     assert listed[1]["open"] < 81  # the shared cells belong to the first scan
-    assert again.status()["scan_cells"] == 2
+    assert (again.status()["scans"], again.status()["scan_cells"]) == (2, 81 + listed[1]["open"])
     again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
     assert [s["photo"] for s in again.scan_list()["scans"]] == photos[1:]
     assert finish(again)["report"]["problems"] == []

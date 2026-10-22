@@ -1,6 +1,6 @@
 """Find the sudoku grid in a photo: the largest four-corner outlines, a flatten from each, then a
 check that the 20 grid lines lie where a flattened grid has them. A proposal for the person on
-the Photos screen, not the app's scanner."""
+the Outlines step of the labelling app, not the scanner of the game app."""
 
 from dataclasses import dataclass
 

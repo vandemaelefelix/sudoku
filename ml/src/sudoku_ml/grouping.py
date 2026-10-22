@@ -1,4 +1,4 @@
-"""Groups of similar cells per digit folder, for the labelling page.
+"""Groups of similar cells per digit folder, for the Kind step of the labelling app.
 Writes ml/dataset/work/groups.json."""
 
 import json

@@ -1,17 +1,13 @@
-import io
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-import numpy as np
 import pytest
 from photos import grid_photo, save_photo
 from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.flatten import load_upright, warp_grid
 from sudoku_ml.journal import current_sources, read_journal
-from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_check import MIN_CELLS, PhotoCheck, clear_temp
 from sudoku_ml.photo_import import import_folder
 from sudoku_ml.tables import read_photos
@@ -35,13 +31,6 @@ def unlabeled(paths: DataPaths) -> list[Path]:
     return sorted((paths.cells / "unlabeled").glob("*.png"))
 
 
-def test_an_imported_photo_is_pending_with_its_proposed_corners(tmp_path: Path):
-    check, _, stem = checked(tmp_path, grid_photo())
-    shown = check.next()
-    assert shown["stem"] == stem and shown["pending"] == 1
-    assert len(shown["corners"]) == 4 and shown["reason"] == "full grid"
-
-
 def test_accepting_a_full_grid_cuts_81_cells_and_records_them(tmp_path: Path):
     check, paths, stem = checked(tmp_path, grid_photo())
     result = check.accept(stem, FULL)
@@ -59,7 +48,7 @@ def test_accepting_a_full_grid_cuts_81_cells_and_records_them(tmp_path: Path):
     row = read_photos(paths.photos_csv)[0]
     assert row.status == "accepted"
     assert row.corners == "200.0 100.0 740.0 100.0 740.0 640.0 200.0 640.0"
-    assert check.pending() == [] and check.next() is None
+    assert check.pending() == []
 
 
 def test_a_photo_cannot_be_checked_twice(tmp_path: Path):
@@ -109,18 +98,6 @@ def test_cells_that_already_exist_are_duplicates(tmp_path: Path):
     assert len(unlabeled(paths)) == first["cells"]
 
 
-def test_the_preview_is_a_576_png_and_the_display_photo_a_jpeg(tmp_path: Path):
-    check, _, stem = checked(tmp_path, grid_photo())
-    assert Image.open(io.BytesIO(check.preview_png(stem, FULL))).size == (576, 576)
-    assert check.display_jpeg(stem)[:2] == b"\xff\xd8"
-
-
-def test_an_unknown_photo_is_a_key_error(tmp_path: Path):
-    check, _, _ = checked(tmp_path, grid_photo())
-    with pytest.raises(KeyError):
-        check.photo("0000000000000000")
-
-
 def test_corners_that_give_no_valid_grid_are_a_value_error(tmp_path: Path):
     check, _, stem = checked(tmp_path, grid_photo())
     bow_tie = [[200, 100], [740, 640], [740, 100], [200, 640]]
@@ -130,76 +107,12 @@ def test_corners_that_give_no_valid_grid_are_a_value_error(tmp_path: Path):
             check.usable(stem, corners)
 
 
-def test_a_cell_knows_its_photo_row_and_column(tmp_path: Path):
-    check, paths, stem = checked(tmp_path, grid_photo())
-    result = check.accept(stem, FULL)
-    _, row, col = current_sources(read_journal(paths.journal))[result["new_cells"][5]]
-    found = check.source(result["new_cells"][5][:16])
-    assert found == {"photo": stem, "row": row, "col": col, "source": "phone", "licence": "own"}
-    assert check.source("0" * 16) is None
-
-
-def test_the_source_survives_the_fold_into_cells_csv(tmp_path: Path):
-    check, paths, stem = checked(tmp_path, grid_photo())
-    cell = check.accept(stem, FULL)["new_cells"][0]
-    before = check.source(cell[:16])
-    write_cells_manifest(paths)
-    paths.journal.unlink()
-    assert check.source(cell[:16]) == before
-    assert check.link_line([cell]).startswith("Linked 1 of 1 cells.")
-
-
-def test_a_legacy_photo_is_never_offered(tmp_path: Path):
-    check, paths, _ = checked(tmp_path, grid_photo())
-    text = paths.photos_csv.read_text().replace(",pending,", ",legacy,")
-    paths.photos_csv.write_text(text)
-    assert check.pending() == [] and check.total() == 1
-
-
-def test_the_source_picture_outlines_the_cell_on_the_flat_grid(tmp_path: Path):
-    check, _, stem = checked(tmp_path, grid_photo())
-    result = check.accept(stem, FULL)
-    cell = result["new_cells"][0][:16]
-    found = check.source(cell)
-    picture = np.asarray(Image.open(io.BytesIO(check.source_png(cell))).convert("RGB"))
-    assert picture.shape == (576, 576, 3)
-    plain = warp_grid(load_upright(paths_photo(tmp_path)), FULL)
-    x, y = found["col"] * 64, found["row"] * 64
-    assert tuple(picture[y + 30, x + 1]) == (255, 215, 0)
-    assert not np.array_equal(picture[y + 30, x + 1], plain[y + 30, x + 1])
-    assert check.source_png("0" * 16) is None
-
-
-def paths_photo(tmp_path: Path) -> Path:
-    return next(DataPaths.under(tmp_path / "data").photos.iterdir())
-
-
-def test_the_sources_are_read_again_after_a_second_accept(tmp_path: Path):
-    check, paths, stem = checked(tmp_path, grid_photo())
-    first = check.accept(stem, FULL)["new_cells"][0][:16]
-    assert check.source(first)["photo"] == stem
-    save_photo(grid_photo(seed=3), tmp_path / "in2" / "q.png")
-    import_folder(tmp_path / "in2", paths, source="phone", licence="own")
-    second_stem = check.pending()[0]
-    second = check.accept(second_stem, FULL)["new_cells"][0][:16]
-    assert check.source(second)["photo"] == second_stem
-    assert check.source(first)["photo"] == stem
-
-
 def test_a_decision_drops_the_detection_of_that_photo(tmp_path: Path):
     check, paths, stem = checked(tmp_path, grid_photo())
+    paths.detections.write_text(json.dumps({read_photos(paths.photos_csv)[0].photo_id: {}}))
     assert len(json.loads(paths.detections.read_text())) == 1
     check.reject(stem)
     assert json.loads(paths.detections.read_text()) == {}
-
-
-def test_a_missing_detections_file_is_computed_again_for_a_pending_photo(tmp_path: Path):
-    check, paths, stem = checked(tmp_path, grid_photo())
-    paths.detections.unlink()
-    shown = check.next()
-    assert shown["stem"] == stem and len(shown["corners"]) == 4
-    assert len(json.loads(paths.detections.read_text())) == 1
-    assert check.accept(stem, FULL)["decision"] == "accepted"
 
 
 def test_the_cut_leaves_no_temporary_file_and_never_one_in_a_cell_folder(tmp_path: Path):
@@ -224,4 +137,4 @@ def test_clear_temp_deletes_the_leftovers_of_a_stopped_cut(tmp_path: Path):
 def test_a_pending_photo_whose_file_is_missing_is_skipped(tmp_path: Path):
     check, paths, stem = checked(tmp_path, grid_photo())
     next(paths.photos.iterdir()).unlink()
-    assert check.pending() == [] and check.next() is None
+    assert check.pending() == []

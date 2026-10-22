@@ -1,26 +1,27 @@
 """HTTP front of the label store, on 127.0.0.1 only: cell images never leave the Mac (SUD-02,
-SUD-08)."""
+SUD-08). It serves the built labelling app of `tools/label-app/` and its JSON API (ADR-034)."""
 
 import json
+import mimetypes
 import pickle
 import sys
 import traceback
 import webbrowser
 from collections.abc import Callable
-from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
+from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, REPO_ROOT, DataPaths
+from sudoku_ml.fetch_scans import BotoAws, SignInNeeded, fetch, start_sign_in
 from sudoku_ml.finish import finish
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
-from sudoku_ml.photo_check import PhotoCheck, clear_temp
+from sudoku_ml.photo_check import clear_temp
 
-PAGE = Path(__file__).with_name("label_page.html")
-PHOTO_ROUTES = ("/api/photos/", "/photo/", "/flat/", "/api/source", "/source/")
-OUTLINE_PREFIX = "/outline/"
+APP_DIR = REPO_ROOT / "tools" / "label-app" / "dist"
+NO_APP = b"The labelling app is not built. Run just label-cells: it builds the app first."
+LARGE_PHOTO = 1600  # long side in pixels of the photo in the large views
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 
 
@@ -34,26 +35,43 @@ def parse_corners(text: str) -> list[list[float]]:
 
 def make_server(
     store: LabelStore,
-    check: PhotoCheck | None = None,
     prelabel: Callable[[], int] | None = None,
     finish: Callable[[], dict] | None = None,
+    fetch: Callable[[str], dict] | None = None,
+    sign_in: Callable[[], None] | None = None,
+    suspects: Callable[[], None] | None = None,
+    app_dir: Path = APP_DIR,
     host: str = "127.0.0.1",
     port: int = 8765,
 ) -> HTTPServer:
     if host not in LOCAL_HOSTS:
         raise ValueError(f"refusing to serve on {host}: the page binds to 127.0.0.1 only")
+    jobs = {
+        "prelabel": prelabel,
+        "finish": finish,
+        "fetch": fetch,
+        "aws-login": sign_in,
+        "suspects": suspects,
+    }
 
-    def accept(stem: str, corners) -> dict:
-        if check is None:
-            raise ValueError("no photo check")
-        result = check.accept(stem, corners)
-        store.register(result["new_cells"])
+    def prelabel_quietly() -> None:
+        # The cut of an imported photo adds cells to unlabeled/. Without a model they show "?".
+        if prelabel is not None:
+            try:
+                prelabel()
+            except ValueError as error:
+                print(error, file=sys.stderr)
+
+    def cut(photos: list[str], decide: Callable[[], object]):
+        imported = any(store.source_of(photo) == "photo" for photo in photos)
+        result = decide()
+        if imported:
+            prelabel_quietly()
         return result
 
-    def reject(stem: str) -> None:
-        if check is None:
-            raise ValueError("no photo check")
-        check.reject(stem)
+    def run_suspects() -> dict:
+        suspects()
+        return {"open": len(store.review_items())}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -68,7 +86,7 @@ def make_server(
             self.wfile.write(body)
 
         def _failed(self, error: Exception) -> None:
-            # Without this the connection drops and the page shows only "Failed to fetch".
+            # Without this the connection drops and the app shows only "Failed to fetch".
             traceback.print_exc(file=sys.stderr)
             self._json({"error": f"The server failed: {error}"}, 500)
 
@@ -85,89 +103,68 @@ def make_server(
             self._json({"error": "forbidden host"}, 403)
             return False
 
+        def _static(self, path: str) -> None:
+            root = app_dir.resolve()
+            target = (root / (path.lstrip("/") or "index.html")).resolve()
+            if not target.is_relative_to(root) or not target.is_file():
+                target = root / "index.html"
+            if not target.is_file():
+                self._send(503, NO_APP, "text/plain; charset=utf-8")
+                return
+            kind = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+            if kind.startswith("text/") or kind == "application/javascript":
+                kind += "; charset=utf-8"
+            self._send(200, target.read_bytes(), kind)
+
+        def _image(self, prefix: str, suffix: str) -> str:
+            return urlparse(self.path).path.removeprefix(prefix).removesuffix(suffix)
+
         def do_GET(self):
             if not self._local():
                 return
             url = urlparse(self.path)
             q = {k: v[0] for k, v in parse_qs(url.query).items()}
             try:
-                if url.path == "/":
-                    self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
-                elif url.path.startswith("/cell/"):
-                    stem = url.path.removeprefix("/cell/").removesuffix(".png")
+                if url.path.startswith("/cell/"):
                     try:
-                        path = store.cell_file(stem)
+                        path = store.cell_file(self._image("/cell/", ".png"))
                     except KeyError:
                         self._json({"error": "no such cell"}, 404)
                         return
                     self._send(200, path.read_bytes(), "image/png")
-                elif url.path == "/api/next":
-                    after = (
-                        (q["folder"], int(q["group"]), int(q["page"])) if "folder" in q else None
+                elif url.path.startswith("/outline/"):
+                    self._send(
+                        200, store.photo_jpeg(self._image("/outline/", ".jpg")), "image/jpeg"
                     )
-                    self._json(store.next_screen(after))
-                elif url.path == "/api/screen":
-                    self._json(store.screen(q["folder"], int(q["group"]), int(q["page"])))
-                elif url.path == "/api/review":
-                    self._json(store.review_screen())
-                elif url.path == "/api/check":
-                    self._json(store.check_start())
+                elif url.path.startswith("/photo/"):
+                    body = store.photo_jpeg(self._image("/photo/", ".jpg"), LARGE_PHOTO, False)
+                    self._send(200, body, "image/jpeg")
+                elif url.path.startswith("/flat/"):
+                    body = store.flat_png(self._image("/flat/", ".png"), parse_corners(q["c"]))
+                    self._send(200, body, "image/png")
+                elif url.path == "/api/start":
+                    self._json(store.status())
                 elif url.path == "/api/outlines":
                     self._json(store.outline_screen(int(q.get("page", 0))))
                 elif url.path == "/api/outline":
                     self._json(store.outline(q["photo"]))
-                elif url.path.startswith(OUTLINE_PREFIX):
-                    stem = url.path.removeprefix(OUTLINE_PREFIX).removesuffix(".jpg")
-                    self._send(200, store.outline_jpeg(stem), "image/jpeg")
-                elif url.path == "/api/scan-list":
-                    self._json(store.scan_list())
                 elif url.path == "/api/scans":
+                    self._json(store.scan_list())
+                elif url.path == "/api/scan":
                     self._json(store.scan_screen(q["photo"]))
-                elif url.path == "/api/status":
-                    self._json(
-                        {
-                            "photos": len(check.pending()) if check is not None else 0,
-                            "photos_total": check.total() if check is not None else 0,
-                            **store.status(),
-                        }
-                    )
-                elif url.path == "/api/progress":
-                    progress = store.progress()
-                    if check is not None:
-                        progress["link_line"] = check.link_line(list(store.folder))
-                    self._json(progress)
                 elif url.path == "/api/digits":
-                    self._json(store.digit_screen(q["digit"], q.get("kinds", "handwritten")))
-                elif check is None and url.path.startswith(PHOTO_ROUTES):
-                    self._json({"error": "no photo check"}, 404)
-                elif url.path == "/api/source":
-                    self._json(check.source(q["cell"]))
-                elif url.path.startswith("/source/"):
-                    body = check.source_png(url.path.removeprefix("/source/").removesuffix(".png"))
-                    if body is None:
-                        self._json({"error": "no source"}, 404)
-                        return
-                    self._send(200, body, "image/png")
-                elif url.path == "/api/photos/next":
-                    self._json(check.next(q.get("after")))
-                elif url.path == "/api/photos/usable":
-                    self._json({"usable": check.usable(q["photo"], parse_corners(q["c"]))})
-                elif url.path.startswith("/photo/"):
-                    stem = url.path.removeprefix("/photo/").removesuffix(".jpg")
-                    try:
-                        body = check.display_jpeg(stem)
-                    except KeyError:
-                        self._json({"error": "no such photo"}, 404)
-                        return
-                    self._send(200, body, "image/jpeg")
-                elif url.path.startswith("/flat/"):
-                    stem = url.path.removeprefix("/flat/").removesuffix(".png")
-                    if not check.known(stem):
-                        self._json({"error": "no such photo"}, 404)
-                        return
-                    self._send(200, check.preview_png(stem, parse_corners(q["c"])), "image/png")
-                else:
+                    self._json(store.digit_screen(q["digit"], "all"))
+                elif url.path == "/api/kinds":
+                    after = (
+                        (q["folder"], int(q["group"]), int(q["page"])) if "folder" in q else None
+                    )
+                    self._json(store.next_screen(after))
+                elif url.path == "/api/doubtful":
+                    self._json(store.review_screen())
+                elif url.path.startswith("/api/"):
                     self._json({"error": "not found"}, 404)
+                else:
+                    self._static(url.path)
             except (KeyError, ValueError, IndexError) as error:
                 self._json({"error": str(error)}, 400)
             except Exception as error:
@@ -181,34 +178,42 @@ def make_server(
                 self._json({"error": "Content-Type must be application/json"}, 415)
                 return
             routes = {
-                "/api/save": lambda b: store.save(
-                    b["cells"], b["screen"], b.get("confirm_digits", [])
+                "/api/outlines/approve": lambda b: cut(
+                    b["photos"], lambda: store.approve_outlines(b["photos"])
                 ),
-                "/api/move": lambda b: store.move(b["id"], b["digit"], b["screen"]),
-                "/api/undo": lambda b: store.undo(),
-                "/api/check": lambda b: store.check_answer(b["answers"]),
-                "/api/assign": lambda b: store.assign(b["cells"], b["screen"]),
-                "/api/scans/confirm": lambda b: store.confirm_scan(b["photo"], b["cells"]),
-                "/api/outlines/approve": lambda b: store.approve_outlines(b["photos"]),
-                "/api/outlines/fix": lambda b: store.fix_outline(b["photo"], b["corners"]),
+                "/api/outlines/fix": lambda b: cut(
+                    [b["photo"]], lambda: store.fix_outline(b["photo"], b["corners"])
+                ),
                 "/api/outlines/reject": lambda b: store.reject_outline(b["photo"]),
+                "/api/scans/confirm": lambda b: store.confirm_scan(b["photo"], b["cells"]),
+                "/api/digits/assign": lambda b: store.assign(b["cells"], "digits"),
+                "/api/kinds/save": lambda b: store.save(b["cells"], "groups"),
+                "/api/doubtful/save": lambda b: store.review_save(b["cells"]),
+                "/api/undo": lambda b: store.undo(),
                 "/api/prelabel": lambda b: prelabel(),
                 "/api/finish": lambda b: finish(),
-                "/api/photos/accept": lambda b: accept(b["photo"], b["corners"]),
-                "/api/photos/reject": lambda b: reject(b["photo"]),
+                "/api/fetch": lambda b: fetch(b["stage"]),
+                "/api/aws-login": lambda b: sign_in(),
+                "/api/suspects": lambda b: run_suspects(),
             }
-            route = routes.get(urlparse(self.path).path)
+            name = urlparse(self.path).path
+            route = routes.get(name)
             if route is None:
                 self._json({"error": "not found"}, 404)
                 return
-            name = urlparse(self.path).path
-            if (name, None) in (("/api/prelabel", prelabel), ("/api/finish", finish)):
-                self._json({"error": f"no {name.removeprefix('/api/')}"}, 404)
+            job = name.removeprefix("/api/")
+            if job in jobs and jobs[job] is None:
+                self._json({"error": f"no {job}"}, 404)
                 return
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length) or b"{}")
                 self._json({"result": route(body)})
+            except SignInNeeded as error:
+                self._json(
+                    {"error": "The AWS session expired.", "sign_in": True, "detail": str(error)},
+                    401,
+                )
             except (KeyError, ValueError, IndexError, TypeError) as error:
                 self._json({"error": str(error)}, 400)
             except Exception as error:
@@ -236,9 +241,11 @@ def prelabel_new_cells(
         raise ValueError(f"The pre-label failed: {error}") from error
 
 
-def waiting_line(store: LabelStore, check: PhotoCheck) -> str:
-    cells = sum(folder == "unlabeled" for folder in store.folder.values())
-    return f"Waiting: {cells} cells in unlabeled/, {len(check.pending())} sudoku photos pending."
+def find_suspects(paths: DataPaths) -> None:
+    # torch loads slowly, as in prelabel_new_cells.
+    from sudoku_ml.suspects import find_suspects as rank
+
+    rank(paths)
 
 
 def main(argv: list[str], paths: DataPaths | None = None) -> int:
@@ -251,6 +258,7 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
             print(error, file=sys.stderr)
             return 1
         return 0
+    port = int(argv[argv.index("--port") + 1]) if "--port" in argv else 8765
     # Only after the rollback branch: a rollback in a second terminal must not delete the
     # temporary file of a cut that runs in the server. A stopped cut leaves one (ADR-009).
     clear_temp(paths)
@@ -263,17 +271,18 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
         return 1
     if repaired:
         print(f"Repaired {repaired} kinds of cells outside the digit folders after a stop.")
-    check = PhotoCheck(paths, store.session, lambda: datetime.now(UTC))
     try:
         print(f"Pre-labelled {prelabel_new_cells(paths)} new cells.")
     except ValueError as error:
         print(error)
-    print(waiting_line(store, check))
     server = make_server(
         store,
-        check=check,
         prelabel=lambda: prelabel_new_cells(paths),
         finish=lambda: finish(store),
+        fetch=lambda stage: fetch(paths, stage, BotoAws()),
+        sign_in=start_sign_in,
+        suspects=lambda: find_suspects(paths),
+        port=port,
     )
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Session {store.session}. Open {url}. Stop with Ctrl-C.")
