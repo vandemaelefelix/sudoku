@@ -23,7 +23,11 @@ function Surface({ redraw }: { redraw: () => void }) {
 }
 
 function renderOnScreen(events: ScreenEvents, redraw: () => void) {
-  return render(ScreenShowLayout({ navigation: events, children: <Surface redraw={redraw} /> }))
+  return render(
+    <ScreenShowLayout navigation={events}>
+      <Surface redraw={redraw} />
+    </ScreenShowLayout>,
+  )
 }
 
 it('redraws the canvas when the screen starts to show', () => {

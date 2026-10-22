@@ -39,7 +39,8 @@ function Waves({
 }) {
   const path = useMemo(() => wavesPath(width, lines), [width, lines])
   const canvas = useRef<CanvasRef>(null)
-  // A theme switch under another screen draws the new colour off the window, so the screen shows the old frame without this.
+  // A theme switch under another screen draws the new colour off the window,
+  // so the screen shows the old frame without this.
   useRedrawOnShow(canvas)
   return (
     <Canvas ref={canvas} testID={testID} pointerEvents="none" style={{ width, height }}>
