@@ -137,3 +137,19 @@ The code on `develop` proves this decision. The status moves from Proposed to Ac
 - `mobile/src/theme/transition/` holds the cell wave of decision 10 (#114, #186).
 - #186 built the amendment of 2026-10-21.
 - Decision 5 (light only) is superseded by [ADR-026](adr-026-appearance.md).
+
+## Amendment 2026-10-22: a hidden screen draws its Skia surfaces again when it shows
+
+A theme switch in Settings left the wavy lines of the Home stats card in the old colour. They changed only after Home
+showed again.
+
+- **Cause.** Skia draws into a Metal layer. Settings covers Home, so the Home view is out of the window. The switch
+  renders Home again, and Skia draws the new picture into a layer that the screen does not show. When Home shows
+  again, the layer still holds the old frame. The native stack does not freeze the screen under the focused one, so
+  React did render the new colour.
+- **Decision.** Each screen of the root stack gets its own events through `screenLayout`. `ScreenShowLayout` and
+  `useRedrawOnShow` live in `mobile/src/theme/decorations/ScreenShow/`. At `transitionStart` with `closing: false`,
+  every wave canvas of that screen draws again. The native stack sends this event from `onWillAppear`, before the
+  first frame of the transition.
+- `src/theme/` does not import expo-router. The layout takes only the `addListener` of the screen.
+- A new Skia surface on a screen that the player can leave and see again uses `useRedrawOnShow`.
