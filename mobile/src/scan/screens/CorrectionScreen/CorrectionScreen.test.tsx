@@ -2,7 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import * as Haptics from 'expo-haptics'
 import { StyleSheet } from 'react-native'
 import { type SharedValue, useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
+import { IntlProvider } from 'react-intl'
 import { generate } from '@sudoku/core'
+import { CATALOGUES } from '@/i18n/messages'
 import type { CellResult } from '@/scanner'
 import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
 import * as playUtils from '@/scan/utils/play.utils'
@@ -200,7 +202,8 @@ describe('CorrectionScreen in review', () => {
     const onRetake = jest.fn()
     render(<CorrectionScreen session={review({ ok: false, reason: 'no grid' })} layout={layout} onRetake={onRetake} />)
     expect(screen.getByTestId('correction-failure')).toHaveTextContent(/The scan failed/)
-    expect(screen.getByText('no grid')).toBeTruthy()
+    // A reason that the screen does not know reads as a plain failure. The log keeps the reason.
+    expect(screen.getByText('Something went wrong. Try again.')).toBeTruthy()
     expect(screen.queryByTestId('correction-cell-0')).toBeNull()
     fireEvent.press(screen.getByTestId('retake'))
     fireEvent.press(screen.getByTestId('retake-failure'))
@@ -226,7 +229,33 @@ describe('CorrectionScreen in review', () => {
     expect(onRetake).not.toHaveBeenCalled()
   })
 
-  it('shows the reason and offers another image when an import fails for another reason', () => {
+  it('tells the player to hold the phone over the grid when the photo has no grid', () => {
+    render(
+      <CorrectionScreen
+        session={review({ ok: false, reason: 'no grid in the photo' })}
+        layout={layout}
+        onRetake={jest.fn()}
+      />,
+    )
+    expect(screen.getByText('No grid in the photo. Hold the phone over the whole grid.')).toBeTruthy()
+  })
+
+  it('shows the failure in Dutch', () => {
+    render(
+      <IntlProvider locale="nl-BE" messages={CATALOGUES.nl}>
+        <CorrectionScreen
+          session={review({ ok: false, reason: 'no grid in the photo' })}
+          layout={layout}
+          onRetake={jest.fn()}
+        />
+      </IntlProvider>,
+    )
+    expect(screen.getByTestId('correction-failure')).toHaveTextContent(/De scan is mislukt/)
+    expect(screen.getByText('Geen rooster op de foto. Houd de telefoon boven het hele rooster.')).toBeTruthy()
+    expect(screen.getAllByText('Opnieuw')).toHaveLength(2)
+  })
+
+  it('offers another image when an import fails for another reason', () => {
     render(
       <CorrectionScreen
         session={review({ ok: false, reason: 'the file is not an image' }, 'library')}
@@ -236,7 +265,7 @@ describe('CorrectionScreen in review', () => {
       />,
     )
     expect(screen.getByTestId('correction-failure')).toHaveTextContent(/The scan failed/)
-    expect(screen.getByText('the file is not an image')).toBeTruthy()
+    expect(screen.getByText('Something went wrong. Try again.')).toBeTruthy()
     expect(screen.getByTestId('choose-another')).toBeTruthy()
     expect(screen.queryByTestId('retake-failure')).toBeNull()
   })

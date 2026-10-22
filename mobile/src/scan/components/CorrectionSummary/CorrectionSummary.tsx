@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated'
 import { Icon } from '@/game/components/Icon'
 import { PanelButton } from '@/components/PanelButton'
@@ -61,6 +62,7 @@ export function CorrectionSummary({
   onToggleSolve,
   full = null,
 }: CorrectionSummaryProps) {
+  const intl = useIntl()
   let status: Status = 'ready'
   if (toCheck > 0) status = 'check'
   else if (conflictCount > 0) status = 'clash'
@@ -75,22 +77,26 @@ export function CorrectionSummary({
             <Pressable
               testID="start-check"
               accessibilityRole="button"
-              accessibilityHint="Opens the first cell to check"
+              accessibilityHint={intl.formatMessage({ id: 'scan.summary.startCheckHint' })}
               onPress={onStartCheck}
               style={({ pressed }) => [styles.toCheck, pressed && pressedStyles.pressed]}
             >
               <View style={styles.glyph} />
-              <Text
-                style={[styles.status, styles.statusWarning]}
-              >{`${toCheck} ${toCheck === 1 ? 'cell' : 'cells'} to check`}</Text>
+              <Text style={[styles.status, styles.statusWarning]}>
+                {intl.formatMessage({ id: 'scan.summary.toCheck' }, { count: toCheck })}
+              </Text>
               <Icon name="next" tone="warningText" size={16} />
             </Pressable>
           ) : conflictCount > 0 ? (
-            <Text style={[styles.status, styles.statusDanger]}>{`${conflictCount} givens clash`}</Text>
+            <Text style={[styles.status, styles.statusDanger]}>
+              {intl.formatMessage({ id: 'scan.summary.givensClash' }, { count: conflictCount })}
+            </Text>
           ) : full !== null ? (
             <FullStatus phase={full.phase} count={full.count} />
           ) : (
-            <Text style={styles.status}>{blockText === null ? 'Ready to play' : 'Check the givens'}</Text>
+            <Text style={styles.status}>
+              {intl.formatMessage({ id: blockText === null ? 'scan.summary.ready' : 'scan.summary.checkGivens' })}
+            </Text>
           )}
         </Animated.View>
         {full === null && (
@@ -110,8 +116,10 @@ export function CorrectionSummary({
             {full.phase === 'ready' ? (
               <PanelButton
                 testID="verify"
-                label="Check the grid"
-                accessibilityHint={conflictCount > 0 ? 'Two given digits clash' : undefined}
+                label={intl.formatMessage({ id: 'scan.summary.verify' })}
+                accessibilityHint={
+                  conflictCount > 0 ? intl.formatMessage({ id: 'scan.summary.verifyClashHint' }) : undefined
+                }
                 kind="primary"
                 grow
                 disabled={conflictCount > 0}
@@ -121,12 +129,19 @@ export function CorrectionSummary({
               <>
                 <PanelButton
                   testID="scan-another"
-                  label="Scan another"
+                  label={intl.formatMessage({ id: 'scan.summary.scanAnother' })}
                   kind="primary"
                   grow
                   onPress={full.onScanAnother}
                 />
-                {full.onHome && <PanelButton testID="home" label="Home" kind="second" onPress={full.onHome} />}
+                {full.onHome && (
+                  <PanelButton
+                    testID="home"
+                    label={intl.formatMessage({ id: 'scan.summary.home' })}
+                    kind="second"
+                    onPress={full.onHome}
+                  />
+                )}
               </>
             )}
           </Animated.View>
@@ -135,7 +150,7 @@ export function CorrectionSummary({
         <Animated.View {...(animate ? { entering: swapInButtons, layout: GLIDE } : {})} style={styles.buttons}>
           <PanelButton
             testID="play"
-            label="Play this puzzle"
+            label={intl.formatMessage({ id: 'scan.summary.play' })}
             kind="primary"
             grow
             disabled={!canPlay}
@@ -144,7 +159,7 @@ export function CorrectionSummary({
           />
           <PanelButton
             testID="solve"
-            label={solutionShown ? 'Hide' : 'Solve'}
+            label={intl.formatMessage({ id: solutionShown ? 'scan.summary.hide' : 'scan.summary.solve' })}
             kind="second"
             disabled={!canSolve}
             pressed={solutionShown}
@@ -158,9 +173,10 @@ export function CorrectionSummary({
 }
 
 function FullStatus({ phase, count }: { phase: FullGridPanel['phase']; count: number }) {
+  const intl = useIntl()
   if (phase === 'solved') return null
-  if (phase === 'ready') return <Text style={styles.status}>Grid is full</Text>
-  const text = phase === 'wrong' ? `${count} ${count === 1 ? 'cell differs' : 'cells differ'}` : `${count} cells clash`
+  if (phase === 'ready') return <Text style={styles.status}>{intl.formatMessage({ id: 'scan.full.ready' })}</Text>
+  const text = intl.formatMessage({ id: phase === 'wrong' ? 'scan.full.differ' : 'scan.full.clash' }, { count })
   return (
     <View style={styles.differ}>
       {phase === 'wrong' && <View testID="differ-sample" style={styles.sample} />}
