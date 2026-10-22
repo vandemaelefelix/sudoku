@@ -191,10 +191,9 @@ def test_label_state_lines_when_the_state_is_unknown():
     )
 
 
-def test_the_flag_adds_unedited_scan_cells_to_the_config(tmp_path: Path, monkeypatch):
-    seen = []
-    monkeypatch.setattr("sudoku_ml.train.train", lambda config: seen.append(config) or tmp_path)
+def test_the_flag_for_unedited_scan_cells_is_gone(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("sudoku_ml.train.train", lambda config: tmp_path)
     path = smoke_config(tmp_path, real_cells=True)
     assert train_module.main([str(path)]) == tmp_path
-    assert train_module.main([str(path), "--app-unedited"]) == tmp_path
-    assert [c.app_unedited for c in seen] == [False, True]
+    with pytest.raises(SystemExit):
+        train_module.main([str(path), "--app-unedited"])

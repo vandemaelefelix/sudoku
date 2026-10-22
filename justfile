@@ -166,9 +166,9 @@ docs-check:
 preprocess-fixtures:
     uv run --directory ml python -m sudoku_ml.fixtures ../shared/fixtures/preprocess
 
-# Train a model from a config in ml/configs/ (default: the cell classifier). Flag: --app-unedited adds scan cells that the player did not edit
-train config="cell-classifier" *flags:
-    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml {{flags}}
+# Train a model from a config in ml/configs/ (default: the cell classifier). It uses only the cells that a person verified (ADR-030)
+train config="cell-classifier":
+    uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
 
 # Export a training run to TFLite and check it against PyTorch and TFLite 2.17
 export run:
@@ -194,6 +194,10 @@ pull-device-scans device destination="$HOME/scan-corrections" app="com.vandemael
 # Download the uploaded scans of a stage into ml/dataset/ (ADR-030). Needs just aws-login. Pass the table and the bucket of the stage
 pull-scans table bucket:
     {{sudoku_aws}} uv run --directory ml python -m sudoku_ml.pull_scans --table "{{table}}" --bucket "{{bucket}}"
+
+# Score the doubt of each open cell of the uploaded scans, for the Check cells screen (ADR-030). Default run: the model of the app
+doubt-cells run="":
+    uv run --directory ml python -m sudoku_ml.doubt {{run}}
 
 # Set the uploaded scans with the status accepted back to unchecked, for the Outlines screen (ADR-030). Run it once, for the scans of the first pull
 reset-scan-outlines:

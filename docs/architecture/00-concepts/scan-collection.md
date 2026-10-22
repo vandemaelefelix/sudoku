@@ -32,7 +32,8 @@ The flow has five steps.
 2. The uploader runs when the phone is online. It sends `POST /v1/scans` and receives a presigned URL.
 3. The uploader sends the JPEG to S3 with `PUT`. It retries with backoff. The `scanId` makes a repeat safe.
 4. `just pull-scans` downloads the scans with `pending` set. It writes the photos to `ml/dataset/images/sudoku-photos/`.
-5. The developer checks the outline of each scan on the **Outlines screen** of the labelling page.
+5. The developer checks the outline of each scan on the **Outlines screen** of the labelling page. Then the developer
+   checks each cell on the **Check cells** screen.
 
 The **label provenance** of a cell has three values.
 
@@ -67,8 +68,35 @@ A cell with the same pixels as a cell of another scan is stored once, with the s
 label and one check. The **scan view** shows the photo and the 81 cells of one scan. It marks such a cell as shared,
 with the label it has.
 
-Training takes the `verified` and `app-edited` cells of the scans with an accepted outline by default. `app-unedited` cells need a flag. The dev split is by
-photo, so the cells of one scan stay on one side.
+### The cell review
+
+No cell of a scan trains the model before a person checks it. A player can miss a misread digit, make a wrong
+correction, or not see a mistake the model never flagged. A wrong label teaches the model a mistake.
+
+After the outline check, the **Check cells** screen shows the open app cells of one digit (`empty`, 1 to 9) at a time.
+An **open app cell** has the label source `app-edited` or `app-unedited`, no person has labelled it, and its scan has an
+approved outline. The **doubt score** sets the order: the highest first, so the errors sit at the top. Every cell still
+gets a human check.
+
+| Signal | When it fires | Weight |
+| --- | --- | --- |
+| `edited` | The player changed the label | 1.0 |
+| `model-digit` | The current model reads another digit | 1.0 |
+| `low-confidence` | The model gives the label digit less than 90 % | 1 − p |
+| `model-kind` | The model reads the other of printed and handwritten | 0.5 |
+| `rule-break` | The digit is twice in a row, a column or a box of a scan that holds the cell | 1.0 |
+| `not-unique` | The printed digits of a scan have more than one solution. It marks the empty cells: a digit can be missed | 0.5 |
+| `no-solution` | The printed digits of a scan have no solution. It marks the digit cells | 0.5 |
+
+`ml/dataset/work/doubt.json` holds the score and each signal of each open cell, with the model run. The label server
+scores the open cells at its start when the model run changed or an open cell has no score. `just doubt-cells` and the
+**Score cells** button do the same. A pixel-identical cell is one cell, so it appears once, and its verdict counts for
+every scan that holds it.
+
+Enter verifies every cell on the screen, with the fixes, as one action in the journal. Finish writes `verified`.
+
+Training takes only the `verified` cells and the legacy cells without a label source. The dev split is by photo, so
+the cells of one scan stay on one side.
 
 ```mermaid
 flowchart LR
@@ -82,7 +110,7 @@ flowchart LR
   end
   subgraph Laptop
     pull["just pull-scans"] --> dataset[("ml/dataset/")]
-    dataset --> review["Outlines screen, then Finish"]
+    dataset --> review["Check outlines, Check cells, then Finish"]
     review -- "accepted or rejected" --> dataset
   end
   uploader -- "1 record" --> route

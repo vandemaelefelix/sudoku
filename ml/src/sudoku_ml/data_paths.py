@@ -94,5 +94,9 @@ class DataPaths:
         return self.work / "outline-scores.json"
 
     @property
+    def doubt(self) -> Path:
+        return self.work / "doubt.json"
+
+    @property
     def tmp(self) -> Path:
         return self.work / "tmp"
