@@ -22,6 +22,7 @@ React Native API:
 | Build the development variant in Release on a device, to measure the quality scenarios | `just ios-measure <UDID>`. It logs `[measure]` lines. See `docs/operations/measure-quality.md` |
 | Build for the iOS Simulator | `just ios-simulator`. A Release build of the development variant, without code signing and without Metro (ADR-010). CI runs the same build |
 | Check the native build in CI | `gh workflow run ios-simulator.yml --ref <branch>`. Start it before a pull request with a native change merges. A push to an open pull request starts no build (ADR-010) |
+| Run the end-to-end flows | `just ios-simulator`, then `just e2e`. One flow: `just e2e mobile/e2e/resume.yaml`. In CI: `gh workflow run e2e.yml --ref <branch>`. See "End-to-end flows" below |
 | Render the app icons | `just icons`. Change the design in `tools/icons/geometry.mjs`, not in the PNGs |
 | Check the Expo setup | `pnpm dlx expo-doctor` |
 | Lint, typecheck, test | `just lint`, `just typecheck`, `just test-ts` from the repository root |
@@ -47,6 +48,30 @@ Run lint, typecheck and tests before you say a task is done.
   from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
   state, styles or tests in `src/app/`. A route param is a URL string. Load data from a
   repository, not from a param.
+
+## End-to-end flows
+
+The Maestro flows in `e2e/` drive the Release app on the iOS Simulator (ADR-010, layer 5). They need no Metro.
+
+1. Install Maestro once:
+   - `brew tap mobile-dev-inc/tap`
+   - `brew trust --formula mobile-dev-inc/tap/maestro`
+   - `brew install mobile-dev-inc/tap/maestro`
+2. Install the model with `just install-model <run>`. The scan flow needs it.
+3. Build the app: `just ios-simulator`. After a change in `src/`, `just ios-simulator-build` is enough.
+4. Run the flows: `just e2e`. Without the model, run `just e2e mobile/e2e --exclude-tags model`.
+
+- `just e2e` uses its own simulator, "Sudoku E2E iOS 26". It creates the simulator the first time.
+- Homebrew installs the Java of Maestro keg-only. `just e2e` sets `JAVA_HOME` to it.
+- When `xcode-select -p` points to the Command Line Tools, set `DEVELOPER_DIR` to the Xcode app first.
+
+Rules for a flow:
+
+- Find an element by its `testID`, not by visible text. Add a `testID` when a flow needs one.
+- Do not rename or remove a `testID` that a flow uses. Search `e2e/` first.
+- Start each flow with `launchApp` and `clearState: true`, so it does not depend on another flow.
+- Put a shared step in `e2e/common/`. `maestro test` runs only the files at the top of `e2e/`.
+- Give a flow that needs the real model the tag `model`. CI has only the stub model (SUD-08).
 
 ## Layout inside a feature
 

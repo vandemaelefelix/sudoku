@@ -1,0 +1,11 @@
+# Passes when the label of the timer changes within 5 s, so the clock runs.
+appId: com.vandemaelefelix.sudoku.dev
+---
+- copyTextFrom:
+    id: timer
+- evalScript: ${output.time = maestro.copiedText}
+- extendedWaitUntil:
+    notVisible:
+      id: timer
+      text: ${output.time}
+    timeout: 5000

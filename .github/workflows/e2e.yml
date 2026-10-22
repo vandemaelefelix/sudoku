@@ -1,0 +1,35 @@
+name: e2e
+# The Maestro flows on the iOS Simulator (ADR-010, amendment 2026-10-22). Only a manual run starts them:
+# one run costs about 200 of the 2,000 monthly minutes, because a macOS minute counts ten times.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/ios-simulator-build
+      # The SHA-256 is the digest of the release asset (maestro.zip of cli-2.11.0). The image has Java 17 or later.
+      - name: Install Maestro
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.11.0/maestro.zip
+          echo "5384593cb4e7a106489e75a821d157dd43f4e438df6bc308b72e82c685e1283a  $RUNNER_TEMP/maestro.zip" | shasum -a 256 --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/maestro/bin" >> "$GITHUB_PATH"
+      # The scan flow needs the real model. CI has only the stub model (SUD-08).
+      - run: just e2e mobile/e2e --exclude-tags model
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: maestro-debug
+          path: ~/.maestro/tests
+          retention-days: 7

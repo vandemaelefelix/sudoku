@@ -19,6 +19,8 @@ status: DRAFT
 | fast-tflite | `react-native-fast-tflite`, runs TFLite models from JS and frame processors. This project uses the CPU delegate: Metal is not supported, Core ML is opt-in |
 | Fixture | A photo of a sudoku with its true grid and kinds, and the cell images the app's scanner made from it. Public set in `shared/fixtures/scans`, private set outside git (ADR-013). Never used for training. The synthetic reference pairs in `shared/fixtures/preprocess/` are also fixtures |
 | Fixture runner | A screen in development builds that runs the real scanner on fixture photos (ADR-010) |
+| End-to-end flow | A Maestro YAML file in `mobile/e2e/` that drives the Release app on the iOS Simulator, the way a player does. Layer 5 of ADR-010 |
+| Maestro | The tool that runs the end-to-end flows. It finds elements by `testID` (ADR-010) |
 | Holdout | The fixture split that is not looked at while training, only scored at promote (ADR-007) |
 | Near-duplicate group | Cells with almost the same image, found by a difference hash. The split keeps a group in one set, so near-twins do not leak between training and validation |
 | Test split | The cells that the model never trains on. `split_cells` in `ml/src/sudoku_ml/dataset.py` computes it. Training and the Check screen both call it, so they use the same cells. It leaves out the cells with the label source `app-unedited` and keeps the cells of one scan photo together |

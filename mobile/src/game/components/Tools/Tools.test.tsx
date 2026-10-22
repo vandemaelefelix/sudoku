@@ -72,3 +72,11 @@ it('ticks when Notes turns on and off', () => {
   fireEvent.press(screen.getByLabelText('Notes'))
   expect(Haptics.selectionAsync).toHaveBeenCalledTimes(2)
 })
+
+it('gives every tool the test ID tool-<icon> for the end-to-end flows', () => {
+  renderTools()
+  expect(screen.getByTestId('tool-undo')).toHaveProp('accessibilityLabel', 'Undo')
+  expect(screen.getByTestId('tool-erase')).toHaveProp('accessibilityLabel', 'Erase')
+  expect(screen.getByTestId('tool-notes')).toHaveProp('accessibilityLabel', 'Notes')
+  expect(screen.getByTestId('tool-hint')).toHaveProp('accessibilityLabel', 'Hint')
+})

@@ -1,0 +1,17 @@
+# Places a 5 in the first empty cell of the game on screen.
+# A cell has no fixed testID, so its VoiceOver label finds it. output.place keeps "Row r, column c" for a later check.
+appId: com.vandemaelefelix.sudoku.dev
+---
+- copyTextFrom:
+    id: "cell-\\d+"
+    text: '.*, empty'
+    index: 0
+- evalScript: ${output.place = maestro.copiedText.replace(', empty', '')}
+- tapOn:
+    id: "cell-\\d+"
+    text: '${output.place}, empty'
+- tapOn:
+    id: number-key-5
+- assertVisible:
+    id: "cell-\\d+"
+    text: '${output.place}, (wrong )?5'

@@ -1,0 +1,27 @@
+# The look that the player picks stays after a restart.
+appId: com.vandemaelefelix.sudoku.dev
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: home-settings
+- scrollUntilVisible:
+    element:
+      id: appearance-colour
+- tapOn:
+    id: theme-forest
+- tapOn:
+    id: appearance-colour
+- killApp
+- launchApp
+- tapOn:
+    id: home-settings
+- scrollUntilVisible:
+    element:
+      id: appearance-colour
+- assertVisible:
+    id: theme-forest
+    selected: true
+- assertVisible:
+    id: appearance-colour
+    selected: true
