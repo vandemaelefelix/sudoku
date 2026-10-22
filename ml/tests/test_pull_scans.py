@@ -196,7 +196,7 @@ def test_the_pull_never_writes_under_shared_fixtures(paths: DataPaths):
 
 
 def approve_all(paths: DataPaths) -> None:
-    """Approve every outline, as the Outlines screen and Finish do."""
+    """Approve every outline, as the Outlines step and Finish do."""
     rows = read_photos(paths.photos_csv)
     write_photos(paths.photos_csv, [replace(r, status="accepted") for r in rows])
 
@@ -243,4 +243,4 @@ def test_main_reads_the_table_and_bucket_names(paths: DataPaths, monkeypatch, ca
     monkeypatch.setattr("sudoku_ml.pull_scans.aws_clients", lambda t, b: (f"T:{t}", f"B:{b}"))
     assert main(["--table", "tbl", "--bucket", "bkt"], paths) == 0
     assert seen == {"table": "T:tbl", "bucket": "B:bkt"}
-    assert "the Outlines screen" in capsys.readouterr().out
+    assert "Follow the start page" in capsys.readouterr().out

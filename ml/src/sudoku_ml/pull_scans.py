@@ -267,7 +267,8 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
         if report[name]:
             print(f"{label}: {len(report[name])}, e.g. {report[name][0]}", file=sys.stderr)
     print(
-        "Next: run just label-cells. Check each outline on the Outlines screen. Then press Finish."
+        "Next: run just label-cells. Follow the start page: check each outline, then the cells "
+        "of each scan."
     )
     return 0
 

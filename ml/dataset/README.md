@@ -48,7 +48,7 @@ changes no table.
 ## Commands
 
 - `just check-data`: check that the images and the tables agree.
-- `just label-cells`: open the labelling page. See [LABELLING.md](../LABELLING.md).
+- `just label-cells`: open the labelling app. See [LABELLING.md](../LABELLING.md).
 - `just migrate-layout <old_ml_root> [--apply]`: copy the old `ml/datasets/` and `ml/data/`
   layout into this folder.
 

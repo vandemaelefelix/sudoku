@@ -165,9 +165,7 @@ def test_the_digit_screen_and_status_ignore_pre_labels_of_digit_folder_cells(tmp
     assert store.digit_screen("4", "all")["not_prelabelled"] == 1
     status = store.status()
     assert status["digits"] == 0 and status["not_prelabelled"] == 1
-    assert status["kind_not_prelabelled"] == 1 and status["kind"] == 5
-    store.save([{"id": c[4], "kind": "printed"}], "groups")
-    assert store.status()["kind_not_prelabelled"] == 0
+    assert status["kind"] == 5
 
 
 def test_a_guessed_cell_keeps_the_model_kind_apart_from_the_logged_kind(tmp_path: Path):

@@ -88,7 +88,7 @@ straight into a dataset.
 - A training dataset manifest MUST reject any entry with `source: fixture` (SUD-10). Fixtures are
   for evaluation only.
 - `photo` means a cell cut from a sudoku photo. Its kind is the `kind` column of
-  `ml/dataset/cells.csv` (ADR-018), set on the labelling page. Cells in `cells/unlabeled/` get a label
+  `ml/dataset/cells.csv` (ADR-018), set in the labelling app. Cells in `cells/unlabeled/` get a label
   by hand: `empty`, a digit or `discarded`.
 
 ## Manifest

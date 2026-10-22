@@ -32,8 +32,9 @@ The flow has five steps.
 2. The uploader runs when the phone is online. It sends `POST /v1/scans` and receives a presigned URL.
 3. The uploader sends the JPEG to S3 with `PUT`. It retries with backoff. The `scanId` makes a repeat safe.
 4. `just pull-scans` downloads the scans with `pending` set. It writes the photos to `ml/dataset/images/sudoku-photos/`.
-5. The developer checks the outline of each scan on the **Outlines screen** of the labelling page. Then the
-   developer confirms the cells of each approved scan on the **Cells screen**.
+5. The developer checks the outline of each scan in the **Outlines step** of the labelling app (Flow A). Then the
+   developer confirms the cells of the approved scans per digit in the **Cells per digit** step. The **Fetch new scans** step
+   runs step 4 from the app (ADR-034).
 
 The **label provenance** of a cell has three values.
 
@@ -41,7 +42,7 @@ The **label provenance** of a cell has three values.
 | --- | --- |
 | `app-edited` | The player changed the model's answer |
 | `app-unedited` | The player left the model's answer |
-| `verified` | The developer confirmed the label on the labelling page |
+| `verified` | The developer confirmed the label in the labelling app |
 
 ### The outline check
 
@@ -49,7 +50,7 @@ The **label provenance** of a cell has three values.
 grid on a page with several sudokus. Then every cell label of the scan is wrong. So a person checks the outline of each
 scan first. Training leaves out every cell of a scan whose outline is not `accepted`.
 
-The Outlines screen shows a gallery of the unchecked scans, with the outline drawn. The **outline fit** sets the
+The Outlines step shows a gallery of the unchecked scans and imported photos, with the outline drawn. The **outline fit** sets the
 order: the lowest fit comes first. It is the share of the 20 grid lines found inside the outline, less for a line that
 is off its 9 × 9 place. `ml/dataset/work/outline-scores.json` caches it per corners.
 
@@ -60,16 +61,20 @@ is off its 9 × 9 place. `ml/dataset/work/outline-scores.json` caches it per cor
 | R | The scan is a **rejected scan**. All of its cells move to `discarded/` |
 | Z | The last action is undone, files included. The scan shows again |
 
-Each action is one action in the journal. The journal holds the outline as an `outline` line. Finish writes the status
-and the corners into `sudoku-photos.csv`. A move of the Outlines screen never makes a cell `verified`: no person looked
+An imported photo goes through the same gallery. Its approval or rejection writes `sudoku-photos.csv` at once, so Z
+cannot reverse it. Its cells land in `unlabeled/` with the model's guess, and the Cells per digit step labels them.
+
+Each action on an uploaded scan is one action in the journal. The journal holds the outline as an `outline` line. Finish writes the status
+and the corners into `sudoku-photos.csv`. A move of the Outlines step never makes a cell `verified`: no person looked
 at the cells.
 
-The **Cells screen** lists each approved scan whose own cells wait, oldest first. A scan opens in the scan view. Enter
-confirms its cells, and the next scan opens. Finish then writes `verified`.
+The **Cells per digit** step shows the open cells of all approved scans, one gallery per digit. The cells that the
+player changed come first, then those that the model reads differently. The **cell detail** beside the gallery shows
+the whole sudoku of a cell with the cell marked: the other digits of the grid tell a 1 from a 7. Enter confirms a page.
+Finish then writes `verified`.
 
 A cell with the same pixels as a cell of another scan is stored once, with the source of the first scan. It needs one
-label and one check. The **scan view** shows the photo and the 81 cells of one scan. It marks such a cell as shared,
-with the label it has.
+label and one check, so it shows once in the gallery.
 
 Training takes the `verified` and `app-edited` cells of the scans with an accepted outline by default. `app-unedited` cells need a flag. The dev split is by
 photo, so the cells of one scan stay on one side.
@@ -86,7 +91,7 @@ flowchart LR
   end
   subgraph Laptop
     pull["just pull-scans"] --> dataset[("ml/dataset/")]
-    dataset --> review["Outlines screen, then Finish"]
+    dataset --> review["Outlines and Cells per digit, then Finish"]
     review -- "accepted or rejected" --> dataset
   end
   uploader -- "1 record" --> route

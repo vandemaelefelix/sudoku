@@ -45,7 +45,7 @@ def base_sources(table: dict[str, CellRow]) -> dict[str, Source]:
 
 
 def confirmed_cells(lines: list[Line]) -> set[str]:
-    """Cells that a person labelled on the labelling page in the unfinished session. Undone
+    """Cells that a person labelled in the labelling app in the unfinished session. Undone
     actions, source lines and repair lines do not count. Nor do the moves of the Outlines
     screen: a cut again or a reject moves files, and no person looked at the cells."""
     undone = undone_actions(lines)

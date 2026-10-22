@@ -1,6 +1,6 @@
 """Copy a folder of sudoku photos into `<images>/sudoku-photos/` and propose a grid outline for
-each (ADR-018). The import adds a `pending` row to `ml/dataset/sudoku-photos.csv`. The Photos screen
-of the labelling page then checks each sudoku photo."""
+each (ADR-018). The import adds a `pending` row to `ml/dataset/sudoku-photos.csv`. The Outlines step
+of the labelling app then checks each sudoku photo."""
 
 import argparse
 import json
@@ -134,7 +134,7 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
     paths = paths or DataPaths.under()
     counts = import_folder(args.folder, paths, args.source, args.licence)
     print(", ".join(f"{name}: {value}" for name, value in counts.items()))
-    print("Next: run just label-cells and check the sudoku photos on the Photos screen.")
+    print("Next: run just label-cells and check the outlines of the sudoku photos (Flow A).")
     return 0
 
 
