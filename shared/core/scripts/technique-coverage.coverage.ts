@@ -1,4 +1,9 @@
 import { expect, test } from 'vitest'
+import { createGame } from '../src/game/createGame'
+import { planHint } from '../src/hint/plan'
+import { computeCandidates } from '../src/technique/candidates'
+import { nextSteps } from '../src/technique/nextSteps'
+import { HINT_ORDER } from '../src/hint/techniques'
 import { LEVELS, type Level } from '../src/level'
 import { ungradedPuzzle } from '../src/technique/testKit'
 import { stepWeight, TECHNIQUE_ORDER, TIER_1_ORDER } from '../src/technique/order'
@@ -6,6 +11,8 @@ import { playThrough } from '../src/technique/playThrough'
 import type { TechniqueId, TechniqueRank } from '../src/technique/types'
 
 const PUZZLES_PER_LEVEL = 1000
+// A plan per position costs more than a solve, so the hint section uses fewer puzzles.
+const HINT_PUZZLES_PER_LEVEL = 200
 
 type Group = { name: string; limit: number }
 
@@ -42,6 +49,68 @@ function measure(level: Level, ranks: readonly TechniqueRank[]): Result[] {
   }
   return results
 }
+
+type HintCount = {
+  hints: number
+  taughtTier1: number
+  taughtTier2: number
+  hard: number
+  hardTier1: number
+  hardTier2: number
+  puzzlesAllTaught: number
+  slowestMs: number
+}
+
+/**
+ * A player can ask for a hint at any position of a solve. Each position of the full solver's solve
+ * gets one plan with the tier 1 techniques and one with tier 1 and tier 2. A plan teaches when it has steps.
+ * A position is one board of that solve: each board counts once. It is hard when the easiest step on
+ * its fresh candidates is an elimination. A player who is stuck most likely asks there.
+ */
+function countHints(level: Level): HintCount {
+  const count: HintCount = {
+    hints: 0,
+    taughtTier1: 0,
+    taughtTier2: 0,
+    hard: 0,
+    hardTier1: 0,
+    hardTier2: 0,
+    puzzlesAllTaught: 0,
+    slowestMs: 0,
+  }
+  for (let seed = 1; seed <= HINT_PUZZLES_PER_LEVEL; seed++) {
+    const { givens, solution } = ungradedPuzzle(level, seed)
+    const run = playThrough(givens, TECHNIQUE_ORDER, { unique: true })
+    const boards = new Set(run.positions.map((position) => position.board.join()))
+    let allTaught = true
+    for (const text of boards) {
+      const board = text.split(',').map(Number)
+      // The plan starts from fresh candidates, so the hard test does too.
+      const next = nextSteps(computeCandidates(board), board, TECHNIQUE_ORDER, { unique: true })[0]
+      const hard = next !== undefined && next.placements.length === 0
+      const entries = board.map((digit, cell) => (givens[cell] === 0 ? digit : 0))
+      const game = createGame({ givens, solution, entries })
+      const started = performance.now()
+      const plan = planHint(game, HINT_ORDER)
+      count.slowestMs = Math.max(count.slowestMs, performance.now() - started)
+      count.hints++
+      const tier1 = planHint(game, TIER_1_HINTS)?.kind === 'steps'
+      const tier2 = plan?.kind === 'steps'
+      count.taughtTier1 += Number(tier1)
+      count.taughtTier2 += Number(tier2)
+      if (hard) {
+        count.hard++
+        count.hardTier1 += Number(tier1)
+        count.hardTier2 += Number(tier2)
+      }
+      if (!tier2) allTaught = false
+    }
+    if (allTaught) count.puzzlesAllTaught++
+  }
+  return count
+}
+
+const TIER_1_HINTS = HINT_ORDER.filter((rank) => TIER_1_ORDER.some((tier1) => tier1.technique === rank.technique))
 
 test('the share of generated puzzles that tier 1 and tier 2 solve to the end', () => {
   const started = performance.now()
@@ -149,6 +218,24 @@ test('the share of generated puzzles that tier 1 and tier 2 solve to the end', (
       (technique) => results.filter((result) => result.solved && result.used.has(technique)).length,
     )
     lines.push(`| ${level} | ${counts.join(' | ')} |`)
+  }
+
+  lines.push(
+    '',
+    `Hints: seeds 1 to ${HINT_PUZZLES_PER_LEVEL} of each level. One hint at each position of the full solver's solve. ` +
+      'A hint teaches when its plan has steps. Else it uses the fallback (ADR-032 point 9):',
+    '',
+  )
+  lines.push(
+    '| Level | Hints | Teach with tier 1 | Teach with tier 1 and tier 2 | Hard positions | Teach there with tier 1 | Teach there with tier 1 and tier 2 | Puzzles where every hint teaches | Slowest plan |',
+  )
+  lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |')
+  for (const level of LEVELS) {
+    const hints = countHints(level)
+    const hard = (taught: number): string => (hints.hard === 0 ? '-' : percent(taught, hints.hard))
+    lines.push(
+      `| ${level} | ${hints.hints} | ${percent(hints.taughtTier1, hints.hints)} | ${percent(hints.taughtTier2, hints.hints)} | ${hints.hard} | ${hard(hints.hardTier1)} | ${hard(hints.hardTier2)} | ${percent(hints.puzzlesAllTaught, HINT_PUZZLES_PER_LEVEL)} | ${hints.slowestMs.toFixed(0)} ms |`,
+    )
   }
 
   lines.push('', `Run time: ${((performance.now() - started) / 1000).toFixed(0)} s.`)
