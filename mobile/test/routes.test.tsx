@@ -485,11 +485,12 @@ describe('the techniques screen', () => {
     const technique = plan.steps[0]!.technique
     fireEvent.press(screen.getByLabelText('Hint'))
     fireEvent.press(screen.getByRole('button', { name: 'More help' }))
-    fireEvent.press(screen.getByRole('link', { name: /^Learn more about / }))
+    fireEvent.press(screen.getByRole('link', { name: 'Learn more' }))
     await waitFor(() => expect(screen).toHavePathname(`/techniques/${technique}`))
     fireEvent.press(screen.getByRole('button', { name: 'Back' }))
     await waitFor(() => expect(screen).toHavePathname('/game'))
     expect(screen.getByTestId('hint-card')).toBeTruthy()
-    expect(screen.getByText(hintText(createAppIntl('en'), hintMessage(plan, 0, 2)))).toBeTruthy()
+    // The rung text ends with the inline link, so the match is not exact.
+    expect(screen.getByText(hintText(createAppIntl('en'), hintMessage(plan, 0, 2)), { exact: false })).toBeTruthy()
   })
 })
