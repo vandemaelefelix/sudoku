@@ -133,16 +133,20 @@ def test_the_start_counts(served):
 
 def test_the_kind_step_round_trips(served):
     one, paths, ids = served
-    screen = one.get("/api/check/kinds?digit=7", schema.CHECK)
+    screen = one.get("/api/check/kinds?digit=7", schema.CHECK_KINDS)
     assert sorted(c["id"] for c in screen["cells"]) == sorted(ids["7"])
     assert (screen["left"], screen["threshold"], screen["sure"]) == (2, 0.95, 0)
     assert set(screen["counts"]) == set(screen["done"]) == {str(d) for d in range(1, 10)}
     body = {"cells": [{"id": ids["7"][0], "kind": "printed"}]}
     assert one.post("/api/check/kinds/confirm", body) == 1
     assert [(x.new, x.screen) for x in read_journal(paths.journal)] == [("printed", "kinds")]
-    after = one.get("/api/check/kinds?digit=7&threshold=0.9", schema.CHECK)
+    after = one.get("/api/check/kinds?digit=7&threshold=0.9", schema.CHECK_KINDS)
     assert [c["id"] for c in after["cells"]] == ids["7"][1:] and after["threshold"] == 0.9
     assert one.get("/api/check/kinds?digit=7")["done"]["7"] == 1
+    shown = one.get("/api/check/kinds?digit=7&kind=handwritten", schema.CHECK_KINDS)
+    assert (shown["cells"], shown["left"]) == ([], 0)
+    assert shown["kind_counts"]["all"] == 1
+    assert one.post("/api/check/kinds/sure", {"digit": "7", "kind": "handwritten"}) == {"cells": 0}
     assert one.post("/api/undo", {}) == {"lines": 1, "what": "kinds"}
     assert one.post("/api/undo", {}) == {"lines": 0, "what": None}
     assert one.get("/api/start")["kind_cells"] == 2
@@ -162,6 +166,8 @@ def test_a_bad_request_gets_a_400_with_a_reason(served):
     error = one.post("/api/check/kinds/confirm", body, schema.ERROR, status=400)
     assert "unknown kind" in error["error"]
     one.get("/api/check/kinds?digit=empty", schema.ERROR, status=400)
+    one.get("/api/check/kinds?digit=7&kind=notes", schema.ERROR, status=400)
+    one.post("/api/check/kinds/sure", {"digit": "7", "kind": "all"}, schema.ERROR, 400)
     one.get("/api/check/digits?digit=7&threshold=2", schema.ERROR, status=400)
     one.get("/api/check/digits?digit=7&threshold=high", schema.ERROR, status=400)
     one.get("/api/check/digits", schema.ERROR, status=400)
@@ -285,7 +291,7 @@ def test_an_imported_photo_goes_through_the_one_flow(served_photos):
     assert one.post("/api/check/digits/confirm", {"cells": cells}) == len(cells)
     assert one.get("/api/start")["digit_cells"] == 2
     assert len(list((paths.cells / "5").glob("*.png"))) == len(cells)
-    kinds = one.get("/api/check/kinds?digit=5", schema.CHECK)
+    kinds = one.get("/api/check/kinds?digit=5", schema.CHECK_KINDS)
     assert kinds["left"] == len(cells) and {c["photo"] for c in kinds["cells"]} == {stem}
     body = [{"id": c["id"], "kind": "printed"} for c in kinds["cells"]]
     assert one.post("/api/check/kinds/confirm", {"cells": body}) == len(cells)
@@ -363,7 +369,7 @@ def verify_every_cell(one: Served) -> None:
                 {"cells": [{"id": c["id"], "digit": c["digit"]} for c in cells]},
             )
     for digit in map(str, range(1, 10)):
-        cells = one.get(f"/api/check/kinds?digit={digit}", schema.CHECK)["cells"]
+        cells = one.get(f"/api/check/kinds?digit={digit}", schema.CHECK_KINDS)["cells"]
         if cells:
             body = [{"id": c["id"], "kind": c["kind"] or "printed"} for c in cells]
             one.post("/api/check/kinds/confirm", {"cells": body})

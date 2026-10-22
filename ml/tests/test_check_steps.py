@@ -449,6 +449,53 @@ def test_sure_kinds_confirms_the_cells_at_the_threshold(tmp_path: Path):
         store.sure_kinds("unknown")
 
 
+def test_a_kind_tab_shows_the_cells_of_that_kind_with_the_counts_of_the_digit(tmp_path: Path):
+    store, _, c = kind_store(tmp_path)
+    everything = store.check_kinds("7")
+    assert everything["kind_counts"] == {"all": 4, "printed": 2, "handwritten": 1, "unsure": 0}
+    printed = store.check_kinds("7", kind="printed")
+    assert [x["id"] for x in printed["cells"]] == [c[2], c[0]]  # the highest doubt first
+    assert (printed["left"], printed["sure"]) == (2, 1)
+    assert printed["kind_counts"] == everything["kind_counts"]
+    assert printed["counts"] == everything["counts"]
+    handwritten = store.check_kinds("7", 0.9, kind="handwritten")
+    assert ([x["id"] for x in handwritten["cells"]], handwritten["sure"]) == ([c[1]], 1)
+    unsure = store.check_kinds("7", kind="unsure")
+    assert (unsure["cells"], unsure["left"], unsure["sure"]) == ([], 0, 0)
+
+
+def test_the_kind_counts_follow_the_open_cells(tmp_path: Path):
+    store, _, c = kind_store(tmp_path)
+    store.confirm_kinds([{"id": c[1], "kind": "unsure"}])
+    counts = store.check_kinds("7")["kind_counts"]
+    assert counts == {"all": 3, "printed": 2, "handwritten": 0, "unsure": 0}
+    assert store.check_kinds("3")["kind_counts"] == {
+        "all": 0,
+        "printed": 0,
+        "handwritten": 0,
+        "unsure": 0,
+    }
+
+
+def test_an_unknown_kind_is_refused(tmp_path: Path):
+    store, paths, _ = kind_store(tmp_path)
+    with pytest.raises(ValueError, match="unknown kind"):
+        store.check_kinds("7", kind="notes")
+    with pytest.raises(ValueError, match="unknown kind"):
+        store.sure_kinds("7", kind="all")
+    assert read_journal(paths.journal) == []
+
+
+def test_sure_kinds_with_a_kind_confirms_only_those_cells(tmp_path: Path):
+    store, paths, c = kind_store(tmp_path)
+    assert store.sure_kinds("7", 0.5, kind="handwritten") == 1
+    [line] = read_journal(paths.journal)
+    assert (line.cell, line.new) == (c[1], "handwritten")
+    assert store.sure_kinds("7", 0.5, kind="handwritten") == 0
+    assert store.sure_kinds("7", 0.5, kind="printed") == 2
+    assert {x["id"] for x in store.open_kind_cells()} == {c[3]}
+
+
 def test_cells_that_the_model_reads_differently_come_in_the_order_of_the_raw_sum(tmp_path: Path):
     # Every such cell has a doubt of 1. A clamp would sort them by id.
     paths, ids = build(tmp_path, {"7": 3})

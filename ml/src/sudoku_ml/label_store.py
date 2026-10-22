@@ -1058,22 +1058,28 @@ class LabelStore:
         scored.sort(key=lambda c: (-c["raw"], c["id"]))
         return counts, scored, sure
 
-    def _scored_kinds(self, digit: str, threshold: float):
+    def _scored_kinds(self, digit: str, threshold: float, kind: str | None = None):
+        """Like `_scored_digits` for the Kind step. `kind` keeps the cells whose current kind
+        label is that kind. The last value is the open count of `digit` per kind, with "all"."""
         if digit not in DIGIT_FOLDERS:
             raise ValueError(f"unknown digit {digit!r}: the Kind step has the digits 1 to 9")
+        if kind is not None and kind not in KINDS:
+            raise ValueError(f"unknown kind {kind!r}: use one of {', '.join(KINDS)}")
         threshold = self._threshold(threshold)
         items = self.open_kind_cells()
         counts = Counter(c["digit"] for c in items)
+        here = [c for c in items if c["digit"] == digit]
+        kind_counts = {"all": len(here), **{k: sum(c["kind"] == k for c in here) for k in KINDS}}
         scored, sure = [], []
-        for cell in items:
-            if cell["digit"] != digit:
+        for cell in here:
+            if kind is not None and cell["kind"] != kind:
                 continue
             raw, reasons = kind_doubt_raw(cell["kind"], cell["probs"])
             scored.append({**cell, "doubt": clamp_doubt(raw), "raw": raw, "reasons": reasons})
             if is_sure_kind(cell["kind"], cell["probs"], threshold):
                 sure.append(cell["id"])
         scored.sort(key=lambda c: (-c["raw"], c["id"]))
-        return counts, scored, sure
+        return counts, scored, sure, kind_counts
 
     def _check(self, digit, tabs, counts, scored, sure, done, threshold) -> dict:
         return {
@@ -1094,15 +1100,20 @@ class LabelStore:
         )
         return self._check(digit, DIGIT_TABS, counts, scored, sure, done, threshold)
 
-    def check_kinds(self, digit: str, threshold: float = KIND_THRESHOLD) -> dict:
-        """The Kind step: the open kind cells of one digit, the highest doubt first."""
-        counts, scored, sure = self._scored_kinds(digit, threshold)
+    def check_kinds(
+        self, digit: str, threshold: float = KIND_THRESHOLD, kind: str | None = None
+    ) -> dict:
+        """The Kind step: the open kind cells of one digit, the highest doubt first. `kind`
+        shows one kind only. `left` and `sure` count the shown cells, `kind_counts` all of the
+        digit."""
+        counts, scored, sure, kind_counts = self._scored_kinds(digit, threshold, kind)
         done = Counter(
             self.folder[c]
             for c in self._confirmed("kind", KIND_SCREENS)
             if self.folder.get(c) in DIGIT_FOLDERS
         )
-        return self._check(digit, DIGIT_FOLDERS, counts, scored, sure, done, threshold)
+        page = self._check(digit, DIGIT_FOLDERS, counts, scored, sure, done, threshold)
+        return {**page, "kind_counts": kind_counts}
 
     def _confirm_digit_lines(self, entries: list[dict]) -> int:
         open_ids = {c["id"] for c in self.open_cells()}
@@ -1165,10 +1176,13 @@ class LabelStore:
         self._refresh()
         return self._confirm_kind_lines(entries)
 
-    def sure_kinds(self, digit: str, threshold: float = KIND_THRESHOLD) -> int:
-        """Confirm every sure cell of the tab as one action. Returns the number of cells."""
+    def sure_kinds(
+        self, digit: str, threshold: float = KIND_THRESHOLD, kind: str | None = None
+    ) -> int:
+        """Confirm every sure cell of the tab, of one kind if `kind` is set, as one action.
+        Returns the number of cells."""
         self._refresh()
-        _, scored, sure = self._scored_kinds(digit, threshold)
+        _, scored, sure, _ = self._scored_kinds(digit, threshold, kind)
         label = {c["id"]: c["kind"] for c in scored}
         self._confirm_kind_lines([{"id": c, "kind": label[c]} for c in sure])
         return len(sure)
