@@ -371,6 +371,7 @@ export const nl: Record<MessageId, string> = {
   'hint.part.rows': 'rijen {list}',
   'hint.part.columns': 'kolommen {list}',
   // Hints, the card
+  'hint.button.learnMoreLabel': 'Meer weten over {technique}',
   'hint.close': 'Sluit de hint',
   // The techniques screen
   'techniques.title': 'Technieken',
