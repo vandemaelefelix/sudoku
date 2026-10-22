@@ -43,6 +43,13 @@ export function ScanFlow() {
     [discardPhoto],
   )
 
+  // Scan another accepts the scan. The photo stays: the unmount of the old screen hands the scan to exit, and the queue step
+  // deletes the photo after it reads it.
+  const scanAnother = useCallback(() => {
+    setPickAtStart(false)
+    setScene((current) => current + 1)
+  }, [])
+
   // The player leaves the correction screen by any route except Retake. The scan is final then, so it joins the upload queue.
   // An imported image never uploads (ADR-030, amendment 2026-10-22). Only a development build keeps its photo, so it goes.
   const exit = useCallback(
@@ -69,6 +76,7 @@ export function ScanFlow() {
       <CameraScreen
         layout={layout}
         onRetake={retake}
+        onScanAnother={scanAnother}
         onPlay={play}
         onHome={home}
         onClose={home}

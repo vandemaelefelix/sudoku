@@ -25,6 +25,8 @@ import type { FinalGrid } from '@/utils/finalGrid.utils'
  * onPlay: without it, Play stays off. onSave: development builds. onHome: the solved panel shows a Home button.
  * onExit: gets the final grid when the screen unmounts after the player could edit it, by any route except retake. The scan is final.
  * onChooseImage: the failure panel of an import without a grid offers another image. Like retake, the scan is not final.
+ * onScanAnother: a new scan after the player accepted this one. The parent must keep the photo: onExit reads it when the screen
+ * unmounts. Without it, Scan another calls onRetake.
  */
 export type CorrectionExits = {
   onRetake(): void
@@ -33,6 +35,7 @@ export type CorrectionExits = {
   onExit?: ((grid: FinalGrid) => void) | undefined
   onHome?: (() => void) | undefined
   onChooseImage?: (() => void) | undefined
+  onScanAnother?: (() => void) | undefined
 }
 
 /**
@@ -261,7 +264,8 @@ export function useCorrectionSession(
       retaking.current = true
       exits.onChooseImage()
     },
-    scanAnother: () => exits.onRetake(),
+    // No Retake mark: the player accepted the scan, so the unmount that follows reports it.
+    scanAnother: () => (exits.onScanAnother ?? exits.onRetake)(),
     save: () => {
       if (exits.onSave === undefined || ok === null || saveState === 'saving') return
       const final = finalGrid(ok.cells, looks)

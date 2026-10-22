@@ -160,3 +160,19 @@ describe('an image from the photo library', () => {
     expect(camera().pickAtStart).toBe(false)
   })
 })
+
+describe('Scan another', () => {
+  it('mounts a new camera screen and keeps the photo, so the exit of the old screen can queue the scan', () => {
+    render(<ScanFlow />)
+    act(() => camera().onScanAnother())
+    expect(mockMounts).toHaveLength(2)
+    expect(mockDiscard).not.toHaveBeenCalled()
+  })
+
+  it('mounts a plain camera screen after an import that came from Choose another image', () => {
+    render(<ScanFlow />)
+    act(() => camera().onRetake(null, 'library'))
+    act(() => camera().onScanAnother())
+    expect(camera().pickAtStart).toBe(false)
+  })
+})
