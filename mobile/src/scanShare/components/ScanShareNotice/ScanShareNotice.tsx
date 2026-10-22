@@ -38,7 +38,12 @@ export function ScanShareNotice() {
           >
             <Text style={styles.link}>{intl.formatMessage({ id: 'scanShare.policy' })}</Text>
           </Pressable>
-          <PanelButton testID="notice-accept" label={intl.formatMessage({ id: 'scanShare.notice.accept' })} kind="primary" onPress={acceptNotice} />
+          <PanelButton
+            testID="notice-accept"
+            label={intl.formatMessage({ id: 'scanShare.notice.accept' })}
+            kind="primary"
+            onPress={acceptNotice}
+          />
           <Pressable
             testID="notice-decline"
             accessibilityRole="button"

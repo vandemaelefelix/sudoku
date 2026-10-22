@@ -1,6 +1,7 @@
 import { useLocales } from 'expo-localization'
-import type { ReactNode } from 'react'
-import { IntlProvider } from 'react-intl'
+import { useEffect, type ReactNode } from 'react'
+import { IntlProvider, useIntl } from 'react-intl'
+import { setCurrentIntl } from '@/i18n/currentIntl'
 import { Text } from 'react-native'
 import { useLanguage } from '@/i18n/hooks/useLanguage'
 import { CATALOGUES } from '@/i18n/messages'
@@ -9,6 +10,13 @@ import { devWarn, errorMessage } from '@/utils/log.utils'
 
 function warn(error: unknown): void {
   devWarn('i18n', errorMessage(error))
+}
+
+// Gives the formatter of the provider to code outside React (currentIntl).
+function CurrentIntl() {
+  const intl = useIntl()
+  useEffect(() => setCurrentIntl(intl), [intl])
+  return null
 }
 
 /**
@@ -27,6 +35,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       textComponent={Text}
       onError={warn}
     >
+      <CurrentIntl />
       {children}
     </IntlProvider>
   )

@@ -36,7 +36,7 @@ it('gives a short message when Google sign-in fails', async () => {
   })
   const { result } = renderHook(() => useGoogleSignIn(jest.fn()))
   await act(() => result.current.signIn())
-  expect(result.current.error).toBe('Google sign-in did not work. Try again.')
+  expect(result.current.error).toBe('account.error.googleAuth')
 })
 
 it('says when the phone is offline', async () => {
@@ -45,5 +45,5 @@ it('says when the phone is offline', async () => {
   })
   const { result } = renderHook(() => useGoogleSignIn(jest.fn()))
   await act(() => result.current.signIn())
-  expect(result.current.error).toBe('No connection. Try again when you are online.')
+  expect(result.current.error).toBe('account.error.offline')
 })

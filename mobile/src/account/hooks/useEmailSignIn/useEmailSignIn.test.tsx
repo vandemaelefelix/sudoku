@@ -70,7 +70,7 @@ it('shows a wrong password under the password field', async () => {
   const onDone = jest.fn()
   const { result } = renderHook(() => useEmailSignIn(onDone))
   await act(() => result.current.submit('alice@example.com', 'wrong'))
-  expect(result.current.errors).toEqual({ password: 'The password is not correct.' })
+  expect(result.current.errors).toEqual({ password: 'account.error.passwordIncorrect' })
   expect(onDone).not.toHaveBeenCalled()
 })
 
@@ -93,24 +93,24 @@ describe('a status that the app cannot finish', () => {
 
   it('sends a Google-only account to the Google button', async () => {
     const errors = await submitWith('needs_first_factor', [{ strategy: 'oauth_google' }])
-    expect(errors).toEqual({ form: 'This account uses Google. Sign in with Google.' })
+    expect(errors).toEqual({ form: 'account.error.googleAccount' })
     expect(warn).toHaveBeenCalledWith('[account] Clerk sign-in status needs_first_factor')
   })
 
   it('says that another first step is not supported', async () => {
     const errors = await submitWith('needs_first_factor', [{ strategy: 'email_code' }])
-    expect(errors).toEqual({ form: 'This sign-in needs a step the app does not support yet.' })
+    expect(errors).toEqual({ form: 'account.error.unsupportedSignIn' })
   })
 
   it('says that a forced new password is not supported', async () => {
     const errors = await submitWith('needs_new_password')
-    expect(errors).toEqual({ form: 'This account needs a new password. The app cannot set one yet.' })
+    expect(errors).toEqual({ form: 'account.error.newPassword' })
     expect(warn).toHaveBeenCalledWith('[account] Clerk sign-in status needs_new_password')
   })
 
   it('gives the generic message for an unknown status and warns with the status', async () => {
     const errors = await submitWith('needs_something_new')
-    expect(errors).toEqual({ form: 'This sign-in needs a step the app does not support yet.' })
+    expect(errors).toEqual({ form: 'account.error.unsupportedSignIn' })
     expect(warn).toHaveBeenCalledWith('[account] Clerk sign-in status needs_something_new')
   })
 })

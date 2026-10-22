@@ -24,4 +24,3 @@ export const BACKOFF_MAX_MS = 6 * 60 * 60_000
 export const QUEUE_DATABASE_NAME = 'scan-queue.db'
 export const QUEUE_FOLDER = 'scan-queue'
 export const POLICY_URL = 'https://sudoku.felixvandemaele.be/privacy'
-
