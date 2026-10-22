@@ -13,6 +13,11 @@ appId: com.vandemaelefelix.sudoku.dev
     commands:
       - tapOn:
           id: tool-hint
+      # The card fades in. A when check does not wait, so the flow waits for the buttons first.
+      - extendedWaitUntil:
+          visible:
+            id: hint-buttons
+          timeout: 5000
       # A step hint shows its answer on request. The fallback card shows it at once.
       - runFlow:
           when:

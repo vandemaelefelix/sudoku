@@ -13,12 +13,14 @@ tags:
     id: home-scan
 - tapOn:
     id: choose-image
-# The photo picker of iOS runs outside the app, so it has no testID. The fixture is the one screenshot in the library.
+# The photo picker of iOS runs outside the app, so it has no testID. The fixture is the one screenshot in the library:
+# Photos calls it a screenshot because it has the screen size of an iPhone 17, the device of just e2e.
 - tapOn:
     text: 'Screenshot, [^,]+, [^,]+'
+# The correction screen shows at once. Play shows when the scan is done.
 - extendedWaitUntil:
     visible:
-      id: correction-screen
+      id: play
     timeout: 30000
 - tapOn:
     id: play

@@ -10,15 +10,17 @@ on:
 permissions:
   contents: read
 
+# Each label starts the workflow. The label name in the group keeps another label from cancelling a run.
 concurrency:
-  group: e2e-${{ github.ref }}
+  group: e2e-${{ github.ref }}-${{ github.event.label.name || 'manual' }}
   cancel-in-progress: true
 
 jobs:
   e2e:
     if: "github.event_name == 'workflow_dispatch' || github.event.label.name == 'run: e2e'"
     runs-on: macos-26
-    timeout-minutes: 60
+    # A run takes about 20 minutes. A hung run stops before it costs a fifth of the monthly minutes.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/ios-simulator-build

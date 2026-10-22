@@ -148,7 +148,10 @@ e2e flow="mobile/e2e" *flags:
     xcrun simctl install "$udid" "$app"
     xcrun simctl addmedia "$udid" shared/fixtures/imports/screenshot-digital.png
     # Homebrew installs the Java of Maestro keg-only, so java is not on the PATH.
-    if [ -z "${JAVA_HOME:-}" ] && command -v brew >/dev/null; then export JAVA_HOME="$(brew --prefix openjdk)/libexec/openjdk.jdk/Contents/Home"; fi
+    if [ -z "${JAVA_HOME:-}" ] && command -v brew >/dev/null; then
+      jdk="$(brew --prefix openjdk)/libexec/openjdk.jdk/Contents/Home"
+      if [ -d "$jdk" ]; then export JAVA_HOME="$jdk"; fi
+    fi
     MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true maestro --device "$udid" test {{flow}} {{flags}}
 
 # Lint the GitHub Actions workflows and actions. Needs actionlint: brew install actionlint

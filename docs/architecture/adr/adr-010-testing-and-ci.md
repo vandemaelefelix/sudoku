@@ -230,10 +230,11 @@ navigation, a native module that does not load, or a game that a restart loses (
 6. **The scan flow needs the real model.** It has the tag `model`. CI has only the stub model
    (SUD-08), so `e2e.yml` leaves the tag out. `just e2e` puts the fixture image
    `shared/fixtures/imports/screenshot-digital.png` in the photo library of the simulator.
-7. **CI runs the flows only on a manual step.** The label `run: e2e` on a pull request starts `e2e.yml` on its
-   branch. A manual run (`workflow_dispatch`) works too, once the file is on `develop`. One run builds the app and runs the flows: about 20
-   minutes, so about 200 of the 2,000 monthly minutes. The composite action
-   `.github/actions/ios-simulator-build` holds the build for `ios-simulator.yml` and `e2e.yml`.
+7. **CI runs the flows only on a manual step.**
+   - The label `run: e2e` on a pull request starts `e2e.yml` on the branch of the pull request.
+   - A manual run (`workflow_dispatch`) works once the file is on `develop`.
+   - One run takes about 20 minutes. It costs about 200 of the 2,000 monthly minutes.
+   - The composite action `.github/actions/ios-simulator-build` holds the build. `ios-simulator.yml` and `e2e.yml` both use it.
 
 ### Consequences of amendment (b)
 
