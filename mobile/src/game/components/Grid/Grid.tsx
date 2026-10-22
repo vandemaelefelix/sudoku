@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { View } from 'react-native'
+import { useMemo, useState } from 'react'
+import { View, type LayoutChangeEvent } from 'react-native'
 import { BOXES } from '@sudoku/core'
 import { Cell } from '@/game/components/Cell'
 import { useCellViews } from '@/game/hooks/useCellViews'
@@ -7,6 +7,7 @@ import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGridIntro } from '@/game/hooks/useGridIntro'
 import { usePulse } from '@/game/hooks/usePulse'
+import { useSelectionTile } from '@/game/hooks/useSelectionTile'
 import type { DigitSize, HintHighlight } from '@/game/utils/cell.utils'
 import { cellLabel } from '@/game/utils/cellLabel.utils'
 import { hintHighlight } from '@/game/utils/hint.utils'
@@ -40,6 +41,11 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
   const intro = useGridIntro()
   // Only the marked cell gets the mark props, so memo renders that cell and the cell of the mark before.
   const mark = interactive ? markOf(move) : null
+  // The tile of the selected cell moves from cell to cell, so it needs the side of the grid.
+  const [side, setSide] = useState(0)
+  const measure = ({ nativeEvent }: LayoutChangeEvent) => setSide(nativeEvent.layout.width)
+  const selected = views.findIndex((view) => view.selected)
+  const tile = useSelectionTile(selected === -1 ? null : selected, side)
   const drawCell = (cell: number) => {
     const view = views[cell]
     if (!view) return null
@@ -51,6 +57,7 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
         {...view}
         label={cellLabel(intl, cell, view)}
         {...(interactive ? { pulse, intro } : {})}
+        tile={tile}
         onSelect={select}
         interactive={interactive}
         digitSize={digitSize}
@@ -63,6 +70,7 @@ export function Grid({ interactive = true, digitSize = 'full', highlight }: Grid
     <View
       testID="grid"
       style={styles.frame}
+      onLayout={measure}
       accessibilityElementsHidden={!interactive}
       importantForAccessibility={interactive ? 'auto' : 'no-hide-descendants'}
     >

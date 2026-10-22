@@ -5,12 +5,6 @@ import { roleFont } from '@/theme/typography'
 export const styles = StyleSheet.create((theme) => ({
   cell: { position: 'absolute' },
   fill: { ...StyleSheet.absoluteFillObject },
-  // The selected cell has a fill and a ring in both looks (ADR-026).
-  selected: {
-    backgroundColor: theme.components.cell.selected,
-    borderWidth: theme.components.cell.selectedRingWidth,
-    borderColor: theme.components.cell.ring,
-  },
   /** An open cell to check takes the warning surface, the colour of its ring. */
   selectedCheck: { backgroundColor: theme.colors.warningSurface },
   conflictFill: { backgroundColor: theme.components.cell.conflictFill },
