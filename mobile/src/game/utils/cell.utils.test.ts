@@ -83,6 +83,7 @@ describe('the hint roles', () => {
     const views = cellViews(gameAfter({ type: 'select', cell: 2 }), DEFAULT_ASSISTS)
     for (const view of views) {
       expect(view).toMatchObject({
+        hintFocus: false,
         hintEdges: 0,
         hintPattern: false,
         hintSupport: false,
@@ -95,7 +96,9 @@ describe('the hint roles', () => {
   it('tints a focus unit and outlines it', () => {
     const views = cellViews(gameAfter(), DEFAULT_ASSISTS, highlight({ units: [0] }))
     expect(views.slice(0, 9).map((view) => view.fill)).toEqual(Array(9).fill('focus'))
+    expect(views.slice(0, 9).every((view) => view.hintFocus)).toBe(true)
     expect(views[9]?.fill).toBe('plain')
+    expect(views[9]?.hintFocus).toBe(false)
     expect(views[0]?.hintEdges).toBe(top | bottom | left)
     expect(views[4]?.hintEdges).toBe(top | bottom)
     expect(views[8]?.hintEdges).toBe(top | right | bottom)
@@ -126,6 +129,7 @@ describe('the hint roles', () => {
     const views = cellViews(game, DEFAULT_ASSISTS, highlight({ units: [0] }))
     expect(views[2]?.fill).toBe('conflict')
     expect(views[2]?.hintEdges).toBe(top | bottom)
+    expect(views[2]?.hintFocus).toBe(true)
   })
 
   it('marks the pattern cells, and the support digits only on a cell with a digit', () => {
