@@ -62,8 +62,8 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
 10. **Cell names are plain words:** "row 4, column 9". A box has the name of its place: "the
     top-left box".
 11. **Five highlight roles.** Each role is a shape plus a colour: focus unit, pattern cell,
-    support digit, struck candidate and target cell. The second amendment of 2026-10-22 below replaces the
-    shapes with fills.
+    support digit, struck candidate and target cell. The amendment "calm highlights with fills only" of
+    2026-10-22 below replaces this decision.
 12. **Techniques.** The tier 1 techniques come first. The tier 2 techniques follow.
 
     | Tier | Technique | Highlights |
@@ -211,11 +211,13 @@ keep the current look of the app. This amendment replaces decision 11 and the ro
 
 2. **The meaning does not depend on colour alone.** The fills are lightness steps, and the contrast test keeps each step
    apart. The card text names every cell that the grid marks. A support cell takes the focus tint as well as the accent
-   colour: the accent is close to the colour of an entry, and in the Colour look the accent and the givens are both white.
+   colour. The accent is close to the colour of an entry. In the Colour look, the accent and the givens are both white.
 3. **The selected cell steps back.** While a hint is open, the selected fill and its ring hide, as the assist shades do.
    A wrong entry keeps its conflict fill and gets no hint fill.
 4. **One short fade.** A role fades in and out in 150 ms. With Reduce Motion it shows at once. The sweep, the pulse, the
    pop and the strike draw are gone.
-5. **The card lines up with the grid.** It covers the dock from edge to edge, so it has the width of the grid, and the
-   gap above it equals the gap above the grid. Its height no longer follows the text. "Learn more" is an inline link at
-   the end of the text. The footer has at most one filled button and one text button.
+5. **The card lines up with the grid.** It covers the dock from edge to edge, so it has the width of the grid. The gap
+   above it equals the gap above the grid. Its height no longer follows the text. The footer has at most one filled
+   button and one text button.
+6. **"Learn more" is an inline link** at the end of the text. Its touch target is one line of text, smaller than 44 pt.
+   WCAG 2.5.8 allows this for a link inside a sentence. VoiceOver reaches it as an action of the text.

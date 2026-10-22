@@ -82,7 +82,8 @@ export function cellViews(game: Game, assists: Assists, highlight: HintHighlight
       fill,
       ring: cell === selected && !assists.selectedCell,
       hintFill: highlight === null ? 'none' : hintFillOf(cell, wrong, highlight, focus),
-      hintSupport: digit !== 0 && (highlight?.support.includes(cell) ?? false),
+      // A wrong entry keeps its conflict colours, so it never reads as a support digit.
+      hintSupport: digit !== 0 && !wrong && (highlight?.support.includes(cell) ?? false),
       hintStruck: notes
         .filter((note) => highlight?.eliminations.some((struck) => struck.cell === cell && struck.digit === note))
         .join(''),

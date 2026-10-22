@@ -65,6 +65,7 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
   const fadeOut = FadeOut.duration(theme.motion.short).easing(easeOut).reduceMotion(ReduceMotion.Never)
   const [main, ...others] = buttons
   const learn = technique !== null && onLearn !== undefined
+  const learnLabel = intl.formatMessage({ id: 'hint.button.learnMoreLabel' }, { technique: title })
   return (
     <Animated.View
       testID="hint-card"
@@ -103,7 +104,12 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
       </View>
       <ScrollView style={styles.textBox}>
         <Animated.View key={text} entering={fadeIn} exiting={fadeOut}>
-          <Text style={styles.text}>
+          <Text
+            // VoiceOver reaches the inline link as an action of the text, with the name of the technique.
+            accessibilityActions={learn ? [{ name: 'learnMore', label: learnLabel }] : undefined}
+            onAccessibilityAction={() => learn && onLearn(technique)}
+            style={styles.text}
+          >
             {text}
             {learn && (
               <>

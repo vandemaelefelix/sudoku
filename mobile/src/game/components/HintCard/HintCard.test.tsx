@@ -156,6 +156,15 @@ describe('Learn more', () => {
     expect(onLearn).toHaveBeenCalledWith('pointing')
   })
 
+  it('offers the page to VoiceOver as an action of the text, with the name of the technique', () => {
+    const onLearn = jest.fn()
+    renderCard(at(0, 2), onLearn)
+    const text = screen.getByText(textOf(pointing, 0, 2), { exact: false })
+    expect(text.props.accessibilityActions).toEqual([{ name: 'learnMore', label: 'Learn more about Pointing' }])
+    fireEvent(text, 'accessibilityAction', { nativeEvent: { actionName: 'learnMore' } })
+    expect(onLearn).toHaveBeenCalledWith('pointing')
+  })
+
   it('shows neither on rung 1, nor on the mistake card, nor without a page to open', () => {
     renderCard(at(0, 1), jest.fn())
     expect(screen.queryByRole('link')).toBeNull()

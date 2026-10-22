@@ -152,14 +152,14 @@ The grid draws each role like this. The colours are the `components.cell.hint*` 
 | Target cell | The strongest tint, and the digit as a ghost at the answer rung |
 
 A cell with more than one role takes the strongest fill: target, then pattern, then focus. A support cell takes the focus
-tint because the accent colour is close to the colour of an entry, and the Colour look draws both givens and the accent in
-white. The fill marks it where the colour does not.
+tint too. The accent colour is close to the colour of an entry, and the Colour look draws both givens and the accent in
+white. The fill marks the cell where the colour does not.
 
 Each role has a **role entrance**: a fade of 150 ms in and out. A role that stays through a rung change does not fade
 again. With Reduce Motion, a role shows and goes at once.
 
-While a hint is open, the assist shades and the selected cell step back: row and column, box, same numbers, and the
-selected fill and ring. The conflict fill stays. The contrast test checks, in all six themes:
+While a hint is open, the assist shades step back: row and column, box and same numbers. The selected fill and its ring
+step back too. The conflict fill stays. The contrast test checks, in all six themes:
 
 - every digit and note on each hint fill at 4.5 : 1, and the support digit on its fill at 4.5 : 1,
 - the ghost digit on the target fill at 3 : 1 (a cell digit is large text),
@@ -261,7 +261,7 @@ makes the fallback card before the hint opens.
 | --- | --- |
 | The look of each role | Decided: the fills under "Highlight roles" and the `components.cell.hint*` tokens (ADR-032, amendment of 2026-10-22) |
 | The text of each technique | Decided: the messages of `HINT_TECHNIQUES` in `@sudoku/core`, written from the catalogues of the app (ADR-033) |
-| The layout of the card on a small phone | Decided: the card sizes to its text, up to the height of the tools and the keypad. The text scrolls above that (ADR-032, amendment of 2026-10-22) |
+| The layout of the card on a small phone | Decided: the card covers the dock from edge to edge. The text scrolls when it is taller (ADR-032, amendment "calm highlights with fills only") |
 | Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |
 | VoiceOver reading of the card and the highlights | Not planned |
 

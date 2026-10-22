@@ -114,6 +114,15 @@ describe('the hint roles', () => {
     expect(views[2]).toMatchObject({ fill: 'conflict', hintFill: 'none' })
   })
 
+  it('keeps a wrong entry in its conflict colours when it is a support digit', () => {
+    const game = gameAfter({ type: 'select', cell: 2 }, { type: 'digit', digit: 5 }, { type: 'select', cell: 40 })
+    expect(cellViews(game, DEFAULT_ASSISTS, highlight({ support: [2] }))[2]).toMatchObject({
+      digitStyle: 'wrong',
+      hintSupport: false,
+      hintFill: 'none',
+    })
+  })
+
   it('lets the strongest role win: target, then pattern, then focus', () => {
     const views = cellViews(
       gameAfter(),
