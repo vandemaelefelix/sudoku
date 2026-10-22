@@ -73,6 +73,20 @@ describe('correctionLayout', () => {
     expect(bar.x).toBe(36)
     expect(bar.width).toBe(800 - 32 - 30)
   })
+
+  it('gives no panel inset on an iPhone, which is narrower than the column', () => {
+    expect(correctionLayout({ width: 402, height: 874 }, insets, 0, 0, 560).panelInset).toBe(0)
+  })
+
+  it('centres the bar and the grid in the column on an iPad, and insets the panel content to it', () => {
+    const { bar, grid, panel, panelInset } = correctionLayout({ width: 1032, height: 1376 }, insets, 0, 0, 560)
+    expect(bar.width).toBe(560)
+    expect(bar.x).toBe((1032 - 560) / 2)
+    expect(grid.width).toBe(560)
+    expect(grid.x).toBe((1032 - 560) / 2)
+    expect(panel.width).toBe(1032)
+    expect(panelInset).toBe((1032 - 32 - 560) / 2)
+  })
 })
 
 const cell = (over: Partial<CellResult>): CellResult => ({

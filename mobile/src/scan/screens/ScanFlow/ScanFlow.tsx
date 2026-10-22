@@ -21,8 +21,14 @@ export function ScanFlow() {
   const { top, bottom, left, right } = useSafeAreaInsets()
   const layout = useMemo(
     () =>
-      correctionLayout({ width, height }, { top, bottom, left, right }, theme.size.titleBlock, theme.size.panelEdge),
-    [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge],
+      correctionLayout(
+        { width, height },
+        { top, bottom, left, right },
+        theme.size.titleBlock,
+        theme.size.panelEdge,
+        theme.size.column,
+      ),
+    [width, height, top, bottom, left, right, theme.size.titleBlock, theme.size.panelEdge, theme.size.column],
   )
   const play = useScannedStart()
   const { enqueueScan, discardPhoto } = useScanShare()

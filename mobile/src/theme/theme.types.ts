@@ -99,6 +99,8 @@ export type Theme = {
     titleBlock: number
     /** The height of the panel edge decoration. 0 for a theme without one. */
     panelEdge: number
+    /** The widest content column of a screen. An iPhone is narrower, so only an iPad centres the column. */
+    column: number
   }
   /** disabled: a control that cannot act now. locked: the controls of a game that ended. */
   /** pressed: a button while the finger is on it. */
