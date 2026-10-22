@@ -1,8 +1,9 @@
-import { Canvas, Path, Skia } from '@shopify/react-native-skia'
-import { useMemo } from 'react'
+import { Canvas, Path, Skia, type CanvasRef } from '@shopify/react-native-skia'
+import { useMemo, useRef } from 'react'
 import { useWindowDimensions } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
 import { wavePoints } from '@/theme/decorations/geometry'
+import { useRedrawOnShow } from '@/theme/decorations/ScreenShow'
 import {
   CARD_EDGE_HEIGHT,
   SECTION_RULE_HEIGHT,
@@ -37,8 +38,11 @@ function Waves({
   lines?: number
 }) {
   const path = useMemo(() => wavesPath(width, lines), [width, lines])
+  const canvas = useRef<CanvasRef>(null)
+  // A theme switch under another screen draws the new colour off the window, so the screen shows the old frame without this.
+  useRedrawOnShow(canvas)
   return (
-    <Canvas testID={testID} pointerEvents="none" style={{ width, height }}>
+    <Canvas ref={canvas} testID={testID} pointerEvents="none" style={{ width, height }}>
       <Path path={path} style="stroke" strokeWidth={WAVE_WIDTH} strokeCap="round" color={color} />
     </Canvas>
   )

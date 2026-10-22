@@ -7,6 +7,7 @@ import { SplashProvider } from '@/splash/components/SplashProvider'
 import { SplashRouteReady } from '@/splash/components/SplashRouteReady'
 import { GameStorageProvider } from '@/storage/components/GameStorageProvider'
 import { SyncProvider } from '@/sync/components/SyncProvider'
+import { ScreenShowLayout } from '@/theme/decorations/ScreenShow'
 import { SystemAppearanceFollower } from '@/theme/system'
 import { ThemeTransitionProvider } from '@/theme/transition'
 
@@ -17,6 +18,7 @@ import { ThemeTransitionProvider } from '@/theme/transition'
  * The account gives the owner of the games to every route (ADR-028). It never waits for Clerk.
  * The scan drainer sends the waiting scans (ADR-030). It needs the account for the token.
  * The sync provider is inside the storage provider. It renders the routes at once and syncs in the background.
+ * Each screen gets its own events, so its Skia surfaces draw again when it shows again (ADR-025).
  */
 export default function RootLayout() {
   return (
@@ -29,7 +31,7 @@ export default function RootLayout() {
               <ScanShareDrainer />
               <ScanShareNotice />
               <SplashRouteReady />
-              <Stack screenOptions={{ headerShown: false }} />
+              <Stack screenOptions={{ headerShown: false }} screenLayout={ScreenShowLayout} />
             </SyncProvider>
           </GameStorageProvider>
         </AccountProvider>
