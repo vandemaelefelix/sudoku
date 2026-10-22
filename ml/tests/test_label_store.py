@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -36,8 +35,8 @@ def add_cell(cells: Path, folder: str, image: np.ndarray) -> str:
     return cell_id
 
 
-def build(tmp_path: Path, folders: dict[str, int], groups: dict[str, list[list[int]]]):
-    """folders: folder → number of cells. groups: folder → groups as indices into its cells."""
+def build(tmp_path: Path, folders: dict[str, int]):
+    """folders: folder → number of cells."""
     paths = DataPaths.under(tmp_path / "data", tmp_path / "images")
     cells = paths.cells
     ids: dict[str, list[str]] = {}
@@ -49,15 +48,6 @@ def build(tmp_path: Path, folders: dict[str, int], groups: dict[str, list[list[i
             ids[folder].append(add_cell(cells, folder, pattern(seed)))
     write_cells_manifest(paths)
     paths.work.mkdir(parents=True)
-    folders_json = {
-        f: [
-            {"cells": [ids[f][i] for i in g], "sureness": [float(n) for n in range(len(g))]}
-            for g in gs
-        ]
-        for f, gs in groups.items()
-    }
-    groups_json = {"run": "test", "seed": 0, "k": 2, "folders": folders_json}
-    paths.groups.write_text(json.dumps(groups_json))
     return paths, ids
 
 
@@ -78,8 +68,14 @@ def save_kinds(store: LabelStore, entries: list[dict], screen: str = "groups") -
     return len(lines)
 
 
+def settle_kinds(store: LabelStore) -> int:
+    """Confirm every open kind cell, as the Kind step does before a Finish."""
+    cells = [{"id": c["id"], "kind": c["kind"] or "printed"} for c in store.open_kind_cells()]
+    return store.confirm_kinds(cells) if cells else 0
+
+
 def test_a_move_to_empty_clears_the_kind_and_undo_restores_it(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2})
     cell = ids["7"][0]
     store = LabelStore(paths, Clock())
     save_kinds(store, kinds_of([cell], "printed"))
@@ -92,13 +88,13 @@ def test_a_move_to_empty_clears_the_kind_and_undo_restores_it(tmp_path: Path):
 
 
 def test_the_store_reads_cells_missing_from_the_manifest(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     cell_id = add_cell(paths.cells, "7", pattern(999))
     assert LabelStore(paths, Clock()).folder[cell_id] == "7"
 
 
 def test_the_store_refuses_a_misnamed_cell(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     stray = paths.cells / "7" / ("f" * 16 + ".png")
     Image.fromarray(pattern(998)).save(stray)
     with pytest.raises(ValueError, match="not named after its pixels"):
@@ -106,7 +102,7 @@ def test_the_store_refuses_a_misnamed_cell(tmp_path: Path):
 
 
 def test_review_merges_the_reasons_of_one_cell(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2})
     cell = ids["7"][0]
     store = LabelStore(paths, Clock())
     save_kinds(store, kinds_of([cell], "printed"))
@@ -124,7 +120,7 @@ def test_review_merges_the_reasons_of_one_cell(tmp_path: Path):
 
 
 def test_rollback_moves_files_back_and_restores_kinds(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     cell = ids["7"][0]
     first = LabelStore(paths, Clock())
     save_kinds(first, kinds_of([cell], "printed"))
@@ -138,7 +134,7 @@ def test_rollback_moves_files_back_and_restores_kinds(tmp_path: Path):
 
 
 def test_a_rollback_from_another_process_reaches_the_running_store(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     cell = ids["7"][0]
     first = LabelStore(paths, Clock())
     save_kinds(first, kinds_of([cell], "printed"))
@@ -158,7 +154,7 @@ def test_a_rollback_from_another_process_reaches_the_running_store(tmp_path: Pat
 
 @pytest.mark.parametrize(("other", "expected"), [("7", 2), ("1", 0)])
 def test_near_duplicates_count_only_inside_one_folder(tmp_path: Path, other: str, expected: int):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     twin = pattern(1)
     twin[0, 0, 0] ^= 1
     twin_id = add_cell(paths.cells, other, twin)

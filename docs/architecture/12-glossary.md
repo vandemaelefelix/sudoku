@@ -96,7 +96,6 @@ status: DRAFT
 | Start page | The first page of the labelling app: the steps of both flows with their counts. The next step is highlighted |
 | Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
-| Sureness | How much closer a cell is to its own group centre than to the next one. The Kind step shows the least sure cells first |
 | Unsure | The kind label for a cell that the developer cannot decide. Training ignores it |
 | Theme | One typed object with every token the app needs. The app ships six: three colourways in two appearances (ADR-015, ADR-025, ADR-026) |
 | Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |

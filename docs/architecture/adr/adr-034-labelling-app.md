@@ -97,6 +97,11 @@ Decision (this replaces decision 5):
    `confirm` and `sure` routes. `/api/undo` answers with `digits` or `kinds` for the new steps.
 5. **The journal does not change.** Two new screen names, `digits` and `kinds`, join the old ones. An older journal still
    loads.
+6. **Finish refuses while Kind cells wait.** Finish raises an error before it writes anything when an open cell waits
+   in the Kind step. The Finish step shows the count and an Open Kind button, and it disables Finish.
+7. **The grouping tool is gone.** `just group-cells`, `sudoku_ml.grouping` and `ml/dataset/work/groups.json` are
+   removed. The app no longer read them. `default_run` moved to `sudoku_ml.prelabel`. The old text of
+   [ADR-018](adr-018-one-data-folder-two-tables.md) that names `just group-cells` describes the past.
 
 Reassessment trigger: the cells without a photo are so few that the developer wants to drop them from the flow.
 

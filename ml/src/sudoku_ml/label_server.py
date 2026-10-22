@@ -243,8 +243,7 @@ def prelabel_new_cells(
     """Guess the `wanted` cells (full ids) with the latest model. Without `wanted`: all cells
     of unlabeled/ and the digit folders. Raises ValueError without a model or when it fails."""
     # torch loads slowly. Import it here so the server starts fast and the tests need no model.
-    from sudoku_ml.grouping import default_run
-    from sudoku_ml.prelabel import NO_MODEL, write_prelabels
+    from sudoku_ml.prelabel import NO_MODEL, default_run, write_prelabels
 
     try:
         run = default_run(ml_root, artifacts)

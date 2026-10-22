@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from test_doubt import probs
-from test_label_store import Clock, add_cell, build, pattern, save_kinds
+from test_label_store import Clock, add_cell, build, pattern, save_kinds, settle_kinds
 from test_label_store_scans import pulled
 
 from sudoku_ml.data_paths import DataPaths
@@ -27,7 +27,7 @@ def prelabel(paths: DataPaths, guesses: dict[str, Guess]) -> None:
 def loose(tmp_path: Path, guesses: dict[int, Guess | None]):
     """Five cells in unlabeled/ that no scan holds, and one legacy cell in 3. guesses: index of
     a cell in unlabeled/ → its guess."""
-    paths, ids = build(tmp_path, {"unlabeled": 5, "3": 1}, {})
+    paths, ids = build(tmp_path, {"unlabeled": 5, "3": 1})
     u = ids["unlabeled"]
     prelabel(paths, {u[i]: g for i, g in guesses.items() if g})
     return LabelStore(paths, Clock()), paths, u, ids["3"][0]
@@ -141,7 +141,7 @@ def test_a_legacy_labelled_cell_is_not_open(tmp_path: Path):
 
 
 def test_a_page_holds_240_cells_and_left_counts_all(tmp_path: Path):
-    paths, ids = build(tmp_path, {"unlabeled": CHECK_SIZE + 10}, {})
+    paths, ids = build(tmp_path, {"unlabeled": CHECK_SIZE + 10})
     store = LabelStore(paths, Clock())
     screen = store.check_digits("unknown")
     assert len(screen["cells"]) == CHECK_SIZE and screen["left"] == CHECK_SIZE + 10
@@ -220,6 +220,7 @@ def test_a_confirmed_scan_cell_is_verified_after_finish(tmp_path: Path):
     [first, *rest] = store.open_cells()
     assert store.confirm_digits([{"id": first["id"], "digit": first["digit"]}]) == 1
     assert first["id"] not in waiting(store)
+    settle_kinds(store)
     finish(store)
     rows = read_cells(paths.cells_csv)
     assert rows[first["id"]].label_source == "verified"
@@ -310,7 +311,7 @@ def test_the_cut_and_the_signals_are_cached_by_corners_and_labels(tmp_path: Path
 
 def kind_store(tmp_path: Path):
     """Four cells of folder 7 without a kind, and a guess for three of them."""
-    paths, ids = build(tmp_path, {"7": 4}, {})
+    paths, ids = build(tmp_path, {"7": 4})
     c = ids["7"]
     prelabel(
         paths,
@@ -446,3 +447,20 @@ def test_sure_kinds_confirms_the_cells_at_the_threshold(tmp_path: Path):
     assert {x["id"] for x in store.open_kind_cells()} == {c[2], c[3]}
     with pytest.raises(ValueError, match="unknown digit"):
         store.sure_kinds("unknown")
+
+
+def test_cells_that_the_model_reads_differently_come_in_the_order_of_the_raw_sum(tmp_path: Path):
+    # Every such cell has a doubt of 1. A clamp would sort them by id.
+    paths, ids = build(tmp_path, {"7": 3})
+    store = LabelStore(paths, Clock())
+    cells = ids["7"]
+    save_kinds(store, [{"id": c, "kind": "printed"} for c in cells])
+    for cell in cells:
+        store.move(cell, "6", "digits")
+    p_label = {cells[0]: 0.4, cells[1]: 0.2, cells[2]: 0.01}
+    prelabel(paths, {c: ("6", 0.99, "handwritten", 1 - p) for c, p in p_label.items()})
+    screen = LabelStore(paths, Clock()).check_kinds("6")
+    ordered = [c["id"] for c in screen["cells"]]
+    assert ordered == [cells[2], cells[1], cells[0]]
+    assert {c["doubt"] for c in screen["cells"]} == {1}
+    assert all("raw" not in c for c in screen["cells"])

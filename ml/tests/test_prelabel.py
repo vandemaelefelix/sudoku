@@ -7,7 +7,7 @@ from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
 from sudoku_ml.model import CellClassifier
-from sudoku_ml.prelabel import main, write_prelabels
+from sudoku_ml.prelabel import default_run, main, write_prelabels
 from sudoku_ml.tables import pixel_id
 
 
@@ -114,3 +114,11 @@ def test_cells_in_digit_folders_get_pre_labels_and_cells_that_left_are_dropped(t
     (cells / "3" / f"{moved[:16]}.png").rename(cells / "discarded" / f"{moved[:16]}.png")
     assert write_prelabels(cells, run, out) == 0
     assert set(json.loads(out.read_text())["cells"]) == {waiting, seven}
+
+
+def test_default_run_reads_the_run_of_the_app_model(tmp_path: Path):
+    models = tmp_path / "mobile" / "assets" / "models"
+    models.mkdir(parents=True)
+    (models / "manifest.json").write_text(json.dumps({"run": "run-7"}))
+    artifacts = tmp_path / "ml" / "artifacts"
+    assert default_run(tmp_path / "ml", artifacts) == artifacts / "run-7"

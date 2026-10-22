@@ -73,6 +73,9 @@ journal of the old labelling page loads in the app as it is.
   `sudoku-photos.csv` at once.
 - **Finish folds the journal** into `ml/dataset/cells.csv`, runs the data check, writes
   `ml/dataset/STATUS.md`, and deletes the journal and the derived files.
+- **Finish refuses while cells wait in the Kind step.** It stops before it writes anything and says how many
+  cells wait. The Finish step shows the count and an **Open Kind** button. Finish stays disabled until the Kind step
+  is done.
 - After Finish, Z can no longer undo these changes. Git keeps the old tables. A rollback of a
   finished session says: "This session is finished. Use git to go back."
 - Finish closes every open doubtful label. Only new evidence opens one again.

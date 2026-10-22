@@ -183,7 +183,7 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
     )
 
   const doConfirm = async (): Promise<void> => {
-    if (!data || action.busy || !cells.length) return
+    if (!data || action.busy || page.loading || !cells.length) return
     const missing = cells.filter((c) => valueOf(c) === null).length
     if (missing) {
       setWarning(
@@ -217,7 +217,7 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
   }
 
   const confirmSure = async (): Promise<void> => {
-    if (!data || action.busy || !data.sure) return
+    if (!data || action.busy || page.loading || !data.sure) return
     const done = await action.run(
       () => post<{ cells: number }>(`/api/check/${mode}/sure`, { digit: tab, threshold }),
       (r) =>
@@ -310,7 +310,12 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
                 ? `${cells.length} of ${data?.left} shown`
                 : `${cells.length} on the page`}
             </span>
-            <button type="button" className="primary" onClick={() => void doConfirm()} disabled={action.busy}>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void doConfirm()}
+              disabled={action.busy || page.loading}
+            >
               Confirm {cells.length} cells <kbd>Enter</kbd>
             </button>
           </>
@@ -361,7 +366,7 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
               <span className="legend-bar" aria-hidden="true" />
               <span>doubtful</span>
               <span className="badge grey">as given</span>
-              <span className="badge blue">your fix</span>
+              <span className="badge blue">your fix, tinted</span>
               <span className="badge selected">selected</span>
             </div>
             <div className="sure">
@@ -380,8 +385,14 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
                 />{' '}
                 %
               </label>
-              <button type="button" onClick={() => void confirmSure()} disabled={action.busy || !data?.sure}>
-                Confirm {data?.sure ?? 0} cells the model is at least {percentSure} % sure of
+              <button
+                type="button"
+                onClick={() => void confirmSure()}
+                disabled={action.busy || page.loading || !data?.sure}
+              >
+                {page.loading
+                  ? `Counting the cells the model is at least ${percentSure} % sure of…`
+                  : `Confirm ${data?.sure ?? 0} cells the model is at least ${percentSure} % sure of`}
               </button>
             </div>
           </div>

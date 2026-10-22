@@ -148,10 +148,12 @@ Decision:
    line in the journal. Finish writes `verified` for each confirmed cell.
 3. **The doubt score only sets the order.** A person still checks every cell. The score of a cell is 0 (sure) to 1
    (doubtful). The server computes it from the model probabilities and the sudoku. It stores no score.
-   - **Digits step:** `min(1, (1 − p) + 0.5·differs + 0.3·edited + 0.2·rule break + 0.1·not unique)`. `p` is the
+   - **Digits step:** `(1 − p) + 0.5·differs + 0.3·edited + 0.2·rule break + 0.1·not unique`. `p` is the
      probability of the label digit. A cell without probabilities has the score 1.
-   - **Kind step:** `min(1, (1 − p) + 0.5·differs)`. `p` is the probability of the label kind, renormalised over printed
+   - **Kind step:** `(1 − p) + 0.5·differs`. `p` is the probability of the label kind, renormalised over printed
      and handwritten.
+   - **Two values.** The API and the tile colour use the sum clamped to 1: `min(1, sum)`. The order uses the
+     unclamped sum, highest first, then the cell id. A clamp would tie every cell that the model reads differently.
    - Each signal keeps its evidence, so the app can name it.
 4. **The sudoku signals need no model.** A rule break is a digit twice in a row, a column or a box of a scan. A scan is
    not unique when its printed givens have more than one solution. A small solution counter in
@@ -160,7 +162,9 @@ Decision:
    `ml/dataset/work/doubt-sudoku.json` caches them per scan, keyed by the corners and the labels.
 5. **A bulk confirm needs a threshold.** "Confirm the sure cells" takes the cells where the model reads the label with
    at least 98 % (digits) or 95 % (kind). A cell that the player changed, or that breaks a rule, is never sure. A cell
-   without probabilities is never sure.
+   without probabilities is never sure. For a cell in `unlabeled/` the label is the model's own guess. So "Confirm the
+   sure ones" accepts the model's answer when p is at least the threshold. The person sees the count and the
+   threshold before the confirm.
 6. **A pixel-identical cell is one cell.** Its verdict counts for every scan that holds it.
 
 Reassessment trigger: the review history shows that a signal never finds an error. Then drop it. The trust per

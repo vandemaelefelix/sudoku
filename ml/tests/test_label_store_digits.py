@@ -8,7 +8,7 @@ from sudoku_ml.label_store import LabelStore
 
 
 def test_a_registered_cell_is_served_without_a_manifest_rewrite(tmp_path: Path):
-    paths, _ = build(tmp_path, {"unlabeled": 4, "3": 1}, {})
+    paths, _ = build(tmp_path, {"unlabeled": 4, "3": 1})
     store = LabelStore(paths, Clock())
     new_id = add_cell(paths.cells, "unlabeled", pattern(99))
     store.register([new_id])
@@ -17,7 +17,7 @@ def test_a_registered_cell_is_served_without_a_manifest_rewrite(tmp_path: Path):
 
 
 def test_the_review_screen_tells_a_missing_suspects_file_from_nothing_flagged(tmp_path: Path):
-    paths, _ = build(tmp_path, {"4": 2}, {})
+    paths, _ = build(tmp_path, {"4": 2})
     store = LabelStore(paths, Clock())
     assert store.review_screen()["suspects"] is False
     store.paths.suspects.parent.mkdir(parents=True, exist_ok=True)
@@ -26,7 +26,7 @@ def test_the_review_screen_tells_a_missing_suspects_file_from_nothing_flagged(tm
 
 
 def test_the_store_reads_the_run_of_the_pre_labels(tmp_path: Path):
-    paths, ids = build(tmp_path, {"unlabeled": 1}, {})
+    paths, ids = build(tmp_path, {"unlabeled": 1})
     store = LabelStore(paths, Clock())
     assert store.status()["model"] is None
     paths.prelabels.write_text(json.dumps({"run": "r1", "cells": {}}))

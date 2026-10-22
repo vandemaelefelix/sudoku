@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-type Answer = unknown | ((body: unknown) => unknown)
+type Answer = unknown | ((body: unknown) => unknown) // a function may return a promise, to hold an answer back
 
 export class Refusal {
   constructor(
@@ -25,7 +25,7 @@ export function fakeServer(routes: Record<string, Answer>): FakeServer {
       if (post) (server.posts[path] ??= []).push(body)
       if (!(path in routes)) return new Response(JSON.stringify({ error: `no fake for ${path}` }), { status: 404 })
       const route = routes[path]
-      const answer = typeof route === 'function' ? (route as (b: unknown) => unknown)(body) : route
+      const answer = await (typeof route === 'function' ? (route as (b: unknown) => unknown)(body) : route)
       if (answer instanceof Refusal) return new Response(JSON.stringify(answer.body), { status: answer.status })
       return new Response(JSON.stringify(post ? { result: answer } : answer), { status: 200 })
     }),

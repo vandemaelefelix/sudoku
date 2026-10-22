@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from test_data_check import valid_root
-from test_label_store import Clock, save_kinds
+from test_label_store import Clock, save_kinds, settle_kinds
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.finish import finish
@@ -25,7 +25,6 @@ def with_derived(tmp_path: Path) -> DataPaths:
     paths.work.mkdir(parents=True, exist_ok=True)
     paths.prelabels.write_text(json.dumps({"run": "20261012-000755-cell-classifier", "cells": {}}))
     paths.suspects.write_text("field,file,label,predicted,p_label,p_predicted\n")
-    paths.groups.write_text(json.dumps({"run": "r", "seed": 0, "k": 1, "folders": {}}))
     return paths
 
 
@@ -40,12 +39,11 @@ def test_finish_removes_the_journal_and_derived_files_and_keeps_the_pending_data
     result = finish(store)
 
     assert sorted(result["removed"]) == [
-        "groups.json",
         "journal.jsonl",
         "prelabels.json",
         "suspects.csv",
     ]
-    assert not any(p.exists() for p in (paths.prelabels, paths.groups, paths.suspects))
+    assert not any(p.exists() for p in (paths.prelabels, paths.suspects))
     assert not paths.journal.exists()
     assert json.loads(paths.detections.read_text()) == detections
     assert tree(paths) == before
@@ -124,7 +122,7 @@ def test_finish_refuses_a_problem_and_deletes_nothing(tmp_path: Path):
     next(paths.photos.iterdir()).unlink()
     with pytest.raises(ValueError, match="Finish stopped and deleted nothing.*does not exist"):
         finish(LabelStore(paths, Clock()))
-    assert paths.prelabels.exists() and paths.suspects.exists() and paths.groups.exists()
+    assert paths.prelabels.exists() and paths.suspects.exists()
     assert paths.detections.exists() and paths.journal.exists()
     assert not paths.status.exists()
 
@@ -163,3 +161,31 @@ def test_finish_closes_the_review_items_with_older_evidence(tmp_path: Path):
     with paths.kind_checks.open("a") as handle:
         handle.write(json.dumps({"t": "2026-10-12T10:00:00Z", **line}) + "\n")
     assert [i["id"] for i in LabelStore(paths, clock).review_items()] == [cell]
+
+
+def test_finish_refuses_while_kind_cells_wait_and_writes_nothing(tmp_path: Path):
+    paths = with_derived(tmp_path)
+    store = LabelStore(paths, Clock())
+    cell = next(iter(store.sources()))
+    store.confirm_digits([{"id": cell, "digit": "4"}])
+    waiting = len(store.open_kind_cells())
+    assert waiting >= 1
+    journal, table = paths.journal.read_bytes(), paths.cells_csv.read_bytes()
+    with pytest.raises(
+        ValueError,
+        match=f"Finish stopped and deleted nothing. {waiting} cells wait in the Kind step. "
+        "Check them first.",
+    ):
+        finish(store)
+    assert paths.journal.read_bytes() == journal and paths.cells_csv.read_bytes() == table
+    assert paths.prelabels.exists() and paths.suspects.exists() and not paths.status.exists()
+
+
+def test_finish_passes_after_the_kind_step(tmp_path: Path):
+    paths = with_derived(tmp_path)
+    store = LabelStore(paths, Clock())
+    cell = next(iter(store.sources()))
+    store.confirm_digits([{"id": cell, "digit": "4"}])
+    settle_kinds(store)
+    assert store.open_kind_cells() == []
+    assert finish(store)["report"]["problems"] == []

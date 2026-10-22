@@ -13,8 +13,7 @@ import torch
 from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
-from sudoku_ml.data_paths import ML_ROOT, DataPaths
-from sudoku_ml.grouping import default_run
+from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
 from sudoku_ml.manifest import warn_unreadable
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
@@ -99,6 +98,12 @@ def write_prelabels(
             cells[ids[path]] = entry
     write_atomic(out, json.dumps({"run": run.name, "cells": cells}))
     return len(todo)
+
+
+def default_run(ml_root: Path = ML_ROOT, artifacts: Path = ARTIFACTS) -> Path:
+    """The run of the model that the app uses."""
+    manifest = ml_root.parent / "mobile" / "assets" / "models" / "manifest.json"
+    return artifacts / json.loads(manifest.read_text())["run"]
 
 
 def main(argv: list[str], paths: DataPaths | None = None, ml_root: Path = ML_ROOT) -> int:

@@ -419,6 +419,17 @@ kbd {
   color: var(--sheet);
 }
 
+/* A tint and an inner frame over the whole tile. A pseudo-element adds no size. */
+.tile.changed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--blue);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--blue) 28%, transparent);
+  pointer-events: none;
+}
+
 .tile.dim {
   opacity: 0.35;
 }
@@ -956,8 +967,9 @@ kbd {
   margin: 0 auto;
 }
 
-/* Ink, not red: red already means doubt on the ring. */
+/* Ink, not red: red already means doubt on the ring. The border width stays the same, so a
+   selected tile takes the same space as any other. */
 .tile[data-doubt].marked {
   border-color: var(--ink);
-  border-width: 3px;
+  outline-color: var(--ink);
 }

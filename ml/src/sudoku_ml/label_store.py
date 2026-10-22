@@ -20,10 +20,11 @@ from sudoku_ml.dataset import dhash, read_real_cells, split_cells
 from sudoku_ml.doubt import (
     DIGIT_THRESHOLD,
     KIND_THRESHOLD,
-    digit_doubt,
+    clamp_doubt,
+    digit_doubt_raw,
     is_sure_digit,
     is_sure_kind,
-    kind_doubt,
+    kind_doubt_raw,
     labels_key,
     scan_signals,
 )
@@ -1050,11 +1051,11 @@ class LabelStore:
             if (cell["digit"] or "unknown") != digit:
                 continue
             extra = sudoku.get(cell["id"], [])
-            doubt, reasons = digit_doubt(cell["digit"], cell["probs"], cell["edited"], extra)
-            scored.append({**cell, "doubt": doubt, "reasons": reasons})
+            raw, reasons = digit_doubt_raw(cell["digit"], cell["probs"], cell["edited"], extra)
+            scored.append({**cell, "doubt": clamp_doubt(raw), "raw": raw, "reasons": reasons})
             if is_sure_digit(cell["digit"], cell["probs"], cell["edited"], extra, threshold):
                 sure.append(cell["id"])
-        scored.sort(key=lambda c: (-c["doubt"], c["id"]))
+        scored.sort(key=lambda c: (-c["raw"], c["id"]))
         return counts, scored, sure
 
     def _scored_kinds(self, digit: str, threshold: float):
@@ -1067,17 +1068,17 @@ class LabelStore:
         for cell in items:
             if cell["digit"] != digit:
                 continue
-            doubt, reasons = kind_doubt(cell["kind"], cell["probs"])
-            scored.append({**cell, "doubt": doubt, "reasons": reasons})
+            raw, reasons = kind_doubt_raw(cell["kind"], cell["probs"])
+            scored.append({**cell, "doubt": clamp_doubt(raw), "raw": raw, "reasons": reasons})
             if is_sure_kind(cell["kind"], cell["probs"], threshold):
                 sure.append(cell["id"])
-        scored.sort(key=lambda c: (-c["doubt"], c["id"]))
+        scored.sort(key=lambda c: (-c["raw"], c["id"]))
         return counts, scored, sure
 
     def _check(self, digit, tabs, counts, scored, sure, done, threshold) -> dict:
         return {
             "digit": digit,
-            "cells": scored[:CHECK_SIZE],
+            "cells": [{k: v for k, v in c.items() if k != "raw"} for c in scored[:CHECK_SIZE]],
             "left": len(scored),
             "counts": {t: counts[t] for t in tabs},
             "done": {t: done[t] for t in tabs},

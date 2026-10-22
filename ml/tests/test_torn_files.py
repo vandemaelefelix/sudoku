@@ -14,7 +14,7 @@ from sudoku_ml.tables import read_cells
 
 
 def test_the_manifest_is_written_through_a_part_file(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, _ = build(tmp_path, {"7": 1})
     write_cells_manifest(paths)
     assert not list(paths.cells_csv.parent.glob("*.part"))
     assert len(read_cells(paths.cells_csv)) == 1
@@ -31,7 +31,7 @@ def test_read_cells_refuses_an_id_that_is_not_64_hex(tmp_path: Path, bad: str):
 
 
 def test_a_cut_off_manifest_stops_the_store_and_the_rewrite(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
+    paths, ids = build(tmp_path, {"7": 2})
     cell = ids["7"][1]
     rows = paths.cells_csv.read_text().splitlines()
     torn = "\n".join(rows[:-1]) + f"\n{cell[:30]},7,"
@@ -44,13 +44,13 @@ def test_a_cut_off_manifest_stops_the_store_and_the_rewrite(tmp_path: Path):
 
 
 def test_a_missing_manifest_is_treated_like_a_cut_off_one(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     paths.cells_csv.unlink()
     assert LabelStore(paths, Clock()).folder == {ids["7"][0]: "7"}
 
 
 def test_a_torn_prelabels_file_counts_as_missing(tmp_path: Path):
-    paths, _ = build(tmp_path, {"unlabeled": 1}, {})
+    paths, _ = build(tmp_path, {"unlabeled": 1})
     paths.prelabels.write_text('{"run": "r", "cel')
     store = LabelStore(paths, Clock())
     assert store.check_digits("unknown")["left"] == 1
@@ -60,7 +60,7 @@ def test_a_torn_prelabels_file_counts_as_missing(tmp_path: Path):
 def test_a_torn_prelabels_file_is_recomputed_by_write_prelabels(tmp_path: Path, monkeypatch):
     from sudoku_ml import prelabel
 
-    paths, ids = build(tmp_path, {"unlabeled": 1}, {})
+    paths, ids = build(tmp_path, {"unlabeled": 1})
     out = paths.work / "prelabels.json"
     out.write_text("{")
     entry = {"digit": "1", "p": 0.9, "kind": "printed", "kp": 0.9}
@@ -72,7 +72,7 @@ def test_a_torn_prelabels_file_is_recomputed_by_write_prelabels(tmp_path: Path, 
 
 
 def test_a_torn_suspects_file_counts_as_missing(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    paths, ids = build(tmp_path, {"7": 1})
     store = LabelStore(paths, Clock())
     save_kinds(store, [{"id": ids["7"][0], "kind": "printed"}])
     row = f"kind,{ids['7'][0][:16]},printed,handwritten,0.0"
