@@ -437,9 +437,12 @@ describe('leaving the screen', () => {
 
   it('reports after Scan another: the player accepted the scan', () => {
     const onExit = jest.fn()
-    const { result, unmount, exits } = session(review(fullScan()), { onExit })
+    const onScanAnother = jest.fn()
+    const { result, unmount, exits } = session(review(fullScan()), { onExit, onScanAnother })
     act(() => result.current.actions.scanAnother())
-    expect(exits.onRetake).toHaveBeenCalledTimes(1)
+    expect(onScanAnother).toHaveBeenCalledTimes(1)
+    // Retake drops the photo of the scan. Scan another must not.
+    expect(exits.onRetake).not.toHaveBeenCalled()
     unmount()
     expect(onExit).toHaveBeenCalledTimes(1)
   })

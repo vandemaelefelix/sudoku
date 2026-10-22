@@ -43,6 +43,7 @@ const device = jest.mocked(useCameraDevice)
 const frameOutput = jest.mocked(useFrameOutput)
 const LAYOUT = correctionLayout({ width: 402, height: 874 }, { top: 0, bottom: 0, left: 0, right: 0 })
 const onRetake = jest.fn()
+const onScanAnother = jest.fn()
 const onPlay = jest.fn()
 const onHome = jest.fn()
 const onExit = jest.fn()
@@ -50,7 +51,7 @@ const onClose = jest.fn()
 const onSave = jest.fn(async () => true)
 
 function props() {
-  return { layout: LAYOUT, onRetake, onPlay, onHome, onClose, onExit, onSave }
+  return { layout: LAYOUT, onRetake, onScanAnother, onPlay, onHome, onClose, onExit, onSave }
 }
 
 function givenPermission(status: 'authorized' | 'denied' | 'not-determined') {
