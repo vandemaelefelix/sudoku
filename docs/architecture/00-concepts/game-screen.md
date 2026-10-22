@@ -178,8 +178,8 @@ The Settings screen has four groups:
 | --- | --- |
 | The motion sensor that tilts the finish card | Decided: ADR-017 |
 | Which cell a hint picks. The hint plan picks it. Until the hint card ships, the Hint tool fills the answer at once | Decided: ADR-032 |
-| An option to turn off the entry check | Issue #46, after this epic |
-| VoiceOver labels for each cell and Dynamic Type sizes | Issue #44 |
+| An option to turn off the entry check | Not planned |
+| VoiceOver labels for each cell and Dynamic Type sizes | Not planned |
 
 ## Constraints
 

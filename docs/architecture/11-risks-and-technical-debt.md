@@ -27,12 +27,13 @@ status: DRAFT
 ## Technical Debt
 
 Debt taken on deliberately is recorded here with the ADR or issue that will pay it off. "No issue
-yet" means that the work needs an issue first.
+yet" means that the work needs an issue first. "Not planned" means that the developer chose not to pay
+it off. The debt stays known.
 
 | ID | Debt | Paid off by |
 |----|------|-------------|
 | TD-01 | The cell classifier trains on labels with known errors, about 0.6 % of the real cells. See R-13. | #14: review the suspects, relabel and retrain |
-| TD-02 | The play grid is heavy to render: many native views, an animation on every cell, a selection on release. | #91 |
+| TD-02 | The play grid is heavy to render: many native views, an animation on every cell, a selection on release. | Not planned. Known debt with no issue |
 | TD-03 | The capture flattens the whole grid from its 4 corners, not each cell from its own corners. On a curved page, grid lines can enter the cells. See [ADR-004](adr/adr-004-two-stage-scan-pipeline.md). | #74 |
 | TD-04 | No promote gate. `just install-model` copies a model without fixture scores. This is the exception of SUD-06. See [ADR-007](adr/adr-007-model-promotion.md). | No issue yet: `just promote-model` |
 | TD-05 | No fixture runner and no public fixture set. No test runs the real scanner on fixture photos. See [ADR-010](adr/adr-010-testing-and-ci.md), [ADR-013](adr/adr-013-fixtures-and-data-licensing.md). | No issue yet |
