@@ -1,7 +1,8 @@
 """The Finish step of the labelling page (ADR-018): fold the journal into cells.csv, run the data
-check, write STATUS.md, then delete the journal and the derived files in ml/dataset/work/. It never
-touches the images. Of the tracked files it writes only cells.csv, sudoku-photos.csv (the outline
-lines) and STATUS.md."""
+check, write STATUS.md, then delete the journal and the derived files of the screens of your
+photos in ml/dataset/work/. The outline and doubt scores stay: they need a decode or the model
+again. It never touches the images. Of the tracked files it writes only cells.csv,
+sudoku-photos.csv (the outline lines) and STATUS.md."""
 
 import json
 from dataclasses import replace

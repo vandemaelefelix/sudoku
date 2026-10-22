@@ -556,3 +556,14 @@ def test_refresh_doubt_scores_new_open_cells_and_skips_current_scores(tmp_path: 
     assert refresh_doubt(store, ml_root=tmp_path) == 81
     assert refresh_doubt(store, ml_root=tmp_path) is None
     assert refresh_doubt(store, ml_root=tmp_path, force=True) == 81
+
+
+def test_a_broken_model_run_does_not_stop_the_scoring_with_a_crash(tmp_path: Path, monkeypatch):
+    store, _, photos = pulled(tmp_path, corners=(CORNERS,))
+    store.approve_outlines(photos)
+    run = tmp_path / "artifacts" / "broken"
+    run.mkdir(parents=True)
+    (run / "model.pt").write_bytes(b"not a model")
+    monkeypatch.setattr("sudoku_ml.label_server.current_run", lambda ml_root: run)
+    with pytest.raises(ValueError, match="The doubt score failed"):
+        refresh_doubt(store, ml_root=tmp_path)

@@ -253,7 +253,10 @@ def refresh_doubt(store: LabelStore, ml_root: Path = ML_ROOT, force: bool = Fals
     current = stored.get("run") == (run.name if run else None)
     if not force and current and set(store.open_app_cells()) <= set(stored["cells"]):
         return None
-    return write_doubt(store, run)
+    try:
+        return write_doubt(store, run)
+    except (OSError, RuntimeError, KeyError, EOFError, pickle.UnpicklingError) as error:
+        raise ValueError(f"The doubt score failed: {error}") from error
 
 
 def waiting_line(store: LabelStore, check: PhotoCheck) -> str:
@@ -288,9 +291,13 @@ def main(argv: list[str], paths: DataPaths | None = None) -> int:
         print(f"Pre-labelled {prelabel_new_cells(paths)} new cells.")
     except ValueError as error:
         print(error)
-    scored = refresh_doubt(store)
-    if scored is not None:
-        print(f"Scored the doubt of {scored} open app cells.")
+    try:
+        scored = refresh_doubt(store)
+    except ValueError as error:
+        print(f"{error}. The Check cells screen shows the cells without a score.")
+    else:
+        if scored is not None:
+            print(f"Scored the doubt of {scored} open app cells.")
     print(waiting_line(store, check))
     server = make_server(
         store,

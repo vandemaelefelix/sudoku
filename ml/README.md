@@ -101,7 +101,7 @@ A cell with the same pixels as a cell of another scan is stored once. It has one
 marks it with `=`.
 
 Run `just reset-scan-outlines` once after this change. The first pull stored its scans as `accepted`, before the
-Outlines screen existed. The command sets them back to `unchecked`. It refuses while the journal holds an unfinished
+Check outlines screen existed. The command sets them back to `unchecked`. It refuses while the journal holds an unfinished
 outline check.
 
 ## Check the cells of uploaded scans

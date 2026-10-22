@@ -118,12 +118,12 @@ Decision:
 
 1. **The pull stores a scan as `unchecked`.** This is a new status of `sudoku-photos.csv`. It has corners, like
    `accepted`. Training leaves out every cell of a scan that is not `accepted`.
-2. **The Outlines screen of the labelling page checks each outline.** The lowest outline fit comes first. A person
+2. **The Check outlines screen of the labelling page checks each outline.** The lowest outline fit comes first. A person
    approves it, drags the corners or rejects the scan.
 3. **A corner fix cuts the cells again.** A new cell keeps the digit, the kind and the label provenance of the old cell
    at its place. The old cells move to `discarded/`. A rejected scan moves all of its cells to `discarded/`.
 4. **The journal holds each check.** Undo reverses it. Finish writes the status and the corners into
-   `sudoku-photos.csv`. A move of the Outlines screen never makes a cell `verified`.
+   `sudoku-photos.csv`. A move of the Check outlines screen never makes a cell `verified`.
 
 Reassessment trigger: the app proves its outlines with a grid check on the device. Then the gallery can show only the
 scans that the check doubts.

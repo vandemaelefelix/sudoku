@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from test_label_store_scans import CORNERS, pulled
+from test_label_store_scans import CORNERS, entries, pulled
 from test_prelabel import make_run
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
@@ -207,3 +207,23 @@ def test_main_scores_without_a_model(tmp_path: Path, capsys):
     _, paths, _ = approved(tmp_path)
     assert main(["doubt"], paths, ml_root=tmp_path) == 0
     assert "Scored 81 open app cells (no model)." in capsys.readouterr().out
+
+
+def test_the_solution_counter_gives_up_after_its_step_limit():
+    assert count_solutions([0] * 81, max_steps=5) is None
+
+
+def test_a_shared_cell_is_open_and_trains_when_only_the_other_scan_is_approved(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path, corners=(CORNERS, CORNERS))
+    shared = [c["id"] for c in store.scan_screen(photos[1])["cells"] if c["shared"]]
+    store.approve_outlines(photos[1:])
+    open_cells = store.open_app_cells()
+    assert set(shared) <= set(open_cells) and len(open_cells) == 81
+    page = store.cell_review(store.folder[shared[0]])
+    assert {c["scan"] for c in page["cells"]} == {photos[1]}
+    store.confirm_scan(photos[1], entries(store.scan_screen(photos[1])))
+    store.verify_cells(
+        [{"id": c, "digit": store.folder[c], "kind": store.kinds().get(c)} for c in shared]
+    )
+    finish(store)
+    assert len(load_cells(paths)) == 81

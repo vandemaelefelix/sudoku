@@ -294,10 +294,10 @@ status: DRAFT
 | Contributor ID | A random ID that the app makes for the device. It names the owner of an uploaded scan. It has no link to a person, unless the player signs in (ADR-030) |
 | Scan record | The data of one finished scan: the cropped photo, the corners, the model answers, the final grid and the `edited` flags. The app uploads it when the setting "Help improve the app" is on (ADR-030) |
 | Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training takes only `verified` cells and the legacy cells without a value (ADR-030) |
-| Outlines screen | The screen of the labelling page that checks the outline of each uploaded scan: a gallery of the unchecked scans, the lowest outline fit first, and a large view to drag the corners or reject the scan (ADR-030) |
-| Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Outlines screen shows the lowest fit first |
+| Check outlines screen | The screen of the labelling page that checks the outline of each uploaded scan: a gallery of the unchecked scans, the lowest outline fit first, and a large view to drag the corners or reject the scan (ADR-030) |
+| Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Check outlines screen shows the lowest fit first |
 | Unchecked scan | An uploaded scan whose outline no person has checked: the status `unchecked` in `sudoku-photos.csv`. Its cells never train the model |
-| Rejected scan | An uploaded scan that the developer rejected on the Outlines screen: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
+| Rejected scan | An uploaded scan that the developer rejected on the Check outlines screen: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
 | Scan view | The view of the labelling page that shows one uploaded scan: the photo with its outline and the 81 cells with their labels. A cell with the same pixels as a cell of another scan shows as shared |
 | Open app cell | A cell of an uploaded scan with an approved outline whose label is still from the app: `app-edited` or `app-unedited`. The Check cells screen shows it |
 | Check cells screen | The screen of the labelling page that verifies the open app cells of one digit at a time, the highest doubt score first. Enter verifies the screen (ADR-030) |

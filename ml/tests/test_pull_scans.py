@@ -196,7 +196,7 @@ def test_the_pull_never_writes_under_shared_fixtures(paths: DataPaths):
 
 
 def approve_all(paths: DataPaths) -> None:
-    """Approve every outline, as the Outlines screen and Finish do."""
+    """Approve every outline, as the Check outlines screen and Finish do."""
     rows = read_photos(paths.photos_csv)
     write_photos(paths.photos_csv, [replace(r, status="accepted") for r in rows])
 
