@@ -155,7 +155,7 @@ What this shows:
 
 ### Hint coverage
 
-Added on 2026-10-22, when the tier 2 techniques got hint text (#197). The question: how often does a hint teach a
+Added on 2026-10-22, when the tier 2 techniques got hint text. The question: how often does a hint teach a
 technique, and how often does it use the fallback of ADR-032 point 9?
 
 Setup:
