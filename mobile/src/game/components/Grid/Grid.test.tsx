@@ -3,9 +3,11 @@ import { Pressable, StyleSheet } from 'react-native'
 import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
+import { cellLines } from '@/game/utils/grid.utils'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { reduceSession, startSession } from '@/game/utils/session.utils'
 import { cobalt } from '@/theme/themes/cobalt'
+import { selectionFrame } from '@/utils/selectionFrame.utils'
 import { Grid } from './Grid'
 
 const renderGrid = () =>
@@ -120,5 +122,33 @@ describe('the hint fills (ADR-032)', () => {
     fireEvent.press(screen.getByTestId('hint'))
     expect(screen.getAllByTestId(/^cell-\d+-hint-focus$/)).toHaveLength(9)
     expect(screen.queryAllByTestId(/^cell-\d+-hint-(pattern|target)$/)).toHaveLength(0)
+  })
+})
+
+const layout = () =>
+  fireEvent(screen.getByTestId('grid-box'), 'layout', { nativeEvent: { layout: { width: 356, height: 356 } } })
+const frame = () => StyleSheet.flatten(screen.getByTestId('selection-frame').props.style)
+
+describe('the selection frame (ADR-026)', () => {
+  it('frames the selected cell over the lines around it, never inside the cell', () => {
+    renderWithMoves()
+    layout()
+    fireEvent.press(screen.getByTestId('cell-3'))
+    // Cell 3 is row 1, column 4. Its left side is a box line, its top side the outer frame.
+    const lines = cellLines(3, 356, cobalt.shape.gridLine)
+    expect(frame()).toMatchObject({
+      ...selectionFrame(lines, cobalt.components.cell.selectedRingWidth, 356),
+      borderWidth: cobalt.components.cell.selectedRingWidth,
+      borderColor: cobalt.components.cell.ring,
+    })
+  })
+
+  it('draws no frame without a selection, and hides it while a hint is open', () => {
+    renderWithMoves()
+    layout()
+    expect(screen.queryByTestId('selection-frame')).toBeNull()
+    fireEvent.press(screen.getByTestId('cell-3'))
+    fireEvent.press(screen.getByTestId('hint'))
+    expect(screen.queryByTestId('selection-frame')).toBeNull()
   })
 })

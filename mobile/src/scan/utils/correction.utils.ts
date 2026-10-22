@@ -2,6 +2,7 @@ import type { Rect, ViewSize } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import { PaintStyle, Skia, type SkCanvas, type SkPaint } from '@shopify/react-native-skia'
 import { project, type Homography } from '@/utils/homography.utils'
+import type { CellLines } from '@/utils/selectionFrame.utils'
 import { PANEL_HEIGHT, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 import type { Theme } from '@/theme/theme.types'
 
@@ -89,6 +90,23 @@ export function gridLineStyle(theme: Theme): GridLineStyle {
     frameWidth: gridLine.outer,
     boxWidth: gridLine.box,
     cellWidth: gridLine.cell,
+  }
+}
+
+/**
+ * The centres of the four lines around a cell of the correction grid, in points from its top-left corner. The lines run
+ * from half the frame width inside one edge to the same inside the other, as drawGridLines draws them on the screen.
+ */
+export function correctionCellLines(cell: number, side: number, frameWidth: number): CellLines {
+  const inset = frameWidth / 2
+  const step = (side - 2 * inset) / 9
+  const row = Math.floor(cell / 9)
+  const column = cell % 9
+  return {
+    left: inset + column * step,
+    right: inset + (column + 1) * step,
+    top: inset + row * step,
+    bottom: inset + (row + 1) * step,
   }
 }
 

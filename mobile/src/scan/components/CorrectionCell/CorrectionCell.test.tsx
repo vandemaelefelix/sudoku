@@ -182,13 +182,10 @@ it('reads a marked entry as a clash with another cell, not with a given', () => 
 })
 
 describe('the selected cell and the conflict cell (ADR-026)', () => {
-  it('rings a selected cell with the ring colour and the width of the theme', () => {
+  it('fills a selected cell without a border: the screen frames it over the grid lines', () => {
     render(<CorrectionCell n={0} look={given} selected {...at} />)
-    expect(fill(0)).toMatchObject({
-      backgroundColor: cobalt.components.cell.selected,
-      borderWidth: cobalt.components.cell.selectedRingWidth,
-      borderColor: cobalt.components.cell.ring,
-    })
+    expect(fill(0).backgroundColor).toBe(cobalt.components.cell.selected)
+    expect(fill(0).borderWidth).toBeUndefined()
   })
 
   it('keeps the digit colours of the cell on the selected fill', () => {

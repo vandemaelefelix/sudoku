@@ -69,11 +69,9 @@ it('selects its cell when tapped', () => {
   expect(onSelect).toHaveBeenCalledWith(2)
 })
 
-it('draws a ring when the selected-cell assist is off', () => {
+it('draws no ring of its own: the grid frames the selected cell over the grid lines', () => {
   render(<Cell {...base} ring onSelect={jest.fn()} />)
-  expect(StyleSheet.flatten(screen.getByTestId('cell-2').props.style)).toMatchObject({
-    borderColor: cobalt.components.cell.ring,
-  })
+  expect(StyleSheet.flatten(screen.getByTestId('cell-2').props.style).borderWidth).toBeUndefined()
 })
 
 it('draws the wave in the accent colour at the peak opacity of the theme', () => {
@@ -135,14 +133,12 @@ it('stays a button with full-size digits by default', () => {
   expect(StyleSheet.flatten(screen.getByText('5').props.style).fontSize).toBe(cobalt.type.given.scale)
 })
 
-describe('the selected cell ring (ADR-026)', () => {
-  it('rings the selected cell with the ring colour and the width of the theme', () => {
+describe('the selected cell (ADR-026)', () => {
+  it('fills the selected cell without a border, so no ring lies inside it next to a grid line', () => {
     render(<Cell {...base} digit={5} digitStyle="given" fill="selected" onSelect={jest.fn()} />)
-    expect(StyleSheet.flatten(screen.getByTestId('cell-2').props.style)).toMatchObject({
-      backgroundColor: cobalt.components.cell.selected,
-      borderWidth: cobalt.components.cell.selectedRingWidth,
-      borderColor: cobalt.components.cell.ring,
-    })
+    const style = StyleSheet.flatten(screen.getByTestId('cell-2').props.style)
+    expect(style.backgroundColor).toBe(cobalt.components.cell.selected)
+    expect(style.borderWidth).toBeUndefined()
   })
 
   it('keeps the digit colours of the cell on the selected fill', () => {
