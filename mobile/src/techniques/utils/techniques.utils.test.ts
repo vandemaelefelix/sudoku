@@ -1,5 +1,10 @@
 import { HINT_TECHNIQUES, HINT_ORDER, techniqueExample, valueAt } from '@sudoku/core'
+import { createAppIntl } from '@/i18n/utils/intl.utils'
+import { hintText } from '@/utils/hintText.utils'
 import { exampleBoard, exampleSpeech, levelLine, techniqueIds, toTechniqueId } from './techniques.utils'
+
+const en = createAppIntl('en')
+const nl = createAppIntl('nl')
 
 it('lists every technique with a page once, in hint order', () => {
   const ids = techniqueIds()
@@ -17,9 +22,10 @@ it('reads a route param as a technique id, or null', () => {
 })
 
 it('names the first level where the technique appears', () => {
-  expect(levelLine('hiddenSingle')).toBe('First seen in Easy puzzles.')
-  expect(levelLine('pointing')).toBe('First seen in Medium puzzles.')
-  expect(levelLine('xWing')).toBe('First seen in Hard puzzles.')
+  expect(levelLine(en, 'hiddenSingle')).toBe('First seen in Easy puzzles.')
+  expect(levelLine(en, 'pointing')).toBe('First seen in Medium puzzles.')
+  expect(levelLine(en, 'xWing')).toBe('First seen in Hard puzzles.')
+  expect(levelLine(nl, 'xWing')).toBe('Komt voor het eerst voor in puzzels op niveau Moeilijk.')
 })
 
 describe('the example board', () => {
@@ -43,5 +49,7 @@ describe('the example board', () => {
 it('reads an example as the why and the answer of its step', () => {
   const example = techniqueExample('hiddenSingle')!
   const technique = HINT_TECHNIQUES.hiddenSingle!
-  expect(exampleSpeech(example)).toBe(`${technique.why(example.step, false)} ${technique.answer(example.step)}`)
+  expect(exampleSpeech(en, example)).toBe(
+    `${hintText(en, technique.why(example.step, false))} ${hintText(en, technique.answer(example.step))}`,
+  )
 })

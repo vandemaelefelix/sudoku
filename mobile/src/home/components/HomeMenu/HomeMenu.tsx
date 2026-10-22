@@ -3,7 +3,8 @@ import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion, useAnimatedS
 import { LEVELS, type Level } from '@sudoku/core'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { useEased } from '@/game/hooks/useEased'
-import { LEVEL_NAMES } from '@/constants/level.constants'
+import { LEVEL_LABELS } from '@/constants/level.constants'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import type { HomeStats } from '@/home/utils/homeStats.utils'
 import { StatsCard } from '@/stats/components/StatsCard'
 import { useSplashReady } from '@/splash/hooks/useSplash'
@@ -35,6 +36,8 @@ type HomeMenuProps = {
  * arrive, because reading the streak grows with the history and must not hold back the menu. The links glide below it.
  */
 export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, onSettings, onStats }: HomeMenuProps) {
+  const intl = useIntl()
+  const levelName = (level: Level) => intl.formatMessage({ id: LEVEL_LABELS[level] })
   const shown = useEased(continueLevel === undefined ? 0 : 1, MENU_FADE_MS)
   const menuStyle = useAnimatedStyle(() => ({ opacity: shown.get() }))
   // The menu shows once the store answers. The splash ends its exit when this is true.
@@ -43,7 +46,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
     <View style={styles.screen}>
       <ThemeStatusBar />
       <Text accessibilityRole="header" style={styles.title}>
-        Sudoku
+        {intl.formatMessage({ id: 'home.title' })}
       </Text>
       <Animated.View testID="home-menu" style={[styles.menu, menuStyle]}>
         {continueLevel != null && (
@@ -51,18 +54,18 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
             <Pressable
               testID="continue"
               accessibilityRole="button"
-              accessibilityLabel={`Continue, ${LEVEL_NAMES[continueLevel]}`}
+              accessibilityLabel={intl.formatMessage({ id: 'home.continueLabel' }, { level: levelName(continueLevel) })}
               onPress={onContinue}
               style={({ pressed }) => [styles.button, styles.continue, pressed && pressedStyles.pressed]}
             >
-              <Text style={styles.continueLabel}>Continue</Text>
-              <Text style={styles.continueCaption}>{LEVEL_NAMES[continueLevel]}</Text>
+              <Text style={styles.continueLabel}>{intl.formatMessage({ id: 'home.continue' })}</Text>
+              <Text style={styles.continueCaption}>{levelName(continueLevel)}</Text>
             </Pressable>
           </Animated.View>
         )}
         <Animated.View layout={GLIDE} style={styles.menu}>
           <Text accessibilityRole="header" style={styles.section}>
-            New game
+            {intl.formatMessage({ id: 'home.newGame' })}
           </Text>
           {LEVELS.map((level) => (
             <Pressable
@@ -72,13 +75,13 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
               onPress={() => onNewGame(level)}
               style={({ pressed }) => [styles.button, pressed && pressedStyles.pressed]}
             >
-              <Text style={styles.label}>{LEVEL_NAMES[level]}</Text>
+              <Text style={styles.label}>{levelName(level)}</Text>
             </Pressable>
           ))}
           {stats != null && (
             <Animated.View entering={CONTINUE_IN} layout={GLIDE}>
               {stats.played === 0 ? (
-                <Text style={styles.noStats}>No finished games yet. Your stats show up here.</Text>
+                <Text style={styles.noStats}>{intl.formatMessage({ id: 'home.noStats' })}</Text>
               ) : (
                 <StatsCard winRate={stats.winRate} streak={stats.streak} onPress={onStats} />
               )}
@@ -91,7 +94,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
               onPress={onScan}
               style={({ pressed }) => [styles.button, styles.link, pressed && pressedStyles.pressed]}
             >
-              <Text style={styles.label}>Scan a puzzle</Text>
+              <Text style={styles.label}>{intl.formatMessage({ id: 'home.scan' })}</Text>
             </Pressable>
             <Pressable
               testID="home-settings"
@@ -99,7 +102,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
               onPress={onSettings}
               style={({ pressed }) => [styles.button, styles.link, pressed && pressedStyles.pressed]}
             >
-              <Text style={styles.label}>Settings</Text>
+              <Text style={styles.label}>{intl.formatMessage({ id: 'home.settings' })}</Text>
             </Pressable>
           </Animated.View>
         </Animated.View>

@@ -12,8 +12,9 @@ import {
   UNSUPPORTED_SIGN_UP_ERROR,
   type AuthField,
 } from '@/account/constants/authErrors.constants'
+import type { MessageId } from '@/i18n/messages'
 
-export type AuthErrors = Partial<Record<AuthField, string>>
+export type AuthErrors = Partial<Record<AuthField, MessageId>>
 
 type ApiErrorLike = { code?: unknown; meta?: { paramName?: unknown } }
 
@@ -25,7 +26,7 @@ export function isOffline(error: unknown): boolean {
 }
 
 /**
- * The short messages for a Clerk error, one per field. The raw Clerk text can hold a trace ID, so it never shows.
+ * The message ids for a Clerk error, one per field. The raw Clerk text can hold a trace ID, so it never shows.
  * The first error of a field wins.
  */
 export function authErrorsOf(error: unknown): AuthErrors {
@@ -43,7 +44,10 @@ export function authErrorsOf(error: unknown): AuthErrors {
 }
 
 /** The message for a sign-in that Clerk leaves in a status the app cannot finish. */
-export function signInStatusMessage(status: string, firstFactors: readonly { strategy: string }[] | undefined): string {
+export function signInStatusMessage(
+  status: string,
+  firstFactors: readonly { strategy: string }[] | undefined,
+): MessageId {
   if (status === 'needs_new_password') return NEW_PASSWORD_ERROR
   const strategies = (firstFactors ?? []).map((factor) => factor.strategy)
   const onlyGoogle = strategies.length > 0 && strategies.every((strategy) => strategy === 'oauth_google')
@@ -52,7 +56,7 @@ export function signInStatusMessage(status: string, firstFactors: readonly { str
 }
 
 /** The message for a sign-up that Clerk leaves in a status the app cannot finish. */
-export function signUpStatusMessage(status: string): string {
+export function signUpStatusMessage(status: string): MessageId {
   if (status === 'missing_requirements') return MISSING_REQUIREMENTS_ERROR
   if (status === 'abandoned') return ABANDONED_SIGN_UP_ERROR
   return UNSUPPORTED_SIGN_UP_ERROR

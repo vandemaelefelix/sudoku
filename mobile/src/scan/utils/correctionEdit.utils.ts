@@ -1,4 +1,5 @@
 import { BOXES, COLUMNS, GRID_CELLS, ROWS, type Digit } from '@sudoku/core'
+import type { Formatter } from '@/i18n/utils/intl.utils'
 import { hasDigit, type CellLook, type CellStyle } from '@/scan/utils/correction.utils'
 
 /**
@@ -139,29 +140,57 @@ export function correctedGrid(looks: readonly CellLook[]): CorrectedGrid {
   return { givens, entries }
 }
 
+/** The row and the column of a cell, from 1. cell: the index, row-major. */
+export function cellRowColumn(cell: number): { row: number; column: number } {
+  return { row: Math.floor(cell / 9) + 1, column: (cell % 9) + 1 }
+}
+
 /** For example "Row 1, column 3". cell: the index, row-major. */
-export function cellPlace(cell: number): string {
-  return `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`
+export function cellPlace(intl: Formatter, cell: number): string {
+  return intl.formatMessage({ id: 'scan.cell.place' }, cellRowColumn(cell))
+}
+
+function kindWords(intl: Formatter, look: CellLook): string {
+  if (hasDigit(look) && look.style === 'given')
+    return intl.formatMessage({ id: 'scan.cell.given' }, { digit: look.digit })
+  if (hasDigit(look) && look.style === 'entry')
+    return intl.formatMessage({ id: 'scan.cell.entry' }, { digit: look.digit })
+  return intl.formatMessage({ id: look.style === 'notes' ? 'scan.cell.notes' : 'scan.cell.empty' })
 }
 
 /** The VoiceOver label of a correction cell, for example "Row 1, column 3, entry 7, check this cell". */
-export function correctionCellLabel(cell: number, look: CellLook, conflict: boolean, hint = ''): string {
-  const parts = [cellPlace(cell)]
-  parts.push(hasDigit(look) ? `${look.style} ${look.digit}` : look.style === 'notes' ? 'notes' : 'empty')
-  if (hint !== '') parts.push(`differs from the solution, solution ${hint}`)
-  else if (conflict) parts.push(look.style === 'entry' ? 'same digit as another cell' : 'same digit as another given')
-  if (look.uncertain) parts.push('check this cell')
+export function correctionCellLabel(
+  intl: Formatter,
+  cell: number,
+  look: CellLook,
+  conflict: boolean,
+  hint = '',
+): string {
+  const parts = [cellPlace(intl, cell), kindWords(intl, look)]
+  if (hint !== '') parts.push(intl.formatMessage({ id: 'scan.cell.differs' }, { digit: hint }))
+  else if (conflict) {
+    parts.push(intl.formatMessage({ id: look.style === 'entry' ? 'scan.cell.sameAsCell' : 'scan.cell.sameAsGiven' }))
+  }
+  if (look.uncertain) parts.push(intl.formatMessage({ id: 'scan.cell.check' }))
   return parts.join(', ')
 }
 
 /** The question of the panel for an open cell, for example "Is this a 4?" in the check state. */
-export function panelQuestion(look: CellLook, picking: boolean): string {
-  if (look.uncertain && !picking) return hasDigit(look) ? `Is this a ${look.digit}?` : 'Is this empty?'
-  if (look.uncertain) return 'What is it?'
-  return hasDigit(look) ? `Change this ${look.digit}` : 'Fill this cell'
+export function panelQuestion(intl: Formatter, look: CellLook, picking: boolean): string {
+  if (look.uncertain && !picking) {
+    return hasDigit(look)
+      ? intl.formatMessage({ id: 'scan.question.isDigit' }, { digit: look.digit })
+      : intl.formatMessage({ id: 'scan.question.isEmpty' })
+  }
+  if (look.uncertain) return intl.formatMessage({ id: 'scan.question.what' })
+  return hasDigit(look)
+    ? intl.formatMessage({ id: 'scan.question.change' }, { digit: look.digit })
+    : intl.formatMessage({ id: 'scan.question.fill' })
 }
 
 /** The label of the Yes button, for example "Yes, 4". */
-export function yesLabel(look: CellLook): string {
-  return hasDigit(look) ? `Yes, ${look.digit}` : 'Yes, empty'
+export function yesLabel(intl: Formatter, look: CellLook): string {
+  return hasDigit(look)
+    ? intl.formatMessage({ id: 'scan.check.yesDigit' }, { digit: look.digit })
+    : intl.formatMessage({ id: 'scan.check.yesEmpty' })
 }

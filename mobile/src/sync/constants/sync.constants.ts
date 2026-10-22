@@ -17,9 +17,3 @@ export const BACKOFF_BASE_MS = 30_000
 export const BACKOFF_MAX_MS = 15 * 60_000
 
 export const REFRESH_SYNCED_LINE_MS = 60_000
-
-export const ADOPT_TITLE = 'Add the games on this phone to your account?'
-export const ADOPT_MESSAGE =
-  'These games were played before you signed in. They will back up to your account and show on your other devices.'
-export const ADOPT_DECLINE = 'Not now'
-export const ADOPT_ACCEPT = 'Add games'

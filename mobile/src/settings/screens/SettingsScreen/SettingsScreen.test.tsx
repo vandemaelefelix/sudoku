@@ -13,6 +13,7 @@ import { shareStore } from '@/scanShare/shareStore'
 import { APPEARANCE_PREFERENCE_KEY, THEME_PREFERENCE_KEY } from '@/theme/preference'
 import { resetThemeSession } from '@/theme/session'
 import { cobalt, cobaltColour } from '@/theme/themes/cobalt'
+import { I18nProvider } from '@/i18n/components/I18nProvider'
 import { SettingsScreen } from './SettingsScreen'
 
 const LABELS = ['Row and column', 'Box', 'Selected cell', 'Same numbers']
@@ -131,9 +132,9 @@ it('draws the scroll bars in the colour of the theme, so they show on a dark Col
 })
 
 describe('the Op-art look of the page (ADR-026)', () => {
-  it('puts a short wavy rule under each of the six headings', () => {
+  it('puts a short wavy rule under each of the seven headings', () => {
     render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} onTechniques={jest.fn()} />)
-    expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(6)
+    expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(7)
   })
 
   it('draws the assists in one framed block with square corners and the border of the stats card', () => {
@@ -216,4 +217,25 @@ it('opens the techniques screen from the Learn section', () => {
   expect(screen.getByRole('header', { name: 'Learn' })).toBeTruthy()
   fireEvent.press(screen.getByRole('button', { name: 'Techniques' }))
   expect(onTechniques).toHaveBeenCalled()
+})
+
+describe('the language', () => {
+  it('shows the screen in Dutch at once when the player chooses Nederlands, and saves the choice', () => {
+    render(
+      <I18nProvider>
+        <SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} onTechniques={jest.fn()} />
+      </I18nProvider>,
+    )
+    expect(screen.getByRole('header', { name: 'Settings' })).toBeTruthy()
+    fireEvent.press(screen.getByText('Nederlands'))
+    expect(screen.getByRole('header', { name: 'Instellingen' })).toBeTruthy()
+    expect(screen.getByRole('header', { name: 'Taal' })).toBeTruthy()
+    expect(screen.getByText('Hulpmiddelen')).toBeTruthy()
+    expect(screen.getByText('Systeem')).toBeTruthy()
+    expect(Storage.setItemAsync).toHaveBeenLastCalledWith('app.language', 'nl')
+    fireEvent.press(screen.getByText('English'))
+    expect(screen.getByRole('header', { name: 'Settings' })).toBeTruthy()
+    // Back to System, so the other tests of the file start there.
+    fireEvent.press(screen.getByText('System'))
+  })
 })

@@ -9,6 +9,7 @@ import { canErase, canUndo } from '@/game/utils/session.utils'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './Tools.styles'
+import { useIntl } from '@/i18n/hooks/useIntl'
 
 type ToolProps = {
   icon: IconName
@@ -46,6 +47,7 @@ function Tool({ icon, label, enabled, playing, selected = false, onPress }: Tool
 }
 
 export function Tools() {
+  const intl = useIntl()
   const { board, notesMode, hint } = useGameState()
   const actions = useGameActions()
   const { play } = useHaptics()
@@ -59,12 +61,31 @@ export function Tools() {
   }
   return (
     <Animated.View testID="tools" style={[styles.tools, rowStyle]}>
-      <Tool icon="undo" label="Undo" enabled={canUndo(board)} playing={playing} onPress={actions.undo} />
-      <Tool icon="erase" label="Erase" enabled={canErase(board)} playing={playing} onPress={actions.erase} />
-      <Tool icon="notes" label="Notes" enabled={playing} playing={playing} selected={notesMode} onPress={toggleNotes} />
+      <Tool
+        icon="undo"
+        label={intl.formatMessage({ id: 'game.tool.undo' })}
+        enabled={canUndo(board)}
+        playing={playing}
+        onPress={actions.undo}
+      />
+      <Tool
+        icon="erase"
+        label={intl.formatMessage({ id: 'game.tool.erase' })}
+        enabled={canErase(board)}
+        playing={playing}
+        onPress={actions.erase}
+      />
+      <Tool
+        icon="notes"
+        label={intl.formatMessage({ id: 'game.tool.notes' })}
+        enabled={playing}
+        playing={playing}
+        selected={notesMode}
+        onPress={toggleNotes}
+      />
       <Tool
         icon="hint"
-        label="Hint"
+        label={intl.formatMessage({ id: 'game.tool.hint' })}
         enabled={playing}
         playing={playing}
         selected={hint !== null && hint.view !== 'nice'}

@@ -14,6 +14,7 @@ import { useEased } from '@/game/hooks/useEased'
 import { keyDoneLook } from '@/game/utils/keypad.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { styles } from './NumberKey.styles'
+import { useIntl } from '@/i18n/hooks/useIntl'
 
 type NumberKeyProps = {
   digit: Digit
@@ -47,6 +48,7 @@ export function NumberKey({ digit, notesMode, complete, disabled, onPress }: Num
     return { opacity, transform: [{ scale }] }
   })
   // 0 shows the number, 1 the note. The two labels crossfade, and each scales a little toward the size of the other.
+  const intl = useIntl()
   const notes = useEased(notesMode ? 1 : 0)
   const digitStyle = useAnimatedStyle(() => {
     const scale = reduceMotion ? 1 : 1 - (1 - NOTE_SWAP_SCALE) * notes.get()
@@ -56,13 +58,13 @@ export function NumberKey({ digit, notesMode, complete, disabled, onPress }: Num
     const scale = reduceMotion ? 1 : 1 / NOTE_SWAP_SCALE - (1 / NOTE_SWAP_SCALE - 1) * notes.get()
     return { opacity: notes.get(), transform: [{ scale }] }
   })
-  const name = `${notesMode ? 'Note' : 'Enter'} ${digit}`
+  const name = intl.formatMessage({ id: notesMode ? 'game.key.note' : 'game.key.enter' }, { digit })
   const off = disabled || complete
   return (
     <Animated.View testID={`number-key-${digit}`} style={look}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={complete ? `${name}, all nine placed` : name}
+        accessibilityLabel={complete ? intl.formatMessage({ id: 'game.key.complete' }, { name }) : name}
         accessibilityState={{ disabled: off }}
         disabled={off}
         onPress={() => onPress(digit)}

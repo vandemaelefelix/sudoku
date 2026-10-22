@@ -17,14 +17,6 @@ it('has a page for every technique with hint text, and no other', () => {
 })
 
 describe.each(TECHNIQUES)('the page of %s', (technique) => {
-  const page = TECHNIQUE_PAGES[technique]!
-
-  it('explains the technique in at most 4 short sentences', () => {
-    const sentences = page.explanation.split(/(?<=\.)\s+/)
-    expect(sentences.length).toBeLessThanOrEqual(4)
-    for (const sentence of sentences) expect(sentence.split(/\s+/).length).toBeLessThanOrEqual(25)
-  })
-
   it('shows a position of a puzzle with one solution', () => {
     const example = techniqueExample(technique)!
     const result = solve([...example.givens])

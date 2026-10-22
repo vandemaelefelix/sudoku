@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { Icon } from '@/game/components/Icon'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { formatPercent } from '@/stats/utils/format.utils'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
@@ -12,21 +14,39 @@ type StatsCardProps = {
   onPress?: () => void
 }
 
+function strong(chunks: ReactNode[]) {
+  return (
+    <Text key="strong" style={styles.strong}>
+      {chunks}
+    </Text>
+  )
+}
+
 /** The win rate and the day streak of all levels. */
 export function StatsCard({ winRate, streak, onPress }: StatsCardProps) {
+  const intl = useIntl()
+  const rate = formatPercent(intl, winRate)
   const label =
-    winRate === null ? `No games finished, ${streak} day streak` : `${formatPercent(winRate)} won, ${streak} day streak`
+    winRate === null
+      ? intl.formatMessage({ id: 'stats.card.labelNone' }, { count: streak })
+      : intl.formatMessage({ id: 'stats.card.label' }, { rate, count: streak })
   const content = (
     <>
       <ThemeDecoration slot="summaryEdge" />
       <View style={styles.row}>
         <View style={styles.rate}>
-          <Text style={styles.value}>{formatPercent(winRate)}</Text>
-          <Text style={styles.text}>won</Text>
+          <Text style={styles.value}>{rate}</Text>
+          <Text style={styles.text}>{intl.formatMessage({ id: 'stats.card.won' })}</Text>
         </View>
         <View style={styles.streak}>
           <Text style={styles.text}>
-            <Text style={styles.strong}>{streak}</Text> day streak
+            {intl.formatMessage(
+              { id: 'stats.card.streak' },
+              {
+                count: streak,
+                strong,
+              },
+            )}
           </Text>
           {onPress !== undefined && <Icon name="next" tone="accent" size={16} />}
         </View>
@@ -43,7 +63,7 @@ export function StatsCard({ winRate, streak, onPress }: StatsCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}. Open stats`}
+      accessibilityLabel={intl.formatMessage({ id: 'stats.card.open' }, { label })}
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && pressedStyles.pressed]}
     >

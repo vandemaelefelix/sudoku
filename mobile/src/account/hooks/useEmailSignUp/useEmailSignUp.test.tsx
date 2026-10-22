@@ -48,7 +48,7 @@ it('stops on a field error and sends no code', async () => {
   await act(() => result.current.submit('alice@example.com', 'a long password'))
   expect(signUp.verifications.sendEmailCode).not.toHaveBeenCalled()
   expect(result.current.step).toBe('details')
-  expect(result.current.errors).toEqual({ email: 'An account uses this email. Sign in instead.' })
+  expect(result.current.errors).toEqual({ email: 'account.error.identifierExists' })
 })
 
 it('shows a wrong code under the code field and does not finish', async () => {
@@ -58,7 +58,7 @@ it('shows a wrong code under the code field and does not finish', async () => {
   await act(() => result.current.submit('alice@example.com', 'a long password'))
   signUp.verifications.verifyEmailCode.mockImplementation(async () => fieldError('form_code_incorrect', 'code'))
   await act(() => result.current.verifyCode('000000'))
-  expect(result.current.errors).toEqual({ code: 'The code is not correct.' })
+  expect(result.current.errors).toEqual({ code: 'account.error.codeIncorrect' })
   expect(onDone).not.toHaveBeenCalled()
 })
 
@@ -101,7 +101,7 @@ it('shows the offline message when Clerk throws', async () => {
   })
   const { result } = renderHook(() => useEmailSignUp(jest.fn()))
   await act(() => result.current.submit('alice@example.com', 'a long password'))
-  expect(result.current.errors).toEqual({ form: 'No connection. Try again when you are online.' })
+  expect(result.current.errors).toEqual({ form: 'account.error.offline' })
 })
 
 async function verifyEndingIn(status: string) {
@@ -128,18 +128,18 @@ describe('a status that the app cannot finish', () => {
 
   it('says that more details are needed when requirements are missing', async () => {
     const errors = await verifyEndingIn('missing_requirements')
-    expect(errors).toEqual({ form: 'This sign-up needs more details than the app asks for yet.' })
+    expect(errors).toEqual({ form: 'account.error.missingRequirements' })
     expect(warn).toHaveBeenCalledWith('[account] Clerk sign-up status missing_requirements')
   })
 
   it('asks to start again when the sign-up is abandoned', async () => {
     const errors = await verifyEndingIn('abandoned')
-    expect(errors).toEqual({ form: 'This sign-up expired. Go back and start again.' })
+    expect(errors).toEqual({ form: 'account.error.abandoned' })
     expect(warn).toHaveBeenCalledWith('[account] Clerk sign-up status abandoned')
   })
 
   it('gives the unsupported message for an unknown status', async () => {
     const errors = await verifyEndingIn('needs_something_new')
-    expect(errors).toEqual({ form: 'This sign-up needs a step the app does not support yet.' })
+    expect(errors).toEqual({ form: 'account.error.unsupportedSignUp' })
   })
 })

@@ -1,7 +1,8 @@
 import { Pressable, Text, View } from 'react-native'
 import type { Digit } from '@sudoku/core'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import type { CellLook } from '@/scan/utils/correction.utils'
-import { cellPlace } from '@/scan/utils/correctionEdit.utils'
+import { cellRowColumn } from '@/scan/utils/correctionEdit.utils'
 import { PAD_ROWS } from './CorrectionPad.constants'
 import { styles } from './CorrectionPad.styles'
 
@@ -18,7 +19,8 @@ type CorrectionPadProps = {
 /** The keypad of the pick state: the digits 1 to 9 and Empty. The digit of the cell shows as the current key. */
 export function CorrectionPad({ cell, look, hint, onDigit, onClear }: CorrectionPadProps) {
   // The keypad replaces the panel content, so each key says which cell it changes.
-  const accessibilityHint = `Changes ${cellPlace(cell).toLowerCase()}`
+  const intl = useIntl()
+  const accessibilityHint = intl.formatMessage({ id: 'scan.pad.hint' }, cellRowColumn(cell))
   return (
     <View testID="correction-pad" style={styles.pad}>
       {PAD_ROWS.map((digits, row) => (
@@ -30,7 +32,7 @@ export function CorrectionPad({ cell, look, hint, onDigit, onClear }: Correction
                 key={digit}
                 testID={`correction-key-${digit}`}
                 accessibilityRole="button"
-                accessibilityLabel={`Set ${digit}`}
+                accessibilityLabel={intl.formatMessage({ id: 'scan.pad.set' }, { digit })}
                 accessibilityHint={accessibilityHint}
                 accessibilityState={{ selected: current }}
                 onPress={() => onDigit(digit)}
@@ -45,12 +47,12 @@ export function CorrectionPad({ cell, look, hint, onDigit, onClear }: Correction
             <Pressable
               testID="correction-clear"
               accessibilityRole="button"
-              accessibilityLabel="Empty cell"
+              accessibilityLabel={intl.formatMessage({ id: 'scan.pad.emptyLabel' })}
               accessibilityHint={accessibilityHint}
               onPress={onClear}
               style={styles.key}
             >
-              <Text style={styles.emptyText}>Empty</Text>
+              <Text style={styles.emptyText}>{intl.formatMessage({ id: 'scan.pad.empty' })}</Text>
               {hint === 0 && <View testID="correction-hint" pointerEvents="none" style={styles.hint} />}
             </Pressable>
           )}

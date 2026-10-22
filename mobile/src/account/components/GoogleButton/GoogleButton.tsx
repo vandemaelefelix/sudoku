@@ -1,6 +1,7 @@
 import { Image } from 'react-native'
 import googleLogo from '@assets/google/google-g.png'
 import { AuthButton } from '@/account/components/AuthButton'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { styles } from './GoogleButton.styles'
 
 type GoogleButtonProps = { busy: boolean; disabled?: boolean; onPress(): void }
@@ -10,9 +11,10 @@ type GoogleButtonProps = { busy: boolean; disabled?: boolean; onPress(): void }
  * PNG and its colours stay out of the theme.
  */
 export function GoogleButton({ busy, disabled = false, onPress }: GoogleButtonProps) {
+  const intl = useIntl()
   return (
     <AuthButton
-      label="Continue with Google"
+      label={intl.formatMessage({ id: 'account.google' })}
       kind="outline"
       busy={busy}
       disabled={disabled}

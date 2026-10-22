@@ -29,6 +29,7 @@ import { useCaptureSession } from '@/scan/hooks/useCaptureSession'
 import { useFrameTracking } from '@/scan/hooks/useFrameTracking'
 import { useImageImport } from '@/scan/hooks/useImageImport'
 import { useScanMeasures } from '@/scan/hooks/useScanMeasures'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { CorrectionScreen, type CorrectionProps } from '@/scan/screens/CorrectionScreen'
 import type { CaptureResult, ScanOrigin } from '@/scan/utils/captureResult.utils'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
@@ -36,7 +37,7 @@ import type { FinalGrid } from '@/utils/finalGrid.utils'
 import type { ViewSize } from '@/utils/geometry.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
-import { DARK_BAR_DIM, FLASH_PEAK, PICK_FAILED } from './CameraScreen.constants'
+import { DARK_BAR_DIM, FLASH_PEAK } from './CameraScreen.constants'
 import { styles } from './CameraScreen.styles'
 
 /**
@@ -91,6 +92,7 @@ export function CameraScreen({
   const { phase, origin, result, captureFrame } = session
   useScanMeasures({ detection, outline, phase, origin, result })
   const library = useImageImport()
+  const intl = useIntl()
   const { theme } = useUnistyles()
   // True once the theme background covers the camera: the bar then takes the theme style, not the light style over the camera.
   const [darkBar, setDarkBar] = useState(false)
@@ -118,8 +120,14 @@ export function CameraScreen({
   const chooseImage = useCallback(async () => {
     const pick = await choose()
     if (pick.kind === 'picked') startImport(pick.uri)
-    else if (pick.kind === 'failed') Alert.alert(PICK_FAILED.title, PICK_FAILED.message)
-  }, [choose, startImport])
+    // The alert when the photo picker gives no image, for example an iCloud photo without the network.
+    else if (pick.kind === 'failed') {
+      Alert.alert(
+        intl.formatMessage({ id: 'scan.camera.pickFailedTitle' }),
+        intl.formatMessage({ id: 'scan.camera.pickFailedMessage' }),
+      )
+    }
+  }, [choose, startImport, intl])
 
   const pickedAtStart = useRef(false)
   useEffect(() => {
@@ -189,7 +197,7 @@ export function CameraScreen({
             <Pressable
               testID="shutter"
               accessibilityRole="button"
-              accessibilityLabel="Take photo"
+              accessibilityLabel={intl.formatMessage({ id: 'scan.camera.shutter' })}
               style={({ pressed }) => [styles.shutter, pressed && pressedStyles.pressed]}
               onPress={() => session.startCapture(frameQuad.get(), 'shutter')}
             />

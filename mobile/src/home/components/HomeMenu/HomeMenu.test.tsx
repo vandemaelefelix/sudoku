@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { IntlProvider } from 'react-intl'
+import { CATALOGUES } from '@/i18n/messages'
 import { SplashContext } from '@/splash/hooks/useSplash'
 import { HomeMenu } from './HomeMenu'
 
@@ -101,4 +103,26 @@ it('gives every button the stable test ID of the end-to-end flows', () => {
   expect(onContinue).toHaveBeenCalledTimes(1)
   expect(onScan).toHaveBeenCalledTimes(1)
   expect(onSettings).toHaveBeenCalledTimes(1)
+})
+
+it('shows the menu in Dutch', () => {
+  render(
+    <IntlProvider locale="nl-BE" messages={CATALOGUES.nl}>
+      <HomeMenu
+        continueLevel="medium"
+        stats={{ played: 4, winRate: 0.75, streak: 2 }}
+        onNewGame={jest.fn()}
+        onContinue={jest.fn()}
+        onScan={jest.fn()}
+        onSettings={jest.fn()}
+        onStats={jest.fn()}
+      />
+    </IntlProvider>,
+  )
+  expect(screen.getByRole('button', { name: 'Verdergaan, Gemiddeld' })).toBeTruthy()
+  for (const name of ['Gemakkelijk', 'Moeilijk', 'Expert', 'Scan een puzzel', 'Instellingen']) {
+    expect(screen.getByRole('button', { name })).toBeTruthy()
+  }
+  expect(screen.getByText('Nieuw spel')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '75% gewonnen, 2 dagen op rij. Open de statistieken' })).toBeTruthy()
 })

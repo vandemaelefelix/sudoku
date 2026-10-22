@@ -1,3 +1,4 @@
+import { createAppIntl } from '@/i18n/utils/intl.utils'
 import { GRID_CELLS } from '@sudoku/core'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import {
@@ -32,6 +33,9 @@ function board(cells: { [n: number]: CellLook } = {}): CellLook[] {
 // Three cells to check (3, 40 and 70) and one sure given (0).
 const BASE = board({ 0: given(5), 3: given(4, true), 40: entry(7, true), 70: { ...EMPTY, uncertain: true } })
 const looksOf = (edits: CorrectionEdits) => editedLooks(BASE, edits)
+
+const en = createAppIntl('en')
+const nl = createAppIntl('nl')
 
 describe('selectCell', () => {
   it('opens a cell to check in the check state', () => {
@@ -148,16 +152,16 @@ describe('setKind', () => {
 
 describe('panel text', () => {
   it('asks about the read in the check state', () => {
-    expect(panelQuestion(given(4, true), false)).toBe('Is this a 4?')
-    expect(panelQuestion({ ...EMPTY, uncertain: true }, false)).toBe('Is this empty?')
-    expect(yesLabel(given(4))).toBe('Yes, 4')
-    expect(yesLabel(EMPTY)).toBe('Yes, empty')
+    expect(panelQuestion(en, given(4, true), false)).toBe('Is this a 4?')
+    expect(panelQuestion(en, { ...EMPTY, uncertain: true }, false)).toBe('Is this empty?')
+    expect(yesLabel(en, given(4))).toBe('Yes, 4')
+    expect(yesLabel(en, EMPTY)).toBe('Yes, empty')
   })
 
   it('asks for the digit in the pick state', () => {
-    expect(panelQuestion(given(4, true), true)).toBe('What is it?')
-    expect(panelQuestion(given(4), true)).toBe('Change this 4')
-    expect(panelQuestion(EMPTY, true)).toBe('Fill this cell')
+    expect(panelQuestion(en, given(4, true), true)).toBe('What is it?')
+    expect(panelQuestion(en, given(4), true)).toBe('Change this 4')
+    expect(panelQuestion(en, EMPTY, true)).toBe('Fill this cell')
   })
 })
 
@@ -202,21 +206,30 @@ describe('correctedGrid', () => {
 
 describe('cellPlace', () => {
   it('says the row and the column, from 1', () => {
-    expect(cellPlace(0)).toBe('Row 1, column 1')
-    expect(cellPlace(23)).toBe('Row 3, column 6')
+    expect(cellPlace(en, 0)).toBe('Row 1, column 1')
+    expect(cellPlace(en, 23)).toBe('Row 3, column 6')
   })
 })
 
 describe('correctionCellLabel', () => {
   it('says the place, the kind and the digit', () => {
-    expect(correctionCellLabel(0, given(5), false)).toBe('Row 1, column 1, given 5')
-    expect(correctionCellLabel(10, entry(7), false)).toBe('Row 2, column 2, entry 7')
-    expect(correctionCellLabel(80, EMPTY, false)).toBe('Row 9, column 9, empty')
+    expect(correctionCellLabel(en, 0, given(5), false)).toBe('Row 1, column 1, given 5')
+    expect(correctionCellLabel(en, 10, entry(7), false)).toBe('Row 2, column 2, entry 7')
+    expect(correctionCellLabel(en, 80, EMPTY, false)).toBe('Row 9, column 9, empty')
   })
 
   it('adds the conflict and the check', () => {
-    expect(correctionCellLabel(0, given(5, true), true)).toBe(
+    expect(correctionCellLabel(en, 0, given(5, true), true)).toBe(
       'Row 1, column 1, given 5, same digit as another given, check this cell',
     )
+  })
+})
+
+describe('the cell text in Dutch', () => {
+  it('names the place, the kind and the questions in Dutch', () => {
+    expect(cellPlace(nl, 23)).toBe('Rij 3, kolom 6')
+    expect(correctionCellLabel(nl, 10, entry(7), false)).toBe('Rij 2, kolom 2, ingevuld cijfer 7')
+    expect(panelQuestion(nl, given(4, true), false)).toBe('Is dit een 4?')
+    expect(yesLabel(nl, EMPTY)).toBe('Ja, leeg')
   })
 })
