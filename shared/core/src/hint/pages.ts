@@ -70,7 +70,7 @@ export const TECHNIQUE_PAGES: Readonly<Partial<Record<TechniqueId, TechniquePage
   },
   nakedTriple: {
     explanation:
-      'Three cells of a row, column or box can hold only three digits between them. Those three digits must fill those three cells. So no other cell there can hold them. One cell of the triple can hold only two of the digits.',
+      'Three cells of a row, column or box can hold only three digits between them. Those three digits must fill those three cells. So no other cell there can hold them. A cell of the triple does not need all three digits.',
     example: [
       '000009300050607090008400010045700030900086000100500000000000020000304950200900000',
       '000809300050607090098402010045791030973286040100543009509108020000324950204905000',
