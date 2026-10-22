@@ -1,6 +1,8 @@
 import { expect, test } from 'vitest'
 import { createGame } from '../src/game/createGame'
 import { planHint } from '../src/hint/plan'
+import { computeCandidates } from '../src/technique/candidates'
+import { nextSteps } from '../src/technique/nextSteps'
 import { HINT_ORDER } from '../src/hint/techniques'
 import { LEVELS, type Level } from '../src/level'
 import { ungradedPuzzle } from '../src/technique/testKit'
@@ -62,8 +64,8 @@ type HintCount = {
 /**
  * A player can ask for a hint at any position of a solve. Each position of the full solver's solve
  * gets one plan with the tier 1 techniques and one with tier 1 and tier 2. A plan teaches when it has steps.
- * A position is hard when the full solver needs an elimination before its next digit. A player who is
- * stuck most likely asks there.
+ * A position is one board of that solve: each board counts once. It is hard when the easiest step on
+ * its fresh candidates is an elimination. A player who is stuck most likely asks there.
  */
 function countHints(level: Level): HintCount {
   const count: HintCount = {
@@ -79,15 +81,13 @@ function countHints(level: Level): HintCount {
   for (let seed = 1; seed <= HINT_PUZZLES_PER_LEVEL; seed++) {
     const { givens, solution } = ungradedPuzzle(level, seed)
     const run = playThrough(givens, TECHNIQUE_ORDER, { unique: true })
-    // The first step at each board: an elimination there makes the board hard.
-    const boards = new Map<string, boolean>()
-    run.positions.forEach((position, index) => {
-      const key = position.board.join()
-      if (!boards.has(key)) boards.set(key, run.steps[index]!.placements.length === 0)
-    })
+    const boards = new Set(run.positions.map((position) => position.board.join()))
     let allTaught = true
-    for (const [text, hard] of boards) {
+    for (const text of boards) {
       const board = text.split(',').map(Number)
+      // The plan starts from fresh candidates, so the hard test does too.
+      const next = nextSteps(computeCandidates(board), board, TECHNIQUE_ORDER, { unique: true })[0]
+      const hard = next !== undefined && next.placements.length === 0
       const entries = board.map((digit, cell) => (givens[cell] === 0 ? digit : 0))
       const game = createGame({ givens, solution, entries })
       const started = performance.now()

@@ -1,6 +1,7 @@
 import { sortedUnique } from '../technique/masks'
 import { TECHNIQUE_ORDER } from '../technique/order'
 import type { Step, TechniqueId, TechniqueRank } from '../technique/types'
+import { sees } from '../technique/sight'
 import { BOX_OF, COL_OF, ROW_OF, UNITS, unitKindOf } from '../units'
 import { aDigit, capitalised, cellName, cellsIn, cellsName, linesName, listOf, unitName } from './names'
 
@@ -74,7 +75,7 @@ function fish(name: string, size: 'two' | 'three' | 'four'): HintTechnique {
     name,
     definition:
       `${size} rows where a digit fits only in the same ${size} columns. ` +
-      'Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'Those columns then lose the digit in the other rows (or the same with rows and columns swapped).',
     look: (step) => `Look where ${aDigit(step.digits[0]!)} fits in ${bases(step)}.`,
     why: (step) => {
       const digit = step.digits[0]!
@@ -109,12 +110,22 @@ function skyscraperLinks(step: Step): Links {
   return { lines: linesName([first, other]), joint: unitName(crossUnit), far: [farOf(firstEnds), farOf(otherEnds)] }
 }
 
-/** A 2-string kite: the units are the row, the column and the box of their near ends. */
+/**
+ * A 2-string kite: the units are the row, the column and the box of their near ends. Both ends of
+ * one link can lie in that box, so the far ends are the pair that every elimination sees.
+ */
 function kiteLinks(step: Step): Links {
   const [row, column, box] = step.units as [number, number, number]
-  const farIn = (unit: number) =>
-    step.pattern.find((cell) => UNITS[unit]!.includes(cell) && 18 + BOX_OF[cell]! !== box)!
-  return { lines: `${unitName(row)} and ${unitName(column)}`, joint: unitName(box), far: [farIn(row), farIn(column)] }
+  const ends = (unit: number) => step.pattern.filter((cell) => UNITS[unit]!.includes(cell))
+  const inBox = (cell: number) => BOX_OF[cell] === box - 18
+  const pairs = ends(row).flatMap((rowFar, i) =>
+    ends(column).flatMap((columnFar, j) => {
+      const near = [ends(row)[1 - i]!, ends(column)[1 - j]!]
+      return near.every(inBox) ? [[rowFar, columnFar] as const] : []
+    }),
+  )
+  const far = pairs.find((pair) => step.eliminations.every(({ cell }) => pair.every((end) => sees(end, cell))))!
+  return { lines: `${unitName(row)} and ${unitName(column)}`, joint: unitName(box), far }
 }
 
 function linkedPair(name: string, definition: string, links: (step: Step) => Links): HintTechnique {
@@ -152,7 +163,7 @@ function pivotWing(name: string, definition: string, pivotDigits: 'two' | 'three
       const [shared, ...others] = step.digits
       const pivotHolds = pivotDigits === 'two' ? others : sortedUnique(step.digits)
       const places =
-        pivotDigits === 'two' ? `${cellName(a)} or ${cellName(b)}` : `it, in ${cellName(a)} or in ${cellName(b)}`
+        pivotDigits === 'two' ? `${cellName(a)} or ${cellName(b)}` : `this cell, in ${cellName(a)} or in ${cellName(b)}`
       return `${capitalised(cellName(pivot))} holds ${listOf(pivotHolds, 'or')}. Each choice puts ${aDigit(shared!)} in ${places}.`
     },
     answer: (step) => {
@@ -169,7 +180,7 @@ function pivotWing(name: string, definition: string, pivotDigits: 'two' | 'three
 const wWing: HintTechnique = {
   name: 'W-wing',
   definition:
-    'two cells with the same two digits, linked by a row, column or box where one of them fits in only two cells. ' +
+    'two cells with the same two digits, linked by a row, column or box where one of the two digits fits in only two cells. ' +
     'One of the two cells must hold the other digit.',
   look: (step) =>
     `Look at ${cellName(step.pattern[0]!)} and ${cellName(step.pattern[1]!)}. They hold the same two digits.`,
