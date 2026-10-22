@@ -696,7 +696,8 @@ class LabelStore:
 
         A new cell takes the digit and kind of the old cell at its place: the label from the app.
         Its file lands in discarded/ first and a digit line moves it, so an undo puts it back
-        there. A cell that exists already keeps its file and its label. The old cells of the scan
+        there. A cell that exists already keeps its file and its label, except a cell of this scan
+        in discarded/ from an undone cut: it comes back like a new cell. The old cells of the scan
         that the new cut lacks move to discarded/. A place without an old label gets no cell, as
         in `just pull-scans`."""
         state = self._unchecked(photo)
@@ -709,29 +710,44 @@ class LabelStore:
         lines = [self._outline_line(state, "accepted", text, t, action)]
         new_cells, kept = [], 0
         target = self.paths.cells / "discarded"
+        sources = self.sources()
         for position, (image, cell) in enumerate(new_cut):
-            if cell in self.folder:
+            where = self.folder.get(cell)
+            own_discarded = (
+                where == "discarded" and sources.get(cell, ("",))[0] == state.row.photo_id
+            )
+            if where is not None and not own_discarded:
                 kept += 1
                 continue
             label = self.folder.get(old_cut[position])
             if label not in DIGIT_CLASSES:
                 continue
-            # A cut outside cells/, then a rename: a stop never leaves a misnamed cell (ADR-009).
-            self.paths.tmp.mkdir(parents=True, exist_ok=True)
-            tmp = self.paths.tmp / f"{stem_of(cell)}.png"
-            Image.fromarray(image).save(tmp, "PNG")
-            target.mkdir(parents=True, exist_ok=True)
-            tmp.replace(target / f"{stem_of(cell)}.png")
-            self.register([cell], "discarded")
-            source = format_source((state.row.photo_id, *divmod(position, GRID_CELLS)))
-            lines.append(Line(t, self.session, action, cell, "source", None, source, "outlines"))
-            provenance = label_sources.get(old_cut[position], "")
-            if provenance:
+            if where is None:
+                # Cut outside cells/, then rename: a stop never leaves a misnamed cell (ADR-009).
+                self.paths.tmp.mkdir(parents=True, exist_ok=True)
+                tmp = self.paths.tmp / f"{stem_of(cell)}.png"
+                Image.fromarray(image).save(tmp, "PNG")
+                target.mkdir(parents=True, exist_ok=True)
+                tmp.replace(target / f"{stem_of(cell)}.png")
+                self.register([cell], "discarded")
+                source = format_source((state.row.photo_id, *divmod(position, GRID_CELLS)))
                 lines.append(
-                    Line(
-                        t, self.session, action, cell, "label_source", None, provenance, "outlines"
-                    )
+                    Line(t, self.session, action, cell, "source", None, source, "outlines")
                 )
+                provenance = label_sources.get(old_cut[position], "")
+                if provenance:
+                    lines.append(
+                        Line(
+                            t,
+                            self.session,
+                            action,
+                            cell,
+                            "label_source",
+                            None,
+                            provenance,
+                            "outlines",
+                        )
+                    )
             lines.append(
                 Line(t, self.session, action, cell, "digit", "discarded", label, "outlines")
             )
