@@ -1,4 +1,4 @@
-"""The Finish step of the labelling page (ADR-018): fold the journal into cells.csv, run the data
+"""The Finish step of the labelling app (ADR-018): fold the journal into cells.csv, run the data
 check, write STATUS.md, then delete the journal and the derived files in ml/dataset/work/. It never
 touches the images. Of the tracked files it writes only cells.csv, sudoku-photos.csv (the outline
 lines) and STATUS.md."""
@@ -47,7 +47,7 @@ def finish(store: LabelStore) -> dict:
     may append `repair` lines to the journal through `store.repair()`. After a Finish, Undo
     cannot reverse the finished changes: git keeps the old tables. Finish closes every open
     Review item: the new `Last finish:` line is newer than their evidence. `review_closed` is
-    their number, or None when the Review screen did not run in this session."""
+    their number, or None when the Doubtful labels step did not run in this session."""
     paths = store.paths
     try:
         closed = store.open_review_count()

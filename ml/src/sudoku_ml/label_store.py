@@ -1,4 +1,4 @@
-"""State and rules of the labelling page. label_server.py only translates HTTP to these calls."""
+"""State and rules of the labelling app. label_server.py only translates HTTP to these calls."""
 
 import csv
 import io
@@ -17,7 +17,7 @@ from PIL import Image
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import dhash, read_real_cells, split_cells
-from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright
+from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright, warp_grid
 from sudoku_ml.journal import (
     KINDS,
     Line,
@@ -30,15 +30,13 @@ from sudoku_ml.journal import (
     format_outline,
     format_source,
     format_time,
-    last_kind_times,
     parse_outline,
     read_journal,
     read_records,
     rollback_lines,
     undo_lines,
-    undone_actions,
 )
-from sudoku_ml.kind_check import CheckLine, NotEnoughCells, draw_sample, summary
+from sudoku_ml.kind_check import CheckLine, summary
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
 from sudoku_ml.manifest import (
     base_kinds,
@@ -48,6 +46,8 @@ from sudoku_ml.manifest import (
     repair_lines,
     warn_unreadable,
 )
+from sudoku_ml.photo_check import PhotoCheck
+from sudoku_ml.photo_import import detect_outline, read_detections, write_detections
 from sudoku_ml.relabel import move_cells
 from sudoku_ml.scan_outlines import cut as scan_cut
 from sudoku_ml.scan_outlines import outline_fit, read_scores, write_scores
@@ -67,6 +67,7 @@ from sudoku_ml.tables import (
 
 SCREEN_SIZE = 50
 DIGIT_SCREEN_SIZE = 100
+CELL_CHECK_SIZE = 240  # a full screen of 64 px cells
 ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
 DIGIT_KINDS = ("handwritten", "all")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
@@ -82,6 +83,11 @@ class ScanState:
     row: PhotoRow
     status: str  # "unchecked", "accepted" or "rejected"
     corners: str  # format_corners text. Empty for a rejected scan
+
+
+def _source(row: PhotoRow) -> str:
+    """`app` for an uploaded scan, `photo` for an imported photo."""
+    return "app" if row.source == APP_SCAN else "photo"
 
 
 def _predicted(kind: str) -> str:
@@ -104,6 +110,7 @@ class LabelStore:
         self._suspects_ok = True
         self._pre_cache: tuple[tuple[int, int], dict[str, dict]] | None = None
         self._photos: OrderedDict[str, np.ndarray] = OrderedDict()
+        self.check = PhotoCheck(paths, self.session, now)
 
     def _read_groups(self) -> dict:
         if not self.paths.groups.exists():
@@ -239,7 +246,7 @@ class LabelStore:
         """The cells without a kind. All the cells when every one has a kind (Look again)."""
         return [c for c in members if kinds.get(c) is None] or members
 
-    # Groups screen
+    # Kind step (Flow B)
 
     @staticmethod
     def _majority(members: list[str], kinds: dict[str, str | None]) -> str | None:
@@ -318,7 +325,8 @@ class LabelStore:
     # Changes
 
     def save(self, entries: list[dict], screen: str, confirm_digits: list[str] = ()) -> int:
-        """Log a kind line per changed or new cell. On the Review screen, also per confirmation."""
+        """Log a kind line per changed or new cell. On the Doubtful labels step, also per
+        confirmation."""
         self._refresh()
         kinds, t, action = self.kinds(), self._t(), self._action()
         lines = []
@@ -352,6 +360,16 @@ class LabelStore:
         self._apply_digits(lines)
         self._write(lines)
 
+    def undo_target(self) -> str | None:
+        """The screen of the action that undo would reverse, or None when there is none. An
+        imported photo's outline check is not in the journal, so undo never reaches it."""
+        self._refresh()
+        lines = undo_lines(self.lines, self._t(), self.session)
+        if not lines:
+            return None
+        action = lines[0].action.removeprefix("undo:")
+        return next(x.screen for x in self.lines if x.action == action)
+
     def undo(self) -> int:
         self._refresh()
         lines = undo_lines(self.lines, self._t(), self.session)
@@ -366,7 +384,7 @@ class LabelStore:
         self._write(lines)
         return len(lines)
 
-    # Digits screen
+    # Digits step (Flow B)
 
     def register(self, cell_ids: list[str], folder: str = "unlabeled") -> None:
         """Make new cells in `folder` known. Ctrl-C rewrites cells.csv with them later."""
@@ -397,7 +415,7 @@ class LabelStore:
         if kinds not in DIGIT_KINDS:
             raise ValueError(f"unknown kinds filter {kinds!r}")
         pre = self._prelabels()
-        waiting = [c for c, f in self.folder.items() if f == "unlabeled"]
+        waiting = self.loose_cells()
 
         def shown(cell: str) -> bool:
             return cell in pre and (kinds == "all" or pre[cell]["kind"] == "handwritten")
@@ -434,7 +452,7 @@ class LabelStore:
         self._write(lines)
         return len(lines)
 
-    # Review screen
+    # Doubtful labels step (Flow B)
 
     def _near_duplicates(self) -> tuple[list[tuple[str, str]], set[str]]:
         """Near-duplicate pairs inside one folder, and the ids in the test split. Slow: reads
@@ -510,124 +528,182 @@ class LabelStore:
             "suspects": self.paths.suspects.exists() and self._suspects_ok,
         }
 
-    # Check screen
-
-    def check_start(self, n: int = 200) -> dict:
+    def review_save(self, entries: list[dict]) -> int:
+        """Settle the doubtful cells of one page as one action: a digit line per cell, also an
+        unchanged one, and a kind line per cell with a kind. The review lines close the items.
+        Checks all entries first."""
         self._refresh()
-        test_ids = self._near_duplicates()[1]
-        try:
-            cells = draw_sample(
-                self.kinds(), last_kind_times(self.lines), self.checks, test_ids, self._now(), n
-            )
-        except NotEnoughCells as error:
-            return {
-                "error": f"Only {error.count} cells have a label that is 7 days old or older. "
-                f"The check needs {n}. A finished kind counts as old enough."
-            }
-        return {"cells": [{"id": c, "stem": stem_of(c)} for c in cells]}
+        kinds, t, action = self.kinds(), self._t(), self._action()
+        lines = []
+        for entry in entries:
+            cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
+            if self.folder.get(cell) not in DIGIT_CLASSES:
+                raise ValueError(f"{stem_of(cell)}: not in a digit folder")
+            if digit not in ASSIGNABLE:
+                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
+            if digit in NO_KIND_FOLDERS:
+                kind = None
+            elif kind not in KINDS:
+                raise ValueError(f"{stem_of(cell)}: the digit {digit} needs a kind")
+            old = self.folder[cell]
+            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "review"))
+            if kind is not None or kinds.get(cell) is not None:
+                lines.append(
+                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "review")
+                )
+        self._apply_digits(lines)
+        self._write(lines)
+        return len(lines)
 
-    def check_answer(self, answers: list[dict]) -> dict:
-        self._refresh()
-        kinds, t = self.kinds(), self._t()
-        checked = {c.cell for c in self.checks}
-        records = []
-        for answer in answers:
-            cell, value = answer["id"], answer["answer"]
-            if cell in checked:
-                raise ValueError(f"{stem_of(cell)}: already checked")
-            checked.add(cell)
-            if value not in KINDS:
-                raise ValueError(f"{stem_of(cell)}: unknown kind {value!r}")
-            if kinds.get(cell) not in _LABELLED:
-                raise ValueError(f"{stem_of(cell)}: has no printed or handwritten label")
-            records.append(CheckLine(t, self.session, cell, kinds[cell], value))
-        append_records(self.paths.kind_checks, records)
-        self.checks.extend(records)
-        return summary(self.checks)
-
-    # Outlines screen and scan view
+    # Flow A: outlines and the cells of each scan, for uploaded scans and imported photos
 
     def _scan_states(self) -> list[ScanState]:
-        """Each `app-scan` photo in the order of sudoku-photos.csv, which is the pull order, with
-        the outline state of sudoku-photos.csv and the journal on top."""
+        """Each scan in the order of sudoku-photos.csv, which is the pull and import order.
+
+        An uploaded scan takes its outline from sudoku-photos.csv with the journal on top. An
+        imported photo takes its status from sudoku-photos.csv only: `pending` is an open outline
+        without corners (see _corners). A `legacy` photo and a missing file are never offered."""
         self._refresh()
-        rows = [r for r in read_photos(self.paths.photos_csv) if r.source == APP_SCAN]
+        rows = read_photos(self.paths.photos_csv)
         now = current_outlines(
-            self.lines, {r.photo_id: format_outline(r.status, r.corners) for r in rows}
+            self.lines,
+            {r.photo_id: format_outline(r.status, r.corners) for r in rows if r.source == APP_SCAN},
         )
-        return [ScanState(r, *parse_outline(now[r.photo_id])) for r in rows]
+        states = []
+        for row in rows:
+            if row.source == APP_SCAN:
+                states.append(ScanState(row, *parse_outline(now[row.photo_id])))
+            elif row.status == "pending" and (self.paths.photos / row.file).exists():
+                states.append(ScanState(row, "unchecked", ""))
+            elif row.status == "accepted":
+                states.append(ScanState(row, "accepted", row.corners))
+            elif row.status in ("rejected", "too-few-cells"):
+                states.append(ScanState(row, "rejected", ""))
+        return states
 
     def _scan_state(self, photo: str) -> ScanState:
         for state in self._scan_states():
             if stem_of(state.row.photo_id) == photo:
                 return state
-        raise ValueError(f"{photo}: not an uploaded scan")
+        raise ValueError(f"{photo}: not a scan or photo to check")
+
+    def source_of(self, photo: str) -> str:
+        return _source(self._scan_state(photo).row)
 
     def _upright(self, row: PhotoRow) -> np.ndarray:
-        # The Outlines screen asks for the same few photos many times. A decode is slow.
+        # The Outlines step asks for the same few photos many times. A decode is slow.
         if row.photo_id not in self._photos:
             self._photos[row.photo_id] = load_upright(self.paths.photos / row.file)
             while len(self._photos) > PHOTO_CACHE:
                 self._photos.popitem(last=False)
         return self._photos[row.photo_id]
 
+    def _corners(self, state: ScanState) -> str:
+        """The outline to show: the stored corners, or the detected grid of a pending imported
+        photo. Empty when the detection found no grid. The detection is stored in detections.json
+        (ADR-018)."""
+        if state.corners or state.status != "unchecked" or state.row.source == APP_SCAN:
+            return state.corners
+        detections = read_detections(self.paths.detections)
+        if state.row.photo_id not in detections:
+            detections[state.row.photo_id] = detect_outline(self._upright(state.row))
+            write_detections(self.paths.detections, detections)
+        found = detections[state.row.photo_id]["corners"]
+        return format_corners(found) if found else ""
+
     def _fits(self, states: list[ScanState]) -> dict[str, float]:
-        """Photo id → outline_fit. Computes and stores each score that the file lacks for the
-        current corners."""
+        """Photo id → outline_fit, or -1 without an outline. Computes and stores each score that
+        the file lacks for the current corners."""
         scores = read_scores(self.paths.outline_scores)
-        missing = [s for s in states if scores.get(s.row.photo_id, {}).get("corners") != s.corners]
+        corners = {s.row.photo_id: self._corners(s) for s in states}
+        missing = [
+            s
+            for s in states
+            if scores.get(s.row.photo_id, {}).get("corners") != corners[s.row.photo_id]
+        ]
         for state in missing:
-            fit = outline_fit(self._upright(state.row), state.corners)
-            scores[state.row.photo_id] = {"corners": state.corners, "fit": round(fit, 4)}
+            text = corners[state.row.photo_id]
+            fit = outline_fit(self._upright(state.row), text) if text else -1.0
+            scores[state.row.photo_id] = {"corners": text, "fit": round(fit, 4)}
         if missing:
             write_scores(self.paths.outline_scores, scores)
         return {s.row.photo_id: scores[s.row.photo_id]["fit"] for s in states}
 
     def outline_screen(self, page: int = 0) -> dict:
-        """One page of the scans with an unchecked outline, the lowest fit first."""
+        """One page of the scans and photos with an unchecked outline, the lowest fit first."""
         states = [s for s in self._scan_states() if s.status == "unchecked"]
         fits = self._fits(states)
         order = sorted(range(len(states)), key=lambda i: (fits[states[i].row.photo_id], i))
         pages = max(1, -(-len(order) // OUTLINE_SCREEN_SIZE))
         page = min(page, pages - 1)
         chunk = order[page * OUTLINE_SCREEN_SIZE : (page + 1) * OUTLINE_SCREEN_SIZE]
-        return {
-            "scans": [
+        scans = []
+        for i in chunk:
+            corners = self._corners(states[i])
+            scans.append(
                 {
                     "photo": stem_of(states[i].row.photo_id),
+                    "source": _source(states[i].row),
                     "fit": fits[states[i].row.photo_id],
-                    "corners": parse_corners(states[i].corners),
+                    "corners": parse_corners(corners) if corners else None,
                 }
-                for i in chunk
-            ],
-            "open": len(states),
-            "page": page,
-            "pages": pages,
-        }
+            )
+        return {"scans": scans, "open": len(states), "page": page, "pages": pages}
 
     def outline(self, photo: str) -> dict:
         """One scan for the large view. Corners, width and height are in upright photo pixels."""
         state = self._scan_state(photo)
         height, width = self._upright(state.row).shape[:2]
+        corners = self._corners(state)
         return {
             "photo": photo,
+            "source": _source(state.row),
             "status": state.status,
             "width": width,
             "height": height,
-            "corners": parse_corners(state.corners) if state.corners else None,
+            "corners": parse_corners(corners) if corners else None,
         }
 
-    def outline_jpeg(self, photo: str) -> bytes:
-        """A thumbnail of the scan with its current outline drawn in green."""
+    def photo_jpeg(self, photo: str, size: int = THUMBNAIL_SIZE, outline: bool = True) -> bytes:
+        """The scan at `size` pixels on the long side. With `outline`, its current outline in
+        green."""
         state = self._scan_state(photo)
         rgb = self._upright(state.row)
-        scale = THUMBNAIL_SIZE / max(rgb.shape[:2])
+        scale = min(1.0, size / max(rgb.shape[:2]))
         small = cv2.resize(rgb, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-        if state.corners:
-            quad = np.array(parse_corners(state.corners), dtype=np.float32) * scale
-            cv2.polylines(small, [quad.round().astype(np.int32)], True, (58, 214, 90), 2)
+        corners = self._corners(state) if outline else ""
+        if corners:
+            quad = np.array(parse_corners(corners), dtype=np.float32) * scale
+            width = max(2, round(max(small.shape[:2]) / 160))
+            cv2.polylines(small, [quad.round().astype(np.int32)], True, (58, 214, 90), width)
         out = io.BytesIO()
         Image.fromarray(small).save(out, "JPEG", quality=85)
+        return out.getvalue()
+
+    def flat_png(self, photo: str, corners=None) -> bytes:
+        """The grid that `corners` cut from the scan, with the cell lines drawn: the preview of a
+        fix. Without `corners`: the grid of the current outline, without lines, square, with
+        place (row, col) at the same 1/9 of each side."""
+        state = self._scan_state(photo)
+        if corners is None and not state.corners:
+            raise ValueError(f"{photo}: no outline yet")
+        try:
+            chosen = parse_corners(state.corners) if corners is None else corners
+            flat = warp_grid(self._upright(state.row), check_corners(chosen))
+        except (np.linalg.LinAlgError, cv2.error) as error:
+            raise ValueError("these corners do not form a grid") from error
+        if corners is None:
+            out = io.BytesIO()
+            Image.fromarray(flat).save(out, "PNG")
+            return out.getvalue()
+        step = flat.shape[0] / GRID_CELLS
+        for k in range(GRID_CELLS + 1):
+            at = min(round(k * step), flat.shape[0] - 1)
+            thick = 2 if k % 3 == 0 else 1
+            flat[max(0, at - thick + 1) : at + 1, :] = (58, 214, 90)
+            flat[:, max(0, at - thick + 1) : at + 1] = (58, 214, 90)
+        out = io.BytesIO()
+        Image.fromarray(flat).save(out, "PNG")
         return out.getvalue()
 
     def _unchecked(self, photo: str) -> ScanState:
@@ -671,18 +747,50 @@ class LabelStore:
                 )
         return lines
 
+    def _cut_photo(self, state: ScanState, corners) -> dict:
+        """Accept an imported photo: PhotoCheck cuts its cells into unlabeled/. This writes
+        sudoku-photos.csv at once, so undo cannot reverse it (ADR-018)."""
+        result = self.check.accept(stem_of(state.row.photo_id), corners)
+        self.register(result["new_cells"])
+        self._photos.pop(state.row.photo_id, None)
+        return result
+
     def approve_outlines(self, photos: list[str]) -> int:
-        """Approve the outline of each scan as one action. Checks all scans first."""
+        """Approve the outline of each scan. The uploaded scans are one action. An imported
+        photo needs a detected outline: its cells are cut. Checks all scans first."""
         states = [self._unchecked(photo) for photo in photos]
+        corners = {s.row.photo_id: self._corners(s) for s in states}
+        blind = [s for s in states if not corners[s.row.photo_id]]
+        if blind:
+            raise ValueError(f"{stem_of(blind[0].row.photo_id)}: no outline found. Set its corners")
+        for state in states:
+            # The cut of a photo can still refuse its corners. Check before any line is written.
+            if state.row.source != APP_SCAN:
+                stem = stem_of(state.row.photo_id)
+                try:
+                    self.check.usable(stem, parse_corners(corners[state.row.photo_id]))
+                except ValueError as error:
+                    raise ValueError(f"{stem}: {error}. Open it and set its corners") from error
         t, action = self._t(), self._action()
-        lines = [self._outline_line(s, "accepted", s.corners, t, action) for s in states]
+        lines = [
+            self._outline_line(s, "accepted", s.corners, t, action)
+            for s in states
+            if s.row.source == APP_SCAN
+        ]
         self._write(lines)
-        return len(lines)
+        for state in states:
+            if state.row.source != APP_SCAN:
+                self._cut_photo(state, parse_corners(corners[state.row.photo_id]))
+        return len(states)
 
     def reject_outline(self, photo: str) -> int:
-        """Reject the scan as one action: its cells move to discarded/, so training leaves them
-        out. Finish writes `rejected` into sudoku-photos.csv."""
+        """Reject the scan. An uploaded scan is one action: its cells move to discarded/, so
+        training leaves them out, and Finish writes `rejected`. An imported photo is rejected in
+        sudoku-photos.csv at once, without cells."""
         state = self._unchecked(photo)
+        if state.row.source != APP_SCAN:
+            self.check.reject(photo)
+            return 1
         t, action = self._t(), self._action()
         own = self._own_cells(state.row.photo_id)
         lines = [self._outline_line(state, "rejected", "", t, action)]
@@ -692,15 +800,19 @@ class LabelStore:
         return len(lines)
 
     def fix_outline(self, photo: str, corners) -> dict:
-        """Cut the scan again from new corners as one action, and approve them.
+        """Cut the scan again from new corners, and approve them. An imported photo gets its
+        first cut (see _cut_photo).
 
-        A new cell takes the digit and kind of the old cell at its place: the label from the app.
-        Its file lands in discarded/ first and a digit line moves it, so an undo puts it back
-        there. A cell that exists already keeps its file and its label, except a cell of this scan
-        in discarded/ from an undone cut: it comes back like a new cell. The old cells of the scan
-        that the new cut lacks move to discarded/. A place without an old label gets no cell, as
-        in `just pull-scans`."""
+        For an uploaded scan this is one action. A new cell takes the digit and kind of the old
+        cell at its place: the label from the app. Its file lands in discarded/ first and a digit
+        line moves it, so an undo puts it back there. A cell that exists already keeps its file
+        and its label, except a cell of this scan in discarded/ from an undone cut: it comes back
+        like a new cell. The old cells of the scan that the new cut lacks move to discarded/. A
+        place without an old label gets no cell, as in `just pull-scans`."""
         state = self._unchecked(photo)
+        if state.row.source != APP_SCAN:
+            result = self._cut_photo(state, corners)
+            return {"cells": result["cells"], "kept": result["duplicates"], "discarded": 0}
         text = format_corners(check_corners(corners))
         rgb = self._upright(state.row)
         old_cut = [cell for _, cell in scan_cut(rgb, state.corners)]
@@ -762,37 +874,69 @@ class LabelStore:
         self._write(lines)
         return {"cells": len(new_cells), "kept": kept, "discarded": len(gone)}
 
+    def _places(self, state: ScanState) -> list[str | None]:
+        """The cell at each of the 81 places of the scan, or None. The cut of the current corners
+        finds a cell of another scan with the same pixels. A place where the cut finds no cell
+        takes the own cell of that place from the sources: an imported photo was cut from
+        corners before their rounding."""
+        if not state.corners:
+            return []
+        cut = [cell for _, cell in scan_cut(self._upright(state.row), state.corners)]
+        own = {}
+        for cell, (photo, row, col) in self.sources().items():
+            if photo == state.row.photo_id and cell in self.folder:
+                own.setdefault(row * GRID_CELLS + col, cell)
+        return [cell if cell in self.folder else own.get(n) for n, cell in enumerate(cut)]
+
+    def _suggestion(self, cell: str, pre: dict[str, dict]) -> tuple[str | None, str | None]:
+        """The digit and kind that a cell in unlabeled/ starts with: the model's pre-label."""
+        guess = pre.get(cell)
+        if guess is None:
+            return None, None
+        if guess["digit"] == "empty":
+            return "empty", None
+        return guess["digit"], guess["kind"] if guess["kind"] in KINDS else None
+
     def scan_screen(self, photo: str) -> dict:
-        """The scan view: the photo and the 81 places of its current cut. A place shows the cell
-        with these pixels and the label it has. A cell of another scan is marked `shared`."""
+        """The scan view: the 81 places of the scan. A place shows the cell there and its label.
+        A cell in unlabeled/ shows the model's pre-label with `suggested`. A cell of another scan
+        is marked `shared`, and so is a second place with the same pixels as an earlier place."""
         state = self._scan_state(photo)
         rgb = self._upright(state.row)
         sources, kinds, label_sources = self.sources(), self.kinds(), self.label_sources()
         labelled = confirmed_cells(self.lines)
-        cells = []
-        for position, (_, cell) in enumerate(scan_cut(rgb, state.corners) if state.corners else []):
+        pre = self._prelabels()
+        cells, seen = [], set()
+        for position, cell in enumerate(self._places(state)):
             place = {"row": position // GRID_CELLS, "col": position % GRID_CELLS}
-            if cell not in self.folder:
+            if cell is None:
                 cells.append({**place, "missing": True})
                 continue
             owner = sources.get(cell, (state.row.photo_id,))[0]
+            shared = owner != state.row.photo_id or cell in seen
+            seen.add(cell)
+            folder = self.folder[cell]
+            digit, kind = folder, kinds.get(cell)
+            if folder == "unlabeled":
+                digit, kind = self._suggestion(cell, pre)
             cells.append(
                 {
                     **place,
                     "id": cell,
                     "stem": stem_of(cell),
-                    "digit": self.folder[cell],
-                    "kind": kinds.get(cell),
+                    "digit": digit,
+                    "kind": kind,
+                    "suggested": folder == "unlabeled",
                     "edited": label_sources.get(cell) == "app-edited",
                     "reviewed": label_sources.get(cell) == "verified" or cell in labelled,
-                    "shared": None if owner == state.row.photo_id else stem_of(owner),
-                    # A cell in discarded/ or unlabeled/ is out of the scan's labels.
-                    "locked": self.folder[cell] not in DIGIT_CLASSES,
+                    "shared": stem_of(owner) if shared else None,
+                    "locked": folder == "discarded",
                 }
             )
         height, width = rgb.shape[:2]
         return {
             "photo": photo,
+            "source": _source(state.row),
             "status": state.status,
             "width": width,
             "height": height,
@@ -801,27 +945,34 @@ class LabelStore:
         }
 
     def _unconfirmed(self, states: list[ScanState] | None = None) -> dict[str, list[str]]:
-        """Photo id → the own cells in DIGIT_CLASSES of each scan with an accepted outline that no
-        person has labelled, in pull order. A scan without such a cell is left out. The same cells
-        as the own, unlocked cells of scan_screen, which confirm_scan labels."""
+        """Photo id → the open cells of each scan with an accepted outline, in pull order. A cell
+        is open in unlabeled/, or as an `app-*` cell in a digit folder that no person labelled.
+        A scan without an open cell is left out."""
         states = self._scan_states() if states is None else states
         accepted = [s.row.photo_id for s in states if s.status == "accepted"]
         label_sources, labelled = self.label_sources(), confirmed_cells(self.lines)
         found: dict[str, list[str]] = {photo: [] for photo in accepted}
         for cell, (photo, _, _) in self.sources().items():
-            if photo not in found or self.folder.get(cell) not in DIGIT_CLASSES:
+            if photo not in found:
                 continue
-            if label_sources.get(cell) != "verified" and cell not in labelled:
+            folder = self.folder.get(cell)
+            if folder == "unlabeled" or (
+                folder in DIGIT_CLASSES
+                and label_sources.get(cell, "").startswith("app-")
+                and cell not in labelled
+            ):
                 found[photo].append(cell)
         return {photo: cells for photo, cells in found.items() if cells}
 
     def scan_list(self) -> dict:
         """`open`: the cells to confirm. `edited`: those that the player changed. Pull order."""
         label_sources = self.label_sources()
+        sources = {s.row.photo_id: _source(s.row) for s in self._scan_states()}
         return {
             "scans": [
                 {
                     "photo": stem_of(photo),
+                    "source": sources[photo],
                     "open": len(cells),
                     "edited": sum(label_sources.get(c) == "app-edited" for c in cells),
                 }
@@ -868,65 +1019,128 @@ class LabelStore:
         self._write(lines)
         return len(lines)
 
-    # Progress
+    # Flow A: the cells of the approved scans per digit
 
-    def progress(self) -> dict:
-        self._refresh()
-        kinds = self.kinds()
-        undone = undone_actions(self.lines)
-        moved_out = Counter(
-            x.old
-            for x in self.lines
-            if x.field == "digit"
-            and x.old != x.new
-            and x.screen not in ("undo", "outlines")
-            and x.action not in undone
-        )
-        folders = {}
-        for folder in DIGIT_FOLDERS:
-            cells = [c for c, f in self.folder.items() if f == folder]
-            counts = Counter(kinds.get(c) for c in cells)
-            groups = []
-            for g, group in enumerate(self._groups_of(folder)):
-                members = self._members(folder, group)
-                without = sum(kinds.get(c) is None for c in members)
-                groups.append({"group": g, "size": len(members), "without": without})
-            folders[folder] = {
-                "cells": len(cells),
-                "printed": counts["printed"],
-                "handwritten": counts["handwritten"],
-                "unsure": counts["unsure"],
-                "without": counts[None],
-                "moved_out": moved_out[folder],
-                "groups": groups,
-            }
+    def open_cells(self) -> list[dict]:
+        """Every open cell of the scans with an accepted outline (see _unconfirmed), with the
+        label it starts with, its place and the model's guess. A cell in unlabeled/ starts with
+        the guess. `digit` is None for a cell in unlabeled/ without a guess."""
+        waiting = self._unconfirmed()
+        pre, kinds, label_sources = self._prelabels(), self.kinds(), self.label_sources()
+        sources = self.sources()
+        source_of = {s.row.photo_id: _source(s.row) for s in self._scan_states()}
+        found = []
+        for photo, cells in waiting.items():
+            for cell in cells:
+                folder = self.folder[cell]
+                if folder == "unlabeled":
+                    digit, kind = self._suggestion(cell, pre)
+                else:
+                    digit, kind = folder, kinds.get(cell)
+                guess = pre.get(cell)
+                _, row, col = sources[cell]
+                found.append(
+                    {
+                        "id": cell,
+                        "stem": stem_of(cell),
+                        "photo": stem_of(photo),
+                        "source": source_of[photo],
+                        "row": row,
+                        "col": col,
+                        "digit": digit,
+                        "kind": kind,
+                        "edited": label_sources.get(cell) == "app-edited",
+                        "model": (
+                            {"digit": guess["digit"], "p": guess["p"], "kind": guess["kind"]}
+                            if guess
+                            else None
+                        ),
+                    }
+                )
+        return found
+
+    def cell_check(self, digit: str) -> dict:
+        """One gallery of the open cells of Flow A that read as `digit`, or `unknown` for the
+        cells without a guess. First the cells that the player changed, then those that the
+        model reads differently, then the least sure guess."""
+        if digit not in (*DIGIT_CLASSES, "unknown"):
+            raise ValueError(f"unknown digit {digit!r}")
+        cells = self.open_cells()
+        tab = {c["id"]: c["digit"] or "unknown" for c in cells}
+        counts = Counter(tab.values())
+
+        def order(cell: dict) -> tuple:
+            model = cell["model"]
+            differs = model is not None and model["digit"] != cell["digit"]
+            return (not cell["edited"], not differs, model["p"] if model else 0.0, cell["id"])
+
+        members = sorted((c for c in cells if tab[c["id"]] == digit), key=order)
         return {
-            "folders": folders,
-            "review_open": len(self.review_items()),
-            "check": summary(self.checks),
+            "digit": digit,
+            "cells": members[:CELL_CHECK_SIZE],
+            "left": len(members),
+            "counts": {d: counts[d] for d in (*DIGIT_CLASSES, "unknown")},
         }
 
+    def verify_cells(self, entries: list[dict]) -> int:
+        """Label open cells of Flow A as one action: a digit line per cell, also an unchanged
+        one, and a kind line per changed kind. `discarded` takes a bad cut out. Finish writes
+        `verified` for the others. Checks all entries first."""
+        open_ids = {c["id"] for c in self.open_cells()}
+        kinds, t, action = self.kinds(), self._t(), self._action()
+        lines = []
+        for entry in entries:
+            cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
+            if cell not in open_ids:
+                raise ValueError(f"{stem_of(cell)}: not an open cell of an approved scan")
+            if digit not in ASSIGNABLE:
+                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
+            if digit in NO_KIND_FOLDERS:
+                kind = None
+            elif kind not in KINDS:
+                raise ValueError(f"{stem_of(cell)}: the digit {digit} needs a kind")
+            old = self.folder[cell]
+            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "scans"))
+            if kinds.get(cell) != kind:
+                lines.append(
+                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "scans")
+                )
+        self._apply_digits(lines)
+        self._write(lines)
+        return len(lines)
+
+    # Start page
+
+    def loose_cells(self) -> list[str]:
+        """The cells in unlabeled/ that no scan with an accepted outline holds: Flow B. The
+        others wait in the scan view of Flow A."""
+        self._refresh()
+        accepted = {s.row.photo_id for s in self._scan_states() if s.status == "accepted"}
+        sources = self.sources()
+        return [
+            c
+            for c, f in self.folder.items()
+            if f == "unlabeled" and sources.get(c, ("",))[0] not in accepted
+        ]
+
     def status(self) -> dict:
-        """Counts for the steps bar. It reads no cell image, unlike progress. It walks the cells
-        of cells.csv and the journal once, for the Cells count."""
+        """The counts of the start page. It reads no cell image and runs no model."""
         self._refresh()
         kinds = self.kinds()
         pre = self._prelabels()
-        waiting = [c for c, f in self.folder.items() if f == "unlabeled"]
+        loose = self.loose_cells()
         scans = self._scan_states()
+        waiting = self._unconfirmed(scans)
         return {
-            "digits": sum(c in pre for c in waiting),
-            "not_prelabelled": sum(c not in pre for c in waiting),
-            "kind_not_prelabelled": sum(
-                kinds.get(c) is None and "kp" not in pre.get(c, {})
-                for c, f in self.folder.items()
-                if f in DIGIT_FOLDERS
-            ),
-            "digit_cells": sum(f in DIGIT_FOLDERS for f in self.folder.values()),
-            "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
             "outlines": sum(s.status == "unchecked" for s in scans),
-            "scan_cells": len(self._unconfirmed(scans)),
-            "scans": len(scans),
+            "scans": len(waiting),
+            "scan_cells": sum(len(cells) for cells in waiting.values()),
+            "not_prelabelled": sum(c not in pre for c in loose),
+            "digits": sum(c in pre for c in loose),
+            "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
+            "doubtful": self.open_review_count(),
+            "suspects": self.paths.suspects.exists(),
+            "changes": len(self.lines),
         }
 
     def label_state(self) -> dict:

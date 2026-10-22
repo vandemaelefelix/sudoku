@@ -28,9 +28,9 @@ status: DRAFT
 | Temperature | A number that divides the digit logits before the softmax. Fitted on the validation set so that the confidence matches the accuracy |
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |
 | Op table | `tflite_2_17_ops.json`: the highest version of each TFLite operator that the 2.17 runtime supports. Export checks the model against it (ADR-005) |
-| Contact sheet | An image of numbered cells with their labels. Replaced by the Review screen of the labelling page |
+| Contact sheet | An image of numbered cells with their labels. Replaced by the Doubtful labels step of the labelling app |
 | Work folder | `ml/dataset/work/`. It holds the journal and the derived files of the labelling tool. Outside git. A person may delete the derived files at any time. The journal holds the unfinished work (ADR-018) |
-| Finish | The button of the labelling page that folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
+| Finish | The last step of both flows of the labelling app. It folds the journal into `cells.csv`, runs the data check, writes `STATUS.md` and deletes the journal and the derived files. After Finish, Undo cannot reverse the finished changes (ADR-018) |
 | Data check | `just check-data`. It tests that ids and files are unique and that the images agree with `cells.csv` and `sudoku-photos.csv`. It prints a report (ADR-018) |
 | Technique solver | The solver in `shared/core/src/technique/` that finds the next step like a person. It knows the tier 1 techniques and the tier 2 techniques: quads, fish, single-digit patterns and wings. It also knows colouring, the unique rectangle and chains. The grading uses it. The hint plan uses its tier 1 and tier 2 techniques (ADR-011, ADR-032) |
 | Frame processor | A VisionCamera function that runs for every camera frame on a separate thread, off the JS thread |
@@ -91,10 +91,14 @@ status: DRAFT
 | Folder entry | The `index.ts` of a screen, component or hook folder. It re-exports the public items of that folder and nothing else |
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
 | Journal | `ml/dataset/work/journal.jsonl`: one line per change of the unfinished work, append-only: kinds, digits and the sources of cut cells. Undo and rollback work on it. Finish folds it into `cells.csv` and deletes it (ADR-018). It replaces the kind log of ADR-009 |
-| Labelling page | The local page of `just label-cells`, on 127.0.0.1 only. Screens: Photos, Digits, Groups, Outlines, Cells, Review, Check and Progress, and the scan view |
+| Labelling app | The local app of `just label-cells` in `tools/label-app/`, served by the label server on 127.0.0.1 only. A start page and two flows: Flow A and Flow B (ADR-034). It replaces the old labelling page |
+| Flow A | The flow of the labelling app from sudoku photos: Fetch new scans, Outlines, Cells per digit, Finish. Uploaded scans and imported photos share it |
+| Flow B | The flow of the labelling app from loose cells: Pre-label, Digits, Kind, Doubtful labels, Finish |
+| Loose cell | A cell in `unlabeled/` that no scan with an accepted outline holds. Flow B labels it |
+| Start page | The first page of the labelling app: the steps of both flows with their counts. The next step is highlighted |
 | Review item | A cell whose label one of the checks doubts: near-duplicates disagree, the model disagrees, or the blind check disagrees |
 | Check agreement | The share of blind check answers that match the current kind. It estimates the label quality |
-| Sureness | How much closer a cell is to its own group centre than to the next one. The Groups screen shows the least sure cells first |
+| Sureness | How much closer a cell is to its own group centre than to the next one. The Kind step shows the least sure cells first |
 | Unsure | The kind label for a cell that the developer cannot decide. Training ignores it |
 | Theme | One typed object with every token the app needs. The app ships six: three colourways in two appearances (ADR-015, ADR-025, ADR-026) |
 | Primitive token | A raw value, such as a hex colour. Only the folder of its own theme reads it (ADR-015) |
@@ -221,10 +225,10 @@ status: DRAFT
 | Cell | One square of a sudoku grid, cut from a sudoku photo or from a scan. A real cell is a row of `ml/dataset/cells.csv` and an image in `cells/<digit>/` (ADR-018) |
 | Status (sudoku photo) | The decision on a sudoku photo: `pending`, `accepted`, `rejected`, `too-few-cells`, `legacy` or `unchecked`. A `legacy` sudoku photo was cut before photo checks existed (ADR-018). An `unchecked` one is an uploaded scan whose outline no person has checked (ADR-030) |
 | Image store | The folder with `cells/` and `sudoku-photos/`: `ml/dataset/images/`, or the folder that `SUDOKU_IMAGES` names. Outside git (ADR-018) |
-| Photo check | The Photos screen of the labelling page: a person accepts, corrects or rejects the grid outline of an imported sudoku photo. See ADR-018 |
+| Photo check | The outline check of an imported sudoku photo in the Outlines step: a person approves, corrects or rejects its grid outline. See ADR-018 and ADR-034 |
 | Usable cell | A cell whose 4 corners lie inside the sudoku photo after the flatten. Only usable cells are cut |
 | Pre-label | The model's proposed digit and kind for an unlabelled cell, with how sure it is of each. A proposal, not a label |
-| Digit pass | The Digits screen: a person confirms a screen of pre-labelled cells per digit and corrects the exceptions |
+| Digit pass | The Digits step of Flow B: a person confirms a gallery of pre-labelled cells per digit and corrects the exceptions |
 | Discarded cell | A cell that a person rejected in the digit pass. It stays in `cells/discarded/`. Training ignores it |
 | Cell source | The sudoku photo, row and column (0-8) that a cut cell comes from: the columns `photo_id`, `row` and `col` of `cells.csv` (ADR-018) |
 | App variant | One of two builds of the app with its own bundle ID: the development variant and the production variant. `APP_VARIANT` selects it (ADR-022) |
@@ -294,12 +298,12 @@ status: DRAFT
 | Contributor ID | A random ID that the app makes for the device. It names the owner of an uploaded scan. It has no link to a person, unless the player signs in (ADR-030) |
 | Scan record | The data of one finished scan: the cropped photo, the corners, the model answers, the final grid and the `edited` flags. The app uploads it when the setting "Help improve the app" is on (ADR-030) |
 | Label provenance | The origin of a cell label in `cells.csv`: `app-edited`, `app-unedited` or `verified`. Training uses it to filter cells (ADR-030) |
-| Outlines screen | The screen of the labelling page that checks the outline of each uploaded scan: a gallery of the unchecked scans, the lowest outline fit first, and a large view to drag the corners or reject the scan (ADR-030) |
-| Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Outlines screen shows the lowest fit first |
+| Outlines step | The step of Flow A that checks the outline of each uploaded scan and imported photo: a gallery of the unchecked outlines, the lowest outline fit first, and a large view to drag the corners or reject the photo (ADR-030, ADR-034) |
+| Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Outlines step shows the lowest fit first |
 | Unchecked scan | An uploaded scan whose outline no person has checked: the status `unchecked` in `sudoku-photos.csv`. Its cells never train the model |
-| Rejected scan | An uploaded scan that the developer rejected on the Outlines screen: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
-| Scan view | The view of the labelling page that shows one uploaded scan: the photo with its outline and the 81 cells with their labels. A cell with the same pixels as a cell of another scan shows as shared |
-| Cells screen | The screen of the labelling page that lists each uploaded scan with an approved outline whose own cells no person has confirmed, oldest first. A scan opens in the scan view. Enter there confirms its cells, and the next scan opens |
+| Rejected scan | An uploaded scan that the developer rejected in the Outlines step: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
+| Cell detail | The side panel of the Cells per digit step: the whole sudoku of the cell under the pointer with the cell marked, the cell large, its label, the model's guess and the fix on the page |
+| Cells per digit | The step of Flow A that shows the open cells of the approved scans in one gallery per digit, the changed cells first. Enter confirms a page. Finish then writes `verified` |
 | Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
 | Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
 | Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |

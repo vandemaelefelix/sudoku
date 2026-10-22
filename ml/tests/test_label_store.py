@@ -199,27 +199,6 @@ def test_review_merges_the_reasons_of_one_cell(tmp_path: Path):
     ]
 
 
-def test_check_start_says_why_it_cannot_start(tmp_path: Path):
-    paths, _ = build(tmp_path, {"7": 1}, {"7": [[0]]})
-    assert "7 days" in LabelStore(paths, Clock()).check_start()["error"]
-
-
-def test_check_answers_are_logged_and_summarised(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
-    clock = Clock()
-    store = LabelStore(paths, clock)
-    store.save(kinds_of(ids["7"], "printed"), "groups")
-    clock.moment += timedelta(days=8)
-    sample = store.check_start(n=2)["cells"]
-    answers = [
-        {"id": sample[0]["id"], "answer": "printed"},
-        {"id": sample[1]["id"], "answer": "handwritten"},
-    ]
-    result = store.check_answer(answers)
-    assert result["n"] == 2 and result["agreement"] == 0.5
-    assert len(paths.kind_checks.read_text().splitlines()) == 2
-
-
 def test_rollback_moves_files_back_and_restores_kinds(tmp_path: Path):
     paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
     cell = ids["7"][0]
@@ -232,27 +211,6 @@ def test_rollback_moves_files_back_and_restores_kinds(tmp_path: Path):
     assert second.rollback(first.session) == 2
     assert (paths.cells / "7" / f"{cell[:16]}.png").exists()
     assert second.screen("7", 0, 0)["cells"][0]["kind"] is None
-
-
-def test_progress_counts_per_folder(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 3}, {"7": [[0, 1, 2]]})
-    store = LabelStore(paths, Clock())
-    store.save(kinds_of(ids["7"][:1], "printed") + kinds_of(ids["7"][1:2], "unsure"), "groups")
-    seven = store.progress()["folders"]["7"]
-    assert (seven["cells"], seven["printed"], seven["unsure"], seven["without"]) == (3, 1, 1, 1)
-    assert seven["groups"] == [{"group": 0, "size": 3, "without": 1}]
-
-
-def test_a_second_check_answer_for_a_cell_is_refused(tmp_path: Path):
-    paths, ids = build(tmp_path, {"7": 2}, {"7": [[0, 1]]})
-    clock = Clock()
-    store = LabelStore(paths, clock)
-    store.save(kinds_of(ids["7"], "printed"), "groups")
-    clock.moment += timedelta(days=8)
-    store.check_answer([{"id": ids["7"][0], "answer": "printed"}])
-    with pytest.raises(ValueError, match="already checked"):
-        store.check_answer([{"id": ids["7"][0], "answer": "printed"}])
-    assert len(paths.kind_checks.read_text().splitlines()) == 1
 
 
 def test_a_rollback_from_another_process_reaches_the_running_store(tmp_path: Path):
