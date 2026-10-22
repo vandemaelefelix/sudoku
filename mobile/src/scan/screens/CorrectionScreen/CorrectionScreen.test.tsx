@@ -41,8 +41,9 @@ const style = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).
 const clock = (value: number) => ({ value }) as SharedValue<number>
 type Session = CorrectionProps['session']
 /** The finished scan: the player can edit, and every layer shows. */
-const review = (result: CaptureResult | null): Session => ({
+const review = (result: CaptureResult | null, origin: Session['origin'] = 'camera'): Session => ({
   phase: 'review',
+  origin,
   result,
   crossFade: false,
   clock: clock(0),
@@ -60,6 +61,7 @@ const capturing = (
   } = {},
 ): Session => ({
   phase: 'capturing',
+  origin: 'camera',
   result,
   crossFade: over.reduceMotion ?? false,
   clock: over.clock ?? clock(0),
@@ -203,6 +205,40 @@ describe('CorrectionScreen in review', () => {
     fireEvent.press(screen.getByTestId('retake'))
     fireEvent.press(screen.getByTestId('retake-failure'))
     expect(onRetake).toHaveBeenCalledTimes(2)
+  })
+
+  it('offers another image when an import has no grid', () => {
+    const onRetake = jest.fn()
+    const onChooseImage = jest.fn()
+    render(
+      <CorrectionScreen
+        session={review({ ok: false, reason: 'no grid in the photo' }, 'library')}
+        layout={layout}
+        onRetake={onRetake}
+        onChooseImage={onChooseImage}
+      />,
+    )
+    expect(screen.getByTestId('correction-failure')).toHaveTextContent(/No sudoku found/)
+    expect(screen.getByText('Choose an image that shows the whole grid.')).toBeTruthy()
+    expect(screen.queryByTestId('retake-failure')).toBeNull()
+    fireEvent.press(screen.getByTestId('choose-another'))
+    expect(onChooseImage).toHaveBeenCalledTimes(1)
+    expect(onRetake).not.toHaveBeenCalled()
+  })
+
+  it('shows the reason and offers another image when an import fails for another reason', () => {
+    render(
+      <CorrectionScreen
+        session={review({ ok: false, reason: 'the file is not an image' }, 'library')}
+        layout={layout}
+        onRetake={jest.fn()}
+        onChooseImage={jest.fn()}
+      />,
+    )
+    expect(screen.getByTestId('correction-failure')).toHaveTextContent(/The scan failed/)
+    expect(screen.getByText('the file is not an image')).toBeTruthy()
+    expect(screen.getByTestId('choose-another')).toBeTruthy()
+    expect(screen.queryByTestId('retake-failure')).toBeNull()
   })
 
   it('shows a spinner while it waits for the result', () => {

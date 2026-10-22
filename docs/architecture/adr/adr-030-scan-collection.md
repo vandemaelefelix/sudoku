@@ -79,6 +79,29 @@ must also accept a signed-out player.
   The upload record and the development scan log both read it.
 - `just boundaries` checks the rule: `adr-030-scanshare-does-not-use-scan`. The upload record format does not change.
 
+## Amendment: imported images never upload (2026-10-22)
+
+The player can scan an image from the photo library (issue #216). This ADR spoke only of camera photos. An imported image
+can be a screenshot of a website or of another app. It can hold content that the player does not own, and other personal
+data in the same picture. The notice and the privacy policy speak of the scans of the camera.
+
+| Option | For | Against |
+| --- | --- | --- |
+| **An imported image never uploads** | The strictest rule. The notice stays true. No content of a third party reaches the bucket | Fewer scans arrive. Digital fonts, which the model reads worse, stay out of the training data |
+| Imported images upload like camera scans | More scans, also of digital fonts | A screenshot can hold personal data around the grid. The crop keeps a margin. The notice and the policy need new text |
+| A second switch for imported images | The player chooses | One more setting. A screenshot still holds what the player did not mean to send |
+
+Decision:
+
+1. **An imported image never leaves the device.** This holds also when "Help improve the app" is on. The scan UI marks the
+   capture result of an import with `imported`. `ScanFlow` never adds an imported scan to the upload queue.
+2. **A release build keeps no file of an imported image.** The app deletes the cache copy of the picker when the scan is
+   done. Only a development build keeps an upright copy, for the dev menu. It deletes it when the player leaves.
+3. **The privacy policy says so.** An image from the photo library is in the list of data that the app does not collect.
+
+Reassessment trigger: the model needs digital fonts for training. Then a new amendment can let the player send one imported
+scan with an explicit tap.
+
 ## Consequences
 
 - SUD-02 is weaker. The privacy policy and the notice carry the promise instead.
@@ -98,3 +121,4 @@ must also accept a signed-out player.
 - The app goes to the App Store. Then check the privacy labels and the age rating again.
 - Deletion requests grow past what an email can handle. Then add a delete button in Settings.
 - The upload cost threatens SUD-11.
+- The model needs scans of digital fonts. Then reassess the rule for imported images (amendment 2026-10-22).

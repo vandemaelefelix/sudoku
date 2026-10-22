@@ -2,7 +2,7 @@ import type { TfliteModel } from './classifier'
 import { findGrid, findGrids } from './findGrid'
 import { downscaleSize, searchRect, toPhotoPixels } from './photoGeometry'
 import { FLAT_SIZE } from './pixels'
-import { type ImageSource, recognise, SEARCH_GROW } from './recognise'
+import { INNER_INSET, type ImageSource, recognise, recogniseStill, SEARCH_GROW, STILL_MAX_SIDE } from './recognise'
 import { warpGrid } from './warp'
 import type { Rect, Quad } from '@/utils/geometry.utils'
 
@@ -204,4 +204,73 @@ it('gives the time of each step', () => {
   const result = recognise(photo(), LOCKED, model(), OUTPUTS)
   if (!result.ok) throw new Error(result.reason)
   expect(Object.keys(result.timings).toSorted()).toEqual(['classifyMs', 'detectMs', 'flattenMs', 'imageMs'])
+})
+
+describe('a still image', () => {
+  it('searches the whole image with findGrid, as after a shutter press without a grid', () => {
+    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    const result = recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
+    if (!result.ok) throw new Error(result.reason)
+    expect(result).toMatchObject({ corners: 'found', cornerOffset: null })
+    expectQuad(result.quad, LOCKED)
+    expect(at(find.mock.calls, 0).slice(1)).toEqual([SMALL.width, SMALL.height])
+    expect(findAll).not.toHaveBeenCalled()
+    expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: PHOTO.width, height: PHOTO.height })
+  })
+
+  it('searches inside the found quad, so a photo of a whole page finds the grid on the page', () => {
+    const page: Quad = [
+      { x: 0.1, y: 0.1 },
+      { x: 0.9, y: 0.1 },
+      { x: 0.9, y: 0.9 },
+      { x: 0.1, y: 0.9 },
+    ]
+    const inside = searchRect(page, SMALL.width, SMALL.height, -INNER_INSET)
+    find
+      .mockReturnValueOnce({ quad: page, score: 0.64 })
+      .mockReturnValueOnce({ quad: inCrop(LOCKED, inside), score: 0.3 })
+      .mockReturnValue(null)
+    const result = recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
+    if (!result.ok) throw new Error(result.reason)
+    expectQuad(result.quad, LOCKED)
+    expect(at(find.mock.calls, 1).slice(1)).toEqual([inside.width, inside.height])
+    // The search stops when the inside of the grid has no quad.
+    expect(find).toHaveBeenCalledTimes(3)
+  })
+
+  it('stops after the deepest search it allows', () => {
+    find.mockReturnValue({ quad: LOCKED, score: 0.5 })
+    recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)
+    expect(find).toHaveBeenCalledTimes(4)
+  })
+
+  it('reads a large image at most STILL_MAX_SIDE on its long side, upright', () => {
+    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    recogniseStill(image(8064, 6048, []), model(), OUTPUTS)
+    expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: STILL_MAX_SIDE, height: 3024 })
+  })
+
+  it('reads a small image at its own size', () => {
+    find.mockReturnValueOnce({ quad: LOCKED, score: 0.5 }).mockReturnValue(null)
+    recogniseStill(image(1206, 2622, []), model(), OUTPUTS)
+    expect(at(warp.mock.calls, 0)[0]).toMatchObject({ width: 1206, height: 2622 })
+  })
+
+  it('fails when the image has no grid', () => {
+    find.mockReturnValue(null)
+    expect(recogniseStill(image(PHOTO.width, PHOTO.height, []), model(), OUTPUTS)).toEqual({
+      ok: false,
+      reason: 'no grid in the photo',
+    })
+  })
+
+  it('disposes the images it makes, but not the image of the caller', () => {
+    find.mockReturnValue({ quad: LOCKED, score: 0.5 })
+    const disposed: string[] = []
+    const still = image(PHOTO.width, PHOTO.height, disposed)
+    const own = jest.spyOn(still, 'dispose')
+    recogniseStill(still, model(), OUTPUTS)
+    expect(own).not.toHaveBeenCalled()
+    expect(disposed.toSorted()).toEqual([`${PHOTO.width}x${PHOTO.height}`, `${SMALL.width}x${SMALL.height}`].toSorted())
+  })
 })

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnistyles } from 'react-native-unistyles'
 import { useScannedStart } from '@/scan/hooks/useScannedStart'
 import { CameraScreen } from '@/scan/screens/CameraScreen'
-import type { CaptureResult } from '@/scan/utils/captureResult.utils'
+import type { CaptureResult, ScanOrigin } from '@/scan/utils/captureResult.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import { saveScanCorrection } from '@/scan/utils/correctionStore'
 import { useScanShare } from '@/scanShare/useScanShare'
@@ -30,22 +30,31 @@ export function ScanFlow() {
   const home = useCallback(() => router.dismissTo('/'), [router])
   // A new key mounts a new CameraScreen: a new capture session, the effect scene, its warm-up and the flattened grid start new.
   const [scene, setScene] = useState(0)
+  // True when the new camera screen opens the photo picker at once: the player chose another image after an import without a grid.
+  const [pickAtStart, setPickAtStart] = useState(false)
 
   // A retake drops the scan, so nothing needs its photo any more.
   const retake = useCallback(
-    (dropped: CaptureResult | null) => {
+    (dropped: CaptureResult | null, next: ScanOrigin = 'camera') => {
       if (dropped?.ok && dropped.photoPath !== undefined) discardPhoto(dropped.photoPath)
+      setPickAtStart(next === 'library')
       setScene((current) => current + 1)
     },
     [discardPhoto],
   )
 
   // The player leaves the correction screen by any route except Retake. The scan is final then, so it joins the upload queue.
+  // An imported image never uploads (ADR-030, amendment 2026-10-22). Only a development build keeps its photo, so it goes.
   const exit = useCallback(
     (result: CaptureResult | null, finalGrid: FinalGrid) => {
-      if (result?.ok) void enqueueScan(result.photoPath, result, finalGrid)
+      if (!result?.ok) return
+      if (result.imported) {
+        if (result.photoPath !== undefined) discardPhoto(result.photoPath)
+        return
+      }
+      void enqueueScan(result.photoPath, result, finalGrid)
     },
-    [enqueueScan],
+    [enqueueScan, discardPhoto],
   )
 
   // A retake crossfades from the review to the new camera. The first scene comes in with the route.
@@ -64,6 +73,7 @@ export function ScanFlow() {
         onHome={home}
         onClose={home}
         onExit={exit}
+        pickAtStart={pickAtStart}
         {...(__DEV__ ? { onSave: saveScanCorrection } : {})}
       />
     </Animated.View>

@@ -10,6 +10,8 @@ export const ICON_PATHS = {
   close: 'M6 6l12 12M18 6 6 18',
   next: 'M9 6l6 6-6 6',
   scan: 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3',
+  photo:
+    'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM4 16l5-5 5 5M13 14l2-2 5 5M15.5 8.5h.01',
 } as const
 
 /** The canvas draws 24 pt icons with a 1.8 line and 16 pt icons with a 2 line, in a 24-unit box. */
