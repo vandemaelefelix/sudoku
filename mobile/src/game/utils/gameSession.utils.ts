@@ -16,7 +16,7 @@ export type GameActions = {
   erase(): void
   undo(): void
   hint(): void
-  /** The buttons of the hint card and the hint strip. */
+  /** The buttons of the hint card. */
   hintCard(action: HintCardAction): void
   toggleNotesMode(): void
   pause(): void

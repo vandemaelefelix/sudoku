@@ -21,7 +21,7 @@ function planOf(start: ReturnType<typeof pointingStart>): HintPlan {
 }
 
 const pointing = planOf(pointingStart())
-const at = (step: number, rung: HintRung, plan: HintPlan = pointing): OpenHint => ({ plan, step, rung, view: 'card' })
+const at = (step: number, rung: HintRung, plan: HintPlan = pointing): OpenHint => ({ plan, step, rung })
 
 const renderCard = (hint: OpenHint, onLearn?: (technique: TechniqueId) => void) => {
   const hintCard = jest.fn()
@@ -34,22 +34,23 @@ const renderCard = (hint: OpenHint, onLearn?: (technique: TechniqueId) => void) 
   return hintCard
 }
 
+/** The labels of the buttons and the link in reading order: the text buttons first, the main button last. */
 const buttonLabels = () =>
   within(screen.getByTestId('hint-buttons'))
-    .getAllByRole('button')
+    .queryAllByRole(/^(button|link)$/)
     .map((button) => within(button).getByText(/./).props.children as string)
 const button = (name: string) => screen.getByRole('button', { name })
 
 afterEach(() => jest.restoreAllMocks())
 
-it('shows the look rung: the text, the rung dots, the step and three buttons', () => {
+it('shows the look rung: the text, the rung dots, the step and two buttons', () => {
   const hintCard = renderCard(at(0, 1))
   expect(screen.getByText('Hint')).toBeTruthy()
   expect(screen.getByText(textOf(pointing, 0, 1))).toBeTruthy()
   expect(screen.getByText('Step 1 of 2')).toBeTruthy()
   expect(screen.getAllByTestId(/^hint-rung-/)).toHaveLength(4)
   expect(screen.getAllByTestId(/^hint-rung-\d-on$/)).toHaveLength(1)
-  expect(buttonLabels()).toEqual(['More help', 'Show answer', 'Try it'])
+  expect(buttonLabels()).toEqual(['Show answer', 'More help'])
   fireEvent.press(button('More help'))
   expect(hintCard).toHaveBeenCalledWith('hintMore')
 })
@@ -67,12 +68,23 @@ it('leads to the next step at the answer rung of an elimination step', () => {
   expect(hintCard).toHaveBeenCalledWith('hintNext')
 })
 
-it('offers Fill it and I will do it at the answer rung of the last step', () => {
+it('offers only Fill it at the answer rung of the last step', () => {
   const hintCard = renderCard(at(1, 4))
   expect(screen.getByText('Step 2 of 2')).toBeTruthy()
-  expect(buttonLabels()).toEqual(['Fill it', "I'll do it"])
-  fireEvent.press(button("I'll do it"))
-  expect(hintCard).toHaveBeenCalledWith('hintTry')
+  expect(buttonLabels()).toEqual(['Fill it'])
+  fireEvent.press(button('Fill it'))
+  expect(hintCard).toHaveBeenCalledWith('hintFill')
+})
+
+it('fills one main button per card, and keeps the other actions as text', () => {
+  renderCard(at(0, 2), jest.fn())
+  expect(buttonLabels()).toEqual(['Learn more', 'Show answer', 'More help'])
+  const main = StyleSheet.flatten(button('More help').props.style)
+  expect(main.backgroundColor).toBe(cobalt.components.button.primary)
+  for (const name of ['Show answer', 'Learn more about Pointing']) {
+    const action = screen.getByRole(/^(button|link)$/, { name })
+    expect(StyleSheet.flatten(action.props.style).backgroundColor).toBeUndefined()
+  }
 })
 
 it('shows one card for a wrong entry, with Erase it and no rungs', () => {
@@ -89,7 +101,7 @@ it('shows one card for the fallback, with Fill it', () => {
   renderCard(at(0, 1, plan))
   expect(screen.getByText(textOf(plan, 0, 1))).toBeTruthy()
   expect(screen.queryAllByTestId(/^hint-rung-/)).toHaveLength(0)
-  expect(buttonLabels()).toEqual(['Fill it', "I'll do it"])
+  expect(buttonLabels()).toEqual(['Fill it'])
 })
 
 it('closes on every card', () => {
@@ -98,26 +110,42 @@ it('closes on every card', () => {
   expect(hintCard).toHaveBeenCalledWith('hintClose')
 })
 
+it('moves VoiceOver focus to the title when it opens', () => {
+  const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockClear()
+  renderCard(at(0, 1))
+  const focused = focus.mock.calls
+    .filter(([, event]) => event === 'focus')
+    .map(([target]) => (target as unknown as { props: { children?: unknown } }).props.children)
+  expect(focused).toEqual(['Hint'])
+})
+
 it('reads the new text to VoiceOver', () => {
   const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
   renderCard(at(0, 1))
   expect(announce).toHaveBeenCalledWith(`Step 1 of 2. ${textOf(pointing, 0, 1)}`)
 })
 
-it('takes the height of the keypad, with buttons of 44 pt or more', () => {
-  renderCard(at(0, 1))
+it('lies over the tool row and the keypad, sizes to its text up to their height, with buttons of 44 pt or more', () => {
+  renderCard(at(0, 2), jest.fn())
   const card = StyleSheet.flatten(screen.getByTestId('hint-card').props.style)
-  const { key } = cobalt.size
-  const keypad = cobalt.space.md + 2 * key.height + cobalt.space.sm
-  expect(card.marginTop + card.height).toBe(keypad)
-  for (const label of buttonLabels()) {
-    expect(StyleSheet.flatten(button(label).props.style).minHeight).toBeGreaterThanOrEqual(44)
+  expect(card).toMatchObject({ position: 'absolute', bottom: 0, maxHeight: '100%' })
+  expect(card.height).toBeUndefined()
+  for (const action of within(screen.getByTestId('hint-buttons')).getAllByRole(/^(button|link)$/)) {
+    expect(StyleSheet.flatten(action.props.style).minHeight).toBeGreaterThanOrEqual(44)
   }
+})
+
+it('keeps every button label on one line', () => {
+  renderCard(at(0, 2), jest.fn())
+  expect(screen.getByText('Show answer').props.numberOfLines).toBe(1)
+  expect(screen.getByText('Learn more').props.numberOfLines).toBe(1)
+  expect(StyleSheet.flatten(screen.getByTestId('hint-buttons').props.style).flexWrap).toBe('wrap')
 })
 
 it('caps the Dynamic Type of the buttons and the top row, so the rung text keeps its room', () => {
   renderCard(at(0, 1))
   expect(screen.getByText('More help').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
+  expect(screen.getByText('Show answer').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
   expect(screen.getByText('Step 1 of 2').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
   expect(screen.getByText(textOf(pointing, 0, 1)).props.maxFontSizeMultiplier).toBeUndefined()
 })
@@ -146,8 +174,7 @@ it('gives each button the test ID hint-<action> for the end-to-end flows', () =>
   const hintCard = renderCard(at(0, 1))
   fireEvent.press(screen.getByTestId('hint-more'))
   fireEvent.press(screen.getByTestId('hint-answer'))
-  fireEvent.press(screen.getByTestId('hint-try'))
-  expect(hintCard.mock.calls).toEqual([['hintMore'], ['hintAnswer'], ['hintTry']])
+  expect(hintCard.mock.calls).toEqual([['hintMore'], ['hintAnswer']])
   screen.unmount()
   const onLast = renderCard(at(1, 4))
   fireEvent.press(screen.getByTestId('hint-fill'))

@@ -144,8 +144,8 @@ status: DRAFT
 | Unique rectangle | A technique for a puzzle with exactly one solution. Four cells lie in two rows, two columns and two boxes. Three of them hold the same two digits only. The fourth cell loses both digits, or the puzzle would have two solutions. The solver runs it only when the caller says that the puzzle has one solution (`unique: true`) |
 | Hint plan | The steps that one hint shows, from the board to a placed digit. It has at most 6 steps |
 | Rung | One level of detail in a step: look, technique, why or answer |
-| Hint card | The card that replaces the keypad while the player reads a hint. It shows one rung |
-| Hint strip | The reminder between the grid and the tools while the player tries the step alone |
+| Hint card | The card that replaces the tools and the keypad while the player reads a hint. It shows one rung |
+| Dock | The bottom of the game screen: the tools and the keypad, or the hint card in their place. Its height never changes, so the grid does not move (ADR-032) |
 | Focus unit | The row, column or box that a hint tells the player to look at |
 | Pattern cell | A cell that forms the pattern of a technique, such as a cell of a pair |
 | Support digit | A digit that the pattern uses to prove the step |

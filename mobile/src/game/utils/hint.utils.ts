@@ -21,7 +21,7 @@ const NOTHING: HintHighlight = { units: [], pattern: [], support: [], eliminatio
  * The candidates that earlier steps struck stay struck. null: nothing to mark.
  */
 export function hintHighlight(hint: OpenHint | null): HintHighlight | null {
-  if (hint === null || hint.view === 'nice') return null
+  if (hint === null) return null
   const { plan, step: index, rung } = hint
   switch (plan.kind) {
     case 'mistake':
@@ -46,8 +46,8 @@ export function hintHighlight(hint: OpenHint | null): HintHighlight | null {
 export type HintButton = { action: HintCardAction; label: string }
 
 /**
- * What the hint card and the strip show. rung: the filled rung dots, null for the one card of a mistake or a fallback.
- * stepLabel: "Step 1 of 2", null for a plan of one step. The first button is the main one.
+ * What the hint card shows. rung: the filled rung dots, null for the one card of a mistake or a fallback.
+ * stepLabel: "Step 1 of 2", null for a plan of one step. The first button is the main one, the others are text buttons.
  * technique: the technique of "Learn more", from rung 2 on. Null before the card names it.
  */
 export type HintCardView = {
@@ -61,15 +61,11 @@ export type HintCardView = {
 
 type ButtonId = { action: HintCardAction; label: MessageId }
 
-const FILL: readonly ButtonId[] = [
-  { action: 'hintFill', label: 'hint.button.fill' },
-  { action: 'hintTry', label: 'hint.button.doIt' },
-]
+const FILL: readonly ButtonId[] = [{ action: 'hintFill', label: 'hint.button.fill' }]
 
 const HELP: readonly ButtonId[] = [
   { action: 'hintMore', label: 'hint.button.more' },
   { action: 'hintAnswer', label: 'hint.button.answer' },
-  { action: 'hintTry', label: 'hint.button.try' },
 ]
 
 export function hintCardView(intl: Formatter, hint: OpenHint): HintCardView {
@@ -77,8 +73,7 @@ export function hintCardView(intl: Formatter, hint: OpenHint): HintCardView {
   const label = (buttons: readonly ButtonId[]): HintButton[] =>
     buttons.map((button) => ({ action: button.action, label: intl.formatMessage({ id: button.label }) }))
   const hintTitle = intl.formatMessage({ id: 'hint.title' })
-  const text =
-    hint.view === 'nice' ? intl.formatMessage({ id: 'hint.nice' }) : hintText(intl, hintMessage(plan, step, rung))
+  const text = hintText(intl, hintMessage(plan, step, rung))
   switch (plan.kind) {
     case 'mistake':
       return {
