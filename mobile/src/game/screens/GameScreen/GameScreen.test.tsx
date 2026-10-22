@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import * as Haptics from 'expo-haptics'
-import { StyleSheet } from 'react-native'
+import { AccessibilityInfo, StyleSheet } from 'react-native'
 import { LOST_HOLD_MS } from '@/game/components/GameOverSheet/GameOverSheet.constants'
 import { sampleStart } from '@/game/utils/sample.utils'
 import { GameScreen } from './GameScreen'
@@ -153,6 +153,18 @@ describe('the hint (ADR-032)', () => {
     expect(screen.getByLabelText('Enter 9')).toBeTruthy()
     expect(screen.getByLabelText('Undo')).toBeTruthy()
     expect(screen.queryAllByTestId(/^cell-\d+-hint-edges$/)).toHaveLength(0)
+  })
+
+  it('gives VoiceOver focus back to the Hint tool when the card closes', () => {
+    renderScreen()
+    fireEvent.press(screen.getByLabelText('Hint'))
+    const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockClear()
+    fireEvent.press(screen.getByLabelText('Close the hint'))
+    const focused = focus.mock.calls
+      .filter(([, event]) => event === 'focus')
+      .map(([target]) => (target as unknown as { props: { accessibilityLabel?: string } }).props.accessibilityLabel)
+    expect(focused).toEqual(['Hint'])
+    focus.mockRestore()
   })
 
   it('keeps the grid in place when a hint opens, changes rung and closes', () => {

@@ -52,7 +52,7 @@ the device (SUD-02). The full behaviour is in the concept [hints](../00-concepts
    At the same rank, the step nearest the selected cell wins. The choice is deterministic.
 6. **The hint card replaces the keypad,** with the same height. The grid does not move. The
    card is not modal. "I'll do it" brings back the keypad. The hint strip then shows between the
-   grid and the tools.
+   grid and the tools. The amendment of 2026-10-22 below replaces this decision.
 7. **A hint counts once.** It counts when it shows the answer, when the player taps "Fill it",
    or when the fallback shows. An answer counts once in a game session. Rungs 1 to 3 are free.
    `hintsUsed` keeps its type. The sync contract does not change.
