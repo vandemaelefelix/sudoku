@@ -97,3 +97,15 @@ amendment.
 4. **The camera text** says that the scan runs on the phone and that the app can upload the photo of a finished scan.
    The player can turn this off in Settings.
 5. **Scan photos stay out of git** (SUD-08). Scan cells never become fixtures (SUD-10).
+
+## Amendment 2026-10-22: the camera text only asks for the camera
+
+Point 4 of the amendment of 2026-10-16 put the upload in the camera text. This amendment replaces that point, and the
+camera text of decision 5.
+
+1. **The camera text only asks for the camera:** "Sudoku uses the camera to scan a paper sudoku." The Dutch text says
+   the same.
+2. **The camera text makes no claim about uploads.** "Help improve the app" has its own first-upload notice
+   ([ADR-030](adr-030-scan-collection.md)). The old text "The photos never leave your iPhone" was not true with that
+   setting on.
+3. **The privacy labels do not change.** The amendment of 2026-10-16 still holds for them.
