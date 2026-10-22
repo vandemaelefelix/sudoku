@@ -709,29 +709,43 @@ class LabelStore:
         lines = [self._outline_line(state, "accepted", text, t, action)]
         new_cells, kept = [], 0
         target = self.paths.cells / "discarded"
+        sources = self.sources()
         for position, (image, cell) in enumerate(new_cut):
-            if cell in self.folder:
+            where = self.folder.get(cell)
+            # An undone cut of this scan left this cell in discarded/: it comes back like a new one.
+            back = where == "discarded" and sources.get(cell, ("",))[0] == state.row.photo_id
+            if where is not None and not back:
                 kept += 1
                 continue
             label = self.folder.get(old_cut[position])
             if label not in DIGIT_CLASSES:
                 continue
-            # A cut outside cells/, then a rename: a stop never leaves a misnamed cell (ADR-009).
-            self.paths.tmp.mkdir(parents=True, exist_ok=True)
-            tmp = self.paths.tmp / f"{stem_of(cell)}.png"
-            Image.fromarray(image).save(tmp, "PNG")
-            target.mkdir(parents=True, exist_ok=True)
-            tmp.replace(target / f"{stem_of(cell)}.png")
-            self.register([cell], "discarded")
-            source = format_source((state.row.photo_id, *divmod(position, GRID_CELLS)))
-            lines.append(Line(t, self.session, action, cell, "source", None, source, "outlines"))
-            provenance = label_sources.get(old_cut[position], "")
-            if provenance:
+            if where is None:
+                # Cut outside cells/, then rename: a stop never leaves a misnamed cell (ADR-009).
+                self.paths.tmp.mkdir(parents=True, exist_ok=True)
+                tmp = self.paths.tmp / f"{stem_of(cell)}.png"
+                Image.fromarray(image).save(tmp, "PNG")
+                target.mkdir(parents=True, exist_ok=True)
+                tmp.replace(target / f"{stem_of(cell)}.png")
+                self.register([cell], "discarded")
+                source = format_source((state.row.photo_id, *divmod(position, GRID_CELLS)))
                 lines.append(
-                    Line(
-                        t, self.session, action, cell, "label_source", None, provenance, "outlines"
-                    )
+                    Line(t, self.session, action, cell, "source", None, source, "outlines")
                 )
+                provenance = label_sources.get(old_cut[position], "")
+                if provenance:
+                    lines.append(
+                        Line(
+                            t,
+                            self.session,
+                            action,
+                            cell,
+                            "label_source",
+                            None,
+                            provenance,
+                            "outlines",
+                        )
+                    )
             lines.append(
                 Line(t, self.session, action, cell, "digit", "discarded", label, "outlines")
             )

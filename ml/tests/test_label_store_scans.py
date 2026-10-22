@@ -142,6 +142,18 @@ def test_undo_of_a_fix_puts_every_file_back(tmp_path: Path):
     assert statuses(paths) == [("unchecked", True)]
 
 
+def test_a_fix_after_an_undone_fix_brings_the_cells_back(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path, corners=(OFF,))
+    store.fix_outline(photos[0], GOOD_PIXELS)
+    store.undo()
+    result = store.fix_outline(photos[0], GOOD_PIXELS)
+    assert result["cells"] == 81 and result["kept"] == 0
+    cells = store.scan_screen(photos[0])["cells"]
+    assert all(store.folder[c["id"]] != "discarded" for c in cells)
+    assert finish(store)["report"]["problems"] == []
+    assert len(load_cells(paths, include_unedited=True)) == 81
+
+
 def test_reject_moves_the_cells_out_of_training(tmp_path: Path):
     store, paths, photos = pulled(tmp_path, corners=(OFF,))
     store.reject_outline(photos[0])
