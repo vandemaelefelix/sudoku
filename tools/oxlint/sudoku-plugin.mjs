@@ -12,9 +12,46 @@ function isColour(value) {
   return HEX.test(text) || FUNCTION.test(text) || NAMED.has(text.toLowerCase())
 }
 
+// ADR-033, point 10: the text that the player sees or hears comes from a catalogue.
+const LETTER = /\p{L}/u
+const TEXT_PROPS = new Set(['label', 'title', 'accessibilityLabel', 'accessibilityHint', 'placeholder'])
+const TEXT_MESSAGE = 'Player text belongs in the catalogues of src/i18n/messages/ (ADR-033). Use intl.formatMessage.'
+
+function hasLetters(node) {
+  if (node == null) return false
+  if (node.type === 'Literal') return typeof node.value === 'string' && LETTER.test(node.value)
+  if (node.type === 'TemplateLiteral') return node.quasis.some((quasi) => LETTER.test(quasi.value.cooked ?? ''))
+  if (node.type === 'JSXExpressionContainer') return hasLetters(node.expression)
+  return false
+}
+
+function isAlert(callee) {
+  return (
+    callee?.type === 'MemberExpression' &&
+    callee.object?.type === 'Identifier' &&
+    callee.object.name === 'Alert' &&
+    callee.property?.name === 'alert'
+  )
+}
+
 export default {
   meta: { name: 'sudoku' },
   rules: {
+    'no-literal-text': {
+      create(context) {
+        return {
+          JSXText(node) {
+            if (LETTER.test(node.value)) context.report({ node, message: TEXT_MESSAGE })
+          },
+          JSXAttribute(node) {
+            if (TEXT_PROPS.has(node.name?.name) && hasLetters(node.value)) context.report({ node, message: TEXT_MESSAGE })
+          },
+          CallExpression(node) {
+            if (isAlert(node.callee) && node.arguments.some(hasLetters)) context.report({ node, message: TEXT_MESSAGE })
+          },
+        }
+      },
+    },
     'no-colour-literal': {
       create(context) {
         return {

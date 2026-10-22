@@ -1,5 +1,9 @@
+import { createAppIntl } from '@/i18n/utils/intl.utils'
 import { NONE } from '@/stats/constants/stats.constants'
-import { countOf, formatAverage, formatPercent, formatTime, timeWords } from './format.utils'
+import { formatAverage, formatPercent, formatTime, timeWords } from './format.utils'
+
+const en = createAppIntl('en')
+const nl = createAppIntl('nl', 'nl-BE')
 
 describe('formatTime', () => {
   it.each([
@@ -20,34 +24,41 @@ describe('formatTime', () => {
 
 describe('timeWords', () => {
   it('reads a time as words for a screen reader', () => {
-    expect(timeWords(272_000)).toBe('4 minutes 32 seconds')
-    expect(timeWords(61_000)).toBe('1 minute 1 second')
-    expect(timeWords(30_000)).toBe('30 seconds')
-    expect(timeWords(59_999)).toBe('59 seconds')
+    expect(timeWords(en, 272_000)).toBe('4 minutes 32 seconds')
+    expect(timeWords(en, 61_000)).toBe('1 minute 1 second')
+    expect(timeWords(en, 30_000)).toBe('30 seconds')
+    expect(timeWords(en, 59_999)).toBe('59 seconds')
+    expect(timeWords(en, 120_000)).toBe('2 minutes')
+  })
+
+  it('reads a time as Dutch words', () => {
+    expect(timeWords(nl, 272_000)).toBe('4 minuten en 32 seconden')
+    expect(timeWords(nl, 61_000)).toBe('1 minuut en 1 seconde')
+    expect(timeWords(nl, 60_000)).toBe('1 minuut')
   })
 })
 
 describe('formatPercent', () => {
   it('rounds to a whole percent, and writes a dash for none', () => {
-    expect(formatPercent(0.75)).toBe('75%')
-    expect(formatPercent(19 / 25)).toBe('76%')
-    expect(formatPercent(0)).toBe('0%')
-    expect(formatPercent(null)).toBe(NONE)
+    expect(formatPercent(en, 0.75)).toBe('75%')
+    expect(formatPercent(en, 19 / 25)).toBe('76%')
+    expect(formatPercent(en, 0)).toBe('0%')
+    expect(formatPercent(en, null)).toBe(NONE)
+  })
+
+  it('follows the locale', () => {
+    expect(formatPercent(nl, 0.755)).toMatch(/^76\s?%$/)
   })
 })
 
 describe('formatAverage', () => {
   it('writes one decimal, and a dash for none', () => {
-    expect(formatAverage(1.4)).toBe('1.4')
-    expect(formatAverage(0)).toBe('0.0')
-    expect(formatAverage(null)).toBe(NONE)
+    expect(formatAverage(en, 1.4)).toBe('1.4')
+    expect(formatAverage(en, 0)).toBe('0.0')
+    expect(formatAverage(en, null)).toBe(NONE)
   })
-})
 
-describe('countOf', () => {
-  it('writes the noun in the singular for 1 and the plural for the rest', () => {
-    expect(countOf(1, 'day')).toBe('1 day')
-    expect(countOf(0, 'day')).toBe('0 days')
-    expect(countOf(14, 'win')).toBe('14 wins')
+  it('writes a decimal comma in Dutch', () => {
+    expect(formatAverage(nl, 1.4)).toBe('1,4')
   })
 })

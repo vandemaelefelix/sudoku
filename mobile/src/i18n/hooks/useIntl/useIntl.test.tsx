@@ -4,12 +4,15 @@ import { IntlProvider } from 'react-intl'
 import { CATALOGUES } from '@/i18n/messages'
 import { useIntl } from './useIntl'
 
-it('formats in the language of the provider', () => {
-  const wrapper = ({ children }: { children: ReactNode }) => (
+function wrapper({ children }: { children: ReactNode }) {
+  return (
     <IntlProvider locale="nl-BE" messages={CATALOGUES.nl}>
       {children}
     </IntlProvider>
   )
+}
+
+it('formats in the language of the provider', () => {
   const { result } = renderHook(() => useIntl(), { wrapper })
   expect(result.current.formatMessage({ id: 'settings.language.title' })).toBe('Taal')
 })

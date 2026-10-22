@@ -1,13 +1,15 @@
 import { Text, View } from 'react-native'
 import { BAR_AREA, MIN_BAR } from '@/stats/constants/chart.constants'
 import { TIMES_COUNT } from '@/stats/constants/stats.constants'
-import { countOf, formatTime, timeWords } from '@/stats/utils/format.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
+import { formatTime, timeWords } from '@/stats/utils/format.utils'
 import { styles } from './TimesChart.styles'
 
 type TimesChartProps = { times: readonly number[] }
 
 /** A bar for each of the last wins, oldest first. The fastest bar is solid and shows its time. */
 export function TimesChart({ times }: TimesChartProps) {
+  const intl = useIntl()
   if (times.length === 0) return null
   // Times of 0 give no scale: a bar then takes the minimum height.
   const slowest = Math.max(...times, 1)
@@ -19,7 +21,10 @@ export function TimesChart({ times }: TimesChartProps) {
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Times of the last ${countOf(times.length, 'win')}, newest on the right. The fastest is ${timeWords(fastest)}.`}
+      accessibilityLabel={intl.formatMessage(
+        { id: 'stats.chart.label' },
+        { count: times.length, fastest: timeWords(intl, fastest) },
+      )}
       style={styles.chart}
     >
       {Array.from({ length: emptySlots }, (_, index) => (
