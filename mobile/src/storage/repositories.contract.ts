@@ -634,7 +634,7 @@ export function describeGameStorage(name: string, open: (deps: StorageDeps) => P
           const bad = { ...toWireEntry(remote(3)), level: 'insane' }
           await storage.history.applySyncPage({ ...page, changes: [bad, 'text', ...page.changes], cursor: 'c9' })
           const ids = (await storage.history.list(ALICE)).map((entry) => entry.id)
-          expect(ids.toSorted()).toEqual([remote(1).id, remote(2).id])
+          expect([...ids].sort()).toEqual([remote(1).id, remote(2).id])
           await expect(storage.sync.cursor(ALICE)).resolves.toBe('c9')
           warn.mockRestore()
         })

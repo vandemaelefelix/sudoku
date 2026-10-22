@@ -25,7 +25,15 @@ function played(from: Game): Game {
   return tick(place(select(from, cell), wrong).game, 5_000)
 }
 
-const deferred = <T>() => Promise.withResolvers<T>()
+const deferred = <T>() => {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
 
 const spyStart = (storage: GameStorage) => jest.spyOn(storage.puzzles, 'start')
 

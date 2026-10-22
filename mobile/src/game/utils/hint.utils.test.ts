@@ -149,7 +149,7 @@ describe('the curves of the role entrance', () => {
 })
 
 const highlight = (step: number, rung: HintRung) => hintHighlight(at(step, rung)) as HintHighlight
-const unitCells = (unit: number | undefined) => [...(UNITS[unit ?? -1] ?? [])].toSorted((a, b) => a - b)
+const unitCells = (unit: number | undefined) => [...(UNITS[unit ?? -1] ?? [])].sort((a, b) => a - b)
 
 describe('the timings of a highlight change', () => {
   it('sweeps the focus unit in reading order, ROLE_STEP_MS apart, then pulses it once', () => {
@@ -167,7 +167,7 @@ describe('the timings of a highlight change', () => {
     expect(newFocus.length).toBeGreaterThan(0)
     for (const cell of oldFocus) expect(timings.focus[cell]).toBe(0)
     const sweptAt = (newFocus.length - 1) * ROLE_STEP_MS + FOCUS_FADE_MS
-    const pattern = [...elimination.pattern].toSorted((a, b) => a - b)
+    const pattern = [...elimination.pattern].sort((a, b) => a - b)
     expect(pattern.map((cell) => timings.pattern[cell])).toEqual(
       pattern.map((_, index) => sweptAt + index * ROLE_STEP_MS),
     )
@@ -178,7 +178,7 @@ describe('the timings of a highlight change', () => {
     expect(timings.pulseAt).toBe(NO_FOCUS_PULSE)
     expect(timings.focus.every((delay) => delay === 0)).toBe(true)
     expect(timings.pattern.every((delay) => delay === 0)).toBe(true)
-    const struck = [...new Set(elimination.eliminations.map((s) => s.cell))].toSorted((a, b) => a - b)
+    const struck = [...new Set(elimination.eliminations.map((s) => s.cell))].sort((a, b) => a - b)
     expect(struck.map((cell) => timings.strike[cell])).toEqual(struck.map((_, index) => index * ROLE_STEP_MS))
   })
 
