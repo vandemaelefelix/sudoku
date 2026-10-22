@@ -2,7 +2,6 @@ import { StyleSheet } from 'react-native-unistyles'
 
 // ADR-015, point 6: the lines are the gaps between boxes and cells, over the line colours.
 export const styles = StyleSheet.create((theme) => ({
-  grid: { flex: 1 },
   frame: {
     flex: 1,
     padding: theme.shape.gridLine.outer,

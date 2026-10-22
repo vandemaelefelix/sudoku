@@ -71,7 +71,9 @@ export function lightLook(p: OpartPalette): Look {
         conflict: colors.danger,
         conflictHatch: null,
         note: colors.textMuted,
-        selectedRingWidth: 2,
+        // The strongest tint: clearly above the same-number cell, and none of the hint fills.
+        selectedTile: p.tint300,
+        selectedNote: colors.text,
         // The steps of the accent tints. A pattern cell holds notes, and muted notes on tint200 fall below 4.5 : 1 in Forest.
         // The target holds only the ghost digit, so it takes tint200.
         hintFocusFill: p.tint100,

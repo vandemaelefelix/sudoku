@@ -8,8 +8,6 @@ export const styles = StyleSheet.create((theme) => ({
   peer: { backgroundColor: theme.components.cell.peer },
   same: { backgroundColor: theme.components.cell.same },
   conflict: { backgroundColor: theme.components.cell.conflictFill },
-  // The selected cell has a fill. Its frame lies on the grid lines, drawn by the grid (ADR-026, amendment of 2026-10-22).
-  selected: { backgroundColor: theme.components.cell.selected },
   wave: {
     position: 'absolute',
     top: 0,
@@ -61,4 +59,7 @@ export const styles = StyleSheet.create((theme) => ({
   },
   noteSlot: { width: '33.33%', height: '33.33%', alignItems: 'center', justifyContent: 'center' },
   note: { ...roleFont(theme.type.note), fontSize: theme.type.note.scale, color: theme.components.cell.note },
+  noteSelected: { color: theme.components.cell.selectedNote },
+  tileClip: { position: 'absolute', inset: 0, overflow: 'hidden' },
+  tile: { position: 'absolute', inset: 0, backgroundColor: theme.components.cell.selectedTile },
 }))

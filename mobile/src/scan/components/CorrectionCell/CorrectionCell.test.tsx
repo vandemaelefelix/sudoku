@@ -29,7 +29,7 @@ it('draws the ring of an uncertain cell in the warning colour of the theme', () 
 const given = { digit: '5', style: 'given', uncertain: false } as const
 const fill = (n: number) => StyleSheet.flatten(screen.getByTestId(`correction-fill-${n}`).props.style)
 
-it('fills an open cell to check with the warning surface, and a sure open cell with the selected token', () => {
+it('fills an open cell to check with the warning surface, and leaves a sure open cell to the tile of the screen', () => {
   render(
     <>
       <CorrectionCell n={0} look={look} selected {...at} />
@@ -38,7 +38,7 @@ it('fills an open cell to check with the warning surface, and a sure open cell w
   )
   expect(fill(0)).toMatchObject({ backgroundColor: cobalt.colors.warningSurface })
   expect(screen.getByTestId('correction-ring-0')).toBeTruthy()
-  expect(fill(1)).toMatchObject({ backgroundColor: cobalt.components.cell.selected })
+  expect(screen.queryByTestId('correction-fill-1')).toBeNull()
   expect(screen.queryByTestId('correction-ring-1')).toBeNull()
 })
 
@@ -56,9 +56,9 @@ it('marks a conflict with the conflict fill and the conflict colour', () => {
   })
 })
 
-it('shows the selected fill over the conflict fill', () => {
+it('draws no conflict fill on an open cell, so the tile under it shows', () => {
   render(<CorrectionCell n={0} look={given} conflict selected {...at} />)
-  expect(fill(0)).toMatchObject({ backgroundColor: cobalt.components.cell.selected })
+  expect(screen.queryByTestId('correction-fill-0')).toBeNull()
 })
 
 it('calls onSelect with its index', () => {
@@ -182,12 +182,6 @@ it('reads a marked entry as a clash with another cell, not with a given', () => 
 })
 
 describe('the selected cell and the conflict cell (ADR-026)', () => {
-  it('fills a selected cell without a border: the screen frames it over the grid lines', () => {
-    render(<CorrectionCell n={0} look={given} selected {...at} />)
-    expect(fill(0).backgroundColor).toBe(cobalt.components.cell.selected)
-    expect(fill(0).borderWidth).toBeUndefined()
-  })
-
   it('keeps the digit colours of the cell on the selected fill', () => {
     render(<CorrectionCell n={0} look={{ digit: '4', style: 'entry', uncertain: false }} selected {...at} />)
     expect(StyleSheet.flatten(screen.getByTestId('correction-cell-0').props.style).color).toBe(

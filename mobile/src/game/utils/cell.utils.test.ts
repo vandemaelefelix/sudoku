@@ -16,8 +16,9 @@ it('styles givens, entries and wrong entries apart', () => {
 
 it('shades the row, the column and the box of the selected cell', () => {
   const views = cellViews(gameAfter({ type: 'select', cell: 40 }), DEFAULT_ASSISTS)
-  expect(views[40]?.fill).toBe('selected')
-  expect(views[36]?.fill).toBe('peer')
+  // The selected cell keeps the shade of its row under the tile, which the grid slides to it.
+  expect(views[40]).toMatchObject({ fill: 'peer', selected: true })
+  expect(views[36]).toMatchObject({ fill: 'peer', selected: false })
   expect(views[4]?.fill).toBe('peer')
   expect(views[30]?.fill).toBe('peer')
   expect(views[0]?.fill).toBe('plain')
@@ -41,8 +42,8 @@ it('follows the assists', () => {
   const game = gameAfter({ type: 'select', cell: 40 })
   const views = cellViews(game, { ...DEFAULT_ASSISTS, rowColumn: false, selectedCell: false })
   expect(views[36]?.fill).toBe('plain')
-  expect(views[40]).toMatchObject({ ring: true })
-  expect(views[40]?.fill).not.toBe('selected')
+  // The box shade still covers it. Without the selected-cell assist, no tile marks it.
+  expect(views[40]).toMatchObject({ fill: 'peer', selected: false })
 })
 
 it('lists the notes of an empty cell in order', () => {
@@ -63,7 +64,7 @@ it('hides every digit and note while the game is paused', () => {
     gameAfter({ type: 'select', cell: 2 }, { type: 'digit', digit: 4 }, { type: 'pause' }),
     DEFAULT_ASSISTS,
   )
-  for (const view of views) expect(view).toMatchObject({ digit: 0, notes: '', fill: 'plain', ring: false })
+  for (const view of views) expect(view).toMatchObject({ digit: 0, notes: '', fill: 'plain', selected: false })
 })
 
 const highlight = (roles: Partial<HintHighlight>): HintHighlight => ({
@@ -100,12 +101,10 @@ describe('the hint roles', () => {
 
   it('hides the assist shades and the selected cell while a hint is open', () => {
     const views = cellViews(gameAfter({ type: 'select', cell: 0 }), DEFAULT_ASSISTS, highlight({ units: [8] }))
-    expect(views[0]).toMatchObject({ fill: 'plain', ring: false })
+    expect(views[0]).toMatchObject({ fill: 'plain', selected: false })
     expect(views[9]?.fill).toBe('plain')
     // Cell 14 holds the 5 of cell 0.
     expect(views[14]?.fill).toBe('plain')
-    const noAssist = { ...DEFAULT_ASSISTS, selectedCell: false }
-    expect(cellViews(gameAfter({ type: 'select', cell: 0 }), noAssist, highlight({ units: [8] }))[0]?.ring).toBe(false)
   })
 
   it('keeps the conflict fill of a wrong entry, without a hint fill', () => {
@@ -187,5 +186,4 @@ it('gives a display fill the colours of the fill keys of the cell styles', () =>
   expect(displayFill(colours, 'peer')).toEqual({ backgroundColor: colours.peer })
   expect(displayFill(colours, 'same')).toEqual({ backgroundColor: colours.same })
   expect(displayFill(colours, 'conflict')).toEqual({ backgroundColor: colours.conflictFill })
-  expect(displayFill(colours, 'selected')).toEqual({ backgroundColor: colours.selected })
 })

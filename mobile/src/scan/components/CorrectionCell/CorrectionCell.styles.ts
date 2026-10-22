@@ -5,8 +5,6 @@ import { roleFont } from '@/theme/typography'
 export const styles = StyleSheet.create((theme) => ({
   cell: { position: 'absolute' },
   fill: { ...StyleSheet.absoluteFillObject },
-  // The selected cell has a fill. The screen draws its frame over the grid lines (ADR-026, amendment of 2026-10-22).
-  selected: { backgroundColor: theme.components.cell.selected },
   /** An open cell to check takes the warning surface, the colour of its ring. */
   selectedCheck: { backgroundColor: theme.colors.warningSurface },
   conflictFill: { backgroundColor: theme.components.cell.conflictFill },

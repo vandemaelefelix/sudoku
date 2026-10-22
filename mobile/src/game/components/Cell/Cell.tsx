@@ -26,6 +26,7 @@ import { HINT_FADE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import type { Intro } from '@/game/hooks/useGridIntro'
 import type { Pulse } from '@/game/hooks/usePulse'
+import type { SelectionTile } from '@/game/hooks/useSelectionTile'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
 import { displayFill, type CellView, type DigitSize } from '@/game/utils/cell.utils'
 import { columnOf, rowOf } from '@/game/utils/grid.utils'
@@ -41,6 +42,8 @@ type CellProps = CellView & {
   label: string
   pulse?: Pulse
   intro?: Intro
+  /** The tile of the selected cell. Without it, the cell draws no part of a tile. */
+  tile?: SelectionTile
   onSelect(cell: number): void
   /** false: the cell only shows the board. No tap, no focus, no VoiceOver stop. */
   interactive?: boolean
@@ -121,6 +124,27 @@ function CellFlash({ kind }: { kind: 'hint' | 'undo' }) {
   )
 }
 
+/**
+ * This cell's part of the selection tile, above its fill and under its digit (ADR-026). Every cell draws the tile moved
+ * by its distance from the cell, cut to its own square. So the tile slides as one, and never covers a grid line.
+ */
+function TileLayer({ cell, tile }: { cell: number; tile: SelectionTile }) {
+  const row = rowOf(cell)
+  const column = columnOf(cell)
+  const style = useAnimatedStyle(() => ({
+    opacity: tile.shown.get(),
+    transform: [
+      { translateX: (tile.column.get() - column) * tile.pitch.get() },
+      { translateY: (tile.row.get() - row) * tile.pitch.get() },
+    ],
+  }))
+  return (
+    <View style={styles.tileClip} pointerEvents="none">
+      <Animated.View testID={`cell-${cell}-tile`} style={[styles.tile, style]} />
+    </View>
+  )
+}
+
 // A hint role fades in and out. A layout animation follows the system setting, so with Reduce Motion a role shows at once.
 const ROLE_IN = FadeIn.duration(HINT_FADE_MS).easing(easeOut)
 const ROLE_OUT = FadeOut.duration(HINT_FADE_MS).easing(easeOut)
@@ -144,6 +168,8 @@ export const Cell = memo(function Cell({
   label,
   pulse,
   intro,
+  tile,
+  selected,
   onSelect,
   interactive = true,
   digitSize = 'full',
@@ -179,6 +205,7 @@ export const Cell = memo(function Cell({
   )
   const content = (
     <>
+      {tile && <TileLayer cell={cell} tile={tile} />}
       {hintFill !== 'none' && (
         <Animated.View
           key={hintFill}
@@ -197,7 +224,7 @@ export const Cell = memo(function Cell({
           {NOTE_PLACES.map((place) => (
             <View key={place} testID={`note-slot-${place}`} style={styles.noteSlot}>
               {notes.includes(place) && (
-                <Text allowFontScaling={false} style={styles.note}>
+                <Text allowFontScaling={false} style={[styles.note, selected && styles.noteSelected]}>
                   {place}
                 </Text>
               )}

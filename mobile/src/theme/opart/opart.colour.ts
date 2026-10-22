@@ -98,7 +98,10 @@ export function colourLook(p: OpartPalette): Look {
         conflictHatch: CONFLICT_HATCH,
         // Notes also sit on the selected fill, where muted text is too faint, so they are nearly white.
         note: white(0.9),
-        selectedRingWidth: 3,
+        // Brighter than the same-number cell at white(0.20), and apart from the hint target at white(0.30). The notes take
+        // white on it.
+        selectedTile: white(0.28),
+        selectedNote: w.white,
         // The hint fills are white over the page, in the steps of the assist shades. The notes keep 4.5 : 1 on the pattern fill.
         hintFocusFill: peer,
         hintPatternFill: white(0.2),

@@ -3,7 +3,7 @@ import type { Assists } from '@/game/constants/assists.constants'
 import type { Theme } from '@/theme/theme.types'
 import { boxOf, columnOf, rowOf } from './grid.utils'
 
-export type CellFill = 'plain' | 'peer' | 'same' | 'conflict' | 'selected'
+export type CellFill = 'plain' | 'peer' | 'same' | 'conflict'
 
 /** The fill of a hint role over the cell fill. The strongest role of a cell wins: target, then pattern, then focus. */
 export type HintFill = 'none' | 'focus' | 'pattern' | 'target'
@@ -19,8 +19,11 @@ export type CellView = {
   digitStyle: DigitStyle
   notes: string
   fill: CellFill
-  /** The selected cell when the selected-cell assist is off: the grid frames it without a fill. */
-  ring: boolean
+  /**
+   * The selected cell, while the selected-cell assist is on. The grid slides its tile here (ADR-026). The cell keeps its
+   * own fill under the tile, and draws its notes in the note colour of the tile.
+   */
+  selected: boolean
   /** The hint roles (ADR-032). hintSupport: the digit takes the support colour. */
   hintFill: HintFill
   hintSupport: boolean
@@ -38,7 +41,7 @@ export type HintHighlight = Pick<Step, 'units' | 'pattern' | 'support' | 'elimin
 
 const NO_HINT = { hintFill: 'none', hintSupport: false, hintStruck: '', hintTarget: 0 } as const
 
-const HIDDEN: CellView = { digit: 0, digitStyle: 'entry', notes: '', fill: 'plain', ring: false, ...NO_HINT }
+const HIDDEN: CellView = { digit: 0, digitStyle: 'entry', notes: '', fill: 'plain', selected: false, ...NO_HINT }
 
 /**
  * The hint fill of a cell. A support digit takes the focus fill too: its accent colour is close to the colour of an entry,
@@ -74,13 +77,12 @@ export function cellViews(game: Game, assists: Assists, highlight: HintHighlight
       if (assists.sameNumbers && selectedValue !== 0 && cell !== selected && digit === selectedValue) fill = 'same'
     }
     if (wrong) fill = 'conflict'
-    if (cell === selected && assists.selectedCell) fill = 'selected'
     return {
       digit,
       digitStyle: given !== 0 ? 'given' : wrong ? 'wrong' : 'entry',
       notes: target === 0 ? notes.join('') : '',
       fill,
-      ring: cell === selected && !assists.selectedCell,
+      selected: cell === selected && assists.selectedCell,
       hintFill: highlight === null ? 'none' : hintFillOf(cell, wrong, highlight, focus),
       // A wrong entry keeps its conflict colours, so it never reads as a support digit.
       hintSupport: digit !== 0 && !wrong && (highlight?.support.includes(cell) ?? false),
@@ -105,7 +107,5 @@ export function displayFill(colours: CellColours, fill: CellFill) {
       return { backgroundColor: colours.same }
     case 'conflict':
       return { backgroundColor: colours.conflictFill }
-    case 'selected':
-      return { backgroundColor: colours.selected }
   }
 }

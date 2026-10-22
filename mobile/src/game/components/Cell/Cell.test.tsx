@@ -5,6 +5,7 @@ import type { SharedValue } from 'react-native-reanimated'
 import { HINT_FADE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
 import type { Pulse } from '@/game/hooks/usePulse'
+import type { SelectionTile } from '@/game/hooks/useSelectionTile'
 import { pulseLook } from '@/game/utils/pulse.utils'
 import { cobalt, cobaltColour } from '@/theme/themes/cobalt'
 import { forest } from '@/theme/themes/forest'
@@ -28,7 +29,7 @@ const base = {
   digitStyle: 'entry',
   notes: '',
   fill: 'plain',
-  ring: false,
+  selected: false,
   hintFill: 'none',
   hintSupport: false,
   hintStruck: '',
@@ -67,11 +68,6 @@ it('selects its cell when tapped', () => {
   render(<Cell {...base} onSelect={onSelect} />)
   fireEvent.press(screen.getByTestId('cell-2'))
   expect(onSelect).toHaveBeenCalledWith(2)
-})
-
-it('draws no ring of its own: the grid frames the selected cell over the grid lines', () => {
-  render(<Cell {...base} ring onSelect={jest.fn()} />)
-  expect(StyleSheet.flatten(screen.getByTestId('cell-2').props.style).borderWidth).toBeUndefined()
 })
 
 it('draws the wave in the accent colour at the peak opacity of the theme', () => {
@@ -133,16 +129,48 @@ it('stays a button with full-size digits by default', () => {
   expect(StyleSheet.flatten(screen.getByText('5').props.style).fontSize).toBe(cobalt.type.given.scale)
 })
 
-describe('the selected cell (ADR-026)', () => {
-  it('fills the selected cell without a border, so no ring lies inside it next to a grid line', () => {
-    render(<Cell {...base} digit={5} digitStyle="given" fill="selected" onSelect={jest.fn()} />)
-    const style = StyleSheet.flatten(screen.getByTestId('cell-2').props.style)
-    expect(style.backgroundColor).toBe(cobalt.components.cell.selected)
-    expect(style.borderWidth).toBeUndefined()
+/** A tile at a row and a column, 40 points from one cell to the next. Cell 2 is row 0, column 2. */
+const tileAt = (row: number, column: number, shown = 1): SelectionTile => ({
+  row: fixed(row),
+  column: fixed(column),
+  pitch: fixed(40),
+  shown: fixed(shown),
+})
+
+describe('the selection tile (ADR-026)', () => {
+  it('draws its part of the tile in the tile colour, with no border on the cell', () => {
+    render(<Cell {...base} tile={tileAt(0, 2)} selected onSelect={jest.fn()} />)
+    expect(StyleSheet.flatten(screen.getByTestId('cell-2-tile').props.style)).toMatchObject({
+      backgroundColor: cobalt.components.cell.selectedTile,
+      opacity: 1,
+      transform: [{ translateX: 0 }, { translateY: 0 }],
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('cell-2').props.style).borderWidth).toBeUndefined()
   })
 
-  it('keeps the digit colours of the cell on the selected fill', () => {
-    render(<Cell {...base} digit={5} digitStyle="entry" fill="selected" onSelect={jest.fn()} />)
+  it('moves the tile by its distance in cells, so a tile on another cell lies outside this one', () => {
+    render(<Cell {...base} tile={tileAt(1, 4)} onSelect={jest.fn()} />)
+    expect(StyleSheet.flatten(screen.getByTestId('cell-2-tile').props.style).transform).toEqual([
+      { translateX: 80 },
+      { translateY: 40 },
+    ])
+  })
+
+  it('hides the tile while no cell is selected', () => {
+    render(<Cell {...base} tile={tileAt(0, 2, 0)} onSelect={jest.fn()} />)
+    expect(StyleSheet.flatten(screen.getByTestId('cell-2-tile').props.style).opacity).toBe(0)
+  })
+
+  it('draws no tile without one, as in a grid that shows no selection', () => {
+    render(<Cell {...base} onSelect={jest.fn()} />)
+    expect(screen.queryByTestId('cell-2-tile')).toBeNull()
+  })
+
+  it('draws the notes of the selected cell in the note colour of the tile, and keeps the digit colours', () => {
+    render(<Cell {...base} notes="3" selected onSelect={jest.fn()} />)
+    expect(StyleSheet.flatten(screen.getByText('3').props.style).color).toBe(cobalt.components.cell.selectedNote)
+    screen.unmount()
+    render(<Cell {...base} digit={5} digitStyle="entry" selected onSelect={jest.fn()} />)
     expect(StyleSheet.flatten(screen.getByText('5').props.style).color).toBe(cobalt.components.cell.entry)
   })
 })
