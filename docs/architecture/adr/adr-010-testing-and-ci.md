@@ -142,7 +142,7 @@ needs no code signing, so it needs no paid Apple Developer account.
 
 | Job | Trigger | Steps |
 | --- | --- | --- |
-| `ios-simulator` | A pull request that changes `mobile/package.json`, `mobile/app.json`, `mobile/app.config.ts` or the workflow. A manual run | Install, stub model, `just ios-simulator` (`expo prebuild`, `pod install`, `xcodebuild`), upload the `.app` |
+| `ios-simulator` | A pull request that changes `mobile/package.json`, `mobile/app.json`, `mobile/app.config.ts` or the workflow, when it opens. A manual run | Install, stub model, `just ios-simulator` (`expo prebuild`, `pod install`, `xcodebuild`), upload the `.app` |
 
 1. **The runner is `macos-26` with Xcode 26.6.** Expo SDK 57 needs Xcode 26.4 or later. The
    workflow pins Xcode through `DEVELOPER_DIR`, so a new default on the image does not change the build.
@@ -156,11 +156,14 @@ needs no code signing, so it needs no paid Apple Developer account.
    `justfile` are not trigger paths. Each changes in many pull requests that touch no native code.
    An upgrade that changes only the lockfile needs a manual run. `mobile/ios/` is not a trigger path,
    because it is generated and git ignores it (ADR-002).
-5. **No weekly run.** Nothing changes the native build between two pull requests. A weekly run
-   would cost about 430 of the 2,000 monthly minutes.
-6. **The workflow uses no cache.** The measurement below showed that each cache cost more time to
+5. **A push to an open pull request starts no run.** Without this rule, each review fix of a pull
+   request that adds a native dependency costs a full run. Before such a pull request merges, start a
+   manual run on its branch: `gh workflow run ios-simulator.yml --ref <branch>`.
+6. **No weekly run.** Nothing changes the native build between two pull requests. A weekly run
+   would cost about 520 of the 2,000 monthly minutes.
+7. **The workflow uses no cache.** The measurement below showed that each cache cost more time to
    restore than it saved.
-7. **The `.app` is an artifact for the end-to-end tests.** It keeps 7 days, because the Free plan has
+8. **The `.app` is an artifact for the end-to-end tests.** It keeps 7 days, because the Free plan has
    500 MB of artifact storage for a private repository. The zip is 30 MB.
 
 ### The measurement
@@ -186,9 +189,12 @@ run restored the caches that the first run saved.
 
 ### The cost
 
-GitHub rounds each job up to whole minutes. A run without cache takes about 10 minutes and costs
-about 100 of the 2,000 monthly minutes. In the month before this amendment, 4 commits changed a trigger
-path. At one or two runs for each such pull request, the build costs 400 to 800 minutes a month.
+GitHub rounds each job up to whole minutes. A run without cache took 10 min 9 s, and a third run of
+the final workflow took 13 min 24 s on the same image. The speed of the runner changes from run to run.
+So one run costs 110 to 140 of the 2,000 monthly minutes, about 120 on average. In the month before
+this amendment, 4 commits changed a trigger path. At one run when the pull request opens and one
+manual run before the merge, the build costs about 500 to 1,000 minutes a month. That month was the
+month of the first native modules, so a normal month costs less.
 
 ### Reassessment Triggers of the amendment
 
