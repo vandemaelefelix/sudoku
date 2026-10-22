@@ -6,7 +6,7 @@ import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGridIntro } from '@/game/hooks/useGridIntro'
 import { usePulse } from '@/game/hooks/usePulse'
-import type { DigitSize } from '@/game/utils/cell.utils'
+import type { DigitSize, HintHighlight } from '@/game/utils/cell.utils'
 import { cellLabel } from '@/game/utils/cellLabel.utils'
 import { markOf } from '@/game/utils/mark.utils'
 import { styles } from './Grid.styles'
@@ -17,6 +17,8 @@ type GridProps = {
   /** false: a board to look at, for example a preview. VoiceOver skips it and no cell takes a tap. */
   interactive?: boolean
   digitSize?: DigitSize
+  /** The cells that an open hint marks. null: no hint is open. */
+  highlight?: HintHighlight | null
 }
 
 /**
@@ -24,8 +26,8 @@ type GridProps = {
  * An interactive grid enters: its lines are there at once, and the digits sweep in from the top left (useGridIntro).
  * The props default to {}: GameScreen.renders.test calls Grid() as a plain function.
  */
-export function Grid({ interactive = true, digitSize = 'full' }: GridProps = {}) {
-  const views = useCellViews()
+export function Grid({ interactive = true, digitSize = 'full', highlight = null }: GridProps = {}) {
+  const views = useCellViews(highlight)
   const { select } = useGameActions()
   const { board, move } = useGameState()
   const pulse = usePulse(board, move)

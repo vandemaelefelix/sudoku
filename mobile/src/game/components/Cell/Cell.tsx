@@ -20,12 +20,14 @@ import {
   SHAKE_STEPS,
   UNDO_PEAK,
 } from '@/game/constants/mark.constants'
+import { HINT_EDGE, TARGET_PULSE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE } from '@/game/constants/pulse.constants'
 import type { Intro } from '@/game/hooks/useGridIntro'
 import type { Pulse } from '@/game/hooks/usePulse'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
 import { displayFill, type CellView, type DigitSize } from '@/game/utils/cell.utils'
 import { columnOf, rowOf } from '@/game/utils/grid.utils'
+import { targetPulseScale } from '@/game/utils/hint.utils'
 import { introCellAlpha } from '@/game/utils/intro.utils'
 import type { MarkKind } from '@/game/utils/mark.utils'
 import { easeOut } from '@/utils/motion.utils'
@@ -118,6 +120,34 @@ function CellFlash({ kind }: { kind: 'hint' | 'undo' }) {
   )
 }
 
+/** The thick outline of the target cell. It pulses once, inward. Reduce Motion keeps it still. */
+function TargetOutline({ cell }: { cell: number }) {
+  const reduceMotion = useReducedMotion()
+  const progress = useSharedValue(0)
+  useEffect(() => {
+    if (reduceMotion) return
+    progress.set(withTiming(1, { duration: TARGET_PULSE_MS, easing: easeOut }))
+  }, [progress, reduceMotion])
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: targetPulseScale(progress.get()) }] }))
+  return <Animated.View testID={`cell-${cell}-hint-target`} style={[styles.hintTarget, style]} />
+}
+
+/** The outline of the focus units, on the sides of this cell where they end. */
+function FocusEdges({ cell, edges }: { cell: number; edges: number }) {
+  return (
+    <View
+      testID={`cell-${cell}-hint-edges`}
+      style={[
+        styles.hintEdges,
+        (edges & HINT_EDGE.top) !== 0 && styles.hintEdgeTop,
+        (edges & HINT_EDGE.right) !== 0 && styles.hintEdgeRight,
+        (edges & HINT_EDGE.bottom) !== 0 && styles.hintEdgeBottom,
+        (edges & HINT_EDGE.left) !== 0 && styles.hintEdgeLeft,
+      ]}
+    />
+  )
+}
+
 /**
  * One cell. The props are primitives, plus onSelect, pulse and intro, which keep their identity for the whole game.
  * So memo skips the cells a move does not change, and a pulse or the entrance renders no cell.
@@ -129,6 +159,11 @@ export const Cell = memo(function Cell({
   notes,
   fill,
   ring,
+  hintEdges,
+  hintPattern,
+  hintSupport,
+  hintStruck,
+  hintTarget,
   label,
   pulse,
   intro,
@@ -165,6 +200,14 @@ export const Cell = memo(function Cell({
       {fill === 'conflict' && <ConflictHatch />}
       {pulse && <Animated.View testID={`cell-${cell}-wave`} style={[styles.wave, waveStyle]} />}
       {(markKind === 'hint' || markKind === 'undo') && <CellFlash key={markId} kind={markKind} />}
+      {hintEdges !== 0 && <FocusEdges cell={cell} edges={hintEdges} />}
+      {hintPattern && (
+        <>
+          <View testID={`cell-${cell}-hint-pattern`} style={styles.hintPattern} />
+          <View testID={`cell-${cell}-hint-dot`} style={styles.hintDot} />
+        </>
+      )}
+      {hintSupport && digit !== 0 && <View testID={`cell-${cell}-hint-support`} style={styles.hintSupport} />}
       {markKind === 'mistake' && digitView ? <MistakeShake key={markId}>{digitView}</MistakeShake> : digitView}
       {digit === 0 && notes !== '' && digitSize === 'full' && (
         <Animated.View style={[styles.notes, introStyle]}>
@@ -175,9 +218,18 @@ export const Cell = memo(function Cell({
                   {place}
                 </Text>
               )}
+              {hintStruck.includes(place) && <View testID={`note-strike-${place}`} style={styles.noteStrike} />}
             </View>
           ))}
         </Animated.View>
+      )}
+      {digit === 0 && hintTarget !== 0 && (
+        <>
+          <TargetOutline key={hintTarget} cell={cell} />
+          <Text allowFontScaling={false} style={styles.ghost}>
+            {hintTarget}
+          </Text>
+        </>
       )}
     </>
   )

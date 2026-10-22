@@ -22,10 +22,15 @@ const TEXT_PAIRS: Pair[] = [
     [`given on ${fill}`, (t) => t.components.cell.given, (t) => t.components.cell[fill]],
     [`entry on ${fill}`, (t) => t.components.cell.entry, (t) => t.components.cell[fill]],
   ]),
-  ...(['fill', 'peer', 'selected'] as const).map((fill): Pair => [
+  ...(['fill', 'peer', 'selected', 'hintFocus'] as const).map((fill): Pair => [
     `note on ${fill}`,
     (t) => t.components.cell.note,
     (t) => t.components.cell[fill],
+  ]),
+  ...(['given', 'entry'] as const).map((digit): Pair => [
+    `${digit} on hintFocus`,
+    (t) => t.components.cell[digit],
+    (t) => t.components.cell.hintFocus,
   ]),
   // A segmented control and a tab bar draw their selected cell with the fill of the selected grid cell.
   ['accent label on the selected cell', (t) => t.colors.accent, (t) => t.components.cell.selected],
@@ -74,6 +79,14 @@ const SHAPE_PAIRS: Pair[] = [
   // The worst case of the hatch: a white digit over a stripe, which is the stripe colour laid over the conflict fill.
   ['conflict digit on a stripe of the hatch', (t) => t.components.cell.conflict, hatchStripe],
   ['selection ring on the selected cell', (t) => t.components.cell.ring, (t) => t.components.cell.selected],
+  // A hint role can land on a plain cell, inside a focus unit or on the selected cell.
+  ...(['hintFocusLine', 'hintPattern', 'hintSupport', 'hintStrike', 'hintTarget'] as const).flatMap((role) =>
+    (['fill', 'hintFocus', 'selected'] as const).map((fill): Pair => [
+      `${role} on ${fill}`,
+      (t) => t.components.cell[role],
+      (t) => t.components.cell[fill],
+    ]),
+  ),
 ]
 
 describe.each(ALL_THEMES)('$name $appearance', (theme) => {
