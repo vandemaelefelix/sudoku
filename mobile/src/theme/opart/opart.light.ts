@@ -72,7 +72,7 @@ export function lightLook(p: OpartPalette): Look {
         conflictHatch: null,
         note: colors.textMuted,
         selectedRingWidth: 2,
-        // The tint of the selected cell: notes in muted text fail on tint200 in Forest. The ring tells the selected cell apart.
+        // hintFocus uses tint150, the selected tint: muted notes on tint200 fall below 4.5 : 1 in Forest. The ring marks the selected cell.
         hintFocus: p.tint150,
         hintFocusLine: colors.accent,
         hintPattern: colors.accent,

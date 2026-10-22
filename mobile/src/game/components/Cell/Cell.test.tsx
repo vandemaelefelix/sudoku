@@ -258,6 +258,12 @@ describe('the hint roles (ADR-032)', () => {
     })
   })
 
+  it('draws no ghost in a small cell, as it draws no notes', () => {
+    render(<Cell {...base} hintTarget={4} digitSize="small" onSelect={jest.fn()} />)
+    expect(screen.queryByTestId('cell-2-hint-target')).toBeNull()
+    expect(screen.queryByText('4')).toBeNull()
+  })
+
   it('pulses the target outline once', () => {
     const timing = jest.spyOn(Reanimated, 'withTiming')
     render(<Cell {...base} hintTarget={4} onSelect={jest.fn()} />)
