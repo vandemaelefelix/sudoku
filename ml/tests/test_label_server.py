@@ -144,7 +144,7 @@ def test_the_page_explains_each_screen_and_the_kinds(served):
         "No cell of a scan trains the model before its outline is approved.",
         "These corners do not form a grid.",
         "Next: confirm the cells of each scan (Cells).",
-        "The cells of every approved scan are confirmed. ✓ Next: press Finish.",
+        "No approved scan has cells to confirm. ✓ Next: press Finish.",
         "Finish marks the confirmed cells as verified.",
     ):
         assert text in page

@@ -484,7 +484,7 @@ function deriveView() {
     if (st.scans === 0) {
       return showState("empty", "No uploaded scans yet. Run just pull-scans, then restart the server.");
     }
-    return showState("done", "The cells of every approved scan are confirmed. ✓ Next: press Finish.");
+    return showState("done", "No approved scan has cells to confirm. ✓ Next: press Finish.");
   }
   if (mode === "groups" && !screen && st) {
     if (st.digit_cells === 0) {
@@ -764,7 +764,8 @@ const ACTIONS = {
            ["Z · undo", () => undo()]],
   scans: [["Enter · Confirm cells", () => confirmScan(), "Label every cell of this scan, with your changes."],
           ["B · Back", () => backFromScan()], ["Z · undo", () => undo()]],
-  scanlist: [["Enter · Open the first scan", () => openFirstScan(), "Open the oldest scan with cells to confirm."]],
+  scanlist: [["Enter · Open the first scan", () => openFirstScan(), "Open the oldest scan with cells to confirm."],
+             ["Z · undo", () => undo(), "Undo the last confirm. Its scan comes back to the list."]],
   outlines: [["Enter · Approve the others", () => approveOutlines(), "Approve every scan without a red ✕."],
              ["N · Next screen", () => nextOutlines(), "Show the next screen. Decide on this one later."],
              ["Z · undo", () => undo()]],
@@ -1026,10 +1027,11 @@ function renderScanGrid() {
     div.onmouseenter = () => showDetail(cell);
     div.onmouseleave = () => { hovered = null; };
     const select = div.querySelector("select");
-    if (cell.shared) {
-      select.value = now.digit;
+    if (cell.shared || cell.locked) {
+      select.value = cell.locked ? "" : now.digit;
       select.disabled = true;
-      div.onclick = () => say(`This cell belongs to scan ${cell.shared}. Change it there.`);
+      div.onclick = () => say(cell.shared ? `This cell belongs to scan ${cell.shared}. Change it there.`
+        : `This cell is in ${cell.digit}/. It is not one of the labels of this scan.`);
       continue;
     }
     select.value = now.digit;
@@ -1048,7 +1050,7 @@ function renderScanGrid() {
 async function confirmScan() {
   if (!scan) return;
   if (scan.status !== "accepted") return say("Approve the outline of this scan first.");
-  const cells = scan.cells.filter((c) => c.id && !c.shared).map((c) => ({ id: c.id, ...scanLabel(c) }));
+  const cells = scan.cells.filter((c) => c.id && !c.shared && !c.locked).map((c) => ({ id: c.id, ...scanLabel(c) }));
   const missing = cells.filter((c) => c.digit !== "empty" && !c.kind).length;
   if (missing) {
     return say(`${missing} digit ${missing === 1 ? "cell has" : "cells have"} no kind yet (·). ` +
@@ -1059,6 +1061,12 @@ async function confirmScan() {
   const text = `Confirmed ${cells.length} cells with ${changed} changes. Press Z to undo.`;
   if (scanFrom === "scanlist") {
     const next = (await api("/api/scan-list")).scans[0];
+    if (next && next.photo === scan.photo) {
+      // A scan that a confirm leaves in the list would open again and again.
+      mode = "scanlist";
+      await loadScanList();
+      return say(`${text} Scan ${next.photo} still has ${next.open} open cells. Press Z, then report it.`);
+    }
     if (next) {
       await loadScan(next.photo);
       return say(`${text} The next scan is open.`);
@@ -1708,6 +1716,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (mode === "scanlist") {
     if (key === "enter") run(openFirstScan);
+    else if (key === "z") run(undo);
     return;
   }
   if (mode === "outlines") {

@@ -32,7 +32,8 @@ The flow has five steps.
 2. The uploader runs when the phone is online. It sends `POST /v1/scans` and receives a presigned URL.
 3. The uploader sends the JPEG to S3 with `PUT`. It retries with backoff. The `scanId` makes a repeat safe.
 4. `just pull-scans` downloads the scans with `pending` set. It writes the photos to `ml/dataset/images/sudoku-photos/`.
-5. The developer checks the outline of each scan on the **Outlines screen** of the labelling page.
+5. The developer checks the outline of each scan on the **Outlines screen** of the labelling page. Then the
+   developer confirms the cells of each approved scan on the **Cells screen**.
 
 The **label provenance** of a cell has three values.
 
@@ -62,6 +63,9 @@ is off its 9 × 9 place. `ml/dataset/work/outline-scores.json` caches it per cor
 Each action is one action in the journal. The journal holds the outline as an `outline` line. Finish writes the status
 and the corners into `sudoku-photos.csv`. A move of the Outlines screen never makes a cell `verified`: no person looked
 at the cells.
+
+The **Cells screen** lists each approved scan whose own cells wait, oldest first. A scan opens in the scan view. Enter
+confirms its cells, and the next scan opens. Finish then writes `verified`.
 
 A cell with the same pixels as a cell of another scan is stored once, with the source of the first scan. It needs one
 label and one check. The **scan view** shows the photo and the 81 cells of one scan. It marks such a cell as shared,

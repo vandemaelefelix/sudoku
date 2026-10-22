@@ -770,6 +770,8 @@ class LabelStore:
                     "edited": label_sources.get(cell) == "app-edited",
                     "reviewed": label_sources.get(cell) == "verified" or cell in labelled,
                     "shared": None if owner == state.row.photo_id else stem_of(owner),
+                    # A cell in discarded/ or unlabeled/ is out of the scan's labels.
+                    "locked": self.folder[cell] not in DIGIT_CLASSES,
                 }
             )
         height, width = rgb.shape[:2]
@@ -782,10 +784,12 @@ class LabelStore:
             "cells": cells,
         }
 
-    def _unconfirmed(self) -> dict[str, list[str]]:
+    def _unconfirmed(self, states: list[ScanState] | None = None) -> dict[str, list[str]]:
         """Photo id → the own cells in DIGIT_CLASSES of each scan with an accepted outline that no
-        person has labelled, in pull order. A scan without such a cell is left out."""
-        accepted = [s.row.photo_id for s in self._scan_states() if s.status == "accepted"]
+        person has labelled, in pull order. A scan without such a cell is left out. The same cells
+        as the own, unlocked cells of scan_screen, which confirm_scan labels."""
+        states = self._scan_states() if states is None else states
+        accepted = [s.row.photo_id for s in states if s.status == "accepted"]
         label_sources, labelled = self.label_sources(), confirmed_cells(self.lines)
         found: dict[str, list[str]] = {photo: [] for photo in accepted}
         for cell, (photo, _, _) in self.sources().items():
@@ -796,7 +800,7 @@ class LabelStore:
         return {photo: cells for photo, cells in found.items() if cells}
 
     def scan_list(self) -> dict:
-        """The Cells screen: each approved scan with cells to confirm, oldest first."""
+        """`open`: the cells to confirm. `edited`: those that the player changed. Pull order."""
         label_sources = self.label_sources()
         return {
             "scans": [
@@ -817,7 +821,9 @@ class LabelStore:
         if state.status != "accepted":
             raise ValueError(f"{photo}: approve the outline first")
         members = sorted(
-            c["id"] for c in self.scan_screen(photo)["cells"] if "id" in c and not c["shared"]
+            c["id"]
+            for c in self.scan_screen(photo)["cells"]
+            if "id" in c and not c["shared"] and not c["locked"]
         )
         if sorted(e["id"] for e in cells) != members:
             stray = next((e["id"] for e in cells if e["id"] not in members), None)
@@ -885,7 +891,8 @@ class LabelStore:
         }
 
     def status(self) -> dict:
-        """Counts for the steps bar. Cheap: it does not read the cells, unlike progress."""
+        """Counts for the steps bar. It reads no cell image, unlike progress. It walks the cells
+        of cells.csv and the journal once, for the Cells count."""
         self._refresh()
         kinds = self.kinds()
         pre = self._prelabels()
@@ -902,7 +909,7 @@ class LabelStore:
             "digit_cells": sum(f in DIGIT_FOLDERS for f in self.folder.values()),
             "kind": sum(kinds.get(c) is None for c, f in self.folder.items() if f in DIGIT_FOLDERS),
             "outlines": sum(s.status == "unchecked" for s in scans),
-            "scan_cells": len(self._unconfirmed()),
+            "scan_cells": len(self._unconfirmed(scans)),
             "scans": len(scans),
         }
 
