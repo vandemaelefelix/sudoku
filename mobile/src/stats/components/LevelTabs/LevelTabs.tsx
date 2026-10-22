@@ -12,7 +12,5 @@ const TABS: readonly { value: StatsTab; label: string }[] = [
 
 /** One tab for the overview of all levels, and one for each level. It has the look of the segmented controls of Settings. */
 export function LevelTabs({ value, onChange }: LevelTabsProps) {
-  return (
-    <SegmentedControl kind="tabs" options={TABS} value={value} onChange={onChange} indicatorTestID="level-indicator" />
-  )
+  return <SegmentedControl kind="tabs" options={TABS} value={value} onChange={onChange} testID="level" />
 }

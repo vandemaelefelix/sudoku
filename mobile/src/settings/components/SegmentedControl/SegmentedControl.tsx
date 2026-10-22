@@ -11,8 +11,8 @@ type SegmentedControlProps<T extends string> = {
   options: readonly { value: T; label: string }[]
   value: T
   onChange(value: T): void
-  /** The test id of the sliding indicator. The cells view has the same id with the suffix -cells. */
-  indicatorTestID: string
+  /** The indicator is <testID>-indicator, the cells view <testID>-indicator-cells and each cell <testID>-<value>. */
+  testID: string
   /** tabs: the control is a tab bar for VoiceOver, with the role tab on each cell. */
   kind?: 'buttons' | 'tabs'
 }
@@ -26,7 +26,7 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
-  indicatorTestID,
+  testID,
   kind = 'buttons',
 }: SegmentedControlProps<T>) {
   const { theme } = useUnistyles()
@@ -60,7 +60,7 @@ export function SegmentedControl<T extends string>({
   return (
     <View accessibilityRole={kind === 'tabs' ? 'tablist' : undefined} style={styles.frame}>
       <View
-        testID={`${indicatorTestID}-cells`}
+        testID={`${testID}-indicator-cells`}
         style={styles.cells}
         onLayout={({ nativeEvent }) => setInner(nativeEvent.layout.width)}
       >
@@ -74,12 +74,13 @@ export function SegmentedControl<T extends string>({
                 style={[styles.divider, { left: (i + 1) * cell - line / 2 }]}
               />
             ))}
-        <Animated.View testID={indicatorTestID} pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
+        <Animated.View testID={`${testID}-indicator`} pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
         {options.map(({ value: option, label }) => {
           const selected = option === value
           return (
             <Pressable
               key={option}
+              testID={`${testID}-${option}`}
               accessibilityRole={kind === 'tabs' ? 'tab' : 'button'}
               accessibilityLabel={label}
               accessibilityState={{ selected }}

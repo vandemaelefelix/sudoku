@@ -49,6 +49,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
         {continueLevel != null && (
           <Animated.View entering={CONTINUE_IN} exiting={CONTINUE_OUT}>
             <Pressable
+              testID="continue"
               accessibilityRole="button"
               accessibilityLabel={`Continue, ${LEVEL_NAMES[continueLevel]}`}
               onPress={onContinue}
@@ -66,6 +67,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
           {LEVELS.map((level) => (
             <Pressable
               key={level}
+              testID={`new-game-${level}`}
               accessibilityRole="button"
               onPress={() => onNewGame(level)}
               style={({ pressed }) => [styles.button, pressed && pressedStyles.pressed]}
@@ -84,6 +86,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
           )}
           <Animated.View layout={GLIDE} style={styles.links}>
             <Pressable
+              testID="home-scan"
               accessibilityRole="button"
               onPress={onScan}
               style={({ pressed }) => [styles.button, styles.link, pressed && pressedStyles.pressed]}
@@ -91,6 +94,7 @@ export function HomeMenu({ continueLevel, stats, onNewGame, onContinue, onScan, 
               <Text style={styles.label}>Scan a puzzle</Text>
             </Pressable>
             <Pressable
+              testID="home-settings"
               accessibilityRole="button"
               onPress={onSettings}
               style={({ pressed }) => [styles.button, styles.link, pressed && pressedStyles.pressed]}

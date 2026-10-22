@@ -108,3 +108,18 @@ it('plays a soft haptic for pause and for resume', () => {
   fireEvent.press(screen.getByRole('button', { name: 'Resume, time 00:00' }))
   expect(jest.mocked(Haptics.impactAsync).mock.calls).toEqual([['soft'], ['soft']])
 })
+
+it('gives the end-to-end flows the time under one test ID, while the game runs and after it ends', () => {
+  renderInGame(
+    <>
+      <TimerPill />
+      <LoseButton />
+    </>,
+  )
+  expect(screen.getByTestId('timer')).toHaveProp('accessibilityLabel', 'Pause, time 00:00')
+  fireEvent.press(screen.getByTestId('timer'))
+  expect(screen.getByTestId('timer')).toHaveProp('accessibilityLabel', 'Resume, time 00:00')
+  fireEvent.press(screen.getByTestId('timer'))
+  fireEvent.press(screen.getByTestId('lose'))
+  expect(screen.getByTestId('timer')).toHaveProp('accessibilityLabel', 'Time 00:00')
+})

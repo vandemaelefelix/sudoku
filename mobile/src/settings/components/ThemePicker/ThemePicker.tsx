@@ -8,5 +8,5 @@ const OPTIONS = THEME_NAMES.map((name) => ({ value: name, label: THEMES[name].la
 
 /** The colourway: Cobalt, Forest or Bordeaux (ADR-025). */
 export function ThemePicker({ value, onChange }: ThemePickerProps) {
-  return <SegmentedControl options={OPTIONS} value={value} onChange={onChange} indicatorTestID="theme-indicator" />
+  return <SegmentedControl options={OPTIONS} value={value} onChange={onChange} testID="theme" />
 }

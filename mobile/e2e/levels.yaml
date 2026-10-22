@@ -1,0 +1,19 @@
+# Each level starts a game at that level. A digit goes in, and the timer runs.
+appId: com.vandemaelefelix.sudoku.dev
+---
+- evalScript: ${output.levels = ['easy', 'medium', 'hard', 'expert']; output.names = ['Easy', 'Medium', 'Hard', 'Expert']; output.round = 0}
+- repeat:
+    times: 4
+    commands:
+      - launchApp:
+          clearState: true
+      - tapOn:
+          id: new-game-${output.levels[output.round]}
+      - runFlow: common/place-digit.yaml
+      - runFlow: common/timer-runs.yaml
+      # The game screen does not show the level. Continue on Home names the level of the saved game.
+      - launchApp
+      - assertVisible:
+          id: continue
+          text: Continue, ${output.names[output.round]}
+      - evalScript: ${output.round = output.round + 1}

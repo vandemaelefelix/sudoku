@@ -205,3 +205,47 @@ month of the first native modules, so a normal month costs less.
 - The account gets more minutes, or the repository becomes public. Then add a weekly run and the
   lockfile as a trigger path.
 - A device or TestFlight build becomes necessary. That needs a paid Apple Developer account.
+
+## Amendment 2026-10-22 (b): end-to-end flows with Maestro
+
+A fifth layer drives the real app on the iOS Simulator. Unit and render tests cannot show a broken
+navigation, a native module that does not load, or a game that a restart loses (QR-11).
+
+| Layer | What | Tool | Runs |
+| --- | --- | --- | --- |
+| 5. End to end | The Release app of `just ios-simulator`: start a game at each level, resume after a kill, finish a game, keep the look, scan a fixture image | **Maestro** flows in `mobile/e2e/` | `just e2e` on the Mac. In CI only on a manual step: the label `run: e2e` on a pull request, or a manual run of `e2e.yml` |
+
+1. **Maestro, not Detox or XCTest.** A flow is a YAML file, so it needs no test build of the app
+   and no native test target. Maestro drives the Release build of `just ios-simulator` as it is.
+2. **The flows find elements by `testID`.** Two places have no `testID` of their own. A grid cell
+   has the id `cell-<n>` and its VoiceOver label tells empty from filled. The photo picker of iOS runs
+   outside the app, so the scan flow picks the photo by its label.
+3. **Each flow clears the app data first.** No flow depends on another.
+4. **The flows run on their own simulator, "Sudoku E2E iOS 26".** They clear the app data, so they
+   never run on a simulator of daily use. The simulator uses iOS 26: iOS 27 refuses an app
+   without the UIScene life cycle when Xcode 27 builds it, and Expo SDK 57 has none.
+5. **The finish flow fills every cell with a hint.** Each round taps Hint, then "Show answer" when
+   the card offers it, then "Fill it". So the flow needs no solution. The app has no way to start a
+   known generated puzzle.
+6. **The scan flow needs the real model.** It has the tag `model`. CI has only the stub model
+   (SUD-08), so `e2e.yml` leaves the tag out. `just e2e` puts the fixture image
+   `shared/fixtures/imports/screenshot-digital.png` in the photo library of the simulator.
+7. **CI runs the flows only on a manual step.**
+   - The label `run: e2e` on a pull request starts `e2e.yml` on the branch of the pull request.
+   - A manual run (`workflow_dispatch`) works once the file is on `develop`.
+   - One run takes about 20 minutes. It costs about 200 of the 2,000 monthly minutes.
+   - The composite action `.github/actions/ios-simulator-build` holds the build. `ios-simulator.yml` and `e2e.yml` both use it.
+
+### Consequences of amendment (b)
+
+- A change to a `testID` that a flow uses breaks the flow. `mobile/AGENTS.md` lists the rule.
+- A change to the buttons of the hint card breaks the finish flow.
+- The developer runs the scan flow on the Mac only.
+
+### Reassessment Triggers of amendment (b)
+
+- The app adopts the UIScene life cycle. Then the flows can run on iOS 27.
+- A flow fails twice in a month without a change of the app. Then find the flaky step before the
+  flows run more often.
+- The account gets more minutes, or the repository becomes public. Then run `e2e.yml` on each pull
+  request that changes `mobile/src/`.

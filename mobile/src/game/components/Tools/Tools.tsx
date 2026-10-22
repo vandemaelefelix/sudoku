@@ -30,6 +30,7 @@ function Tool({ icon, label, enabled, playing, selected = false, onPress }: Tool
   return (
     <Animated.View style={toolStyle}>
       <Pressable
+        testID={`tool-${icon}`}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ disabled: !enabled, selected }}
