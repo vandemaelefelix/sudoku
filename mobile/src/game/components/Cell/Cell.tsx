@@ -223,7 +223,7 @@ export const Cell = memo(function Cell({
           ))}
         </Animated.View>
       )}
-      {digit === 0 && hintTarget !== 0 && (
+      {digit === 0 && hintTarget !== 0 && digitSize === 'full' && (
         <>
           <TargetOutline key={hintTarget} cell={cell} />
           <Text allowFontScaling={false} style={styles.ghost}>
