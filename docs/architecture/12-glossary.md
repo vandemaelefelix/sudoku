@@ -92,7 +92,7 @@ status: DRAFT
 | Effect registry | `src/scan/effects/registry.ts`: the list of overlay effects and the default effect (ADR-014) |
 | Journal | `ml/dataset/work/journal.jsonl`: one line per change of the unfinished work, append-only: kinds, digits and the sources of cut cells. Undo and rollback work on it. Finish folds it into `cells.csv` and deletes it (ADR-018). It replaces the kind log of ADR-009 |
 | Labelling app | The local app of `just label-cells` in `tools/label-app/`, served by the label server on 127.0.0.1 only. A start page and two flows: Flow A and Flow B (ADR-034). It replaces the old labelling page |
-| Flow A | The flow of the labelling app from sudoku photos: Fetch new scans, Outlines, Cells per scan, Finish. Uploaded scans and imported photos share it |
+| Flow A | The flow of the labelling app from sudoku photos: Fetch new scans, Outlines, Cells per digit, Finish. Uploaded scans and imported photos share it |
 | Flow B | The flow of the labelling app from loose cells: Pre-label, Digits, Kind, Doubtful labels, Finish |
 | Loose cell | A cell in `unlabeled/` that no scan with an accepted outline holds. Flow B labels it |
 | Start page | The first page of the labelling app: the steps of both flows with their counts. The next step is highlighted |
@@ -302,8 +302,8 @@ status: DRAFT
 | Outline fit | A score from 0 to 1: how well the grid lines inside an outline sit at the 9 × 9 places. 1 is a perfect fit. The Outlines step shows the lowest fit first |
 | Unchecked scan | An uploaded scan whose outline no person has checked: the status `unchecked` in `sudoku-photos.csv`. Its cells never train the model |
 | Rejected scan | An uploaded scan that the developer rejected in the Outlines step: the status `rejected`. All of its cells move to `discarded/`, so training leaves them out |
-| Scan view | The view of the Cells per scan step that shows one scan: the photo beside the 81 cells with their labels. A cell with the same pixels as a cell of another scan shows as shared |
-| Cells per scan | The step of Flow A that opens each scan with an approved outline whose own cells no person has confirmed, oldest first, in the scan view. Enter confirms its cells, and the next scan opens |
+| Cell detail | The side panel of the Cells per digit step: the whole sudoku of the cell under the pointer with the cell marked, the cell large, its label, the model's guess and the fix on the page |
+| Cells per digit | The step of Flow A that shows the open cells of the approved scans in one gallery per digit, the changed cells first. Enter confirms a page. Finish then writes `verified` |
 | Candidate | A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do |
 | Candidate mask | The candidates of one cell as a 9-bit number. Bit `d - 1` is set when digit `d` is a candidate. A placed cell has the mask 0 |
 | Technique | A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair |

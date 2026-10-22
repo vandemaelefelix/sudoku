@@ -110,7 +110,16 @@ def fetch(paths: DataPaths, stage: str, aws: Aws) -> dict:
     return {**report, "stage": stage, "table": table, "bucket": bucket}
 
 
+_signing_in: list[subprocess.Popen] = []
+
+
 def start_sign_in() -> None:
-    """Start `just aws-login` without waiting: it opens the browser and ends after the sign-in."""
+    """Start `just aws-login` without waiting: it opens the browser and ends after the sign-in.
+    A second click while one sign-in runs starts no second one."""
+    if _signing_in and _signing_in[0].poll() is None:
+        return
     env = {k: v for k, v in os.environ.items() if k not in CLEARED}
-    subprocess.Popen(SIGN_IN, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen(
+        SIGN_IN, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    _signing_in[:] = [process]

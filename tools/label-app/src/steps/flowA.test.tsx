@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Scan, ScanCell } from '../api/types'
+import type { CheckCell } from '../api/types'
 import { App } from '../App'
 import { fakeServer, Refusal, START } from '../test/fakeServer'
 import { fixQueue } from './Outlines'
@@ -112,7 +112,7 @@ describe('Outlines', () => {
     fakeServer({ '/api/outlines': { scans: [], open: 0, page: 0, pages: 1 } })
     open('a/outlines')
     expect(await screen.findByText('Every outline is checked.')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Next: Cells per scan' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Next: Cells per digit' }))
     expect(window.location.hash).toBe('#/a/cells')
   })
 })
@@ -150,75 +150,97 @@ describe('The large outline view', () => {
   })
 })
 
-function scanCell(n: number, extra: Partial<ScanCell> = {}): ScanCell {
+function checkCell(n: number, extra: Partial<CheckCell> = {}): CheckCell {
   return {
-    row: Math.floor(n / 9),
-    col: n % 9,
     id: `id${n}`,
     stem: `stem${n}`,
-    digit: 'empty',
-    kind: null,
-    suggested: false,
+    photo: 'aaaa',
+    source: 'app',
+    row: Math.floor(n / 9),
+    col: n % 9,
+    digit: '7',
+    kind: 'printed',
     edited: false,
-    reviewed: false,
-    shared: null,
-    locked: false,
+    model: { digit: '7', p: 0.9, kind: 'printed' },
     ...extra,
   }
 }
 
-function scan(cells: Scan['cells']): Scan {
-  return { photo: 'aaaa', source: 'app', status: 'accepted', width: 100, height: 80, corners: null, cells }
+const COUNTS = { empty: 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 3, '8': 0, '9': 0, unknown: 0 }
+
+function sevens(cells: CheckCell[]) {
+  return { digit: '7', cells, left: cells.length, counts: COUNTS }
 }
 
-describe('Cells per scan', () => {
-  it('opens the first scan that waits', async () => {
-    fakeServer({ '/api/scans': { scans: [{ photo: 'aaaa', source: 'app', open: 2, edited: 0 }] } })
+describe('Cells per digit', () => {
+  it('opens the first digit with cells', async () => {
+    fakeServer({ '/api/cells?digit=empty': { ...sevens([]), digit: 'empty' }, '/api/cells?digit=7': sevens([]) })
     open('a/cells')
-    await waitFor(() => expect(window.location.hash).toBe('#/a/cells/aaaa'))
+    await waitFor(() => expect(window.location.hash).toBe('#/a/cells/7'))
   })
 
-  it('fixes the selected cell with keys and confirms the own cells of the scan', async () => {
-    const cells = [
-      scanCell(0, { digit: '7', kind: 'printed', edited: true }),
-      scanCell(1),
-      scanCell(2, { shared: 'bbbb' }),
-      { row: 0, col: 3, missing: true as const },
-    ]
+  it('moves on to the next digit with cells when this digit has none left', async () => {
+    fakeServer({ '/api/cells?digit=3': { ...sevens([]), digit: '3' }, '/api/cells?digit=7': sevens([checkCell(0)]) })
+    open('a/cells/3')
+    await waitFor(() => expect(window.location.hash).toBe('#/a/cells/7'))
+  })
+
+  it('shows the pointed cell in its sudoku with the model guess and the fix', async () => {
+    const cells = [checkCell(0, { edited: true, model: { digit: '1', p: 0.62, kind: 'handwritten' } }), checkCell(40)]
+    fakeServer({ '/api/cells?digit=7': sevens(cells) })
+    open('a/cells/7')
+    const tiles = await screen.findAllByRole('button', { name: /^Cell / })
+    const detail = screen.getByRole('complementary', { name: 'The cell in its sudoku' })
+    expect(detail).toHaveTextContent('7 P, corrected by the player')
+    expect(detail).toHaveTextContent('1 H, 62 %')
+    await userEvent.hover(tiles[1]!)
+    expect(detail).toHaveTextContent('row 5, column 5')
+    await userEvent.click(tiles[0]!)
+    await userEvent.keyboard('1h')
+    expect(detail).toHaveTextContent('Your fix1 H')
+  })
+
+  it('confirms the page with the digit and kind fixes', async () => {
     const server = fakeServer({
-      '/api/scans': { scans: [{ photo: 'aaaa', source: 'app', open: 2, edited: 1 }] },
-      '/api/scan?photo=aaaa': scan(cells),
-      '/api/scans/confirm': 3,
+      '/api/cells?digit=7': sevens([checkCell(0), checkCell(1), checkCell(2)]),
+      '/api/cells/verify': 4,
     })
-    open('a/cells/aaaa')
-    await screen.findByText('7 P')
-    expect(screen.getByTitle('The player corrected this cell')).toBeInTheDocument()
-    await userEvent.keyboard('{ArrowRight}4h{Enter}')
-    await waitFor(() => expect(server.posts['/api/scans/confirm']).toHaveLength(1))
-    expect(server.posts['/api/scans/confirm']![0]).toEqual({
-      photo: 'aaaa',
+    open('a/cells/7')
+    const tiles = await screen.findAllByRole('button', { name: /^Cell / })
+    await userEvent.click(tiles[0]!)
+    await userEvent.keyboard('1h')
+    await userEvent.click(tiles[1]!)
+    await userEvent.keyboard('x{Enter}')
+    await waitFor(() => expect(server.posts['/api/cells/verify']).toHaveLength(1))
+    expect(server.posts['/api/cells/verify']![0]).toEqual({
       cells: [
-        { id: 'id0', digit: '7', kind: 'printed' },
-        { id: 'id1', digit: '4', kind: 'handwritten' },
+        { id: 'id0', digit: '1', kind: 'handwritten' },
+        { id: 'id1', digit: 'discarded', kind: null },
+        { id: 'id2', digit: '7', kind: 'printed' },
       ],
     })
+    expect(await screen.findByText('Confirmed 3 cells, 2 with a fix.')).toBeInTheDocument()
   })
 
-  it('refuses a confirm while a cell has no digit', async () => {
+  it('refuses cells without a digit on the No guess tab', async () => {
     const server = fakeServer({
-      '/api/scans': { scans: [{ photo: 'aaaa', source: 'photo', open: 1, edited: 0 }] },
-      '/api/scan?photo=aaaa': { ...scan([scanCell(0, { digit: null, suggested: true })]), source: 'photo' },
+      '/api/cells?digit=unknown': {
+        digit: 'unknown',
+        cells: [checkCell(0, { digit: null, kind: null, source: 'photo', model: null })],
+        left: 1,
+        counts: { ...COUNTS, unknown: 1 },
+      },
     })
-    open('a/cells/aaaa')
-    expect(await screen.findByText(/the model reads/)).toBeInTheDocument()
+    open('a/cells/unknown')
+    expect(await screen.findByRole('button', { name: /No guess/ })).toBeInTheDocument()
     await userEvent.keyboard('{Enter}')
-    expect(await screen.findByText(/1 cells have no digit yet/)).toBeInTheDocument()
-    expect(server.posts['/api/scans/confirm']).toBeUndefined()
+    expect(screen.getByRole('alert')).toHaveTextContent('1 cells have no digit yet.')
+    expect(server.posts['/api/cells/verify']).toBeUndefined()
   })
 
   it('says why the step is empty and what comes next', async () => {
-    fakeServer({ '/api/scans': { scans: [] } })
+    fakeServer({ '/api/cells?digit=empty': { ...sevens([]), digit: 'empty', counts: { ...COUNTS, '7': 0 } } })
     open('a/cells')
-    expect(await screen.findByText('No approved scan waits for its cells.')).toBeInTheDocument()
+    expect(await screen.findByText('No cell of an approved scan waits for a check.')).toBeInTheDocument()
   })
 })

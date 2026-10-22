@@ -61,43 +61,33 @@ OUTLINE = strict(
     }
 )
 
-SCANS = strict(
+CELLS = strict(
     {
-        "scans": {
-            "type": "array",
-            "items": strict(
-                {"photo": STRING, "source": SOURCE, "open": INTEGER, "edited": INTEGER}
-            ),
-        }
-    }
-)
-
-PLACE = {"row": INTEGER, "col": INTEGER}
-SCAN = strict(
-    {
-        **OUTLINE["properties"],
+        "digit": STRING,
         "cells": {
             "type": "array",
-            "items": {
-                "oneOf": [
-                    strict({**PLACE, "missing": {"const": True}}),
-                    strict(
-                        {
-                            **PLACE,
-                            "id": STRING,
-                            "stem": STRING,
-                            "digit": NULLABLE_STRING,
-                            "kind": NULLABLE_STRING,
-                            "suggested": BOOLEAN,
-                            "edited": BOOLEAN,
-                            "reviewed": BOOLEAN,
-                            "shared": NULLABLE_STRING,
-                            "locked": BOOLEAN,
-                        }
-                    ),
-                ]
-            },
+            "items": strict(
+                {
+                    "id": STRING,
+                    "stem": STRING,
+                    "photo": STRING,
+                    "source": SOURCE,
+                    "row": INTEGER,
+                    "col": INTEGER,
+                    "digit": NULLABLE_STRING,
+                    "kind": NULLABLE_STRING,
+                    "edited": BOOLEAN,
+                    "model": {
+                        "oneOf": [
+                            {"type": "null"},
+                            strict({"digit": STRING, "p": NUMBER, "kind": STRING}),
+                        ]
+                    },
+                }
+            ),
         },
+        "left": INTEGER,
+        "counts": {"type": "object", "additionalProperties": INTEGER},
     }
 )
 

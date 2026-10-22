@@ -48,40 +48,37 @@ export interface Outline {
   corners: Corners | null
 }
 
-export interface ScanSummary {
-  photo: string
-  source: Source
-  open: number
-  edited: number
+export interface ModelGuess {
+  digit: Digit
+  /** The model's confidence in the digit, 0 to 1. */
+  p: number
+  kind: string
 }
 
-export interface MissingPlace {
-  row: number
-  col: number
-  missing: true
-}
-
-export interface ScanCell {
-  row: number
-  col: number
+/** An open cell of a scan with an approved outline (Flow A). */
+export interface CheckCell {
   id: string
   stem: string
-  /** null: an imported cell without a pre-label. */
+  /** The scan or photo the cell comes from. */
+  photo: string
+  source: Source
+  /** The place in the 9 × 9 grid, 0 to 8. */
+  row: number
+  col: number
+  /** The label it starts with. null: an imported cell without a guess of the model. */
   digit: Digit | null
   kind: Kind | null
-  /** The digit and kind are the model's pre-label, not a label. */
-  suggested: boolean
   /** The player changed the label on the phone. */
   edited: boolean
-  reviewed: boolean
-  /** The stem of the scan that owns the cell, when it is not this scan. */
-  shared: string | null
-  /** In discarded/: out of the labels of the scan. */
-  locked: boolean
+  model: ModelGuess | null
 }
 
-export interface Scan extends Outline {
-  cells: (ScanCell | MissingPlace)[]
+export interface CheckPage {
+  digit: Digit | 'unknown'
+  /** The changed cells first, then those the model reads differently, then the least sure. */
+  cells: CheckCell[]
+  left: number
+  counts: Record<Digit | 'unknown', number>
 }
 
 export interface DigitCell {
@@ -167,6 +164,8 @@ export interface FixResult {
 }
 
 export interface FinishResult {
+  /** The data check report as data. The app shows `text`. */
+  report: unknown
   text: string
   removed: string[]
   review_closed: number | null

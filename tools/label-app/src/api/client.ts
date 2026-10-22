@@ -39,8 +39,11 @@ export async function post<T>(path: string, body: object = {}): Promise<T> {
   return answer.result
 }
 
-export const cellImage = (stem: string): string => `/cell/${stem}.png`
-export const outlineImage = (photo: string, version = 0): string => `/outline/${photo}.jpg?v=${version}`
-export const photoImage = (photo: string): string => `/photo/${photo}.jpg`
+export const cellImage = (stem: string): string => `/cell/${encodeURIComponent(stem)}.png`
+export const outlineImage = (photo: string, version = 0): string =>
+  `/outline/${encodeURIComponent(photo)}.jpg?v=${version}`
+export const photoImage = (photo: string): string => `/photo/${encodeURIComponent(photo)}.jpg`
+/** The flat grid of the current outline: place (row, col) is at the same ninth of each side. */
+export const scanImage = (photo: string): string => `/flat/${encodeURIComponent(photo)}.png`
 export const flatImage = (photo: string, corners: number[][]): string =>
-  `/flat/${photo}.png?c=${corners.flat().join(',')}`
+  `/flat/${encodeURIComponent(photo)}.png?c=${corners.flat().join(',')}`

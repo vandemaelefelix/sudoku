@@ -84,9 +84,17 @@ def test_the_sign_in_runs_the_login_of_the_profile_without_other_aws_variables(m
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "employer")
     monkeypatch.setenv("AWS_PROFILE", "dyna")
     monkeypatch.setenv("AWS_REGION", "eu-west-1")
-    monkeypatch.setattr(
-        fetch_scans.subprocess, "Popen", lambda cmd, **kw: started.append((cmd, kw))
-    )
+
+    class Running:
+        def __init__(self, cmd, **kw):
+            started.append((cmd, kw))
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(fetch_scans.subprocess, "Popen", Running)
+    monkeypatch.setattr(fetch_scans, "_signing_in", [])
+    fetch_scans.start_sign_in()
     fetch_scans.start_sign_in()
     [(command, options)] = started
     assert command == ("aws", "login", "--profile", "sudoku-login")

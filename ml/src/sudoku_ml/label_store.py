@@ -67,6 +67,7 @@ from sudoku_ml.tables import (
 
 SCREEN_SIZE = 50
 DIGIT_SCREEN_SIZE = 100
+CELL_CHECK_SIZE = 240  # a full screen of 64 px cells
 ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
 DIGIT_KINDS = ("handwritten", "all")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
@@ -358,6 +359,16 @@ class LabelStore:
             lines.append(Line(t, self.session, action, cell, "kind", kind, None, screen))
         self._apply_digits(lines)
         self._write(lines)
+
+    def undo_target(self) -> str | None:
+        """The screen of the action that undo would reverse, or None when there is none. An
+        imported photo's outline check is not in the journal, so undo never reaches it."""
+        self._refresh()
+        lines = undo_lines(self.lines, self._t(), self.session)
+        if not lines:
+            return None
+        action = lines[0].action.removeprefix("undo:")
+        return next(x.screen for x in self.lines if x.action == action)
 
     def undo(self) -> int:
         self._refresh()
@@ -669,14 +680,22 @@ class LabelStore:
         Image.fromarray(small).save(out, "JPEG", quality=85)
         return out.getvalue()
 
-    def flat_png(self, photo: str, corners) -> bytes:
+    def flat_png(self, photo: str, corners=None) -> bytes:
         """The grid that `corners` cut from the scan, with the cell lines drawn: the preview of a
-        fix."""
+        fix. Without `corners`: the grid of the current outline, without lines, square, with
+        place (row, col) at the same 1/9 of each side."""
         state = self._scan_state(photo)
+        if corners is None and not state.corners:
+            raise ValueError(f"{photo}: no outline yet")
         try:
-            flat = warp_grid(self._upright(state.row), check_corners(corners))
+            chosen = parse_corners(state.corners) if corners is None else corners
+            flat = warp_grid(self._upright(state.row), check_corners(chosen))
         except (np.linalg.LinAlgError, cv2.error) as error:
             raise ValueError("these corners do not form a grid") from error
+        if corners is None:
+            out = io.BytesIO()
+            Image.fromarray(flat).save(out, "PNG")
+            return out.getvalue()
         step = flat.shape[0] / GRID_CELLS
         for k in range(GRID_CELLS + 1):
             at = min(round(k * step), flat.shape[0] - 1)
@@ -744,6 +763,14 @@ class LabelStore:
         blind = [s for s in states if not corners[s.row.photo_id]]
         if blind:
             raise ValueError(f"{stem_of(blind[0].row.photo_id)}: no outline found. Set its corners")
+        for state in states:
+            # The cut of a photo can still refuse its corners. Check before any line is written.
+            if state.row.source != APP_SCAN:
+                stem = stem_of(state.row.photo_id)
+                try:
+                    self.check.usable(stem, parse_corners(corners[state.row.photo_id]))
+                except ValueError as error:
+                    raise ValueError(f"{stem}: {error}. Open it and set its corners") from error
         t, action = self._t(), self._action()
         lines = [
             self._outline_line(s, "accepted", s.corners, t, action)
@@ -868,7 +895,7 @@ class LabelStore:
             return None, None
         if guess["digit"] == "empty":
             return "empty", None
-        return guess["digit"], guess["kind"] if guess["kind"] in KINDS else "unsure"
+        return guess["digit"], guess["kind"] if guess["kind"] in KINDS else None
 
     def scan_screen(self, photo: str) -> dict:
         """The scan view: the 81 places of the scan. A place shows the cell there and its label.
@@ -982,6 +1009,96 @@ class LabelStore:
                 raise ValueError(f"{stem_of(cell)}: the digit {digit} has no kind")
             elif kind not in KINDS:
                 raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
+            old = self.folder[cell]
+            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "scans"))
+            if kinds.get(cell) != kind:
+                lines.append(
+                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "scans")
+                )
+        self._apply_digits(lines)
+        self._write(lines)
+        return len(lines)
+
+    # Flow A: the cells of the approved scans per digit
+
+    def open_cells(self) -> list[dict]:
+        """Every open cell of the scans with an accepted outline (see _unconfirmed), with the
+        label it starts with, its place and the model's guess. A cell in unlabeled/ starts with
+        the guess. `digit` is None for a cell in unlabeled/ without a guess."""
+        waiting = self._unconfirmed()
+        pre, kinds, label_sources = self._prelabels(), self.kinds(), self.label_sources()
+        sources = self.sources()
+        source_of = {s.row.photo_id: _source(s.row) for s in self._scan_states()}
+        found = []
+        for photo, cells in waiting.items():
+            for cell in cells:
+                folder = self.folder[cell]
+                if folder == "unlabeled":
+                    digit, kind = self._suggestion(cell, pre)
+                else:
+                    digit, kind = folder, kinds.get(cell)
+                guess = pre.get(cell)
+                _, row, col = sources[cell]
+                found.append(
+                    {
+                        "id": cell,
+                        "stem": stem_of(cell),
+                        "photo": stem_of(photo),
+                        "source": source_of[photo],
+                        "row": row,
+                        "col": col,
+                        "digit": digit,
+                        "kind": kind,
+                        "edited": label_sources.get(cell) == "app-edited",
+                        "model": (
+                            {"digit": guess["digit"], "p": guess["p"], "kind": guess["kind"]}
+                            if guess
+                            else None
+                        ),
+                    }
+                )
+        return found
+
+    def cell_check(self, digit: str) -> dict:
+        """One gallery of the open cells of Flow A that read as `digit`, or `unknown` for the
+        cells without a guess. First the cells that the player changed, then those that the
+        model reads differently, then the least sure guess."""
+        if digit not in (*DIGIT_CLASSES, "unknown"):
+            raise ValueError(f"unknown digit {digit!r}")
+        cells = self.open_cells()
+        tab = {c["id"]: c["digit"] or "unknown" for c in cells}
+        counts = Counter(tab.values())
+
+        def order(cell: dict) -> tuple:
+            model = cell["model"]
+            differs = model is not None and model["digit"] != cell["digit"]
+            return (not cell["edited"], not differs, model["p"] if model else 0.0, cell["id"])
+
+        members = sorted((c for c in cells if tab[c["id"]] == digit), key=order)
+        return {
+            "digit": digit,
+            "cells": members[:CELL_CHECK_SIZE],
+            "left": len(members),
+            "counts": {d: counts[d] for d in (*DIGIT_CLASSES, "unknown")},
+        }
+
+    def verify_cells(self, entries: list[dict]) -> int:
+        """Label open cells of Flow A as one action: a digit line per cell, also an unchanged
+        one, and a kind line per changed kind. `discarded` takes a bad cut out. Finish writes
+        `verified` for the others. Checks all entries first."""
+        open_ids = {c["id"] for c in self.open_cells()}
+        kinds, t, action = self.kinds(), self._t(), self._action()
+        lines = []
+        for entry in entries:
+            cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
+            if cell not in open_ids:
+                raise ValueError(f"{stem_of(cell)}: not an open cell of an approved scan")
+            if digit not in ASSIGNABLE:
+                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
+            if digit in NO_KIND_FOLDERS:
+                kind = None
+            elif kind not in KINDS:
+                raise ValueError(f"{stem_of(cell)}: the digit {digit} needs a kind")
             old = self.folder[cell]
             lines.append(Line(t, self.session, action, cell, "digit", old, digit, "scans"))
             if kinds.get(cell) != kind:

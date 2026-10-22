@@ -98,8 +98,10 @@ def test_the_built_app_is_served_and_nothing_outside_it(served):
     status, data = request(one.port, "GET", "/assets/main.js")
     assert status == 200 and data == b"export {}"
     # An unknown path and a path out of the folder get the app, never another file.
-    for path in ("/flow-a/outlines", "/../../data/cells.csv", "/assets/%2e%2e/%2e%2e/x"):
+    for path in ("/flow-a/outlines", "/assets/%2e%2e/%2e%2e/x"):
         assert request(one.port, "GET", path) == (200, b"<title>Labels</title>")
+    for path in ("/../../data/cells.csv", "/assets/gone.js"):
+        assert request(one.port, "GET", path)[0] == 404
 
 
 def test_a_missing_build_says_how_to_build(tmp_path: Path):
@@ -134,7 +136,8 @@ def test_a_kind_save_round_trips(served):
     assert [x.new for x in read_journal(paths.journal)] == ["printed"]
     after = one.get("/api/kinds?folder=7&group=0&page=0", schema.KINDS)
     assert ids["7"][0] not in [c["id"] for c in after["cells"]]
-    assert one.post("/api/undo", {}) == 1
+    assert one.post("/api/undo", {}) == {"lines": 1, "what": "groups"}
+    assert one.post("/api/undo", {}) == {"lines": 0, "what": None}
     assert one.get("/api/start")["kind"] == 2
 
 
@@ -225,19 +228,19 @@ def test_an_imported_photo_goes_through_flow_a(served_photos):
     assert request(one.port, "GET", f"/flat/{stem}.png?c=1,2,3")[0] == 400
     result = one.post("/api/outlines/fix", {"photo": stem, "corners": FULL}, schema.FIX)
     assert result["cells"] > 0 and prelabelled == [1]
-    listed = one.get("/api/scans", schema.SCANS)["scans"]
-    assert [(s["photo"], s["source"], s["open"]) for s in listed] == [
-        (stem, "photo", result["cells"])
-    ]
     # The cells of the photo wait in Flow A, so Flow B still counts only its own 2 cells.
     assert one.get("/api/start")["digits"] + one.get("/api/start")["not_prelabelled"] == 2
-    screen = one.get(f"/api/scan?photo={stem}", schema.SCAN)
-    own = [c for c in screen["cells"] if "id" in c and not c["shared"]]
-    assert len(own) == result["cells"] and all(c["suggested"] for c in own)
-    cells = [{"id": c["id"], "digit": "5", "kind": "printed"} for c in own]
-    assert one.post("/api/scans/confirm", {"photo": stem, "cells": cells}) == 2 * len(own)
-    assert one.get("/api/scans")["scans"] == []
-    assert len(list((paths.cells / "5").glob("*.png"))) == len(own)
+    gallery = one.get("/api/cells?digit=unknown", schema.CELLS)
+    assert gallery["counts"]["unknown"] == result["cells"] == len(gallery["cells"])
+    assert {(c["photo"], c["source"], c["digit"]) for c in gallery["cells"]} == {
+        (stem, "photo", None)
+    }
+    status, data = request(one.port, "GET", f"/flat/{stem}.png")
+    assert status == 200 and data[:4] == b"\x89PNG"
+    cells = [{"id": c["id"], "digit": "5", "kind": "printed"} for c in gallery["cells"]]
+    assert one.post("/api/cells/verify", {"cells": cells}) == 2 * len(cells)
+    assert one.get("/api/start")["scan_cells"] == 0
+    assert len(list((paths.cells / "5").glob("*.png"))) == len(cells)
 
 
 def test_the_outline_and_scan_routes_of_uploaded_scans_round_trip(tmp_path: Path):
@@ -252,11 +255,9 @@ def test_the_outline_and_scan_routes_of_uploaded_scans_round_trip(tmp_path: Path
         body = {"photo": photos[1], "corners": large["corners"]}
         one.post("/api/outlines/fix", body, schema.FIX)
         assert one.get("/api/start", schema.START)["outlines"] == 0
-        listed = one.get("/api/scans", schema.SCANS)["scans"]
-        assert [s["photo"] for s in listed] == photos
-        screen = one.get(f"/api/scan?photo={photos[0]}", schema.SCAN)
-        body = {"photo": photos[0], "cells": entries(screen)}
-        assert one.post("/api/scans/confirm", body) == 81
+        assert one.get("/api/start")["scans"] == 2
+        verify_every_cell(one)
+        assert one.get("/api/start")["scan_cells"] == 0
         error = one.post("/api/outlines/reject", {"photo": photos[0]}, schema.ERROR, 400)
         assert "already checked" in error["error"]
         one.get("/api/outline?photo=0000000000000000", schema.ERROR, status=400)
@@ -290,13 +291,22 @@ def test_a_journal_of_the_old_page_loads_with_no_finish(tmp_path: Path):
         counts = one.get("/api/start", schema.START)
         assert (counts["outlines"], counts["scans"]) == (0, 1)
         assert counts["changes"] == len(read_journal(paths.journal))
-        assert [s["photo"] for s in one.get("/api/scans")["scans"]] == photos[1:]
-        screen = one.get(f"/api/scan?photo={photos[1]}", schema.SCAN)
-        one.post("/api/scans/confirm", {"photo": photos[1], "cells": entries(screen)})
+        waiting = {c["photo"] for c in one.get("/api/cells?digit=empty")["cells"]}
+        assert waiting == set(photos[1:])
+        verify_every_cell(one)
         assert paths.journal.read_bytes().startswith(before)
         assert one.get("/api/start")["scans"] == 0
     finally:
         one.close()
+
+
+def verify_every_cell(one: Served) -> None:
+    """Confirm each open cell of Flow A as it is, digit by digit, as the app does."""
+    for digit in ("empty", *map(str, range(1, 10))):
+        cells = one.get(f"/api/cells?digit={digit}", schema.CELLS)["cells"]
+        body = [{"id": c["id"], "digit": c["digit"], "kind": c["kind"]} for c in cells]
+        if body:
+            one.post("/api/cells/verify", {"cells": body})
 
 
 class FakeFetch:

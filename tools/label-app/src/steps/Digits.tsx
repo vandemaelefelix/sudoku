@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { get, post } from '../api/client'
-import { DIGITS, type Digit, type DigitPage, type Label } from '../api/types'
-import { DigitGallery, GALLERY_KEYS } from '../components/DigitGallery'
+import { DIGITS, type Digit, type DigitPage } from '../api/types'
+import { DigitGallery, GALLERY_KEYS, nextWithCells, type Confirmed } from '../components/DigitGallery'
 import { Empty, Failure, Frame, Working } from '../components/Frame'
 import { go, useKeys, useLoad } from '../hooks'
 import { useAction } from '../useAction'
@@ -18,13 +18,16 @@ export function Digits({ digit: asked }: { digit: string | undefined }) {
   const data = page.data?.digit === digit ? page.data : undefined
   const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0
   // Without a digit in the route, open the first digit with cells.
+  // Without a digit in the route, or when this digit has no cell left, open the next digit with cells.
+  const next = data && data.counts[digit] === 0 ? nextWithCells(DIGITS, digit, data.counts) : undefined
   const first = page.data ? DIGITS.find((d) => page.data!.counts[d] > 0) : undefined
   useEffect(() => {
     if (!isDigit(asked) && first && first !== digit) go(`b/digits/${first}`)
-  }, [asked, first, digit])
+    else if (next) go(`b/digits/${next}`)
+  }, [asked, first, digit, next])
 
-  const confirm = async (labels: Record<string, Label>): Promise<void> => {
-    const cells = Object.entries(labels).map(([id, label]) => ({ id, digit: label }))
+  const confirm = async (labels: Record<string, Confirmed>): Promise<void> => {
+    const cells = Object.entries(labels).map(([id, label]) => ({ id, digit: label.digit }))
     const fixed = cells.filter((c) => c.digit !== digit).length
     await action.run(
       () => post<number>('/api/digits/assign', { cells }),
@@ -65,9 +68,6 @@ export function Digits({ digit: asked }: { digit: string | undefined }) {
       ) : null}
       {data && total > 0 ? (
         <>
-          {data.cells.length === 0 ? (
-            <Empty why={`No loose cell reads as ${digit === 'empty' ? 'empty' : digit}. Pick another digit above.`} />
-          ) : null}
           <DigitGallery
             digit={digit}
             counts={data.counts}
@@ -77,6 +77,7 @@ export function Digits({ digit: asked }: { digit: string | undefined }) {
               note: `${Math.round(c.p * 100)} %`,
               title: 'How sure the model is',
             }))}
+            tabs={DIGITS}
             onDigit={(d) => go(`b/digits/${d}`)}
             onConfirm={confirm}
             busy={action.busy}
