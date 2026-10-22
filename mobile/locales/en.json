@@ -1,5 +1,5 @@
 {
   "ios": {
-    "NSCameraUsageDescription": "Sudoku uses the camera to scan a paper sudoku. The photos never leave your iPhone."
+    "NSCameraUsageDescription": "Sudoku uses the camera to scan a paper sudoku."
   }
 }
