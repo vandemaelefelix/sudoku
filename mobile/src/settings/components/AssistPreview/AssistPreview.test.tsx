@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen } from '@testing-library/react-native'
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
@@ -36,10 +36,12 @@ it('follows a switch at once', async () => {
   // Cell 31 is in the box of cell 39, not in its row or column, and holds no 8.
   await act(async () => result.current.setAssist('box', false))
   expect(styleOf(31).backgroundColor).toBe(colours.fill)
+  fireEvent(screen.getByTestId('grid-box', hidden), 'layout', { nativeEvent: { layout: { width: 180, height: 180 } } })
+  const frame = () => StyleSheet.flatten(screen.getByTestId('selection-frame', hidden).props.style)
+  expect(frame().borderWidth).toBe(colours.selectedRingWidth)
   await act(async () => result.current.setAssist('selectedCell', false))
-  expect(StyleSheet.flatten(screen.getByTestId('cell-39', hidden).props.style)).toMatchObject({
-    borderColor: colours.ring,
-  })
+  // Without the selected fill, a thinner frame marks the selected cell.
+  expect(frame()).toMatchObject({ borderColor: colours.ring, borderWidth: cobalt.shape.stroke.ring })
 })
 
 it('cannot be tapped and VoiceOver skips it', () => {

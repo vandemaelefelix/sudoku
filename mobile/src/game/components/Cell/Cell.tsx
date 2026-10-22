@@ -137,7 +137,6 @@ export const Cell = memo(function Cell({
   digitStyle,
   notes,
   fill,
-  ring,
   hintFill,
   hintSupport,
   hintStruck,
@@ -230,7 +229,7 @@ export const Cell = memo(function Cell({
   if (!interactive) {
     // A display grid crossfades its fills, so a change of an assist in Settings reads as a change, not a flicker.
     return (
-      <View testID={`cell-${cell}`} style={[styles.cell, styles.plain, ring && styles.ring]}>
+      <View testID={`cell-${cell}`} style={[styles.cell, styles.plain]}>
         <FillFade cell={cell} fill={fill} />
         {content}
       </View>
@@ -242,7 +241,7 @@ export const Cell = memo(function Cell({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => onSelect(cell)}
-      style={[styles.cell, styles[fill], ring && styles.ring]}
+      style={[styles.cell, styles[fill]]}
     >
       {content}
     </Pressable>

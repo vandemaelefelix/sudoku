@@ -19,7 +19,7 @@ export type CellView = {
   digitStyle: DigitStyle
   notes: string
   fill: CellFill
-  /** A thin ring marks the selected cell when the selected-cell assist is off. */
+  /** The selected cell when the selected-cell assist is off: the grid frames it without a fill. */
   ring: boolean
   /** The hint roles (ADR-032). hintSupport: the digit takes the support colour. */
   hintFill: HintFill
@@ -106,10 +106,6 @@ export function displayFill(colours: CellColours, fill: CellFill) {
     case 'conflict':
       return { backgroundColor: colours.conflictFill }
     case 'selected':
-      return {
-        backgroundColor: colours.selected,
-        borderWidth: colours.selectedRingWidth,
-        borderColor: colours.ring,
-      }
+      return { backgroundColor: colours.selected }
   }
 }

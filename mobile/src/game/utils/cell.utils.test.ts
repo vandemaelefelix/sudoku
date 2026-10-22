@@ -187,9 +187,5 @@ it('gives a display fill the colours of the fill keys of the cell styles', () =>
   expect(displayFill(colours, 'peer')).toEqual({ backgroundColor: colours.peer })
   expect(displayFill(colours, 'same')).toEqual({ backgroundColor: colours.same })
   expect(displayFill(colours, 'conflict')).toEqual({ backgroundColor: colours.conflictFill })
-  expect(displayFill(colours, 'selected')).toEqual({
-    backgroundColor: colours.selected,
-    borderWidth: colours.selectedRingWidth,
-    borderColor: colours.ring,
-  })
+  expect(displayFill(colours, 'selected')).toEqual({ backgroundColor: colours.selected })
 })

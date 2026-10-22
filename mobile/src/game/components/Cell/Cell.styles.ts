@@ -8,13 +8,8 @@ export const styles = StyleSheet.create((theme) => ({
   peer: { backgroundColor: theme.components.cell.peer },
   same: { backgroundColor: theme.components.cell.same },
   conflict: { backgroundColor: theme.components.cell.conflictFill },
-  // The selected cell has a fill and a ring in both looks (ADR-026).
-  selected: {
-    backgroundColor: theme.components.cell.selected,
-    borderWidth: theme.components.cell.selectedRingWidth,
-    borderColor: theme.components.cell.ring,
-  },
-  ring: { borderWidth: theme.shape.stroke.ring, borderColor: theme.components.cell.ring },
+  // The selected cell has a fill. Its frame lies on the grid lines, drawn by the grid (ADR-026, amendment of 2026-10-22).
+  selected: { backgroundColor: theme.components.cell.selected },
   wave: {
     position: 'absolute',
     top: 0,
