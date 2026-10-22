@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-027: The backend platform: Clerk for sign-in, a serverless API on AWS, built with SST
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-15 |
 | Contact | Felix      |
 
@@ -463,3 +463,16 @@ The release of the backend to production makes these decisions.
 4. **A private, encrypted S3 bucket holds the photos.** A lifecycle rule expires them after 12 months. The scans
    share the existing DynamoDB table.
 5. **Reassessment:** add App Attest when a sender abuses the route.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `sst.config.ts` and `backend/infra/` hold the stages, the account guard and the budget (#117).
+- Clerk signs players in (#119, #121). `backend/api/` holds the Lambda, the table and the JWT authorizer (#120).
+- `backend/kill-switch/` holds the kill switch (#122, #129, #130).
+- `.github/workflows/deploy-api-dev.yml` and `deploy-api-production.yml` deploy the backend (#124).
+- #125 and #126 built the account delete. #127, #131 and #133 built the production release.
+- The workflow `deploy-api-production` ran with success three times. `production` has the Clerk issuer in
+  `backend/infra/config.ts`.
+- Issue #111 still holds the release checks, such as the Clerk plan and the smoke test. They do not change a decision.

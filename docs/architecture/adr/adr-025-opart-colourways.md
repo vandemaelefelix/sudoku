@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-025: One style, three Op-art colourways
@@ -7,7 +7,7 @@ status: DRAFT
 | Field | Value |
 | --- | --- |
 | Project | Sudoku |
-| Status | Proposed |
+| Status | Accepted |
 | Date | 2026-10-14 |
 | Contact | Felix |
 | Supersedes | Decision 1, 2 and 3 of ADR-021 (the four themes), and the dark splash of ADR-024 |
@@ -127,3 +127,13 @@ The other themes make the app larger and harder to keep:
 - The developer wants a dark mode. Then a dark palette per colourway and the System choice return.
 - The developer wants a fourth colourway. Check its contrast before the app uses it.
 - The developer wants the app icon to follow the colourway. Then the icon needs alternate icons.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `buildOpartTheme` in `mobile/src/theme/opart/` builds the three colourways. The palettes are in
+  `mobile/src/theme/themes/cobalt/`, `forest/` and `bordeaux/` (#114).
+- `mobile/src/theme/transition/` holds the cell wave of decision 10 (#114, #186).
+- #186 built the amendment of 2026-10-21.
+- Decision 5 (light only) is superseded by [ADR-026](adr-026-appearance.md).

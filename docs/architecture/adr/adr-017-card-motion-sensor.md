@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-017: The finish card tilts with Reanimated's motion sensor
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-12 |
 | Contact | Felix      |
 
@@ -47,3 +47,10 @@ The finish card reads `useAnimatedSensor(SensorType.ROTATION, { interval: 'auto'
 - A Reanimated major release removes or changes `useAnimatedSensor`.
 - iOS starts to ask for a permission for the device attitude.
 - Another screen needs the sensor on the JS thread.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/src/game/hooks/useCardTilt/useCardTilt.ts` reads `useAnimatedSensor` with `SensorType.ROTATION` (#71).
+- `useCardTilt.test.tsx` covers the rest position. `FinishCard.test.tsx` covers Reduce Motion.

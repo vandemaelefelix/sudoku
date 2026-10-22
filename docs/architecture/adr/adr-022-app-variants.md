@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-022: Two app variants and an icon generated from the Op-art theme
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-14 |
 | Contact | Felix      |
 
@@ -80,3 +80,13 @@ The icon is now the "Scatter with digits" design. The serif 9 over the waves is 
 - EAS Build is adopted (ADR-010): move `APP_VARIANT` into the build profiles of `eas.json`.
 - A preview variant for testers is needed.
 - Icon Composer files become available from a script: replace the iOS PNGs with a `.icon` file.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `mobile/app.config.ts` reads `APP_VARIANT`. `mobile/app.config.test.ts` covers the two variants and an unknown
+  value (#94).
+- `tools/icons/` draws the icons, and `just icons` renders them (#94, #159).
+  [ADR-029](adr-029-repository-layout.md) moved `scripts/icons/` to `tools/icons/`.
+- Decision 5 is superseded by [ADR-024](adr-024-animated-splash.md).

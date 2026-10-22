@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-009: Training images outside git, a versioned manifest inside
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
@@ -122,3 +122,16 @@ exactly which images trained it.
 ## Reassessment Triggers
 
 - Training happens on a second machine, or real data passes about 500 MB. Adopt DVC.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- These points stand: the manifest in git (point 2), no stored synthetic data (point 3), the photo import, the work
+  folder, Finish and the data check.
+- `just dataset-manifest`, `just import-photos` and `just check-data` exist (#10, #76). Finish is
+  `ml/src/sudoku_ml/finish.py`. The data check is `ml/src/sudoku_ml/data_check.py`.
+- `ml/src/sudoku_ml/synthetic.py` renders the synthetic cells at training time.
+- [ADR-018](adr-018-one-data-folder-two-tables.md) replaced the layout, the kind log and the photo list. Its proof is
+  in that ADR.
+- DVC is not adopted. Its reassessment trigger has not fired.

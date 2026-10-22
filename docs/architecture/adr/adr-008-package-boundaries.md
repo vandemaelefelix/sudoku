@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: ACCEPTED
 ---
 
 # ADR-008: `@sudoku/core` as an internal package, the scanner as a module inside the app
@@ -7,7 +7,7 @@ status: DRAFT
 | Field   | Value      |
 | ------- | ---------- |
 | Project | Sudoku     |
-| Status  | Proposed   |
+| Status  | Accepted   |
 | Date    | 2026-10-09 |
 | Contact | Felix      |
 
@@ -48,3 +48,13 @@ and the scanner. A boundary can be a folder by convention, or a workspace packag
 ## Reassessment Triggers
 
 - A second consumer of the scanner appears (a web demo, an Android-only app). Make it a package.
+
+## Amendment 2026-10-22: accepted
+
+The code on `develop` proves this decision. The status moves from Proposed to Accepted. The decision does not change.
+
+- `@sudoku/core` is the internal package in `shared/core/`. [ADR-029](adr-029-repository-layout.md) moved it from
+  `packages/sudoku-core/`.
+- The scanner is `mobile/src/scanner/`. `mobile/src/scanner/index.ts` is its only entry point.
+- `.dependency-cruiser.cjs` checks SUD-03, SUD-04 and SUD-05. `just boundaries` runs it as part of `just lint`, in CI
+  on every push (#8, #31).
