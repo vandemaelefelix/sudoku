@@ -85,6 +85,20 @@ Each role is a shape plus a colour. The colour never carries the meaning alone.
 
 The technique table, with the roles of each technique, is in ADR-032 decision 12.
 
+The grid draws each role with these shapes. The colours are the `components.cell.hint*` tokens of the theme.
+
+| Role | Shape |
+| --- | --- |
+| Focus unit | A tint, and a 2 pt outline around all the focus units together |
+| Pattern cell | An inner outline and a small dot in the top-right corner |
+| Support digit | A round ring around the digit |
+| Struck candidate | A bar in the danger tone across the note digit |
+| Target cell | A 3 pt outline and the digit as a ghost at 40 %. The outline pulses once. With Reduce Motion it stays still |
+
+While a hint highlight shows, the assist shades step back: row and column, box and same numbers. The conflict fill and
+the selected cell stay. The contrast test checks every role colour at 3 : 1 and every digit on the focus tint at
+4.5 : 1, in all six themes.
+
 ### Special cases
 
 - **A wrong entry.** The hint starts with one card: "Erase it first". The card has two
@@ -170,7 +184,7 @@ makes the fallback card before the hint opens.
 
 | Question | Decided by |
 | --- | --- |
-| The shape and the colour of each role | Issue #195 |
+| The shape and the colour of each role | Decided: the shape table under "Highlight roles" and the `components.cell.hint*` tokens |
 | The text of each technique | Decided: `HINT_TECHNIQUES` in `@sudoku/core` |
 | The layout of the card on a small phone | Issue #196 |
 | Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |

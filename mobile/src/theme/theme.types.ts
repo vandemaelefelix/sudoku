@@ -162,6 +162,23 @@ export type Theme = {
       note: string
       /** The width of the ring that marks the selected cell, in points. 0 for none. */
       selectedRingWidth: number
+      /** The hint roles (ADR-032). Each role is a shape plus a colour. hintFocus: the tint of a focus unit, under its outline hintFocusLine. */
+      hintFocus: string
+      hintFocusLine: string
+      /** The inner outline and the corner dot of a pattern cell. */
+      hintPattern: string
+      /** The ring around a support digit. */
+      hintSupport: string
+      /** The strike through a struck candidate. */
+      hintStrike: string
+      /** The thick outline of the target cell. */
+      hintTarget: string
+      /** The ghost digit of the target cell, drawn at hintGhostOpacity, 0 to 1. */
+      hintGhost: string
+      hintGhostOpacity: number
+      /** Widths in points: hintLineWidth for the focus outline, the pattern outline, the ring and the strike. */
+      hintLineWidth: number
+      hintTargetWidth: number
     }
     key: { fill: string; digit: string; noteDigit: string }
     /** The toggle. on and off: the fill of the track. border: the border of the track when off. thumbOn and thumbOff: the square thumb. */

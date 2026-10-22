@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
-import type { SharedValue } from 'react-native-reanimated'
+import * as Reanimated from 'react-native-reanimated'
+import { useReducedMotion, type SharedValue } from 'react-native-reanimated'
+import { HINT_EDGE, TARGET_PULSE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
 import type { Pulse } from '@/game/hooks/usePulse'
 import { pulseLook } from '@/game/utils/pulse.utils'
@@ -27,6 +29,11 @@ const base = {
   notes: '',
   fill: 'plain',
   ring: false,
+  hintEdges: 0,
+  hintPattern: false,
+  hintSupport: false,
+  hintStruck: '',
+  hintTarget: 0,
   label: 'cell',
   pulse: pulseAt(0),
 } as const
@@ -184,4 +191,105 @@ it('takes the colours of a display fill from the theme hook, not from the cell s
   render(<Cell {...base} interactive={false} fill="peer" onSelect={jest.fn()} />)
   expect(fillOf('cell-2-fill')).toBe(forest.components.cell.peer)
   theming.mockRestore()
+})
+
+const styleOf = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style)
+
+describe('the hint roles (ADR-032)', () => {
+  const colours = cobalt.components.cell
+
+  afterEach(() => {
+    jest.mocked(useReducedMotion).mockReturnValue(false)
+    jest.restoreAllMocks()
+  })
+
+  it('tints a focus unit and outlines only the sides where the unit ends', () => {
+    render(<Cell {...base} fill="focus" hintEdges={HINT_EDGE.top | HINT_EDGE.left} onSelect={jest.fn()} />)
+    expect(styleOf('cell-2')).toMatchObject({ backgroundColor: colours.hintFocus })
+    expect(styleOf('cell-2-hint-edges')).toMatchObject({
+      borderColor: colours.hintFocusLine,
+      borderTopWidth: colours.hintLineWidth,
+      borderLeftWidth: colours.hintLineWidth,
+      borderRightWidth: 0,
+      borderBottomWidth: 0,
+    })
+  })
+
+  it('draws no outline inside a focus unit', () => {
+    render(<Cell {...base} fill="focus" onSelect={jest.fn()} />)
+    expect(screen.queryByTestId('cell-2-hint-edges')).toBeNull()
+  })
+
+  it('marks a pattern cell with an inner outline and a corner dot', () => {
+    render(<Cell {...base} hintPattern onSelect={jest.fn()} />)
+    expect(styleOf('cell-2-hint-pattern')).toMatchObject({
+      borderColor: colours.hintPattern,
+      borderWidth: colours.hintLineWidth,
+    })
+    expect(styleOf('cell-2-hint-dot')).toMatchObject({ backgroundColor: colours.hintPattern })
+  })
+
+  it('rings a support digit', () => {
+    render(<Cell {...base} digit={7} digitStyle="given" hintSupport onSelect={jest.fn()} />)
+    expect(styleOf('cell-2-hint-support')).toMatchObject({
+      borderColor: colours.hintSupport,
+      borderWidth: colours.hintLineWidth,
+    })
+    expect(screen.getByText('7')).toBeTruthy()
+  })
+
+  it('strikes only the struck notes, in the danger tone', () => {
+    render(<Cell {...base} notes="39" hintStruck="3" onSelect={jest.fn()} />)
+    expect(styleOf('note-strike-3')).toMatchObject({ backgroundColor: colours.hintStrike })
+    expect(screen.queryByTestId('note-strike-9')).toBeNull()
+    expect(screen.getByText('3')).toBeTruthy()
+  })
+
+  it('outlines the target cell and shows its digit as a ghost', () => {
+    render(<Cell {...base} hintTarget={4} onSelect={jest.fn()} />)
+    expect(styleOf('cell-2-hint-target')).toMatchObject({
+      borderColor: colours.hintTarget,
+      borderWidth: colours.hintTargetWidth,
+      transform: [{ scale: 1 }],
+    })
+    expect(StyleSheet.flatten(screen.getByText('4').props.style)).toMatchObject({
+      color: colours.hintGhost,
+      opacity: colours.hintGhostOpacity,
+    })
+  })
+
+  it('draws no ghost in a small cell, as it draws no notes', () => {
+    render(<Cell {...base} hintTarget={4} digitSize="small" onSelect={jest.fn()} />)
+    expect(screen.queryByTestId('cell-2-hint-target')).toBeNull()
+    expect(screen.queryByText('4')).toBeNull()
+  })
+
+  it('pulses the target outline once', () => {
+    const timing = jest.spyOn(Reanimated, 'withTiming')
+    render(<Cell {...base} hintTarget={4} onSelect={jest.fn()} />)
+    expect(timing).toHaveBeenCalledTimes(1)
+    expect(timing).toHaveBeenCalledWith(1, expect.objectContaining({ duration: TARGET_PULSE_MS }))
+  })
+
+  it('keeps the target outline still with Reduce Motion', () => {
+    jest.mocked(useReducedMotion).mockReturnValue(true)
+    const timing = jest.spyOn(Reanimated, 'withTiming')
+    render(<Cell {...base} hintTarget={4} onSelect={jest.fn()} />)
+    expect(timing).not.toHaveBeenCalled()
+    expect(styleOf('cell-2-hint-target')).toMatchObject({ transform: [{ scale: 1 }] })
+  })
+
+  it('draws every role without a theme hook', () => {
+    const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')
+    const theming = jest.spyOn(unistyles, 'useUnistyles')
+    render(
+      <>
+        <Cell {...base} cell={1} fill="focus" hintEdges={HINT_EDGE.top} hintPattern onSelect={jest.fn()} />
+        <Cell {...base} cell={2} digit={5} digitStyle="given" hintSupport onSelect={jest.fn()} />
+        <Cell {...base} cell={3} notes="12" hintStruck="1" onSelect={jest.fn()} />
+        <Cell {...base} cell={4} hintTarget={8} onSelect={jest.fn()} />
+      </>,
+    )
+    expect(theming).not.toHaveBeenCalled()
+  })
 })
