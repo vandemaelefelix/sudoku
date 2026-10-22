@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { roleFont } from '@/theme/typography'
+import { columnInset } from '@/theme/column'
 
 // Unistyles reads the safe-area insets natively, so the menu needs no insets hook.
 export const styles = StyleSheet.create((theme, rt) => ({
@@ -8,7 +9,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.space.md,
     paddingTop: rt.insets.top + theme.space.xxl,
     paddingBottom: rt.insets.bottom + theme.space.lg,
-    paddingHorizontal: theme.space.lg,
+    paddingHorizontal: columnInset(theme, rt.screen.width),
     backgroundColor: theme.colors.background,
   },
   menu: { flex: 1, gap: theme.space.md },
