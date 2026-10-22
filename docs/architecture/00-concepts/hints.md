@@ -86,6 +86,10 @@ The card has these parts:
 | A wrong entry | Erase it |
 | The fallback | Fill it, I'll do it |
 
+From rung 2 on, "Learn more" under the text opens the **technique page** of the step. The game
+stays under the page, so Back returns to the game with the hint still open. The clock counts
+while the page shows.
+
 The card and the strip only fade, so Reduce Motion changes nothing. The open hint lives in the session
 reducer of the app: the plan, the step, the rung and the view (card, strip or "Nice."). The saved game
 does not keep it.
@@ -129,6 +133,23 @@ The grid draws each role with these shapes. The colours are the `components.cell
 While a hint highlight shows, the assist shades step back: row and column, box and same numbers. The conflict fill and
 the selected cell stay. The contrast test checks every role colour at 3 : 1 and every digit on the focus tint at
 4.5 : 1, in all six themes.
+
+### Technique pages
+
+The **techniques screen** lists every technique with hint text in hint order: the name and the
+definition. Settings opens it from the Learn section. Each **technique page** shows these parts:
+
+- the definition of the hint text,
+- an explanation of at most four short sentences,
+- the first level where the technique appears, from `TECHNIQUE_LEVEL`,
+- an example board with every highlight role of its step. VoiceOver reads the board as one text:
+  the why and the answer of the step.
+
+`TECHNIQUE_PAGES` in `@sudoku/core` holds the explanations and the example positions. Each example
+is a position of a generated puzzle. The Vitest tests check that the finder of the technique finds
+a step there. For all but the quads and the jellyfish, the hint plan of the position starts with
+the technique. Those three are rare: an easier step always came first in the generated puzzles.
+The screens track and send nothing (SUD-02).
 
 ### Special cases
 

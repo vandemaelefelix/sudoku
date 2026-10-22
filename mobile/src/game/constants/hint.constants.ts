@@ -16,6 +16,7 @@ export const HINT_LABELS = {
   hintFill: 'Fill it',
   hintDoIt: "I'll do it",
   hintErase: 'Erase it',
+  learnMore: 'Learn more',
 } as const
 
 /** The title of the card before rung 2 names the technique, and of the mistake and the fallback card. */

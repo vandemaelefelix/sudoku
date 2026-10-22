@@ -7,7 +7,7 @@ import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useGridIntro } from '@/game/hooks/useGridIntro'
 import { usePulse } from '@/game/hooks/usePulse'
-import type { DigitSize } from '@/game/utils/cell.utils'
+import type { DigitSize, HintHighlight } from '@/game/utils/cell.utils'
 import { cellLabel } from '@/game/utils/cellLabel.utils'
 import { hintHighlight } from '@/game/utils/hint.utils'
 import { markOf } from '@/game/utils/mark.utils'
@@ -19,6 +19,8 @@ type GridProps = {
   /** false: a board to look at, for example a preview. VoiceOver skips it and no cell takes a tap. */
   interactive?: boolean
   digitSize?: DigitSize
+  /** A fixed highlight for a display grid, such as the example of a technique page. Else the grid marks the open hint. */
+  highlight?: HintHighlight
 }
 
 /**
@@ -26,11 +28,11 @@ type GridProps = {
  * An interactive grid enters: its lines are there at once, and the digits sweep in from the top left (useGridIntro).
  * The props default to {}: GameScreen.renders.test calls Grid() as a plain function.
  */
-export function Grid({ interactive = true, digitSize = 'full' }: GridProps = {}) {
+export function Grid({ interactive = true, digitSize = 'full', highlight }: GridProps = {}) {
   const { board, move, hint } = useGameState()
   // The highlight keeps its identity while the hint does, so a clock tick or a selection makes no new views.
-  const highlight = useMemo(() => hintHighlight(hint), [hint])
-  const views = useCellViews(highlight)
+  const hinted = useMemo(() => highlight ?? hintHighlight(hint), [highlight, hint])
+  const views = useCellViews(hinted)
   const { select } = useGameActions()
   const pulse = usePulse(board, move)
   const intro = useGridIntro()

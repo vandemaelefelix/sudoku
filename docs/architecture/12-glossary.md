@@ -149,6 +149,8 @@ status: DRAFT
 | Struck candidate | A candidate that the technique removes. It shows only on a note that the player wrote |
 | Target cell | The cell where the hint ends. It gets the digit |
 | Hint highlight | The cells that an open hint marks on the grid: the focus units, the pattern cells, the support cells, the struck candidates and the target cells. A `Step` is a hint highlight as it is. `HintHighlight` in `src/game/utils/cell.utils.ts` |
+| Techniques screen | The screen that lists every technique that a hint teaches, easiest first. Settings and "Learn more" on the hint card open it |
+| Technique page | The page of one technique: its definition, an explanation of at most four sentences, the first level where it appears and an example board. `TECHNIQUE_PAGES` in `@sudoku/core` holds the text and the example |
 | Complete number | A number with all nine placed correctly. Its key is disabled. Wrong placements do not count |
 | Assist | A shade on the grid that helps the player see the board: row and column, box, selected cell or same numbers. Each one turns on or off in Settings |
 | Puzzle number | The seed of a generated puzzle, shown on the finish card: "Puzzle 412 077". The app draws seeds below 1 000 000 (ADR-011) |

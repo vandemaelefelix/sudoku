@@ -56,7 +56,7 @@ function firstDigit(step: Step): number {
   return (step.placements[0] ?? step.eliminations[0])!.digit
 }
 
-/** The step choice at one rank. Exported for its tests. */
+/** The step choice at one rank. The technique pages and the tests use it too. */
 export function byChoice(selected: number | null) {
   return (a: Step, b: Step): number =>
     Number(a.placements.length === 0) - Number(b.placements.length === 0) ||
