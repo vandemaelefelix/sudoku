@@ -549,7 +549,7 @@ class LabelStore:
         self.checks.extend(records)
         return summary(self.checks)
 
-    # Outlines screen and scan view
+    # Check outlines screen and scan view
 
     def _scan_states(self) -> list[ScanState]:
         """Each `app-scan` photo in the order of sudoku-photos.csv, which is the pull order, with
@@ -568,24 +568,40 @@ class LabelStore:
         raise ValueError(f"{photo}: not an uploaded scan")
 
     def _upright(self, row: PhotoRow) -> np.ndarray:
-        # The Outlines screen asks for the same few photos many times. A decode is slow.
+        # The Check outlines screen asks for the same few photos many times. A decode is slow.
         if row.photo_id not in self._photos:
             self._photos[row.photo_id] = load_upright(self.paths.photos / row.file)
             while len(self._photos) > PHOTO_CACHE:
                 self._photos.popitem(last=False)
         return self._photos[row.photo_id]
 
-    def _fits(self, states: list[ScanState]) -> dict[str, float]:
-        """Photo id → outline_fit. Computes and stores each score that the file lacks for the
-        current corners."""
+    def _outline_cache(self, states: list[ScanState]) -> dict[str, dict]:
+        """Photo id → {"corners", "fit", "cells"} for the current corners of each scan with
+        corners: the outline fit and the 81 cell ids of its cut, row by row. Computes and stores
+        each entry that the file lacks, because a decode of a photo is slow."""
         scores = read_scores(self.paths.outline_scores)
-        missing = [s for s in states if scores.get(s.row.photo_id, {}).get("corners") != s.corners]
+        missing = [
+            s
+            for s in states
+            if s.corners
+            and (
+                scores.get(s.row.photo_id, {}).get("corners") != s.corners
+                or "cells" not in scores[s.row.photo_id]
+            )
+        ]
         for state in missing:
-            fit = outline_fit(self._upright(state.row), state.corners)
-            scores[state.row.photo_id] = {"corners": state.corners, "fit": round(fit, 4)}
+            rgb = self._upright(state.row)
+            scores[state.row.photo_id] = {
+                "corners": state.corners,
+                "fit": round(outline_fit(rgb, state.corners), 4),
+                "cells": [cell for _, cell in scan_cut(rgb, state.corners)],
+            }
         if missing:
             write_scores(self.paths.outline_scores, scores)
-        return {s.row.photo_id: scores[s.row.photo_id]["fit"] for s in states}
+        return {s.row.photo_id: scores[s.row.photo_id] for s in states if s.corners}
+
+    def _fits(self, states: list[ScanState]) -> dict[str, float]:
+        return {photo: entry["fit"] for photo, entry in self._outline_cache(states).items()}
 
     def outline_screen(self, page: int = 0) -> dict:
         """One page of the scans with an unchecked outline, the lowest fit first."""
@@ -830,21 +846,34 @@ class LabelStore:
 
     # Check cells screen
 
+    def _accepted_cuts(self) -> dict[str, list[str]]:
+        """Photo id → the 81 cell ids of the cut of each scan with an accepted outline."""
+        accepted = [s for s in self._scan_states() if s.status == "accepted"]
+        return {photo: entry["cells"] for photo, entry in self._outline_cache(accepted).items()}
+
     def _app_cells(self) -> tuple[list[str], list[str]]:
-        """(open, verified): the cells of the scans with an accepted outline in DIGIT_CLASSES,
-        sorted. Open: the label is from the app and no person has labelled it. A cell belongs to
-        the scan of its source, so a pixel-identical cell counts once."""
-        accepted = {s.row.photo_id for s in self._scan_states() if s.status == "accepted"}
+        """(open, verified): the cells in DIGIT_CLASSES of the cut of a scan with an accepted
+        outline, sorted. Open: the label is from the app and no person has labelled it. A
+        pixel-identical cell counts once, also when the scan of its source is not accepted."""
+        in_accepted = {cell for cells in self._accepted_cuts().values() for cell in cells}
         label_sources, labelled = self.label_sources(), confirmed_cells(self.lines)
         open_cells, verified = [], []
-        for cell, (photo, _, _) in self.sources().items():
-            if photo not in accepted or self.folder.get(cell) not in DIGIT_CLASSES:
+        for cell in in_accepted:
+            if self.folder.get(cell) not in DIGIT_CLASSES:
                 continue
             if label_sources.get(cell) == "verified" or cell in labelled:
                 verified.append(cell)
             elif label_sources.get(cell) in APP_LABEL_SOURCES:
                 open_cells.append(cell)
         return sorted(open_cells), sorted(verified)
+
+    @staticmethod
+    def _scan_of(cell: str, sources: dict[str, Source], cuts: dict[str, list[str]]) -> str:
+        """The photo id of an accepted scan that holds the cell: its source when accepted."""
+        source = sources.get(cell, ("",))[0]
+        if source in cuts:
+            return source
+        return next(photo for photo, cells in cuts.items() if cell in cells)
 
     def open_app_cells(self) -> list[str]:
         return self._app_cells()[0]
@@ -855,17 +884,15 @@ class LabelStore:
         cell sits in every scan that holds it."""
         kinds = self.kinds()
         grids = {}
-        for state in self._scan_states():
-            if state.status != "accepted":
-                continue
+        for photo, cells in self._accepted_cuts().items():
             places = []
-            for _, cell in scan_cut(self._upright(state.row), state.corners):
+            for cell in cells:
                 where = self.folder.get(cell)
                 known = where in DIGIT_CLASSES
                 places.append(
                     {"id": cell, "digit": where, "kind": kinds.get(cell)} if known else None
                 )
-            grids[state.row.photo_id] = places
+            grids[photo] = places
         return grids
 
     def _doubt(self) -> dict:
@@ -883,7 +910,7 @@ class LabelStore:
             raise ValueError(f"unknown digit {digit!r}")
         open_cells, verified = self._app_cells()
         doubt = self._doubt()["cells"]
-        sources, kinds = self.sources(), self.kinds()
+        sources, kinds, cuts = self.sources(), self.kinds(), self._accepted_cuts()
         members = sorted(
             (c for c in open_cells if self.folder[c] == digit),
             key=lambda c: (c not in doubt, -doubt.get(c, {}).get("score", 0.0), c),
@@ -912,7 +939,7 @@ class LabelStore:
                     "stem": stem_of(c),
                     "digit": digit,
                     "kind": kinds.get(c),
-                    "scan": stem_of(sources[c][0]),
+                    "scan": stem_of(self._scan_of(c, sources, cuts)),
                     "score": doubt.get(c, {}).get("score"),
                     "reasons": doubt.get(c, {}).get("reasons", []),
                 }

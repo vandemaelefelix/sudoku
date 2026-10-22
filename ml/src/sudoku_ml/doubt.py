@@ -26,6 +26,9 @@ WEIGHTS = {
 }
 LOW_CONFIDENCE = 0.9  # below this probability of its digit, a cell gets 1 - p
 BOX = 3
+# A grid with few givens and a deep contradiction can make the search exponential. The count
+# then gives up, and the scan gets no solution signal.
+MAX_STEPS = 200_000
 
 # Cell files → (digit probabilities (N, 10), kind probabilities (N, 4)).
 Predict = Callable[[list[Path]], tuple[np.ndarray, np.ndarray]]
@@ -60,13 +63,19 @@ def clashes(grid: list[int]) -> set[int]:
     return found
 
 
-def count_solutions(grid: list[int], limit: int = 2) -> int:
+class TooHard(Exception):
+    pass
+
+
+def count_solutions(grid: list[int], limit: int = 2, max_steps: int = MAX_STEPS) -> int | None:
     """The number of solutions of a 9×9 grid (0 is empty), up to `limit`. A grid with a clash
-    has 0. Backtracking on the place with the fewest options."""
+    has 0. None when the search takes more than `max_steps` steps. Backtracking on the place
+    with the fewest options."""
     if clashes(grid):
         return 0
     cells = list(grid)
     full = (1 << 10) - 2  # bits 1-9
+    steps = [0]
 
     def options(place: int) -> int:
         used = 0
@@ -75,6 +84,9 @@ def count_solutions(grid: list[int], limit: int = 2) -> int:
         return full & ~used
 
     def solve() -> int:
+        steps[0] += 1
+        if steps[0] > max_steps:
+            raise TooHard
         best, best_options = -1, 0
         for place in range(81):
             if cells[place] == 0:
@@ -97,7 +109,10 @@ def count_solutions(grid: list[int], limit: int = 2) -> int:
                     break
         return total
 
-    return solve()
+    try:
+        return solve()
+    except TooHard:
+        return None
 
 
 def _number(digit: str | None) -> int:
@@ -113,7 +128,7 @@ def scan_signals(places: list[dict | None]) -> dict[int, list[dict]]:
         found.setdefault(place, []).append({"signal": "rule-break", "digit": str(grid[place])})
     givens = [_number(p["digit"]) if p and p["kind"] == "printed" else 0 for p in places]
     solutions = count_solutions(givens)
-    if solutions != 1:
+    if solutions is not None and solutions != 1:
         signal = "no-solution" if solutions == 0 else "not-unique"
         for place, entry in enumerate(places):
             # A missed digit hides in an empty place. A clash hides in a digit.

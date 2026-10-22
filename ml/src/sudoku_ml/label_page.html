@@ -312,7 +312,7 @@ let checkError = "";
 let lastStatus = null;  // the last /api/status, for the banner
 let photo = null;      // the photo on the Photos screen, from /api/photos/next
 let scan = null;       // the scan in the scan view, from /api/scans
-let outlines = null;   // one page of the Outlines screen, from /api/outlines
+let outlines = null;   // one page of the Check outlines screen, from /api/outlines
 let one = null;        // the scan in the large outline view, from /api/outline
 let oneCorners = null; // [[x, y] × 4] in upright photo pixels, as the reviewer drags them
 let queue = [];        // the marked scans that open large after an Enter
@@ -320,6 +320,7 @@ let dragging = null;   // the index of the dragged corner
 let review = null;     // one page of the Check cells screen, from /api/cells
 let cellDigit = "1";   // the digit of the Check cells screen
 let scanFrom = "outline";  // the screen that B in the scan view goes back to
+let cellsDraft = null;     // the unsaved changes of Check cells while the scan view is open
 let corners = null;    // [[x, y] × 4] in full-size upright photo pixels
 let clicks = [];       // corners that the person clicked, in the order TL, TR, BR, BL
 let kinds = "handwritten";
@@ -1116,7 +1117,16 @@ async function backFromScan() {
   if (!scan) return;
   if (scanFrom === "cells") {
     mode = "cells";
-    return loadCells(cellDigit);
+    const draft = cellsDraft;
+    cellsDraft = null;
+    await loadCells(draft ? draft.digit : cellDigit, draft ? draft.page : 0);
+    if (!draft) return;
+    // An Enter here must send the fixes that the reviewer made before V.
+    const back = review.cells.filter((c) => c.id in draft.local);
+    for (const cell of back) local[cell.id] = draft.local[cell.id];
+    render();
+    if (back.length) say(`Your ${back.length} unsaved ${back.length === 1 ? "change is" : "changes are"} back. Press Enter to verify.`);
+    return;
   }
   if (scan.status === "unchecked") {
     mode = "outline";
@@ -1327,6 +1337,7 @@ async function verifyPage() {
 
 async function viewHoveredScan() {
   if (!hovered) return say("Point at a cell first, then press V.");
+  cellsDraft = { digit: cellDigit, page: review.page, local: { ...local } };
   scanFrom = "cells";
   mode = "scans";
   await loadScan(hovered.scan);

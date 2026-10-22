@@ -44,7 +44,8 @@ def read_real_cells(data: DataPaths) -> list[RealCell]:
     cells = []
     for path in cell_paths(data.cells):
         row = table.get(path.stem)
-        if row and row.source and row.source[0] in unchecked:
+        # A verified cell can also sit in another, accepted scan with the same pixels.
+        if row and row.source and row.source[0] in unchecked and row.label_source != "verified":
             continue
         label = path.parent.name
         if label == "empty":
