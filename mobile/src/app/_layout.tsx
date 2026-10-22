@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router'
 import { AccountProvider } from '@/account/components/AccountProvider'
+import { I18nProvider } from '@/i18n/components/I18nProvider'
 import { ScanShareDrainer } from '@/scanShare/components/ScanShareDrainer'
 import { ScanShareNotice } from '@/scanShare/components/ScanShareNotice'
 import { SplashOverlay } from '@/splash/components/SplashOverlay'
@@ -19,24 +20,27 @@ import { ThemeTransitionProvider } from '@/theme/transition'
  * The scan drainer sends the waiting scans (ADR-030). It needs the account for the token.
  * The sync provider is inside the storage provider. It renders the routes at once and syncs in the background.
  * Each screen gets its own events, so its Skia surfaces draw again when it shows again (ADR-025).
+ * The language is outside everything else, so every text of the app comes from its catalogue (ADR-033).
  */
 export default function RootLayout() {
   return (
-    <SplashProvider>
-      <ThemeTransitionProvider>
-        <SystemAppearanceFollower />
-        <AccountProvider>
-          <GameStorageProvider>
-            <SyncProvider>
-              <ScanShareDrainer />
-              <ScanShareNotice />
-              <SplashRouteReady />
-              <Stack screenOptions={{ headerShown: false }} screenLayout={ScreenShowLayout} />
-            </SyncProvider>
-          </GameStorageProvider>
-        </AccountProvider>
-      </ThemeTransitionProvider>
-      <SplashOverlay />
-    </SplashProvider>
+    <I18nProvider>
+      <SplashProvider>
+        <ThemeTransitionProvider>
+          <SystemAppearanceFollower />
+          <AccountProvider>
+            <GameStorageProvider>
+              <SyncProvider>
+                <ScanShareDrainer />
+                <ScanShareNotice />
+                <SplashRouteReady />
+                <Stack screenOptions={{ headerShown: false }} screenLayout={ScreenShowLayout} />
+              </SyncProvider>
+            </GameStorageProvider>
+          </AccountProvider>
+        </ThemeTransitionProvider>
+        <SplashOverlay />
+      </SplashProvider>
+    </I18nProvider>
   )
 }

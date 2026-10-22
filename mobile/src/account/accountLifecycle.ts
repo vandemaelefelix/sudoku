@@ -1,12 +1,7 @@
 import { Alert } from 'react-native'
-import {
-  ACCOUNT_DELETED_TITLE,
-  DELETE_RETRIES,
-  DELETE_RETRY_DELAY_MS,
-  DELETED_MESSAGE,
-  DELETED_TITLE,
-} from '@/account/constants/account.constants'
+import { DELETE_RETRIES, DELETE_RETRY_DELAY_MS } from '@/account/constants/account.constants'
 import type { Account } from '@/account/hooks/useAccount'
+import { currentIntl } from '@/i18n/currentIntl'
 import type { ClerkAdapter } from '@/account/utils/clerkAdapter.utils'
 import type { OwnerCache } from '@/account/utils/ownerCache.utils'
 import type { HistoryRepository } from '@/storage'
@@ -132,7 +127,13 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps): AccountLifec
       lostAttemptOf = null
       let signedOut: boolean
       try {
-        signedOut = await cleanUpOnce(owner, () => Alert.alert(DELETED_TITLE, DELETED_MESSAGE))
+        signedOut = await cleanUpOnce(owner, () => {
+          const intl = currentIntl()
+          Alert.alert(
+            intl.formatMessage({ id: 'account.delete.doneTitle' }),
+            intl.formatMessage({ id: 'account.delete.doneMessage' }),
+          )
+        })
       } catch (error) {
         devWarn('account', `The local data of the deleted account was not cleaned up: ${errorMessage(error)}`)
         signedOut = await account.signOut()
@@ -147,7 +148,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps): AccountLifec
       lostAttemptOf = null
     },
     async onAccountDeleted(owner) {
-      await cleanUpOnce(owner, () => Alert.alert(ACCOUNT_DELETED_TITLE))
+      await cleanUpOnce(owner, () => Alert.alert(currentIntl().formatMessage({ id: 'account.delete.elsewhere' })))
     },
   }
 }

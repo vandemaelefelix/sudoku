@@ -64,6 +64,43 @@
       "rules": {
         "sudoku/no-colour-literal": "off"
       }
+    },
+    {
+      "files": ["mobile/src/**/*.tsx", "mobile/src/**/*.ts"],
+      "rules": {
+        "sudoku/no-literal-text": "error"
+      }
+    },
+    {
+      "files": [
+        "mobile/src/scan/components/DevMenu/**",
+        "mobile/src/scan/components/ScanInspector/**",
+        "mobile/src/scan/components/ThresholdSlider/**",
+        "mobile/src/scan/effects/**",
+        "mobile/src/stats/components/ResetStats/**",
+        "mobile/src/**/*.test.tsx",
+        "mobile/src/**/*.test.ts"
+      ],
+      "rules": {
+        "sudoku/no-literal-text": "off"
+      }
+    },
+    {
+      "files": ["mobile/src/**/*.constants.ts"],
+      "rules": {
+        "sudoku/no-constant-text": "error"
+      }
+    },
+    {
+      "files": [
+        "mobile/src/scan/components/DevMenu/**",
+        "mobile/src/scan/components/ScanInspector/**",
+        "mobile/src/scan/effects/**",
+        "mobile/src/scan/components/CorrectionCheck/CorrectionCheck.constants.ts"
+      ],
+      "rules": {
+        "sudoku/no-constant-text": "off"
+      }
     }
   ]
 }

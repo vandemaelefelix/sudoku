@@ -1,5 +1,6 @@
 import { Pressable } from 'react-native'
 import { Icon } from '@/game/components/Icon'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { FIXED_COLORS } from '@/theme/fixed.colors'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './CloseButton.styles'
@@ -12,11 +13,12 @@ type CloseButtonProps = {
 
 /** The way out of the scan screen, in the top-left corner inside the safe area. */
 export function CloseButton({ onPress, overCamera }: CloseButtonProps) {
+  const intl = useIntl()
   return (
     <Pressable
       testID="scan-close"
       accessibilityRole="button"
-      accessibilityLabel="Close the scan"
+      accessibilityLabel={intl.formatMessage({ id: 'scan.camera.close' })}
       onPress={onPress}
       style={({ pressed }) => [styles.button, overCamera && styles.overCamera, pressed && pressedStyles.pressed]}
     >

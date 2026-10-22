@@ -1,21 +1,18 @@
-import { capitalised, cellName } from './names'
+import { cell, type HintMessage, message } from './message'
 import { HINT_TECHNIQUES } from './techniques'
 import type { HintPlan, HintRung } from './types'
 
 /**
- * The card text of one rung of one step: at most two short sentences. A mistake plan and a
- * fallback plan have one card each, so they ignore `stepIndex` and `rung`.
+ * The card message of one rung of one step: at most two short sentences in every language. A mistake plan and a
+ * fallback plan have one card each, so they ignore `stepIndex` and `rung`. The app formats the message (ADR-033).
  * Throws a RangeError when the plan has no step at `stepIndex`.
  */
-export function hintText(plan: HintPlan, stepIndex: number, rung: HintRung): string {
+export function hintMessage(plan: HintPlan, stepIndex: number, rung: HintRung): HintMessage {
   switch (plan.kind) {
     case 'mistake':
-      return `${capitalised(cellName(plan.cell))} holds a wrong digit. Erase it first.`
+      return message('hint.mistake', { cell: cell(plan.cell) })
     case 'fallback':
-      return (
-        'No hint technique fits this board. ' +
-        `Put ${plan.answer.digit} in ${cellName(plan.answer.cell)}, the cell with the fewest possible digits.`
-      )
+      return message('hint.fallback', { digit: plan.answer.digit, cell: cell(plan.answer.cell) })
     case 'steps':
       break
   }
@@ -27,7 +24,7 @@ export function hintText(plan: HintPlan, stepIndex: number, rung: HintRung): str
     case 1:
       return technique.look(step)
     case 2:
-      return `${technique.name}: ${technique.definition}`
+      return { ...message('hint.technique'), technique: step.technique }
     case 3:
       return technique.why(step, stepIndex > 0)
     case 4:

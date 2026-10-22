@@ -20,6 +20,7 @@ import { useGameTime } from '@/game/hooks/useGameTime'
 import { useSolveDelay } from '@/game/hooks/useSolveDelay'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { finishView, type FinishInfo, type FinishView } from '@/game/utils/finish.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { easeOut, riseIn } from '@/utils/motion.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
@@ -51,7 +52,8 @@ const STILL_GLARE = { opacity: GLARE_REST }
 function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishCardProps & { board: Game }) {
   const playedMs = useGameTime()
   const [finishedAt] = useState(now)
-  const view = finishView(board, playedMs, info, finishedAt)
+  const intl = useIntl()
+  const view = finishView(intl, board, playedMs, info, finishedAt)
   const { theme } = useUnistyles()
   const reduceMotion = useReducedMotion()
   const card = useRef<View>(null)
@@ -119,7 +121,7 @@ function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishC
             onPress={() => leaveThen(onNewPuzzle)}
             style={({ pressed }) => [styles.newPuzzle, pressed && pressedStyles.pressed]}
           >
-            <Text style={styles.newPuzzleText}>New puzzle</Text>
+            <Text style={styles.newPuzzleText}>{intl.formatMessage({ id: 'game.newPuzzle' })}</Text>
           </Pressable>
         )}
         <Pressable
@@ -127,7 +129,7 @@ function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishC
           onPress={() => guard(onHome)}
           style={({ pressed }) => [styles.home, pressed && pressedStyles.pressed]}
         >
-          <Text style={styles.homeText}>Back to home</Text>
+          <Text style={styles.homeText}>{intl.formatMessage({ id: 'common.backHome' })}</Text>
         </Pressable>
       </Animated.View>
     </Animated.View>
@@ -168,6 +170,7 @@ type FaceProps = {
 }
 
 function Face({ view, board, iconColor, partIn }: FaceProps) {
+  const intl = useIntl()
   return (
     <>
       <ThemeDecoration slot="cardEdge" style={styles.edge} />
@@ -175,7 +178,7 @@ function Face({ view, board, iconColor, partIn }: FaceProps) {
         <Text style={styles.title}>{view.title}</Text>
         {view.newBest && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>New best</Text>
+            <Text style={styles.badgeText}>{intl.formatMessage({ id: 'finish.newBest' })}</Text>
           </View>
         )}
       </Animated.View>
@@ -186,9 +189,9 @@ function Face({ view, board, iconColor, partIn }: FaceProps) {
         <CardGrid board={board} />
       </Animated.View>
       <Animated.View entering={partIn(3)} style={styles.stats}>
-        <Stat label="Mistakes" value={view.mistakes} />
-        <Stat label="Hints" value={view.hints} />
-        <Stat label="Best" value={view.best} />
+        <Stat label={intl.formatMessage({ id: 'stats.games.mistakes' })} value={view.mistakes} />
+        <Stat label={intl.formatMessage({ id: 'stats.games.hints' })} value={view.hints} />
+        <Stat label={intl.formatMessage({ id: 'finish.stat.best' })} value={view.best} />
       </Animated.View>
       <Animated.View entering={partIn(4)} style={styles.footer}>
         {view.fromPaper && <Icon name="scan" tone="text" size={16} color={iconColor} />}

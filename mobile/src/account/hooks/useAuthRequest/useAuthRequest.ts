@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { authErrorsOf, type AuthErrors } from '@/account/utils/authErrors.utils'
+import type { MessageId } from '@/i18n/messages'
 
 /** The Core 3 Clerk methods give their error in the result instead of a throw. */
 export type ClerkResult = { error: unknown }
@@ -9,9 +10,9 @@ export type AuthRequest = {
   errors: AuthErrors
   /**
    * Runs one step of a flow. It clears the old errors, and it turns a throw or a Clerk error into messages.
-   * `failWith` shows a message of our own above the button, for a status that Clerk reports without an error.
+   * `failWith` shows a message of our own above the button, for a status that Clerk reports without an error. It takes a message id.
    */
-  run(step: (fail: (error: unknown) => void, failWith: (message: string) => void) => Promise<void>): Promise<void>
+  run(step: (fail: (error: unknown) => void, failWith: (message: MessageId) => void) => Promise<void>): Promise<void>
 }
 
 export function useAuthRequest(): AuthRequest {

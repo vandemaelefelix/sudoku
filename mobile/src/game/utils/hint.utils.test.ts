@@ -1,8 +1,14 @@
-import { createGame, HINT_TECHNIQUES, hintText, planHint, type HintPlan, type HintRung } from '@sudoku/core'
+import { createGame, hintMessage, planHint, type HintPlan, type HintRung } from '@sudoku/core'
+import { createAppIntl } from '@/i18n/utils/intl.utils'
+import { hintText } from '@/utils/hintText.utils'
 import { TARGET_PULSE_SCALE } from '@/game/constants/hint.constants'
 import { pointingStart, sampleStart, stuckStart } from './sample.utils'
 import type { OpenHint } from './session.utils'
 import { hintCardView, hintHighlight, targetPulseScale } from './hint.utils'
+
+const en = createAppIntl('en')
+/** The English card text of a rung, as the app writes it. */
+const textOf = (plan: HintPlan, step: number, rung: HintRung): string => hintText(en, hintMessage(plan, step, rung))
 
 it('pulses the target outline once: still at both ends, smallest halfway', () => {
   expect(targetPulseScale(0)).toBe(1)
@@ -79,19 +85,20 @@ describe('the highlight of each rung', () => {
   })
 })
 
-const labels = (hint: OpenHint) => hintCardView(hint).buttons.map((button) => button.label)
+const labels = (hint: OpenHint) => hintCardView(en, hint).buttons.map((button) => button.label)
 
 describe('the hint card view', () => {
   it('names the technique from rung 2 on, with the rung and the step', () => {
-    expect(hintCardView(at(0, 1))).toMatchObject({ title: 'Hint', rung: 1, stepLabel: 'Step 1 of 2' })
-    expect(hintCardView(at(0, 2)).title).toBe(HINT_TECHNIQUES[elimination.technique]?.name)
-    expect(hintCardView(at(1, 3)).text).toBe(hintText(pointing, 1, 3))
+    expect(hintCardView(en, at(0, 1))).toMatchObject({ title: 'Hint', rung: 1, stepLabel: 'Step 1 of 2' })
+    expect(elimination.technique).toBe('pointing')
+    expect(hintCardView(en, at(0, 2)).title).toBe('Pointing')
+    expect(hintCardView(en, at(1, 3)).text).toBe(textOf(pointing, 1, 3))
   })
 
   it('has no step label for a plan of one step', () => {
     const plan = planOf(sampleStart())
     expect(plan.kind === 'steps' && plan.steps).toHaveLength(1)
-    expect(hintCardView({ plan, step: 0, rung: 1, view: 'card' }).stepLabel).toBeNull()
+    expect(hintCardView(en, { plan, step: 0, rung: 1, view: 'card' }).stepLabel).toBeNull()
   })
 
   it('offers the buttons of each rung', () => {
@@ -102,23 +109,25 @@ describe('the hint card view', () => {
   })
 
   it('has one card for a mistake and one for a fallback, without rungs', () => {
-    const mistake = hintCardView({ plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' })
+    const mistake = hintCardView(en, { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' })
     expect(mistake).toMatchObject({ rung: null, stepLabel: null })
     expect(mistake.buttons.map((button) => button.action)).toEqual(['hintErase'])
     const fallback = planOf(stuckStart())
-    const card = hintCardView({ plan: fallback, step: 0, rung: 1, view: 'card' })
-    expect(card).toMatchObject({ rung: null, text: hintText(fallback, 0, 1) })
+    const card = hintCardView(en, { plan: fallback, step: 0, rung: 1, view: 'card' })
+    expect(card).toMatchObject({ rung: null, text: textOf(fallback, 0, 1) })
     expect(card.buttons.map((button) => button.action)).toEqual(['hintFill', 'hintTry'])
   })
 
   it('offers the technique page from rung 2 on', () => {
-    expect(hintCardView(at(0, 1)).technique).toBeNull()
-    expect(hintCardView(at(0, 2)).technique).toBe(elimination.technique)
-    expect(hintCardView(at(1, 4)).technique).toBe(single.technique)
-    expect(hintCardView({ plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' }).technique).toBeNull()
+    expect(hintCardView(en, at(0, 1)).technique).toBeNull()
+    expect(hintCardView(en, at(0, 2)).technique).toBe(elimination.technique)
+    expect(hintCardView(en, at(1, 4)).technique).toBe(single.technique)
+    expect(
+      hintCardView(en, { plan: { kind: 'mistake', cell: 7 }, step: 0, rung: 1, view: 'card' }).technique,
+    ).toBeNull()
   })
 
   it('says "Nice." on the strip once the player placed the target', () => {
-    expect(hintCardView(at(1, 4, 'nice')).text).toBe('Nice.')
+    expect(hintCardView(en, at(1, 4, 'nice')).text).toBe('Nice.')
   })
 })

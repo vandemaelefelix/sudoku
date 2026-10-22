@@ -37,13 +37,17 @@ Run lint, typecheck and tests before you say a task is done.
   `pnpm exec expo run:ios`. Cloud builds (EAS) are not used yet (ADR-010).
 - Keep the folders: `src/app/` (routes), `src/home/` (home UI), `src/game/` (game UI),
   `src/settings/` (settings UI and `SettingsRepository`: screens, components, hooks, utils,
-  constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/techniques/` (the techniques screen and the technique pages: screens, components, utils, constants), `src/scan/` (scan UI), `src/components/` (UI that more than one feature uses, for example `PanelButton`), `src/scanner/` (scanner, entered only through
+  constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/techniques/` (the techniques screen and the technique pages: screens, components, utils, constants), `src/scan/` (scan UI), `src/i18n/` (the translations, ADR-033: the provider, the language setting, the polyfills and the catalogues in `messages/`), `src/components/` (UI that more than one feature uses, for example `PanelButton`), `src/scanner/` (scanner, entered only through
   `src/scanner/index.ts`), `src/storage/` (game storage), `src/splash/` (the animated splash) and `src/account/` (the
   Clerk account: the provider, the sign-in screens and the Settings section) and `src/sync/` (the history sync:
   the service, the API client and the provider) and `src/scanShare/` (the scan upload, ADR-030: the record, the crop, the queue, the uploader
   and the sharing switch; it does not import `src/scan/`, and the scan UI hands it a `FinalGrid` from `src/utils/finalGrid.utils.ts`). The uploader sends the photo length in `x-jpeg-bytes` and sets the same `Content-Length` on the `PUT`: the presigned URL signs it. `expo-network` and `expo-image-picker` are native modules, so a change to
   them needs a new development build. `expo-image-picker` asks for no photo library permission: `app.json` sets
   `photosPermission` and `microphonePermission` to `false`.
+- Every text that the player sees or hears comes from a catalogue (ADR-033). Add the id to `src/i18n/messages/en.ts`
+  and the Dutch message to `nl.ts` in the same change. Use a word of `nl.words.md` for each term. Read the formatter with
+  `useIntl` from `@/i18n/hooks/useIntl`. A util gets it as a `Formatter` parameter. `just lint` refuses literal text
+  (`sudoku/no-literal-text`). `expo-localization` is a native module, so a change to it needs a new development build.
 - Navigation follows ADR-016: Expo Router 57. A route file in `src/app/` only renders one screen
   from a feature folder. `_layout.tsx` holds the `Stack` and app-wide providers. Do not put logic,
   state, styles or tests in `src/app/`. A route param is a URL string. Load data from a

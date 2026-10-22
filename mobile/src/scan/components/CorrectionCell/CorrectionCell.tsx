@@ -15,6 +15,7 @@ import type { Pulse } from '@/game/hooks/usePulse'
 import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
 import { CorrectionRing } from '@/scan/components/CorrectionRing'
 import type { CellLook } from '@/scan/utils/correction.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { correctionCellLabel } from '@/scan/utils/correctionEdit.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { digitAlpha, shiftOf, type SweepTiming } from '@/scan/utils/transition.utils'
@@ -73,6 +74,7 @@ export const CorrectionCell = memo(function CorrectionCell({
   resultsAt,
   reduceMotion,
 }: CorrectionCellProps) {
+  const intl = useIntl()
   const row = Math.floor(n / 9)
   const col = n % 9
   // A digit that the player picks fades in and rises like the sweep. The first render and the transition do not play it.
@@ -114,7 +116,7 @@ export const CorrectionCell = memo(function CorrectionCell({
         // During the transition the cells are not controls yet, so VoiceOver skips them.
         accessible={!disabled}
         accessibilityRole="button"
-        accessibilityLabel={correctionCellLabel(n, look, conflict, hint)}
+        accessibilityLabel={correctionCellLabel(intl, n, look, conflict, hint)}
         accessibilityState={{ selected, disabled }}
         disabled={disabled}
         onPress={() => onSelect?.(n)}
