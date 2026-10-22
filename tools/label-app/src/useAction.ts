@@ -12,6 +12,15 @@ export interface Action {
   undo: () => Promise<void>
 }
 
+/** The journal `screen` of an action, in words. The old page wrote the same names. */
+const UNDONE: Record<string, string> = {
+  outlines: 'an outline check of an uploaded scan',
+  scans: 'a page of cells of the scans',
+  digits: 'a page of digits',
+  groups: 'a page of kinds',
+  review: 'a page of doubtful labels',
+}
+
 /** One action at a time per step, with the feedback line and the Z key's undo. */
 export function useAction(reload: () => void): Action {
   const [busy, setBusy] = useState(false)
@@ -32,8 +41,11 @@ export function useAction(reload: () => void): Action {
   }
   const undo = async (): Promise<void> => {
     await run(
-      () => post<number>('/api/undo'),
-      (lines) => (lines ? 'Undid the last change.' : 'Nothing to undo in this session.'),
+      () => post<{ lines: number; what: string | null }>('/api/undo'),
+      ({ what }) =>
+        what
+          ? `Undid the last change: ${UNDONE[what] ?? 'a change'}.`
+          : 'Nothing to undo in this session. Undo cannot reverse the check of an imported photo.',
     )
     reload()
   }

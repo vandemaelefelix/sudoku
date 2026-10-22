@@ -73,7 +73,7 @@ export function OutlineLarge({ photo }: { photo: string }) {
       () => post<FixResult>('/api/outlines/fix', { photo, corners: round1(corners) }),
       (r) => `Saved the corners of ${photo} and cut ${r.cells} new cells.`,
     )
-    if (result) nextToFix(`Saved the corners of ${photo}. Next: Cells per scan.`)
+    if (result) nextToFix(`Saved the corners of ${photo}. Next: Cells per digit.`)
   }
 
   const reject = async (): Promise<void> => {

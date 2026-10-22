@@ -1,5 +1,5 @@
 import { useRoute } from './hooks'
-import { Cells } from './steps/Cells'
+import { CellsPerDigit } from './steps/CellsPerDigit'
 import { Digits } from './steps/Digits'
 import { Doubtful } from './steps/Doubtful'
 import { Fetch } from './steps/Fetch'
@@ -16,7 +16,7 @@ export function App() {
   if (flow === 'a') {
     if (step === 'fetch') return <Fetch />
     if (step === 'outlines') return item ? <OutlineLarge photo={item} /> : <Outlines />
-    if (step === 'cells') return <Cells photo={item} />
+    if (step === 'cells') return <CellsPerDigit digit={item} />
   }
   if (flow === 'b') {
     if (step === 'prelabel') return <Prelabel />

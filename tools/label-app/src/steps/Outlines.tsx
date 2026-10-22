@@ -51,13 +51,19 @@ export function Outlines() {
   const approve = async (): Promise<void> => {
     if (!scans.length || action.busy) return
     if (good.length) {
+      const photos = scans.some((s) => good.includes(s.photo) && s.source === 'photo')
       const done = await action.run(
         () => post<number>('/api/outlines/approve', { photos: good }),
         (n) =>
           `Approved ${plural(n, 'outline')}.` +
+          (photos ? ' Undo cannot reverse an imported photo.' : '') +
           (marked.length ? ` Next: fix the ${plural(marked.length, 'marked one')}.` : ''),
       )
-      if (done === undefined) return
+      if (done === undefined) {
+        // A refusal can follow a change on the server: show the gallery as it is now.
+        setRound((n) => n + 1)
+        return
+      }
     }
     setMarks(new Set())
     if (marked.length) {
@@ -104,7 +110,7 @@ export function Outlines() {
           why="Every outline is checked."
           next={
             <button type="button" className="primary" onClick={() => go('a/cells')}>
-              Next: Cells per scan
+              Next: Cells per digit
             </button>
           }
         />

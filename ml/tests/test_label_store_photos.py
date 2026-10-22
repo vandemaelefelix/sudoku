@@ -59,7 +59,7 @@ def test_a_cell_of_a_photo_starts_with_the_pre_label(tmp_path: Path):
     first, second, third = store.scan_screen(photo)["cells"][:3]
     assert (first["digit"], first["kind"]) == ("4", "handwritten")
     assert (second["digit"], second["kind"]) == ("empty", None)
-    assert (third["digit"], third["kind"]) == ("5", "unsure")
+    assert (third["digit"], third["kind"]) == ("5", None)
 
 
 def test_a_photo_without_a_detected_outline_cannot_be_approved_blind(tmp_path: Path):
@@ -110,3 +110,36 @@ def test_the_doubtful_save_settles_a_page_as_one_action(tmp_path: Path):
     assert (store.folder[a], store.folder[b]) == ("7", "7")
     with pytest.raises(ValueError, match="needs a kind"):
         store.review_save([{"id": a, "digit": "1"}])
+
+
+def test_a_batch_with_a_photo_whose_corners_give_no_grid_writes_nothing(tmp_path: Path):
+    store, [photo] = imported(tmp_path)
+    row = read_photos(store.paths.photos_csv)[0]
+    line = [[200, 100], [400, 100], [600, 100], [740, 100]]
+    store.paths.detections.write_text(
+        json.dumps(
+            {
+                row.photo_id: {
+                    "corners": line,
+                    "lines": 0,
+                    "reason": "x",
+                    "width": 1000,
+                    "height": 800,
+                }
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="set its corners"):
+        store.approve_outlines([photo])
+    assert read_photos(store.paths.photos_csv)[0].status == "pending"
+    assert not store.paths.journal.exists() or store.paths.journal.read_text() == ""
+
+
+def test_undo_names_the_step_of_the_action_it_reverses(tmp_path: Path):
+    paths, ids = build(tmp_path, {"7": 1}, {"7": [[0]]})
+    store = LabelStore(paths, Clock())
+    assert store.undo_target() is None
+    store.save([{"id": ids["7"][0], "kind": "printed"}], "groups")
+    assert store.undo_target() == "groups"
+    store.undo()
+    assert store.undo_target() is None

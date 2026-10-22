@@ -293,3 +293,38 @@ def test_a_cell_outside_the_digit_folders_is_locked_and_not_confirmed(tmp_path: 
     assert cells[0]["locked"] and not any(c["locked"] for c in cells[1:])
     again.confirm_scan(photos[0], entries(again.scan_screen(photos[0])))
     assert again.scan_list()["scans"] == []
+
+
+def test_the_cell_check_shows_the_cells_of_approved_scans_per_digit_changed_ones_first(
+    tmp_path: Path,
+):
+    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
+    assert sum(store.cell_check("empty")["counts"].values()) == 0
+    store.approve_outlines(photos)
+    counts = store.cell_check("3")["counts"]
+    assert sum(counts.values()) == 81
+    edited = next(c for c in store.open_cells() if c["edited"])
+    first = store.cell_check(edited["digit"])["cells"][0]
+    assert first["id"] == edited["id"] and (first["row"], first["col"]) == (0, 2)
+    assert first["photo"] == photos[0] and first["model"] is None
+
+
+def test_verify_labels_open_cells_and_refuses_others(tmp_path: Path):
+    store, paths, photos = pulled(tmp_path, corners=(CORNERS,))
+    store.approve_outlines(photos)
+    one, two = store.cell_check("1")["cells"][:2]
+    entries = [
+        {"id": one["id"], "digit": "7", "kind": "handwritten"},
+        {"id": two["id"], "digit": "discarded"},
+    ]
+    assert store.verify_cells(entries) == 4
+    assert store.folder[one["id"]] == "7" and store.kinds()[one["id"]] == "handwritten"
+    assert store.folder[two["id"]] == "discarded"
+    assert one["id"] not in {c["id"] for c in store.open_cells()}
+    with pytest.raises(ValueError, match="not an open cell"):
+        store.verify_cells([{"id": one["id"], "digit": "7", "kind": "printed"}])
+    with pytest.raises(ValueError, match="needs a kind"):
+        three = store.cell_check("1")["cells"][0]
+        store.verify_cells([{"id": three["id"], "digit": "4"}])
+    finish(store)
+    assert read_cells(paths.cells_csv)[one["id"]].label_source == "verified"

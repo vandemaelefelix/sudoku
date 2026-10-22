@@ -50,8 +50,11 @@ SUD-07 says that `ml/` and the TypeScript side share files only. SUD-12 lets the
    `ml/tests/api_schemas.py` holds the same shapes as JSON Schemas, and the server tests validate each answer against
    them. A change of one needs the same change in the other.
 5. **A start page and two flows, nothing else.**
-   - **Flow A, from sudoku photos:** Fetch new scans, Outlines, Cells per scan, Finish. Uploaded scans and imported
-     photos share the steps. The per-digit check of #253 joins as the step before Finish.
+   - **Flow A, from sudoku photos:** Fetch new scans, Outlines, Cells per digit, Finish. Uploaded scans and imported
+     photos share the steps. Cells per digit shows the open cells in one gallery per digit. A side panel shows the
+     whole sudoku of the cell under the pointer. The developer asked for this on 2026-10-22: the grid tells a 1
+     from a 7. The doubt score of #253 sets the order of this gallery later.
+   - Flow A and Flow B share one gallery component per digit.
    - **Flow B, from loose cells:** Pre-label, Digits, Kind, Doubtful labels, Finish.
    - The Photos, Groups and Outlines tabs become steps. The Progress screen becomes the counts of the start page. The
      Check screen (the 7-day self-agreement test) is gone. Its data stays in `kind-checks.jsonl`.
@@ -76,6 +79,8 @@ SUD-07 says that `ml/` and the TypeScript side share files only. SUD-12 lets the
   reverse it. An uploaded scan keeps its journal lines and its undo.
 - A cell in `unlabeled/` belongs to Flow A when a scan with an accepted outline holds it, else to Flow B. Every waiting
   cell is in one flow.
+- The server handles one request at a time. A fetch or `just suspects` blocks the app until it ends. The app
+  shows that it waits. One request at a time also keeps the journal and the file moves in order.
 - Two places describe the API. The schema tests catch a server change. A type change without a schema change needs the
   review.
 

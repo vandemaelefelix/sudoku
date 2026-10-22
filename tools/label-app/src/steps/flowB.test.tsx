@@ -80,7 +80,7 @@ describe('Digits', () => {
     const tiles = await screen.findAllByRole('button', { name: /^Cell / })
     await userEvent.click(tiles[0]!)
     await userEvent.keyboard('{Enter}')
-    expect(screen.getByRole('alert')).toHaveTextContent('One cell is marked without a digit.')
+    expect(screen.getByRole('alert')).toHaveTextContent('One cell is marked without a fix.')
     expect(server.posts['/api/digits/assign']).toBeUndefined()
   })
 
@@ -199,6 +199,7 @@ describe('Finish', () => {
     const server = fakeServer({
       '/api/start': START,
       '/api/finish': {
+        report: {},
         text: 'cells: 120',
         removed: ['journal.jsonl'],
         review_closed: null,
@@ -227,13 +228,13 @@ describe('Finish', () => {
 
 describe('Every step', () => {
   it('shows its keys with ?, and Z undoes the last change', async () => {
-    const server = fakeServer({ '/api/start': START, '/api/undo': 2 })
+    const server = fakeServer({ '/api/start': START, '/api/undo': { lines: 2, what: 'groups' } })
     open('b/finish')
     await screen.findByRole('button', { name: /Finish 5 changes/ })
     await userEvent.keyboard('?')
     expect(screen.getByRole('dialog', { name: 'Keys of this step' })).toHaveTextContent('Undo the last change')
     await userEvent.keyboard('?z')
-    expect(await screen.findByText('Undid the last change.')).toBeInTheDocument()
+    expect(await screen.findByText('Undid the last change: a page of kinds.')).toBeInTheDocument()
     expect(server.posts['/api/undo']).toHaveLength(1)
   })
 

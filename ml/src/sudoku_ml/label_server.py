@@ -69,6 +69,10 @@ def make_server(
             prelabel_quietly()
         return result
 
+    def undo() -> dict:
+        what = store.undo_target()
+        return {"lines": store.undo(), "what": what}
+
     def run_suspects() -> dict:
         suspects()
         return {"open": len(store.review_items())}
@@ -107,6 +111,10 @@ def make_server(
             root = app_dir.resolve()
             target = (root / (path.lstrip("/") or "index.html")).resolve()
             if not target.is_relative_to(root) or not target.is_file():
+                if "." in Path(path).name:
+                    # A missing script or image: a 404, not the app as HTML.
+                    self._json({"error": "not found"}, 404)
+                    return
                 target = root / "index.html"
             if not target.is_file():
                 self._send(503, NO_APP, "text/plain; charset=utf-8")
@@ -140,7 +148,8 @@ def make_server(
                     body = store.photo_jpeg(self._image("/photo/", ".jpg"), LARGE_PHOTO, False)
                     self._send(200, body, "image/jpeg")
                 elif url.path.startswith("/flat/"):
-                    body = store.flat_png(self._image("/flat/", ".png"), parse_corners(q["c"]))
+                    corners = parse_corners(q["c"]) if "c" in q else None
+                    body = store.flat_png(self._image("/flat/", ".png"), corners)
                     self._send(200, body, "image/png")
                 elif url.path == "/api/start":
                     self._json(store.status())
@@ -148,10 +157,8 @@ def make_server(
                     self._json(store.outline_screen(int(q.get("page", 0))))
                 elif url.path == "/api/outline":
                     self._json(store.outline(q["photo"]))
-                elif url.path == "/api/scans":
-                    self._json(store.scan_list())
-                elif url.path == "/api/scan":
-                    self._json(store.scan_screen(q["photo"]))
+                elif url.path == "/api/cells":
+                    self._json(store.cell_check(q["digit"]))
                 elif url.path == "/api/digits":
                     self._json(store.digit_screen(q["digit"], "all"))
                 elif url.path == "/api/kinds":
@@ -185,11 +192,11 @@ def make_server(
                     [b["photo"]], lambda: store.fix_outline(b["photo"], b["corners"])
                 ),
                 "/api/outlines/reject": lambda b: store.reject_outline(b["photo"]),
-                "/api/scans/confirm": lambda b: store.confirm_scan(b["photo"], b["cells"]),
+                "/api/cells/verify": lambda b: store.verify_cells(b["cells"]),
                 "/api/digits/assign": lambda b: store.assign(b["cells"], "digits"),
                 "/api/kinds/save": lambda b: store.save(b["cells"], "groups"),
                 "/api/doubtful/save": lambda b: store.review_save(b["cells"]),
-                "/api/undo": lambda b: store.undo(),
+                "/api/undo": lambda b: undo(),
                 "/api/prelabel": lambda b: prelabel(),
                 "/api/finish": lambda b: finish(),
                 "/api/fetch": lambda b: fetch(b["stage"]),

@@ -22,7 +22,7 @@ Uploaded app scans and the photos of `just import-photos <folder>` go through th
 | --- | --- |
 | 1 Fetch new scans | Pick the stage (`production` by default) and press Enter. The app finds the table and the bucket of the stage. An expired AWS session shows **Sign in to AWS**. |
 | 2 Outlines | A gallery of the outlines to check, the most doubtful first. Click each bad outline. Enter approves the rest. Then each clicked photo opens large: drag the 4 corners and press Enter, or press R to reject the photo. |
-| 3 Cells per scan | The photo beside its 9 × 9 cells. Each cell shows its digit and kind: the player's label for an app scan, the model's guess for an imported photo. A red dot marks a cell that the player corrected. Fix the wrong cells and press Enter. The next scan opens. |
+| 3 Cells per digit | The cells of the approved scans, one gallery per digit (Empty, 1 to 9, and No guess). The cells that the player changed come first, then those that the model reads differently. Point at a cell: the side panel shows its whole sudoku with the cell marked, the cell large, its label, the model's guess and your fix. The whole grid helps to tell a 1 from a 7. Click a wrong cell and type its digit, or press P, H or U for its kind. Enter confirms the page. |
 | 4 Finish | See "Undo and Finish". |
 
 No cell of a scan trains the model before a person approved its outline. A wrong outline makes
@@ -30,7 +30,7 @@ every cell label of the scan wrong. A cut again keeps the label of each place. A
 moves all of its cells to `discarded/`.
 
 A cell with the same pixels as a cell of another scan is stored once. It has one label for both
-scans. The cells view dims it and names the other scan.
+scans, and it shows once in the gallery.
 
 ## Flow B: from loose cells
 

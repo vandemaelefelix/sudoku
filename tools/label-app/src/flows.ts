@@ -34,9 +34,9 @@ export const FLOWS: Record<FlowId, { name: string; about: string; steps: Step[] 
       },
       {
         id: 'cells',
-        name: 'Cells per scan',
+        name: 'Cells per digit',
         route: 'a/cells',
-        count: (c) => (c.scans ? `${c.scans} scans, ${c.scan_cells} cells` : null),
+        count: (c) => (c.scan_cells ? `${c.scan_cells} cells of ${c.scans} scans` : null),
       },
       { ...finish, route: 'a/finish' },
     ],

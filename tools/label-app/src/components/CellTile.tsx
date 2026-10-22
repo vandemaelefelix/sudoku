@@ -23,10 +23,12 @@ interface Props {
   dim?: boolean | undefined
   title?: string | undefined
   onClick?: (() => void) | undefined
+  /** The pointer or the keyboard focus came onto the tile. */
+  onHover?: (() => void) | undefined
   children?: ReactNode
 }
 
-export function CellTile({ stem, label, changed, marked, dim, title, onClick, children }: Props) {
+export function CellTile({ stem, label, changed, marked, dim, title, onClick, onHover, children }: Props) {
   const classes = ['tile', marked && 'marked', changed && 'changed', dim && 'dim'].filter(Boolean).join(' ')
   return (
     <button
@@ -34,6 +36,8 @@ export function CellTile({ stem, label, changed, marked, dim, title, onClick, ch
       className={classes}
       title={title}
       onClick={onClick}
+      onMouseEnter={onHover}
+      onFocus={onHover}
       aria-pressed={marked ?? false}
       aria-label={label ? `Cell ${stem}, ${label}` : `Cell ${stem}`}
     >
