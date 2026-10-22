@@ -14,16 +14,16 @@ function apiError(...errors: Array<{ code: string; paramName?: string }>) {
 
 it('puts a known code under its field', () => {
   expect(authErrorsOf(apiError({ code: 'form_password_incorrect', paramName: 'password' }))).toEqual({
-    password: 'The password is not correct.',
+    password: 'account.error.passwordIncorrect',
   })
   expect(authErrorsOf(apiError({ code: 'form_identifier_not_found', paramName: 'identifier' }))).toEqual({
-    email: 'No account uses this email.',
+    email: 'account.error.identifierNotFound',
   })
   expect(authErrorsOf(apiError({ code: 'form_code_incorrect', paramName: 'code' }))).toEqual({
-    code: 'The code is not correct.',
+    code: 'account.error.codeIncorrect',
   })
   expect(authErrorsOf(apiError({ code: 'form_identifier_exists', paramName: 'email_address' }))).toEqual({
-    email: 'An account uses this email. Sign in instead.',
+    email: 'account.error.identifierExists',
   })
 })
 
@@ -37,24 +37,24 @@ it('keeps one message per field and puts an error without a field above the butt
       ),
     ),
   ).toEqual({
-    password: 'The password needs at least 8 characters.',
-    form: 'Too many tries. Wait a moment, then try again.',
+    password: 'account.error.passwordShort',
+    form: 'account.error.tooManyTries',
   })
 })
 
 it('gives the generic message for an unknown code, never the raw Clerk text', () => {
   expect(authErrorsOf(apiError({ code: 'something_new', paramName: 'password' }))).toEqual({
-    password: 'This did not work. Try again.',
+    password: 'account.error.generic',
   })
-  expect(authErrorsOf(new Error('Trace 123: boom'))).toEqual({ form: 'This did not work. Try again.' })
-  expect(authErrorsOf(undefined)).toEqual({ form: 'This did not work. Try again.' })
+  expect(authErrorsOf(new Error('Trace 123: boom'))).toEqual({ form: 'account.error.generic' })
+  expect(authErrorsOf(undefined)).toEqual({ form: 'account.error.generic' })
 })
 
 it('says when the phone is offline', () => {
   expect(authErrorsOf({ code: 'clerk_offline', message: 'raw' })).toEqual({
-    form: 'No connection. Try again when you are online.',
+    form: 'account.error.offline',
   })
   expect(authErrorsOf(new TypeError('Network request failed'))).toEqual({
-    form: 'No connection. Try again when you are online.',
+    form: 'account.error.offline',
   })
 })

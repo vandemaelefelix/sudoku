@@ -2,12 +2,13 @@ import { useSignInWithGoogle } from '@clerk/expo/google'
 import { useRef, useState } from 'react'
 import { GOOGLE_AUTH_ERROR, OFFLINE_AUTH_ERROR } from '@/account/constants/authErrors.constants'
 import { isOffline } from '@/account/utils/authErrors.utils'
+import type { MessageId } from '@/i18n/messages'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 
 export type GoogleSignIn = {
   busy: boolean
-  /** A short message after a failure. A cancel gives none. */
-  error: string | undefined
+  /** The message id of a failure. A cancel gives none. */
+  error: MessageId | undefined
   signIn(): Promise<void>
 }
 
@@ -15,7 +16,7 @@ export type GoogleSignIn = {
 export function useGoogleSignIn(onDone: () => void): GoogleSignIn {
   const { startGoogleAuthenticationFlow } = useSignInWithGoogle()
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | undefined>(undefined)
+  const [error, setError] = useState<MessageId | undefined>(undefined)
   const running = useRef(false)
   const signIn = async () => {
     if (running.current) return
