@@ -137,6 +137,9 @@ stateDiagram-v2
 | Strip | The keypad, and the hint strip above the tools. The highlight stays |
 | Nice | The strip says "Nice." for a moment. The highlight is gone |
 
+"Learn more" on the card opens the technique page over the game. Back from the page returns to the
+game with the hint still open.
+
 A notes edit and a selection keep the hint open. Back closes the screen, so the hint ends with it.
 The open hint is not saved.
 

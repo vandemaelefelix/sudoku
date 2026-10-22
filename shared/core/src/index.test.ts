@@ -37,4 +37,9 @@ describe('@sudoku/core', () => {
     expect(core.TECHNIQUE_ORDER[0]?.technique).toBe('fullHouse')
     expect(core.UNITS).toHaveLength(27)
   })
+
+  it('exports the technique pages', () => {
+    expect(core.techniqueExample('hiddenSingle')?.step.technique).toBe('hiddenSingle')
+    expect(core.TECHNIQUE_PAGES.xWing?.explanation).toBeTruthy()
+  })
 })

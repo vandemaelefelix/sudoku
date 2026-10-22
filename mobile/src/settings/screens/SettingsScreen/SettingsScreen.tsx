@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
 import { AccountSection } from '@/account/components/AccountSection'
+import { LinkRow } from '@/components/LinkRow'
 import { Icon } from '@/game/components/Icon'
 import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { useAssists } from '@/game/hooks/useAssists'
@@ -10,20 +11,21 @@ import { AssistRow } from '@/settings/components/AssistRow'
 import { ScanningSection } from '@/settings/components/ScanningSection'
 import { SettingsFooter } from '@/settings/components/SettingsFooter'
 import { ThemePicker } from '@/settings/components/ThemePicker'
+import { TECHNIQUES_TITLE } from '@/techniques/constants/techniques.constants'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
-import { ASSIST_ROWS, HAPTICS_ROW } from './SettingsScreen.constants'
+import { ASSIST_ROWS, HAPTICS_ROW, TECHNIQUES_ROW } from './SettingsScreen.constants'
 import { styles } from './SettingsScreen.styles'
 
-type SettingsScreenProps = { onBack(): void; onSignIn(): void }
+type SettingsScreenProps = { onBack(): void; onSignIn(): void; onTechniques(): void }
 
 /**
  * The assists, the haptics switch, the colourway and the appearance. Each change applies at once, ticks and is saved.
  * The scanning switch comes before the account section, which is there in a build with a Clerk key. The footer shows the version and the ID.
  */
-export function SettingsScreen({ onBack, onSignIn }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScreenProps) {
   const { assists, setAssist } = useAssists()
   const { preference, appearance, choose, chooseAppearance } = useThemePreference()
   const haptics = useHaptics()
@@ -125,6 +127,22 @@ export function SettingsScreen({ onBack, onSignIn }: SettingsScreenProps) {
             value={haptics.on}
             divider={false}
             onChange={switchHaptics}
+          />
+        </View>
+        <View style={styles.section}>
+          <View style={styles.heading}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Learn
+            </Text>
+            <ThemeDecoration slot="sectionRule" />
+          </View>
+        </View>
+        <View style={styles.card}>
+          <LinkRow
+            label={TECHNIQUES_TITLE}
+            description={TECHNIQUES_ROW.description}
+            divider={false}
+            onPress={onTechniques}
           />
         </View>
         <ScanningSection />

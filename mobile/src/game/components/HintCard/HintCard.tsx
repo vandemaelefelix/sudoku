@@ -1,11 +1,14 @@
 import { useEffect } from 'react'
 import { AccessibilityInfo, Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import type { TechniqueId } from '@sudoku/core'
 import { PanelButton } from '@/components/PanelButton'
 import { Icon } from '@/game/components/Icon'
+import { HINT_LABELS } from '@/game/constants/hint.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { hintCardView } from '@/game/utils/hint.utils'
 import type { OpenHint } from '@/game/utils/session.utils'
+import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
 import { CARD_FADE_MS, CLOSE_SLOP, RUNGS, TOP_MAX_SCALE } from './HintCard.constants'
 import { styles } from './HintCard.styles'
@@ -15,9 +18,15 @@ import { styles } from './HintCard.styles'
  * Dynamic Type, and the buttons stay at the bottom. The card only fades in, so Reduce Motion needs nothing more.
  * VoiceOver reads each new text through an announcement: iOS has no live region.
  */
-export function HintCard({ hint }: { hint: OpenHint }) {
+type HintCardProps = {
+  hint: OpenHint
+  /** Opens the page of the technique. Without it, the card has no "Learn more". */
+  onLearn?: ((technique: TechniqueId) => void) | undefined
+}
+
+export function HintCard({ hint, onLearn }: HintCardProps) {
   const { hintCard } = useGameActions()
-  const { title, text, rung, stepLabel, buttons } = hintCardView(hint)
+  const { title, text, rung, stepLabel, buttons, technique } = hintCardView(hint)
   const spoken = stepLabel === null ? text : `${stepLabel}. ${text}`
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(spoken)
@@ -60,6 +69,17 @@ export function HintCard({ hint }: { hint: OpenHint }) {
       </View>
       <ScrollView style={styles.textBox}>
         <Text style={styles.text}>{text}</Text>
+        {technique !== null && onLearn !== undefined && (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`${HINT_LABELS.learnMore} about ${title}`}
+            onPress={() => onLearn(technique)}
+            style={({ pressed }) => [styles.learn, pressed && pressedStyles.pressed]}
+          >
+            <Text style={styles.learnText}>{HINT_LABELS.learnMore}</Text>
+            <Icon name="next" tone="accent" size={16} />
+          </Pressable>
+        )}
       </ScrollView>
       <View testID="hint-buttons" style={styles.buttons}>
         {buttons.map((button, index) => (

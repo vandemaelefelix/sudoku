@@ -1,5 +1,5 @@
 import { View } from 'react-native'
-import type { NewGame } from '@sudoku/core'
+import type { NewGame, TechniqueId } from '@sudoku/core'
 import { Board } from '@/game/components/Board'
 import { FinishCard } from '@/game/components/FinishCard'
 import { GameOverSheet } from '@/game/components/GameOverSheet'
@@ -23,13 +23,15 @@ type GameScreenProps = {
   onRetry: LeaveCallback
   /** The level, source, seed and best time of the game. Without it, the screen shows no finish card. */
   finish?: FinishInfo | undefined
+  /** "Learn more" on the hint card. The game stays mounted under the page, so the hint is still open after Back. */
+  onLearnTechnique?: ((technique: TechniqueId) => void) | undefined
 }
 
 /**
  * The game screen of the design canvas. GameProvider reads start once. Give the screen a new React key for a new puzzle.
  * The screen reads no theme hook, so a theme switch does not render the grid again (ADR-015).
  */
-export function GameScreen({ start, onBack, onNewPuzzle, onRetry, finish }: GameScreenProps) {
+export function GameScreen({ start, onBack, onNewPuzzle, onRetry, finish, onLearnTechnique }: GameScreenProps) {
   return (
     <GameProvider start={start}>
       <ThemeStatusBar />
@@ -38,7 +40,7 @@ export function GameScreen({ start, onBack, onNewPuzzle, onRetry, finish }: Game
         <Board />
         <HintStrip />
         <Tools />
-        <KeypadSlot />
+        <KeypadSlot onLearn={onLearnTechnique} />
         <GameOverSheet onRetry={onRetry} onNewPuzzle={onNewPuzzle} onHome={onBack} />
         {finish && <FinishCard info={finish} onNewPuzzle={onNewPuzzle} onHome={onBack} />}
       </View>

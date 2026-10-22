@@ -1,4 +1,4 @@
-import { createGame, hintText, planHint, type HintPlan, type HintRung } from '@sudoku/core'
+import { createGame, hintText, planHint, type HintPlan, type HintRung, type TechniqueId } from '@sudoku/core'
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import { AccessibilityInfo, StyleSheet } from 'react-native'
 import { GameActionsContext } from '@/game/hooks/useGameActions'
@@ -17,12 +17,12 @@ function planOf(start: ReturnType<typeof pointingStart>): HintPlan {
 const pointing = planOf(pointingStart())
 const at = (step: number, rung: HintRung, plan: HintPlan = pointing): OpenHint => ({ plan, step, rung, view: 'card' })
 
-const renderCard = (hint: OpenHint) => {
+const renderCard = (hint: OpenHint, onLearn?: (technique: TechniqueId) => void) => {
   const hintCard = jest.fn()
   const actions = { hintCard } as unknown as GameActions
   render(
     <GameActionsContext value={actions}>
-      <HintCard hint={hint} />
+      <HintCard hint={hint} onLearn={onLearn} />
     </GameActionsContext>,
   )
   return hintCard
@@ -114,4 +114,24 @@ it('caps the Dynamic Type of the buttons and the top row, so the rung text keeps
   expect(screen.getByText('More help').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
   expect(screen.getByText('Step 1 of 2').props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3)
   expect(screen.getByText(hintText(pointing, 0, 1)).props.maxFontSizeMultiplier).toBeUndefined()
+})
+
+describe('Learn more', () => {
+  it('opens the page of the technique from rung 2 on', () => {
+    const onLearn = jest.fn()
+    renderCard(at(0, 2), onLearn)
+    fireEvent.press(screen.getByRole('link', { name: 'Learn more about Pointing' }))
+    expect(onLearn).toHaveBeenCalledWith('pointing')
+  })
+
+  it('shows neither on rung 1, nor on the mistake card, nor without a page to open', () => {
+    renderCard(at(0, 1), jest.fn())
+    expect(screen.queryByRole('link')).toBeNull()
+    screen.unmount()
+    renderCard(at(0, 1, { kind: 'mistake', cell: 2 }), jest.fn())
+    expect(screen.queryByRole('link')).toBeNull()
+    screen.unmount()
+    renderCard(at(0, 3))
+    expect(screen.queryByRole('link')).toBeNull()
+  })
 })

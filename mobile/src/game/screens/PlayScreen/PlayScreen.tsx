@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
-import { toSavedGame, type Game } from '@sudoku/core'
+import { toSavedGame, type Game, type TechniqueId } from '@sudoku/core'
 import { SLOW_SAVE_MS } from '@/game/constants/save.constants'
 import { GameSaveContext } from '@/game/hooks/useGameSession'
 import { usePuzzleStart } from '@/game/hooks/usePuzzleStart'
@@ -37,6 +37,10 @@ export function PlayScreen() {
   const [best, setBest] = useState<BestTimes | null>(null)
 
   const home = useCallback(() => router.dismissTo('/'), [router])
+  const learn = useCallback(
+    (technique: TechniqueId) => router.push({ pathname: '/techniques/[technique]', params: { technique } }),
+    [router],
+  )
 
   useEffect(() => {
     let live = true
@@ -148,6 +152,7 @@ export function PlayScreen() {
         onBack={home}
         onNewPuzzle={newPuzzle}
         onRetry={retry}
+        onLearnTechnique={learn}
       />
     </GameSaveContext>
   )
