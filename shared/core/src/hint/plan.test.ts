@@ -8,6 +8,7 @@ import { select, toggleNote } from '../game/actions'
 import { solve } from '../solver'
 import { computeCandidates } from '../technique/candidates'
 import { bitOf } from '../technique/masks'
+import { TIER_1_ORDER } from '../technique/order'
 import { nextSteps } from '../technique/nextSteps'
 import { boardFromString } from '../technique/testKit'
 import type { Candidates, Step } from '../technique/types'
@@ -61,12 +62,17 @@ const PRUNED = [
   '049002060000900400000840300010090002803006004900701000600000003008000501000020000',
   '049002060080960400060840309516090002873256194924701600600000203208600501400020906',
 ] as const
-// No hint technique applies at all.
-const STUCK = [
+// No tier 1 technique applies. Tier 2 does.
+const TIER_2_NEEDED = [
   '680000000004000070009000015090326000010070068002004700940600103000000904800209600',
   '680000092104090076309060015798326541413975268562004739940600123206000984831249657',
 ] as const
-// The hint techniques reach a placement after 8 steps, and no plan of 6 steps or fewer is left.
+// No hint technique of tier 1 or tier 2 applies at all.
+const STUCK = [
+  '005400020009600000000003007050000006100000009700908400080170054000000700010050093',
+  '005490320009600540001503967950042106100065209700918435080179654590830712017250893',
+] as const
+// The hint techniques reach a placement, but no plan of 6 steps or fewer is left.
 const TOO_LONG = [
   '741089000080100000000030008058007090002400075900008602065913000070000000003000050',
   '741089000380100000520030008458007090632491875917358642065913000074000009093000050',
@@ -157,6 +163,15 @@ describe('planHint', () => {
     expect(digit).toBe(game.solution[cell])
   })
 
+  it('teaches a tier 2 technique where tier 1 alone gives the fallback', () => {
+    const game = gameAt(...TIER_2_NEEDED)
+    expect(planHint(game, TIER_1_ORDER)?.kind).toBe('fallback')
+    const plan = planHint(game)
+    if (plan?.kind !== 'steps') throw new Error('expected a steps plan')
+    const tier1 = new Set(TIER_1_ORDER.map((rank) => rank.technique))
+    expect(plan.steps.some((step) => !tier1.has(step.technique))).toBe(true)
+  })
+
   it('takes the fallback when the placement needs more than six steps', () => {
     const game = gameAt(...TOO_LONG)
     const board = boardOf(game)
@@ -225,7 +240,7 @@ describe('planHint', () => {
 
   it('uses only techniques with hint text', () => {
     for (const rank of HINT_ORDER) expect(HINT_TECHNIQUES[rank.technique]).toBeDefined()
-    expect(HINT_ORDER.map((rank) => rank.technique)).not.toContain('xWing')
+    expect(HINT_ORDER.map((rank) => rank.technique)).not.toContain('simpleColouring')
   })
 })
 

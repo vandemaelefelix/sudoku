@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { createGame } from '../game/createGame'
 import type { Digit } from '../game/types'
-import { TIER_1_ORDER } from '../technique/order'
+import { TECHNIQUE_ORDER } from '../technique/order'
 import { playThrough } from '../technique/playThrough'
-import { ungradedPuzzle } from '../technique/testKit'
+import { computeCandidates } from '../technique/candidates'
+import { findFish } from '../technique/fish'
+import { findSkyscrapers, findTwoStringKites } from '../technique/singleDigit'
+import { findHiddenSubsets, findNakedSubsets } from '../technique/subsets'
+import { onlyIn, struck, ungradedPuzzle, withDigits } from '../technique/testKit'
+import { findWWings, findXyWings, findXyzWings } from '../technique/wings'
+import { createEmptyGrid } from '../grid'
 import type { CellDigit, Step, TechniqueId } from '../technique/types'
 import { cellName, cellsName, listOf, unitName } from './names'
 import { planHint } from './plan'
@@ -199,15 +205,22 @@ describe('hintText', () => {
     expect(() => hintText(planWith(placement('fullHouse', 2, 4, [0])), 1, 1)).toThrow(RangeError)
   })
 
-  it('has text for every tier 1 technique', () => {
-    const tier1 = new Set(TIER_1_ORDER.map((rank) => rank.technique))
-    expect(new Set(Object.keys(HINT_TECHNIQUES))).toEqual(tier1)
+  it('has text for every tier 1 and tier 2 technique, and for no tier 3 technique', () => {
+    const tier3 = new Set<TechniqueId>(['simpleColouring', 'uniqueRectangle', 'xChain', 'xyChain'])
+    const taught = new Set(TECHNIQUE_ORDER.map((rank) => rank.technique).filter((id) => !tier3.has(id)))
+    expect(new Set(Object.keys(HINT_TECHNIQUES))).toEqual(taught)
+  })
+
+  it('writes an 8 with "an"', () => {
+    expect(rungs(placement('hiddenSingle', 20, 8, [18]))[2]).toMatch(/^In the top-left box, an 8 fits only/)
+    const step = elimination('pointing', [18, 0], [0, 1], [8], [{ cell: 3, digit: 8 }])
+    expect(rungs(step)[0]).toBe('Look where an 8 fits in the top-left box.')
   })
 
   it('keeps every rung of real plans short, plain and in words', () => {
     let checked = 0
     for (let seed = 0; seed < 40; seed++) {
-      const { givens, solution } = ungradedPuzzle('hard', seed)
+      const { givens, solution } = ungradedPuzzle(seed % 2 === 0 ? 'hard' : 'expert', seed)
       for (const position of playThrough(givens, undefined, { unique: true }).positions.slice(0, 30)) {
         const entries = position.board.map((digit, cell) => (givens[cell] === 0 ? digit : 0))
         const plan = planHint(createGame({ givens, solution, entries }))
@@ -225,5 +238,145 @@ describe('hintText', () => {
       }
     }
     expect(checked).toBeGreaterThan(100)
+  })
+})
+
+function only(steps: Step[]): Step {
+  expect(steps).toHaveLength(1)
+  return steps[0]!
+}
+
+const at = (row: number, column: number): number => row * 9 + column
+
+describe('hintText, tier 2', () => {
+  // Real steps from the finders, on the positions of their own tests.
+  const board = createEmptyGrid()
+  const empty = computeCandidates(board)
+
+  it('teaches a naked quad', () => {
+    const candidates = withDigits(empty, { 54: [1, 2], 57: [2, 3], 60: [3, 4], 62: [1, 4] })
+    expect(rungs(only(findNakedSubsets(candidates, board, 4)))).toEqual([
+      'Look at row 7.',
+      'Naked quad: four cells of a row, column or box that hold only four digits between them. The other cells there cannot hold them.',
+      'In row 7, columns 1, 4, 7 and 9 can hold only 1, 2, 3 and 4 between them. So these four digits must go in these four cells.',
+      'Remove 1, 2, 3 and 4 from the other cells of row 7.',
+    ])
+  })
+
+  it('teaches a hidden quad', () => {
+    const candidates = struck(empty, [8, 26, 44, 62, 80], [6, 7, 8, 9])
+    expect(rungs(only(findHiddenSubsets(candidates, board, 4)))).toEqual([
+      'Look at column 9.',
+      'Hidden quad: four digits that fit in only four cells of a row, column or box. Those cells can hold no other digit.',
+      'In column 9, 6, 7, 8 and 9 fit only in rows 2, 4, 6 and 8. So these four cells can hold no other digit.',
+      'Remove 1, 2, 3, 4 and 5 from column 9, rows 2, 4, 6 and 8.',
+    ])
+  })
+
+  it('teaches an X-wing on rows', () => {
+    const candidates = onlyIn(empty, 5, [2, 6, 38, 42, 11, 69])
+    expect(rungs(only(findFish(candidates, board, 2)))).toEqual([
+      'Look where a 5 fits in rows 1 and 5.',
+      'X-wing: two rows where a digit fits only in the same two columns. Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'In rows 1 and 5, a 5 fits only in columns 3 and 7. So columns 3 and 7 must hold their 5s in rows 1 and 5.',
+      'Remove 5 from columns 3 and 7, outside rows 1 and 5.',
+    ])
+  })
+
+  it('teaches an X-wing on columns', () => {
+    const candidates = onlyIn(empty, 8, [19, 23, 64, 68, 26, 66])
+    const [look, , why, answer] = rungs(only(findFish(candidates, board, 2)))
+    expect([look, why, answer]).toEqual([
+      'Look where an 8 fits in columns 2 and 6.',
+      'In columns 2 and 6, an 8 fits only in rows 3 and 8. So rows 3 and 8 must hold their 8s in columns 2 and 6.',
+      'Remove 8 from rows 3 and 8, outside columns 2 and 6.',
+    ])
+  })
+
+  it('teaches a swordfish and a jellyfish', () => {
+    const swordfish = elimination(
+      'swordfish',
+      [0, 4, 8, 11, 13, 15],
+      [2, 4, 38, 42, 74, 76],
+      [5],
+      [{ cell: 29, digit: 5 }],
+    )
+    expect(rungs(swordfish)).toEqual([
+      'Look where a 5 fits in rows 1, 5 and 9.',
+      'Swordfish: three rows where a digit fits only in the same three columns. Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'In rows 1, 5 and 9, a 5 fits only in columns 3, 5 and 7. So columns 3, 5 and 7 must hold their 5s in rows 1, 5 and 9.',
+      'Remove 5 from columns 3, 5 and 7, outside rows 1, 5 and 9.',
+    ])
+    const jellyfish = elimination(
+      'jellyfish',
+      [9, 11, 13, 17, 0, 2, 4, 8],
+      [0, 2, 4, 8, 18, 22, 36, 44, 72, 80],
+      [7],
+      [{ cell: 45, digit: 7 }],
+    )
+    expect(rungs(jellyfish)).toEqual([
+      'Look where a 7 fits in columns 1, 3, 5 and 9.',
+      'Jellyfish: four rows where a digit fits only in the same four columns. Those columns lose the digit in the other rows, and rows and columns can swap.',
+      'In columns 1, 3, 5 and 9, a 7 fits only in rows 1, 3, 5 and 9. So rows 1, 3, 5 and 9 must hold their 7s in columns 1, 3, 5 and 9.',
+      'Remove 7 from rows 1, 3, 5 and 9, outside columns 1, 3, 5 and 9.',
+    ])
+  })
+
+  it('teaches a skyscraper on rows and on columns', () => {
+    const candidates = onlyIn(empty, 1, [at(1, 2), at(1, 6), at(6, 2), at(6, 7), at(7, 6), at(2, 7)])
+    const [rows, columns] = findSkyscrapers(candidates, board)
+    expect(rungs(rows!)).toEqual([
+      'Look where a 1 fits in rows 2 and 7.',
+      'Skyscraper: two rows or two columns where a digit fits in only two cells each, with one cell of each in the same line. One of the other two cells holds the digit.',
+      'Rows 2 and 7 each have only two cells for a 1, and both have one in column 3. ' +
+        'At most one of those holds the 1, so row 2, column 7 or row 7, column 8 holds it.',
+      'Remove 1 from the cells that share a row, column or box with both row 2, column 7 and row 7, column 8.',
+    ])
+    expect(rungs(columns!)[2]).toBe(
+      'Columns 3 and 7 each have only two cells for a 1, and both have one in row 2. ' +
+        'At most one of those holds the 1, so row 7, column 3 or row 8, column 7 holds it.',
+    )
+  })
+
+  it('teaches a two-string kite', () => {
+    const candidates = onlyIn(empty, 1, [at(1, 0), at(1, 5), at(2, 2), at(7, 2), at(7, 5)])
+    expect(rungs(only(findTwoStringKites(candidates, board)))).toEqual([
+      'Look where a 1 fits in row 2 and column 3.',
+      'Two-string kite: a row and a column where a digit fits in only two cells each, with one cell of each in the same box. One of the other two cells holds the digit.',
+      'Row 2 and column 3 each have only two cells for a 1, and both have one in the top-left box. ' +
+        'At most one of those holds the 1, so row 2, column 6 or row 8, column 3 holds it.',
+      'Remove 1 from the cells that share a row, column or box with both row 2, column 6 and row 8, column 3.',
+    ])
+  })
+
+  it('teaches an XY-wing', () => {
+    const candidates = withDigits(empty, { 0: [1, 2], 3: [1, 3], 18: [2, 3] })
+    expect(rungs(only(findXyWings(candidates, board)))).toEqual([
+      'Look at row 1, column 1. It has only two digits.',
+      'XY-wing: a cell with two digits, and two cells in its row, column or box that each pair one of them with a third digit. One of the two cells must hold the third digit.',
+      'Row 1, column 1 holds 1 or 2. Each choice puts a 3 in row 1, column 4 or row 3, column 1.',
+      'Remove 3 from the cells that share a row, column or box with both row 1, column 4 and row 3, column 1.',
+    ])
+  })
+
+  it('teaches an XYZ-wing', () => {
+    const candidates = withDigits(empty, { 0: [1, 2, 3], 1: [1, 3], 9: [2, 3] })
+    expect(rungs(only(findXyzWings(candidates, board)))).toEqual([
+      'Look at row 1, column 1. It has only three digits.',
+      'XYZ-wing: a cell with three digits, and two cells in its row, column or box that each hold two of them, one shared. One of the three cells must hold the shared digit.',
+      'Row 1, column 1 holds 1, 2 or 3. Each choice puts a 3 in it, in row 1, column 2 or in row 2, column 1.',
+      'Remove 3 from the cells that share a row, column or box with all three of these cells.',
+    ])
+  })
+
+  it('teaches a W-wing', () => {
+    const candidates = struck(withDigits(empty, { 0: [1, 2], 13: [1, 2] }), [46, 47, 48, 50, 51, 52, 53], [1])
+    expect(rungs(findWWings(candidates, board)[0]!)).toEqual([
+      'Look at row 1, column 1 and row 2, column 5. They hold the same two digits.',
+      'W-wing: two cells with the same two digits, linked by a row, column or box where one of them fits in only two cells. One of the two cells must hold the other digit.',
+      'In row 6, a 1 fits only in columns 1 and 5, so one of them holds it. ' +
+        'That cell rules out 1 in row 1, column 1 or in row 2, column 5, so one of these holds 2.',
+      'Remove 2 from the cells that share a row, column or box with both row 1, column 1 and row 2, column 5.',
+    ])
   })
 })
