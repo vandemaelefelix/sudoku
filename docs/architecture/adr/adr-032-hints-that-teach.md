@@ -167,3 +167,25 @@ so a board that needs it gets the fallback of point 9.
 2. A value is a number or a typed part: a cell, cells, a unit, cells in a unit, lines, or a list of digits.
 3. The app formats the message and each part from its catalogues, in English and Dutch.
 4. Point 10 holds in every language: a cell has a row and a column, never "r4c9".
+
+## Amendment 2026-10-22: the card takes the room of the tools, and the strip is gone
+
+The first iPhone test (#243) showed three problems. The card had the height of the keypad, so the text scrolled and
+"Learn more" was cut off. The card and the strip only faded, so the layout jumped. "Try it", "I'll do it" and the strip
+gave three ways out of a hint where two are enough. This amendment replaces decision 6.
+
+1. **The hint card replaces the tool row and the keypad.** Both stay in the layout under the card, so the grid does
+   not move. The card sizes to its content. Its largest height is the height of the tool row plus the keypad. The text
+   scrolls only when Dynamic Type makes it taller.
+2. **Two ways out.** Close (X) ends the hint and clears the highlight. "Fill it" places the answer. The player who
+   wants to find the digit alone closes the card. There is no "Try it", no "I'll do it" and no hint strip.
+3. **One main button.** Each card has one filled button: "More help", "Next step", "Fill it" or "Erase it". "Show
+   answer" and "Learn more" are text buttons. No button label wraps onto two lines.
+4. **Motion.** On open, the tool row and the keypad sink and fade. The card rises into their place. Close does the
+   reverse. On a rung change, the card height eases to the new text, and the text cross-fades. The rung dots fill in
+   turn. With Reduce Motion, only the fades stay.
+5. **The count rules of decision 7 do not change.** Close never counts. A close at the answer rung keeps the count
+   that the answer rung made.
+
+Decision 14 holds. The player cannot enter a digit while the card shows, because the keypad is under it. A selection
+on the grid keeps the hint open.
