@@ -44,7 +44,14 @@ export default {
             if (LETTER.test(node.value)) context.report({ node, message: TEXT_MESSAGE })
           },
           JSXAttribute(node) {
-            if (TEXT_PROPS.has(node.name?.name) && hasLetters(node.value)) context.report({ node, message: TEXT_MESSAGE })
+            if (TEXT_PROPS.has(node.name?.name) && hasLetters(node.value))
+              context.report({ node, message: TEXT_MESSAGE })
+          },
+          JSXExpressionContainer(node) {
+            const parent = node.parent?.type
+            if ((parent === 'JSXElement' || parent === 'JSXFragment') && hasLetters(node.expression)) {
+              context.report({ node, message: TEXT_MESSAGE })
+            }
           },
           CallExpression(node) {
             if (isAlert(node.callee) && node.arguments.some(hasLetters)) context.report({ node, message: TEXT_MESSAGE })

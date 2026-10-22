@@ -57,8 +57,9 @@ For the hint text of the core:
    is the Dutch one: one Dutch word for each term that the player sees. The Dutch is the Dutch of Flanders.
 5. **The language setting.** The setting store entry `app.language` holds `system`, `en` or `nl`. `system` reads the
    preferred languages of iOS through `expo-localization`. It takes the first language that the app has, else English. The
-   app lists `CFBundleLocalizations`, so iOS also offers a language for this app alone. The formatting locale is the device
-   tag when its language matches, for example `nl-BE`. Else it is the language alone.
+   `expo-localization` plugin lists the languages (`supportedLocales`), so iOS also offers a language for this app alone.
+   The formatting locale is the device tag when its language matches, for example `nl-NL`. Else it is `en-GB` or
+   `nl-BE`: the app comes from Flanders, and `en-GB` writes the dates of the design.
 6. **Hermes polyfills, only when needed.** `src/i18n/polyfills.ts` loads first, in `mobile/index.ts`. It loads
    `@formatjs/intl-getcanonicallocales`, `@formatjs/intl-locale` and `@formatjs/intl-pluralrules` with the `en` and `nl`
    data, each only when its `shouldPolyfill` says the runtime lacks it. A development build logs what it loaded.
@@ -69,12 +70,15 @@ For the hint text of the core:
    `{ id, values }`. A value is a number or a typed part: a cell, cells, a unit, cells in a unit, lines, or a list of digits
    with "and" or "or". The app formats each part from the catalogue. The core holds no player text. ADR-032 point 10 holds in
    every language: a cell is "row 4, column 9" or "rij 4, kolom 9", never "r4c9".
-9. **The iOS texts.** Info.plist text, such as the camera text and the app name, cannot use `react-intl`. Expo `locales` in
-   `app.json` gives them a Dutch version.
-10. **A check finds text outside the catalogues.** `tools/i18n/check-text.mjs` runs in `just lint`. It refuses JSX text with
-    letters, and string literals in `label`, `title`, `accessibilityLabel`, `accessibilityHint`, `placeholder` and
-    `Alert.alert`. Screens that only a development build shows are on a short list. Log text, test ids and storage keys stay
-    English.
+9. **The iOS texts.** Info.plist text, such as the camera text, cannot use `react-intl`. Expo `locales` in `app.json`
+   gives it a Dutch version (`mobile/locales/`). The app name stays out: the app variants set it (ADR-022).
+10. **A check finds text outside the catalogues.** The oxlint rule `sudoku/no-literal-text` runs in `just lint`. It refuses
+    JSX text with letters, a string in braces as a JSX child, and string literals in `label`, `title`,
+    `accessibilityLabel`, `accessibilityHint`, `placeholder` and `Alert.alert`. Screens that only a development build
+    shows are on a short list in `.oxlintrc.json`. Log text, test ids and storage keys stay English.
+11. **One way to read the formatter.** A component reads it with `useIntl` from `src/i18n/`. A tree without the provider
+    gets English, so a test of one component needs no provider. Code outside React that raises an alert reads
+    `currentIntl()`, which the provider keeps current.
 
 ## Consequences
 

@@ -10,15 +10,22 @@ import { useGameTime } from '@/game/hooks/useGameTime'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './TimerPill.styles'
+import { useIntl } from '@/i18n/hooks/useIntl'
 
 /** The time played. It is also the pause button, until the game ends. */
 export function TimerPill() {
+  const intl = useIntl()
   const playedMs = useGameTime()
   const { status } = useGameState().board
   const time = formatClock(playedMs)
   if (status === 'lost' || status === 'won') {
     return (
-      <View testID="timer" style={styles.area} accessible accessibilityLabel={`Time ${time}`}>
+      <View
+        testID="timer"
+        style={styles.area}
+        accessible
+        accessibilityLabel={intl.formatMessage({ id: 'game.time' }, { time })}
+      >
         <View testID="timer-pill" style={styles.endedPill}>
           <Text style={styles.endedTime}>{time}</Text>
         </View>
@@ -30,6 +37,7 @@ export function TimerPill() {
 
 /** The accent of a pause fades in behind the time, and the time and the icon follow, so the pill does not flash. */
 function PauseButton({ time, paused }: { time: string; paused: boolean }) {
+  const intl = useIntl()
   const { pause, resume } = useGameActions()
   const { play } = useHaptics()
   const theme = useAnimatedTheme()
@@ -50,7 +58,7 @@ function PauseButton({ time, paused }: { time: string; paused: boolean }) {
       testID="timer"
       style={({ pressed }) => [styles.area, pressed && pressedStyles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${paused ? 'Resume' : 'Pause'}, time ${time}`}
+      accessibilityLabel={intl.formatMessage({ id: paused ? 'game.timer.resume' : 'game.timer.pause' }, { time })}
       onPress={toggle}
     >
       <View testID="timer-pill" style={styles.pill}>

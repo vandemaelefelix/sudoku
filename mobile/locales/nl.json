@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Sudoku gebruikt de camera om een papieren sudoku te scannen. De foto's verlaten je iPhone nooit."
+  }
+}

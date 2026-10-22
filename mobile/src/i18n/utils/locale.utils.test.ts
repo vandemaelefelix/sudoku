@@ -12,12 +12,12 @@ describe('resolveLocale', () => {
   })
 
   it('falls back to English when the app has none of the iOS languages', () => {
-    expect(resolveLocale('system', device('fr-FR', 'de-DE'))).toEqual({ language: 'en', locale: 'en' })
-    expect(resolveLocale('system', [])).toEqual({ language: 'en', locale: 'en' })
+    expect(resolveLocale('system', device('fr-FR', 'de-DE'))).toEqual({ language: 'en', locale: 'en-GB' })
+    expect(resolveLocale('system', [])).toEqual({ language: 'en', locale: 'en-GB' })
   })
 
-  it('takes a fixed choice over the iOS language, with the device region when the languages match', () => {
-    expect(resolveLocale('nl', device('en-GB'))).toEqual({ language: 'nl', locale: 'nl' })
+  it('takes a fixed choice over the iOS language, with the device region when the languages match, else the Flemish default', () => {
+    expect(resolveLocale('nl', device('en-GB'))).toEqual({ language: 'nl', locale: 'nl-BE' })
     expect(resolveLocale('en', device('nl-BE', 'en-GB'))).toEqual({ language: 'en', locale: 'en-GB' })
   })
 

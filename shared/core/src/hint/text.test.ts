@@ -32,13 +32,13 @@ import type { HintPlan, HintRung } from './types'
 
 const RUNGS: readonly HintRung[] = [1, 2, 3, 4]
 
-function placement(technique: TechniqueId, cell: number, digit: Digit, units: number[]): Step {
+function placement(technique: TechniqueId, target: number, digit: Digit, stepUnits: number[]): Step {
   return {
     technique,
-    placements: [{ cell, digit }],
+    placements: [{ cell: target, digit }],
     eliminations: [],
-    units,
-    pattern: [cell],
+    units: stepUnits,
+    pattern: [target],
     support: [],
     digits: [digit],
   }
@@ -46,12 +46,12 @@ function placement(technique: TechniqueId, cell: number, digit: Digit, units: nu
 
 function elimination(
   technique: TechniqueId,
-  units: number[],
+  stepUnits: number[],
   pattern: number[],
-  digits: Digit[],
+  stepDigits: Digit[],
   eliminations: CellDigit[],
 ): Step {
-  return { technique, placements: [], eliminations, units, pattern, support: [], digits }
+  return { technique, placements: [], eliminations, units: stepUnits, pattern, support: [], digits: stepDigits }
 }
 
 /** A plan whose step `index` is `step`. The plan ends at a placement, as every steps plan does. */
@@ -67,11 +67,12 @@ const rungs = (step: Step, index = 0): HintMessage[] =>
 /** The rung 2 message: the app writes the name and the definition of the technique. */
 const technique = (id: TechniqueId): HintMessage => ({ ...message('hint.technique'), technique: id })
 
+const isCell = (index: number) => Number.isInteger(index) && index >= 0 && index <= 80
+const isUnit = (index: number) => Number.isInteger(index) && index >= 0 && index <= 26
+
 /** A value of a real plan: a digit, or a part whose cells and units exist. */
 function isValid(value: HintValue): boolean {
   if (typeof value === 'number') return Number.isInteger(value) && value >= 1 && value <= 9
-  const isCell = (index: number) => Number.isInteger(index) && index >= 0 && index <= 80
-  const isUnit = (index: number) => Number.isInteger(index) && index >= 0 && index <= 26
   switch (value.kind) {
     case 'cell':
       return isCell(value.cell)
@@ -426,7 +427,13 @@ describe('hintMessage, tier 2', () => {
     expect(rungs(only(findXyzWings(candidates, board)))).toEqual([
       message('hint.xyzWing.look', { cell: cell(0) }),
       technique('xyzWing'),
-      message('hint.xyzWing.why', { pivot: cell(0), digits: digits([1, 2, 3], 'or'), shared: 3, a: cell(1), b: cell(9) }),
+      message('hint.xyzWing.why', {
+        pivot: cell(0),
+        digits: digits([1, 2, 3], 'or'),
+        shared: 3,
+        a: cell(1),
+        b: cell(9),
+      }),
       message('hint.removeSeeingAll', { digit: 3 }),
     ])
   })

@@ -1,4 +1,4 @@
-import { LANGUAGE_KEY, LANGUAGES } from '@/i18n/constants/locale.constants'
+import { DEFAULT_LOCALES, LANGUAGE_KEY, LANGUAGES } from '@/i18n/constants/locale.constants'
 import type { SettingDefinition } from '@/settings/settingStore'
 
 export type Language = (typeof LANGUAGES)[number]
@@ -18,13 +18,13 @@ function isLanguage(value: string | null): value is Language {
 
 /**
  * The language of the app and its formatting locale (ADR-033, point 5). System takes the first device language that the app has,
- * else the first of LANGUAGES. The locale is the device tag of that language, for example nl-BE, else the language alone.
+ * else the first of LANGUAGES. The locale is the device tag of that language, for example nl-NL, else DEFAULT_LOCALES.
  */
 export function resolveLocale(choice: LanguageChoice, device: readonly DeviceLocale[]): ResolvedLocale {
   const language =
     choice !== 'system' ? choice : (device.map((entry) => entry.languageCode).find(isLanguage) ?? LANGUAGES[0])
   const match = device.find((entry) => entry.languageCode === language)
-  return { language, locale: match?.languageTag ?? language }
+  return { language, locale: match?.languageTag ?? DEFAULT_LOCALES[language] }
 }
 
 export const LANGUAGE_SETTING: SettingDefinition<LanguageChoice> = {

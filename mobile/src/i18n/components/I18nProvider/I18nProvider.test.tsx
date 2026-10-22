@@ -43,7 +43,7 @@ it('switches the language at once when the player chooses one', () => {
     </I18nProvider>,
   )
   act(() => choose('en'))
-  expect(screen.getByTestId('title')).toHaveTextContent('Language en')
+  expect(screen.getByTestId('title')).toHaveTextContent('Language en-GB')
   act(() => choose('system'))
   expect(screen.getByTestId('title')).toHaveTextContent('Taal nl-BE')
 })
@@ -55,5 +55,5 @@ it('falls back to English for an iOS language that the app does not have', () =>
       <Title />
     </I18nProvider>,
   )
-  expect(screen.getByTestId('title')).toHaveTextContent('Language en')
+  expect(screen.getByTestId('title')).toHaveTextContent('Language en-GB')
 })

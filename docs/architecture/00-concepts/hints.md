@@ -33,9 +33,13 @@ and ends at a placed digit. The technique solver builds it. Each step is a `Step
 - The plan keeps only the steps that the placement needs. The planner drops each elimination step
   that the rest of the plan can do without. The search may take more steps than 6. The pruned plan
   has at most 6.
-- Only the techniques with hint text take part: tier 1 and tier 2. `HINT_TECHNIQUES` in
-  `@sudoku/core` holds the text, and the planner reads its order from it. Tier 3 has no text, so
-  a board that needs it gets the fallback.
+- Only the techniques with hint messages take part: tier 1 and tier 2. `HINT_TECHNIQUES` in
+  `@sudoku/core` builds the messages, and the planner reads its order from it. Tier 3 has no
+  messages, so a board that needs it gets the fallback.
+- The core holds no player text (ADR-033). A message is an id with values: digits and parts, such
+  as a cell, a unit or a list of digits. The app writes each message and each part from its
+  catalogues, in English and Dutch. The names, the definitions and the page texts of the
+  techniques are in the catalogues too.
 - The Hint tool opens the hint card. The card leads the player through the rungs of each step.
 
 ### The planner API
@@ -43,7 +47,7 @@ and ends at a placed digit. The technique solver builds it. Each step is a `Step
 | Function | Does |
 | --- | --- |
 | `planHint(game)` | Returns the plan: a mistake, 1 to 6 steps, or the fallback. Null on a full grid |
-| `hintText(plan, stepIndex, rung)` | Returns the card text of one rung. At most two short sentences |
+| `hintMessage(plan, stepIndex, rung)` | Returns the message of one rung: an id from `HINT_MESSAGE_IDS` and its values. The app's `hintText` writes it as at most two short sentences |
 | `revealHint(game, answer, shown)` | Counts the hint, unless `shown` holds the same answer |
 | `fillHint(game, plan, shown)` | Places the answer, counts as `revealHint` does and adds an undo step |
 
@@ -145,7 +149,8 @@ definition. Settings opens it from the Learn section. Each **technique page** sh
 - an example board with every highlight role of its step. VoiceOver reads the board as one text:
   the why and the answer of the step.
 
-`TECHNIQUE_PAGES` in `@sudoku/core` holds the explanations and the example positions. Each example
+`TECHNIQUE_PAGES` in `@sudoku/core` holds the example positions. The explanations are in the catalogues of the app, under
+`technique.<id>.explanation`. Each example
 is a position of a generated puzzle. The Vitest tests check that the finder of the technique finds
 a step there. For all but the quads and the jellyfish, the hint plan of the position starts with
 the technique. Those three are rare: an easier step always came first in the generated puzzles.
@@ -237,7 +242,7 @@ makes the fallback card before the hint opens.
 | Question | Decided by |
 | --- | --- |
 | The shape and the colour of each role | Decided: the shape table under "Highlight roles" and the `components.cell.hint*` tokens |
-| The text of each technique | Decided: `HINT_TECHNIQUES` in `@sudoku/core` |
+| The text of each technique | Decided: the messages of `HINT_TECHNIQUES` in `@sudoku/core`, written from the catalogues of the app (ADR-033) |
 | The layout of the card on a small phone | Issue #196 |
 | Whether an edit of the notes alone makes a plan stale | Decided: no. The plan never reads the notes |
 | VoiceOver reading of the card and the highlights | Not planned |

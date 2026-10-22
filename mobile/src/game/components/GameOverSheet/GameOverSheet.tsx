@@ -10,6 +10,7 @@ import { useHold } from '@/game/hooks/useHold'
 import { useGameTime } from '@/game/hooks/useGameTime'
 import { rightCells } from '@/game/utils/result.utils'
 import { easeOut } from '@/utils/motion.utils'
+import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { LOST_HOLD_MS, RISE_OFFSET } from './GameOverSheet.constants'
 import { styles } from './GameOverSheet.styles'
@@ -34,6 +35,7 @@ export function GameOverSheet(props: GameOverSheetProps) {
 
 function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { board: Game }) {
   const time = formatClock(useGameTime())
+  const intl = useIntl()
   const { theme } = useUnistyles()
   const reduceMotion = useReducedMotion()
   const title = useRef<Text>(null)
@@ -63,17 +65,17 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
     <Animated.View testID="game-over" style={[styles.scrim, fadeStyle]} accessibilityViewIsModal>
       <Animated.View testID="game-over-sheet" style={[styles.sheet, riseStyle]}>
         <Text ref={title} accessibilityRole="header" style={styles.title}>
-          Out of mistakes
+          {intl.formatMessage({ id: 'game.over.title' })}
         </Text>
         <Text style={styles.body}>
-          {`Three wrong numbers end this game. You had ${rightCells(board)} of ${GRID_CELLS} cells right after ${time}.`}
+          {intl.formatMessage({ id: 'game.over.text' }, { right: rightCells(board), total: GRID_CELLS, time })}
         </Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => leaveThen(onRetry)}
           style={({ pressed }) => [styles.retry, pressed && pressedStyles.pressed]}
         >
-          <Text style={styles.retryText}>Try this puzzle again</Text>
+          <Text style={styles.retryText}>{intl.formatMessage({ id: 'game.over.retry' })}</Text>
         </Pressable>
         {onNewPuzzle && (
           <Pressable
@@ -81,7 +83,7 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
             onPress={() => leaveThen(onNewPuzzle)}
             style={({ pressed }) => [styles.newPuzzle, pressed && pressedStyles.pressed]}
           >
-            <Text style={styles.newPuzzleText}>New puzzle</Text>
+            <Text style={styles.newPuzzleText}>{intl.formatMessage({ id: 'game.newPuzzle' })}</Text>
           </Pressable>
         )}
         <Pressable
@@ -89,7 +91,7 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
           onPress={() => guard(onHome)}
           style={({ pressed }) => [styles.home, pressed && pressedStyles.pressed]}
         >
-          <Text style={styles.homeText}>Back to home</Text>
+          <Text style={styles.homeText}>{intl.formatMessage({ id: 'common.backHome' })}</Text>
         </Pressable>
       </Animated.View>
     </Animated.View>

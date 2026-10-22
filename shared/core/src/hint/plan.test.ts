@@ -13,7 +13,7 @@ import { nextSteps } from '../technique/nextSteps'
 import { boardFromString } from '../technique/testKit'
 import type { Candidates, Step } from '../technique/types'
 import { BOX_OF, COL_OF, PEERS, ROW_OF, UNITS } from '../units'
-import { message, unit } from './message'
+import { message, unit as unitPart } from './message'
 import { byChoice, MAX_HINT_STEPS, planHint } from './plan'
 import { HINT_ORDER, HINT_TECHNIQUES } from './techniques'
 import { hintMessage } from './text'
@@ -112,7 +112,7 @@ describe('planHint', () => {
       expect(UNITS[box]).not.toContain(cell)
     }
     expect(hintMessage(plan, 0, 4)).toEqual(
-      message('hint.removeOutside', { digit: plan.steps[0]!.digits[0]!, from: unit(line), outside: unit(box) }),
+      message('hint.removeOutside', { digit: plan.steps[0]!.digits[0]!, from: unitPart(line), outside: unitPart(box) }),
     )
     expect(box).toBeGreaterThanOrEqual(18)
   })
