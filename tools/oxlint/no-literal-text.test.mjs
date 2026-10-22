@@ -67,3 +67,25 @@ test('refuses literal text in braces as a child of an element', () => {
   // A prop value in braces is the job of the prop check, so it is not reported twice.
   assert.equal(reports({ ...inBraces(literal('Back')), parent: { type: 'JSXAttribute' } }), 0)
 })
+
+const button = (label) => ({
+  type: 'ObjectExpression',
+  properties: [{ type: 'Property', key: { type: 'Identifier', name: 'text' }, value: label }],
+})
+const buttons = (...items) => ({ type: 'ArrayExpression', elements: items })
+
+test('looks inside a condition, a fallback, and the buttons of an alert', () => {
+  const name = { type: 'Identifier', name: 'paused' }
+  const conditional = (consequent, alternate) => ({ type: 'ConditionalExpression', test: name, consequent, alternate })
+  const logical = (right) => ({ type: 'LogicalExpression', left: name, right })
+  assert.equal(reports(attribute('accessibilityLabel', inBraces(conditional(literal('Resume'), literal('Pause'))))), 1)
+  assert.equal(reports(attribute('label', inBraces(logical(template('Note ', ''))))), 1)
+  assert.equal(reports(alert(name, name, buttons(button(literal('Cancel'))))), 1)
+  assert.equal(reports(alert(name, name, buttons(button(name)))), 0)
+  // A style or a key of an object is not text.
+  const styled = {
+    type: 'ObjectExpression',
+    properties: [{ type: 'Property', key: { type: 'Identifier', name: 'style' }, value: literal('cancel') }],
+  }
+  assert.equal(reports(alert(name, name, buttons(styled))), 0)
+})

@@ -1,5 +1,5 @@
 import { useLocales } from 'expo-localization'
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode, useLayoutEffect } from 'react'
 import { IntlProvider, useIntl } from 'react-intl'
 import { setCurrentIntl } from '@/i18n/currentIntl'
 import { Text } from 'react-native'
@@ -12,10 +12,11 @@ function warn(error: unknown): void {
   devWarn('i18n', errorMessage(error))
 }
 
-// Gives the formatter of the provider to code outside React (currentIntl).
+// Gives the formatter of the provider to code outside React (currentIntl). A layout effect runs before the frame paints, so an
+// alert after a switch is already in the new language.
 function CurrentIntl() {
   const intl = useIntl()
-  useEffect(() => setCurrentIntl(intl), [intl])
+  useLayoutEffect(() => setCurrentIntl(intl), [intl])
   return null
 }
 

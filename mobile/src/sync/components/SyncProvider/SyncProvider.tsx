@@ -6,26 +6,28 @@ import { keychainOwnerCache } from '@/account/utils/ownerCache.utils'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { useOwner } from '@/storage/hooks/useOwner'
 import { runAdoptStep } from '@/sync/adoptStep'
-import { ADOPT_ACCEPT, ADOPT_DECLINE, ADOPT_MESSAGE, ADOPT_TITLE } from '@/sync/constants/sync.constants'
 import { IDLE_SYNC, SyncContext } from '@/sync/hooks/useSync'
 import { useSyncTriggers } from '@/sync/hooks/useSyncTriggers'
 import { createSyncApi, type AccountApi, type SyncApi } from '@/sync/syncApi'
 import { createAppSync } from '@/sync/createAppSync'
 import { readSyncApiUrl } from '@/sync/utils/syncConfig.utils'
+import { currentIntl } from '@/i18n/currentIntl'
 
 type SyncProviderProps = { apiUrl?: string | null; api?: SyncApi; accountApi?: AccountApi; children: ReactNode }
 
 const noStatus = () => IDLE_SYNC
 const noSubscription = () => () => undefined
 
+// The sync service asks outside React, so the question reads the formatter of the provider (ADR-033, point 11).
 function askToAdopt(): Promise<boolean> {
+  const intl = currentIntl()
   return new Promise((resolve) => {
     Alert.alert(
-      ADOPT_TITLE,
-      ADOPT_MESSAGE,
+      intl.formatMessage({ id: 'sync.adopt.title' }),
+      intl.formatMessage({ id: 'sync.adopt.message' }),
       [
-        { text: ADOPT_DECLINE, style: 'cancel', onPress: () => resolve(false) },
-        { text: ADOPT_ACCEPT, onPress: () => resolve(true) },
+        { text: intl.formatMessage({ id: 'sync.adopt.decline' }), style: 'cancel', onPress: () => resolve(false) },
+        { text: intl.formatMessage({ id: 'sync.adopt.accept' }), onPress: () => resolve(true) },
       ],
       { cancelable: false },
     )

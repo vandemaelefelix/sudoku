@@ -198,7 +198,7 @@ export const nl: Record<MessageId, string> = {
   'account.error.passwordWeak': 'Kies een sterker wachtwoord.',
   'account.error.codeIncorrect': 'De code klopt niet.',
   'account.error.codeExpired': 'De code is verlopen. Stuur een nieuwe.',
-  'account.error.codeFailed': 'Te veel foute codes. Stuur een nieuwe.',
+  'account.error.codeFailed': 'Te veel verkeerde codes. Stuur een nieuwe.',
   'account.error.tooManyTries': 'Te veel pogingen. Wacht even en probeer het dan opnieuw.',
   'account.error.continueGoogle': 'Dit account gebruikt Google. Ga verder met Google.',
   // Techniques: the name, the definition of hint rung 2 and the page
@@ -409,7 +409,7 @@ export const nl: Record<MessageId, string> = {
   'game.tool.erase': 'Wissen',
   'game.tool.notes': 'Notities',
   'game.tool.hint': 'Hint',
-  'game.over.text': 'Drie foute cijfers beëindigen dit spel. Na {time} had je {right} van de {total} vakjes juist.',
+  'game.over.text': 'Drie fouten beëindigen dit spel. Na {time} had je {right} van de {total} vakjes juist.',
   'game.over.retry': 'Probeer deze puzzel opnieuw',
   'game.replace.title': 'Een nieuw spel beginnen?',
   'game.replace.message': 'Je huidige spel stopt.',
@@ -457,4 +457,13 @@ export const nl: Record<MessageId, string> = {
   'settings.footer.id': 'ID {id}',
   // The game, more
   'game.over.title': 'Geen fouten meer over',
+  // Review fixes: the number keys and the sync question
+  'game.key.enter': 'Vul {digit} in',
+  'game.key.note': 'Notitie {digit}',
+  'game.key.complete': '{name}, alle negen geplaatst',
+  'sync.adopt.title': 'De spellen op deze telefoon aan je account toevoegen?',
+  'sync.adopt.message':
+    'Je speelde deze spellen voor je je aanmeldde. Ze worden bewaard in je account en verschijnen op je andere toestellen.',
+  'sync.adopt.decline': 'Niet nu',
+  'sync.adopt.accept': 'Spellen toevoegen',
 }

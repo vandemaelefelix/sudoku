@@ -455,6 +455,15 @@ export const en = {
   'settings.footer.id': 'ID {id}',
   // The game, more
   'game.over.title': 'Out of mistakes',
+  // Review fixes: the number keys and the sync question
+  'game.key.enter': 'Enter {digit}',
+  'game.key.note': 'Note {digit}',
+  'game.key.complete': '{name}, all nine placed',
+  'sync.adopt.title': 'Add the games on this phone to your account?',
+  'sync.adopt.message':
+    'These games were played before you signed in. They will back up to your account and show on your other devices.',
+  'sync.adopt.decline': 'Not now',
+  'sync.adopt.accept': 'Add games',
 }
 
 export type MessageId = keyof typeof en

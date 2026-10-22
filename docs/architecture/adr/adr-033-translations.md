@@ -71,10 +71,12 @@ For the hint text of the core:
    with "and" or "or". The app formats each part from the catalogue. The core holds no player text. ADR-032 point 10 holds in
    every language: a cell is "row 4, column 9" or "rij 4, kolom 9", never "r4c9".
 9. **The iOS texts.** Info.plist text, such as the camera text, cannot use `react-intl`. Expo `locales` in `app.json`
-   gives it a Dutch version (`mobile/locales/`). The app name stays out: the app variants set it (ADR-022).
+   gives it a Dutch version (`mobile/locales/`). `ios.infoPlist.CFBundleAllowMixedLocalizations` is on, so iOS reads
+   those files. The app name stays out: the app variants set it (ADR-022).
 10. **A check finds text outside the catalogues.** The oxlint rule `sudoku/no-literal-text` runs in `just lint`. It refuses
     JSX text with letters, a string in braces as a JSX child, and string literals in `label`, `title`,
-    `accessibilityLabel`, `accessibilityHint`, `placeholder` and `Alert.alert`. Screens that only a development build
+    `accessibilityLabel`, `accessibilityHint`, `placeholder`, `Alert.alert` and its buttons. It looks inside a condition
+    and a fallback (`a ? 'x' : 'y'`, `a ?? 'x'`). Screens that only a development build
     shows are on a short list in `.oxlintrc.json`. Log text, test ids and storage keys stay English.
 11. **One way to read the formatter.** A component reads it with `useIntl` from `src/i18n/`. A tree without the provider
     gets English, so a test of one component needs no provider. Code outside React that raises an alert reads
@@ -87,7 +89,9 @@ For the hint text of the core:
 - The hint tests of the core check ids and values. The English and Dutch wording tests live in the app.
 - `expo-localization` is a native module, so it needs a new development build.
 - A third language is one more catalogue, one more word list and one more option in Settings.
-- The check does not see text in a constants file that a component renders. Review catches it. The constants hold ids now.
+- A second rule, `sudoku/no-constant-text`, refuses a sentence in a `*.constants.ts` file: a string that starts with a
+  capital and holds a space. Text that a util or a hook builds in a variable is still invisible to both rules. Review
+  catches it.
 
 ## Reassessment Triggers
 
