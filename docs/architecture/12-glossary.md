@@ -144,9 +144,10 @@ status: DRAFT
 | Unique rectangle | A technique for a puzzle with exactly one solution. Four cells lie in two rows, two columns and two boxes. Three of them hold the same two digits only. The fourth cell loses both digits, or the puzzle would have two solutions. The solver runs it only when the caller says that the puzzle has one solution (`unique: true`) |
 | Hint plan | The steps that one hint shows, from the board to a placed digit. It has at most 6 steps |
 | Rung | One level of detail in a step: look, technique, why or answer |
-| Hint card | The card that replaces the tools and the keypad while the player reads a hint. It shows one rung |
+| Hint card | The card that covers the tools and the keypad, edge to edge, while the player reads a hint. It shows one rung |
 | Dock | The bottom of the game screen: the tools and the keypad, or the hint card in their place. Its height never changes, so the grid does not move (ADR-032) |
-| Role entrance | The motion that brings a hint role onto the grid: the focus cells sweep in and pulse once, a pattern cell or a support ring pops in, a strike draws across its note, and the ghost digit fades in. Only the roles that a rung adds play. With Reduce Motion each role only fades (ADR-032) |
+| Role entrance | The fade of 150 ms with which a hint role comes onto the grid and goes. A role that stays through a rung change does not fade again. With Reduce Motion a role shows and goes at once (ADR-032) |
+| Hint fill | The tint that a hint role lays over a cell: the focus fill, the pattern fill one step stronger and the target fill the strongest. A support cell takes the focus fill. `hintFill` of `CellView` (ADR-032) |
 | Focus unit | The row, column or box that a hint tells the player to look at |
 | Pattern cell | A cell that forms the pattern of a technique, such as a cell of a pair |
 | Support digit | A digit that the pattern uses to prove the step |
