@@ -24,8 +24,11 @@ The screen has four parts, from top to bottom:
 | --- | --- |
 | Header | A back button to the home screen. The timer, which is also the pause button. Three dots. One dot fills for each mistake |
 | Grid | 81 cells in nine boxes. A **given** is locked and drawn with `type.given`. An **entry** uses `type.entry`. **Notes** show as a 3 × 3 set of small digits with `type.note`. A wrong entry has the conflict colour |
-| Tools | Undo, Erase, Notes and Hint. Undo and Erase are disabled when they cannot act. Notes is a toggle: in **notes mode** a number key toggles a note |
-| Keypad | One key for each number 1 to 9. The key of a **complete number** is disabled and faded. While a hint is open, the **hint card** replaces it. After "I'll do it", the **hint strip** shows (see [hints](hints.md)) |
+| Tools | Undo, Erase, Notes and Hint. Undo and Erase are disabled when they cannot act. Notes is a toggle: in **notes mode** a number key toggles a note. While a hint is open, the **hint card** covers the tools (see [hints](hints.md)) |
+| Keypad | One key for each number 1 to 9. The key of a **complete number** is disabled and faded. While a hint is open, the **hint card** covers it |
+
+The tools and the keypad form the **dock**. The dock height never changes, so the grid keeps its
+size and its place.
 
 ### Assists
 
@@ -105,42 +108,32 @@ two haptics, so two taps never blur together.
 - With Reduce Motion on, the fades stay. The slides, the scales and the shake go.
 - The **haptics switch** in Settings turns every haptic off. Reduce Motion does not stop haptics.
 
-### Hint card and hint strip
+### Hint card
 
-A tap on Hint opens the **hint card** in place of the keypad. The card has the height of the
-keypad, so the grid does not move. The tools row stays, and the Hint tool shows as active. The
-card is not modal: it has no scrim, and the grid stays live. The grid marks the cells of the hint
-with the highlight roles. The [hints](hints.md) concept describes the rungs, the buttons and the
-roles.
+A tap on Hint opens the **hint card** in the dock. The tools and the keypad sink and fade, and the
+card rises into their place. They stay in the layout under the card, so the grid does not move. The
+card sizes to its text, up to the height of the dock. It is not modal: it has no scrim, and the grid
+stays live. The grid marks the cells of the hint with the highlight roles. The [hints](hints.md)
+concept describes the rungs, the buttons, the roles and the motion.
 
-"Try it" and "I'll do it" close the card. The keypad comes back. The one-line **hint strip** shows
-between the grid and the tools, with the text of the rung. A tap on the strip or on Hint opens the
-card again at the same rung. The grid gives up the height of the strip.
+Close (X) and "Fill it" end the hint. The card sinks, and the tools and the keypad come back.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Card: Hint
     Card --> Card: More help, Show answer, Next step
-    Card --> Strip: Try it, I'll do it
-    Strip --> Card: strip or Hint tapped
-    Strip --> Nice: the target digit placed
-    Nice --> [*]: after a moment
-    Card --> [*]: Fill it, Erase it, close, Hint
-    Strip --> [*]: close
-    Card --> [*]: an entry, an erase, an undo, a pause, the end of the game
-    Strip --> [*]: an entry, an erase, an undo, a pause, the end of the game
+    Card --> [*]: Fill it, Erase it, close
+    Card --> [*]: a pause, the end of the game
 ```
 
 | State | What the screen shows |
 | --- | --- |
-| Card | The hint card in place of the keypad. The grid shows the highlight of the rung |
-| Strip | The keypad, and the hint strip above the tools. The highlight stays |
-| Nice | The strip says "Nice." for a moment. The highlight is gone |
+| Card | The hint card in place of the tools and the keypad. The grid shows the highlight of the rung |
 
 "Learn more" on the card opens the technique page over the game. Back from the page returns to the
 game with the hint still open.
 
-A notes edit and a selection keep the hint open. Back closes the screen, so the hint ends with it.
+A selection keeps the hint open. Back closes the screen, so the hint ends with it.
 The open hint is not saved.
 
 ### Finish card
