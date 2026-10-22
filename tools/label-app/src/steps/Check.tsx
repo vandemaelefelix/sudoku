@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 
 import { get, post } from '../api/client'
-import { DIGITS, type CheckCell, type CheckPage, type Kind, type Label } from '../api/types'
+import { DIGITS, type CheckCell, type CheckPage, type Kind, type KindTab, type Label } from '../api/types'
 import { CellDetail, percent } from '../components/CellDetail'
 import { KIND_LETTER, CellTile, labelText } from '../components/CellTile'
 import { Empty, Failure, Frame, Working } from '../components/Frame'
@@ -28,10 +28,16 @@ const CONFIG = {
 const tabName = (tab: string): string => (tab === 'empty' ? 'Empty' : tab === 'unknown' ? 'No guess' : tab)
 
 /** The first tab after `tab` that has cells, around the end. */
-function nextWithCells(tabs: string[], tab: string, counts: Record<string, number>): string | undefined {
+function nextWithCells<T extends string>(tabs: T[], tab: T, counts: Record<string, number>): T | undefined {
   const at = tabs.indexOf(tab)
   return [...tabs.slice(at + 1), ...tabs.slice(0, at)].find((t) => (counts[t] ?? 0) > 0)
 }
+
+const routeOf = (mode: Mode, tab: string, kind: KindTab): string => `${mode}/${tab}${kind === 'all' ? '' : `/${kind}`}`
+
+const KIND_TABS: KindTab[] = ['all', 'printed', 'handwritten', 'unsure']
+
+const kindName = (kind: KindTab): string => (kind === 'all' ? 'All' : kind[0]!.toUpperCase() + kind.slice(1))
 
 interface Box {
   left: number
@@ -43,16 +49,28 @@ interface Box {
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 
 /** The Digits step and the Kind step: one screen, the most doubtful cells first. */
-export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefined }) {
+export function Check({
+  mode,
+  tab: asked,
+  kind: askedKind,
+}: {
+  mode: Mode
+  tab: string | undefined
+  kind?: string | undefined
+}) {
   const config = CONFIG[mode]
   const tab = asked && config.tabs.includes(asked) ? asked : config.tabs[0]!
+  // Only the Kind step has kind tabs. No kind in the route means All.
+  const kind: KindTab = mode === 'kinds' && KIND_TABS.includes(askedKind as KindTab) ? (askedKind as KindTab) : 'all'
+  const route = (t: string, k: KindTab = kind): string => routeOf(mode, t, k)
   const [round, setRound] = useState(0)
   const [percentSure, setPercentSure] = useState(config.threshold)
   const [draft, setDraft] = useState(String(config.threshold))
   const threshold = Number((percentSure / 100).toFixed(2))
   const page = useLoad(
-    () => get<CheckPage>(`/api/check/${mode}?digit=${tab}&threshold=${threshold}`),
-    `${mode}:${tab}:${threshold}:${round}`,
+    () =>
+      get<CheckPage>(`/api/check/${mode}?digit=${tab}&threshold=${threshold}${kind === 'all' ? '' : `&kind=${kind}`}`),
+    `${mode}:${tab}:${kind}:${threshold}:${round}`,
   )
   const action = useAction(() => setRound((n) => n + 1))
   const [fixes, setFixes] = useState<Record<string, string>>({})
@@ -70,13 +88,32 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
   const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0
   const onward = data && (data.counts[tab] ?? 0) === 0 ? nextWithCells(config.tabs, tab, data.counts) : undefined
   const first = page.data ? config.tabs.find((t) => (page.data!.counts[t] ?? 0) > 0) : undefined
+  // After a digit move-on, the kind tab of the new digit may be empty too.
+  const carried = useRef(false)
   useEffect(() => {
-    if (!asked && first && first !== tab) go(`${mode}/${first}`)
-    else if (onward) go(`${mode}/${onward}`)
-  }, [mode, asked, first, tab, onward])
+    if (!asked && first && first !== tab) go(routeOf(mode, first, kind))
+    else if (onward) {
+      carried.current = true
+      go(routeOf(mode, onward, kind))
+    }
+  }, [mode, asked, first, tab, onward, kind])
+
+  const kindCounts = data?.kind_counts
+  const shownCount = kindCounts?.[kind] ?? 0
+  const nextKind = kindCounts ? nextWithCells(KIND_TABS, kind, kindCounts) : undefined
+  const seenCount = useRef({ key: '', n: 0 })
+  useEffect(() => {
+    if (!kindCounts || kind === 'all') return
+    const key = `${tab}:${kind}`
+    const emptied = seenCount.current.key === key && seenCount.current.n > 0 && shownCount === 0
+    seenCount.current = { key, n: shownCount }
+    const arrived = carried.current
+    carried.current = false
+    if ((emptied || arrived) && shownCount === 0 && nextKind) go(routeOf(mode, tab, nextKind))
+  }, [mode, kindCounts, tab, kind, shownCount, nextKind])
 
   const [pageKey, setPageKey] = useState('')
-  const pageId = `${tab}:${cells.map((c) => c.id).join(',')}`
+  const pageId = `${tab}:${kind}:${cells.map((c) => c.id).join(',')}`
   if (data && pageKey !== pageId) {
     // A new page clears the selection. The fixes stay: they belong to a cell.
     setPageKey(pageId)
@@ -197,13 +234,15 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
       mode === 'digits' ? { id: c.id, digit: valueOf(c) } : { id: c.id, kind: valueOf(c) },
     )
     const fixed = cells.filter((c) => fixes[c.id] !== undefined).length
-    const left = (data.counts[tab] ?? 0) - cells.length
+    const left = (kind === 'all' ? (data.counts[tab] ?? 0) : shownCount) - cells.length
     const where =
       left > 0
         ? `${plural(left, 'cell')} of this tab ${left === 1 ? 'is' : 'are'} left.`
-        : nextWithCells(config.tabs, tab, { ...data.counts, [tab]: 0 })
-          ? 'This tab is done. The next tab with cells opens.'
-          : `Every tab is done. Next: ${config.next.name}.`
+        : kind !== 'all' && nextWithCells(KIND_TABS, kind, { ...kindCounts!, [kind]: 0 })
+          ? `The ${kind} tab is done. The next kind tab with cells opens.`
+          : nextWithCells(config.tabs, tab, { ...data.counts, [tab]: 0 })
+            ? 'This tab is done. The next tab with cells opens.'
+            : `Every tab is done. Next: ${config.next.name}.`
     const done = await action.run(
       () => post<number>(`/api/check/${mode}/confirm`, { cells: body }),
       () => `Confirmed ${plural(cells.length, 'cell')}${fixed ? `, ${fixed} with a fix` : ''}. ${where}`,
@@ -219,7 +258,12 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
   const confirmSure = async (): Promise<void> => {
     if (!data || action.busy || page.loading || !data.sure) return
     const done = await action.run(
-      () => post<{ cells: number }>(`/api/check/${mode}/sure`, { digit: tab, threshold }),
+      () =>
+        post<{ cells: number }>(`/api/check/${mode}/sure`, {
+          digit: tab,
+          threshold,
+          ...(kind === 'all' ? {} : { kind }),
+        }),
       (r) =>
         `Confirmed ${plural(r.cells, 'sure cell')} of this tab. The cells that are left need a look. Select the wrong ones and press a key.`,
     )
@@ -234,7 +278,7 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
 
   const step = (by: number): void => {
     const at = config.tabs.indexOf(tab)
-    go(`${mode}/${config.tabs[(at + by + config.tabs.length) % config.tabs.length]}`)
+    go(route(config.tabs[(at + by + config.tabs.length) % config.tabs.length]!))
   }
 
   const keys: KeyHandlers = {
@@ -350,7 +394,7 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
                   type="button"
                   className={t === tab ? 'here' : undefined}
                   aria-current={t === tab ? 'page' : undefined}
-                  onClick={() => go(`${mode}/${t}`)}
+                  onClick={() => go(route(t))}
                 >
                   <span className="digit">{tabName(t)}</span> <span className="count">{open} open</span>{' '}
                   <span className="progress">
@@ -360,6 +404,21 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
               )
             })}
           </nav>
+          {mode === 'kinds' && data?.kind_counts ? (
+            <nav className="kind-tabs" aria-label="Kinds">
+              {KIND_TABS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={k === kind ? 'here' : undefined}
+                  aria-current={k === kind ? 'page' : undefined}
+                  onClick={() => go(route(tab, k))}
+                >
+                  {kindName(k)} <span className="count">{data.kind_counts![k]}</span>
+                </button>
+              ))}
+            </nav>
+          ) : null}
           <div className="check-tools">
             <div className="legend" aria-label="Legend">
               <span>Edge: sure</span>
@@ -401,7 +460,20 @@ export function Check({ mode, tab: asked }: { mode: Mode; tab: string | undefine
               {warning}
             </p>
           ) : null}
-          {data && cells.length === 0 ? <Working what="Loading the cells…" /> : null}
+          {data && kind !== 'all' && shownCount === 0 && !page.loading ? (
+            <Empty
+              why={`No ${kind} cell of the digit ${tab} is open. A cell is open until you confirm its kind.`}
+              next={
+                nextKind ? (
+                  <button type="button" className="primary" onClick={() => go(route(tab, nextKind))}>
+                    Next: {kindName(nextKind)}
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : data && cells.length === 0 ? (
+            <Working what="Loading the cells…" />
+          ) : null}
           <div className="check">
             <div className="check-cells">
               <div className="gallery" ref={galleryRef} onMouseDown={startDrag}>

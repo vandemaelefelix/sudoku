@@ -102,7 +102,12 @@ export interface CheckPage {
   /** The cells of this tab that the sure button confirms at this threshold. */
   sure: number
   threshold: number
+  /** The Kind step only: the open cells of the digit per kind label, whatever kind is shown. */
+  kind_counts?: Record<KindTab, number>
 }
+
+/** A kind tab of the Kind step. `all` shows every kind. */
+export type KindTab = 'all' | Kind
 
 export interface DoubtReason {
   reason: 'near-duplicate' | 'kind-model' | 'digit-model' | 'check'
