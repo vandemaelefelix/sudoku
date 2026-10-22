@@ -142,7 +142,7 @@ needs no code signing, so it needs no paid Apple Developer account.
 
 | Job | Trigger | Steps |
 | --- | --- | --- |
-| `ios-simulator` | A pull request that changes `mobile/package.json`, `mobile/app.json`, `mobile/app.config.ts`, `mobile/ios/` or the workflow. A manual run | Install, stub model, `expo prebuild`, `pod install`, `just ios-simulator-build`, upload the `.app` |
+| `ios-simulator` | A pull request that changes `mobile/package.json`, `mobile/app.json`, `mobile/app.config.ts` or the workflow. A manual run | Install, stub model, `just ios-simulator` (`expo prebuild`, `pod install`, `xcodebuild`), upload the `.app` |
 
 1. **The runner is `macos-26` with Xcode 26.6.** Expo SDK 57 needs Xcode 26.4 or later. The
    workflow pins Xcode through `DEVELOPER_DIR`, so a new default on the image does not change the build.
@@ -154,10 +154,48 @@ needs no code signing, so it needs no paid Apple Developer account.
 4. **The paths filter keeps the cost low.** The repository is private on the Free plan: 2,000 minutes a
    month, and a macOS minute counts ten times. `pnpm-lock.yaml`, `pnpm-workspace.yaml` and the
    `justfile` are not trigger paths. Each changes in many pull requests that touch no native code.
-   An upgrade that changes only the lockfile needs a manual run.
-5. **No weekly run.** Nothing changes the native build between two pull requests. A weekly run would
-   cost about a third of the monthly minutes.
-6. **CocoaPods and DerivedData are cached.** A pull request reads the caches of its own runs and of
-   `develop`. A manual run on `develop` seeds the caches for every pull request.
+   An upgrade that changes only the lockfile needs a manual run. `mobile/ios/` is not a trigger path,
+   because it is generated and git ignores it (ADR-002).
+5. **No weekly run.** Nothing changes the native build between two pull requests. A weekly run
+   would cost about 430 of the 2,000 monthly minutes.
+6. **The workflow uses no cache.** The measurement below showed that each cache cost more time to
+   restore than it saved.
 7. **The `.app` is an artifact for the end-to-end tests.** It keeps 7 days, because the Free plan has
-   500 MB of artifact storage for a private repository.
+   500 MB of artifact storage for a private repository. The zip is 30 MB.
+
+### The measurement
+
+Two runs of the same commit on `macos-26`, on 2026-10-22. The first run had no cache. The second
+run restored the caches that the first run saved.
+
+| Step | Without cache | With cache | Cache size |
+| --- | --- | --- | --- |
+| Restore the pnpm store (`setup-node`) | — | 3 min 41 s | 925 MB |
+| `pnpm install` | 29 s | 50 s | |
+| Restore `Pods` and `Podfile.lock` | — | 7 s | 360 MB |
+| `pod install` | 1 min 17 s | 1 min 30 s | |
+| Restore DerivedData | — | 2 min 6 s | 1,353 MB |
+| `xcodebuild` | 6 min 44 s | 5 min 55 s | |
+| Save the caches | 1 min 16 s | — | |
+| **The job** | **10 min 9 s** | **14 min 49 s** | |
+
+- `pod install` spends its time on the CocoaPods CDN and on the ExpoModulesJSI slices, not on the
+  downloads that `Pods` holds.
+- DerivedData saved 49 s of `xcodebuild`, because a new checkout gives every file a new time stamp.
+- The three caches hold 2.6 GB of the 10 GB cache limit of the repository.
+
+### The cost
+
+GitHub rounds each job up to whole minutes. A run without cache takes about 10 minutes and costs
+about 100 of the 2,000 monthly minutes. In the month before this amendment, 4 commits changed a trigger
+path. At one or two runs for each such pull request, the build costs 400 to 800 minutes a month.
+
+### Reassessment Triggers of the amendment
+
+- The build costs more than a quarter of the monthly minutes. Then run it only on a manual run,
+  before an upgrade merges.
+- `xcodebuild` takes more than 15 minutes. Then measure `ccache` (`apple.ccacheEnabled`) or a
+  DerivedData cache again.
+- The account gets more minutes, or the repository becomes public. Then add a weekly run and the
+  lockfile as a trigger path.
+- A device or TestFlight build becomes necessary. That needs a paid Apple Developer account.
