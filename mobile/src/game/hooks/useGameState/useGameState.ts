@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { Session } from '@/game/utils/session.utils'
 
 /** The game without the time. A clock tick does not change it, so its readers do not render each second. */
-export type GameState = Pick<Session, 'board' | 'notesMode' | 'move'>
+export type GameState = Pick<Session, 'board' | 'notesMode' | 'move' | 'hint'>
 
 export const GameStateContext = createContext<GameState | null>(null)
 

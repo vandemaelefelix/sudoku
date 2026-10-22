@@ -18,7 +18,7 @@ export type GameSessionView = { state: GameState; playedMs: number; actions: Gam
 export function useGameSession(start: GameStart): GameSessionView {
   const [session] = useState(() => createGameSession(start))
   const save = useContext(GameSaveContext)
-  const { game, board, notesMode, move } = useSyncExternalStore(session.subscribe, session.getSnapshot)
+  const { game, board, notesMode, move, hint } = useSyncExternalStore(session.subscribe, session.getSnapshot)
   useEffect(() => session.attach(save), [session, save])
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
@@ -27,6 +27,6 @@ export function useGameSession(start: GameStart): GameSessionView {
     return () => subscription.remove()
   }, [session])
   useMoveHaptics(move, game.status === 'lost')
-  const state = useMemo<GameState>(() => ({ board, notesMode, move }), [board, notesMode, move])
+  const state = useMemo<GameState>(() => ({ board, notesMode, move, hint }), [board, notesMode, move, hint])
   return { state, playedMs: game.playedMs, actions: session.actions }
 }

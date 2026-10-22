@@ -4,7 +4,7 @@ import { useUnistyles } from 'react-native-unistyles'
 import { useEased } from '@/game/hooks/useEased'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
-import { LABEL_FADE_MS } from './PanelButton.constants'
+import { COMPACT_MAX_SCALE, LABEL_FADE_MS } from './PanelButton.constants'
 import { styles } from './PanelButton.styles'
 
 type PanelButtonProps = {
@@ -21,6 +21,8 @@ type PanelButtonProps = {
   pressed?: boolean
   /** A new label fades in, so the button keeps its place while its text changes. */
   animateLabel?: boolean
+  /** The height of a touch target, for a row of buttons in a small panel such as the hint card. */
+  compact?: boolean
 }
 
 /** A button of the correction panel, in the button tokens of the theme. It fades between enabled and disabled. */
@@ -34,6 +36,7 @@ export function PanelButton({
   accessibilityHint,
   pressed,
   animateLabel = false,
+  compact = false,
 }: PanelButtonProps) {
   const { theme } = useUnistyles()
   const opacity = useEased(disabled ? theme.opacity.disabled : 1)
@@ -54,6 +57,7 @@ export function PanelButton({
           styles.button,
           kind === 'primary' ? styles.primary : styles.second,
           grow && styles.grow,
+          compact && styles.compact,
           down && pressedStyles.pressed,
         ]}
       >
@@ -62,6 +66,7 @@ export function PanelButton({
           {...(animateLabel
             ? { entering: FadeIn.duration(LABEL_FADE_MS).easing(easeOut).reduceMotion(ReduceMotion.Never) }
             : {})}
+          {...(compact ? { maxFontSizeMultiplier: COMPACT_MAX_SCALE } : {})}
           style={kind === 'primary' ? styles.primaryText : styles.secondText}
         >
           {label}
