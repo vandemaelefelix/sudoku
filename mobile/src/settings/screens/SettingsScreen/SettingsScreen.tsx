@@ -7,6 +7,7 @@ import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
 import { useAssists } from '@/game/hooks/useAssists'
 import { AssistPreview } from '@/settings/components/AssistPreview'
 import { AppearancePicker } from '@/settings/components/AppearancePicker'
+import { LanguagePicker } from '@/settings/components/LanguagePicker'
 import { AssistRow } from '@/settings/components/AssistRow'
 import { ScanningSection } from '@/settings/components/ScanningSection'
 import { SettingsFooter } from '@/settings/components/SettingsFooter'
@@ -14,6 +15,8 @@ import { ThemePicker } from '@/settings/components/ThemePicker'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
 import { TECHNIQUES_TITLE } from '@/techniques/constants/techniques.constants'
+import { useIntl } from '@/i18n/hooks/useIntl'
+import { useLanguage } from '@/i18n/hooks/useLanguage'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { ASSIST_ROWS, HAPTICS_ROW, TECHNIQUES_ROW } from './SettingsScreen.constants'
@@ -29,6 +32,8 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
   const { assists, setAssist } = useAssists()
   const { preference, appearance, choose, chooseAppearance } = useThemePreference()
   const haptics = useHaptics()
+  const language = useLanguage()
+  const intl = useIntl()
   const { theme } = useUnistyles()
   // play runs after the change, so turning haptics on ticks and turning them off is silent.
   const switchHaptics = (on: boolean) => {
@@ -109,6 +114,21 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
             onChange={(next) => {
               haptics.play('tick')
               chooseAppearance(next)
+            }}
+          />
+        </View>
+        <View style={styles.section}>
+          <View style={styles.heading}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {intl.formatMessage({ id: 'settings.language.title' })}
+            </Text>
+            <ThemeDecoration slot="sectionRule" />
+          </View>
+          <LanguagePicker
+            value={language.choice}
+            onChange={(next) => {
+              haptics.play('tick')
+              language.choose(next)
             }}
           />
         </View>

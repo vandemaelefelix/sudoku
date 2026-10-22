@@ -158,3 +158,12 @@ so a board that needs it gets the fallback of point 9.
   cases and 75.0 % of the hard cases. With tier 1 alone, it was 53.8 % and 38.9 %. The record is in
   [the technique coverage](../../research/2026-10-21-technique-coverage.md#hint-coverage).
 - The next step for coverage is hint text for the XY-chain. It needs a new amendment, as the amendment of the solver says.
+
+## Amendment 2026-10-22: the hint text is ids with values
+
+[ADR-033](adr-033-translations.md) translates the app. The hint text of the core was English, built from English grammar.
+
+1. `hintMessage(plan, step, rung)` returns a message id and its values. It replaces `hintText`.
+2. A value is a number or a typed part: a cell, cells, a unit, cells in a unit, lines, or a list of digits.
+3. The app formats the message and each part from its catalogues, in English and Dutch.
+4. Point 10 holds in every language: a cell has a row and a column, never "r4c9".

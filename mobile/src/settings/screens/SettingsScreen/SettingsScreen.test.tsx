@@ -131,9 +131,9 @@ it('draws the scroll bars in the colour of the theme, so they show on a dark Col
 })
 
 describe('the Op-art look of the page (ADR-026)', () => {
-  it('puts a short wavy rule under each of the six headings', () => {
+  it('puts a short wavy rule under each of the seven headings', () => {
     render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} onTechniques={jest.fn()} />)
-    expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(6)
+    expect(screen.getAllByTestId('decoration-opart-section-rule')).toHaveLength(7)
   })
 
   it('draws the assists in one framed block with square corners and the border of the stats card', () => {
