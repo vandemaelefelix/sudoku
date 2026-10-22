@@ -1,4 +1,4 @@
-# A game ends on the finish card. A hint fills its answer, so the flow needs no solution of the puzzle.
+# A game ends on the finish card. Each round opens a hint, shows its answer and fills it, so the flow needs no solution.
 appId: com.vandemaelefelix.sudoku.dev
 ---
 - launchApp:
@@ -13,5 +13,15 @@ appId: com.vandemaelefelix.sudoku.dev
     commands:
       - tapOn:
           id: tool-hint
+      # A step hint shows its answer on request. The fallback card shows it at once.
+      - runFlow:
+          when:
+            visible:
+              id: hint-answer
+          commands:
+            - tapOn:
+                id: hint-answer
+      - tapOn:
+          id: hint-fill
 - assertVisible:
     id: finish-card

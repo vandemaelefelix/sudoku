@@ -85,6 +85,7 @@ export function HintCard({ hint, onLearn }: HintCardProps) {
         {buttons.map((button, index) => (
           <PanelButton
             key={button.action}
+            testID={`hint-${button.action.slice('hint'.length).toLowerCase()}`}
             label={button.label}
             kind={index === 0 ? 'primary' : 'second'}
             grow
