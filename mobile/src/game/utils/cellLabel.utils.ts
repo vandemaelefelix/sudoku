@@ -1,6 +1,6 @@
 import type { Formatter } from '@/i18n/utils/intl.utils'
 import type { CellView } from './cell.utils'
-import { columnOf, rowOf } from './grid.utils'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 
 /** The VoiceOver label of a cell, for example "Row 5, column 5, empty, notes 3 5". */
 export function cellLabel(

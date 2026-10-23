@@ -92,6 +92,17 @@ export function gridLineStyle(theme: Theme): GridLineStyle {
   }
 }
 
+/**
+ * The homography of the grid lines of the correction board: the unit square onto a square of side points at the origin,
+ * pulled in by half the frame width on each side so the canvas does not clip the frame. The last frame of the transition
+ * must equal it (insetUnit), so nothing jumps at the handoff.
+ */
+export function boardLinesMatrix(side: number, frameWidth: number): Homography {
+  'worklet'
+  const inset = frameWidth / 2
+  return [side - 2 * inset, 0, inset, 0, side - 2 * inset, inset, 0, 0]
+}
+
 /** 0: a cell line, 1: a box line, 2: a frame line. i: the line index, 0..9. */
 function lineKind(i: number): number {
   'worklet'

@@ -4,7 +4,7 @@ import { View } from 'react-native'
 import { useSharedValue, withTiming } from 'react-native-reanimated'
 import { FLAT_SIDE } from '@/scan/utils/flatImage.utils'
 import { useIntl } from '@/i18n/hooks/useIntl'
-import { cellRowColumn } from '@/scan/utils/correctionEdit.utils'
+import { cellPlace, columnOf, rowOf } from '@/utils/grid.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { CROP_SIDE, FAR_OPACITY, PAN_MS } from './CellCrop.constants'
 import { styles } from './CellCrop.styles'
@@ -20,7 +20,7 @@ type CellCropProps = {
 
 /** Points: the offset of the flattened grid that puts the cell in the crop. */
 function offsetOf(cell: number) {
-  return { x: -(cell % 9) * CROP_SIDE, y: -Math.floor(cell / 9) * CROP_SIDE }
+  return { x: -columnOf(cell) * CROP_SIDE, y: -rowOf(cell) * CROP_SIDE }
 }
 
 /** The paper cell as the camera saw it, cut from the flattened grid and framed by 4 corner dots. */
@@ -45,8 +45,8 @@ export function CellCrop({ image, cell, animate = false }: CellCropProps) {
       opacity.set(1)
       return
     }
-    const cols = (cell % 9) - (from % 9)
-    const rows = Math.floor(cell / 9) - Math.floor(from / 9)
+    const cols = columnOf(cell) - columnOf(from)
+    const rows = rowOf(cell) - rowOf(from)
     // The pan always starts one cell back along the move. For a neighbour that is the old cell. A far jump
     // stays a short pan and fades in, so the crop never sweeps across the whole photo.
     x.set(to.x + Math.sign(cols) * CROP_SIDE)
@@ -65,7 +65,7 @@ export function CellCrop({ image, cell, animate = false }: CellCropProps) {
       <View
         accessible
         accessibilityRole="image"
-        accessibilityLabel={intl.formatMessage({ id: 'scan.crop.label' }, cellRowColumn(cell))}
+        accessibilityLabel={intl.formatMessage({ id: 'scan.crop.label' }, cellPlace(cell))}
         style={styles.crop}
       >
         {image && (

@@ -1,8 +1,17 @@
-import { correctionLayout, cellLook, cellsToCheck, drawGridLines, gridLineStyle } from './correction.utils'
+import {
+  boardLinesMatrix,
+  correctionLayout,
+  cellLook,
+  cellsToCheck,
+  drawGridLines,
+  gridLineStyle,
+} from './correction.utils'
+import type { Quad } from '@/utils/geometry.utils'
 import type { Rect } from '@/utils/geometry.utils'
 import type { CellResult } from '@/scanner'
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
-import type { Homography } from '@/utils/homography.utils'
+import { unitToQuad, type Homography } from '@/utils/homography.utils'
+import { insetUnit } from '@/scan/utils/transition.utils'
 import { PANEL_HEIGHT, REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 import { cobalt } from '@/theme/themes/cobalt'
 
@@ -233,5 +242,21 @@ describe('gridLineStyle', () => {
       boxWidth: cobalt.shape.gridLine.box,
       cellWidth: cobalt.shape.gridLine.cell,
     })
+  })
+})
+
+describe('boardLinesMatrix', () => {
+  it.each([
+    [320, 3],
+    [354.5, 2],
+  ])('equals the last transition frame for a board of side %d', (side, frameWidth) => {
+    const board: Quad = [
+      { x: 0, y: 0 },
+      { x: side, y: 0 },
+      { x: side, y: side },
+      { x: 0, y: side },
+    ]
+    const last = insetUnit(unitToQuad(board)!, frameWidth / 2, side)
+    boardLinesMatrix(side, frameWidth).forEach((value, i) => expect(value).toBeCloseTo(last[i]!, 9))
   })
 })

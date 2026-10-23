@@ -1,7 +1,7 @@
 import { BOXES, COLUMNS, ROWS, type Completion, type Game } from '@sudoku/core'
 import { LONGEST_PULSE_STEPS, NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
 import type { Theme } from '@/theme/theme.types'
-import { columnOf, rowOf } from './grid.utils'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 import type { Move } from './session.utils'
 
 /** The theme tokens of one pulse. Times in milliseconds. */

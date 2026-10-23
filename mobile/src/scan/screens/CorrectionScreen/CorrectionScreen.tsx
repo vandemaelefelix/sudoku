@@ -28,8 +28,15 @@ import type { InspectorView } from '@/scan/utils/inspector.utils'
 import { swapIn } from '@/scan/utils/swap.utils'
 import { panelAt, resultsGateReached, shiftOf, transitionAt } from '@/scan/utils/transition.utils'
 import { SWAP_OUT_MS } from '@/scan/constants/swap.constants'
+import { cellRect } from '@/utils/grid.utils'
 import { easeOut } from '@/utils/motion.utils'
-import { cellLook, drawGridLines, gridLineStyle, type CorrectionLayout } from '@/scan/utils/correction.utils'
+import {
+  boardLinesMatrix,
+  cellLook,
+  drawGridLines,
+  gridLineStyle,
+  type CorrectionLayout,
+} from '@/scan/utils/correction.utils'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { SHARED_TYPE } from '@/theme/shared.tokens'
 import { pressedStyles } from '@/theme/pressed.styles'
@@ -133,8 +140,6 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const { board, lines } = useMemo(() => {
     const side = grid.width
     const lineStyle = gridLineStyle(theme)
-    // Half the frame width inside each edge, so the canvas does not clip the frame.
-    const inset = lineStyle.frameWidth / 2
     // The transition canvas fills the cells with the same token, so nothing jumps at the handoff.
     const cellFill = theme.components.cell.fill
     const bounds = { x: 0, y: 0, width: side, height: side }
@@ -145,14 +150,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
         canvas.drawRect(Skia.XYWHRect(0, 0, side, side), fill)
       }, bounds),
       lines: createPicture(
-        (canvas) =>
-          drawGridLines(
-            canvas,
-            Skia.Paint(),
-            [side - 2 * inset, 0, inset, 0, side - 2 * inset, inset, 0, 0],
-            1,
-            lineStyle,
-          ),
+        (canvas) => drawGridLines(canvas, Skia.Paint(), boardLinesMatrix(side, lineStyle.frameWidth), 1, lineStyle),
         bounds,
       ),
     }
@@ -162,7 +160,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const tile =
     clock !== undefined || open === null || looks[open]?.uncertain !== false
       ? null
-      : { left: grid.x + (open % 9) * cellSize, top: grid.y + Math.floor(open / 9) * cellSize, size: cellSize }
+      : { ...cellRect(grid, cellSize, open), size: cellSize }
   const gridBox = { position: 'absolute', left: grid.x, top: grid.y, width: grid.width, height: grid.height } as const
   // The board and the lines mount with the transition and stay hidden under it. A new Skia canvas is blank until a later
   // display frame, so a canvas that mounted at the end of the transition would blink.
@@ -254,8 +252,8 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           look={look}
           size={cellSize}
           digitSizes={digitSizes}
-          left={grid.x + (n % 9) * cellSize}
-          top={grid.y + Math.floor(n / 9) * cellSize}
+          left={cellRect(grid, cellSize, n).left}
+          top={cellRect(grid, cellSize, n).top}
           selected={open === n}
           conflict={correction.conflictCells.has(n)}
           hint={String(correction.hints[n] ?? '')}

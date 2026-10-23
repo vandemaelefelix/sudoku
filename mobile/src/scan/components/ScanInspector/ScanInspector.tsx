@@ -8,6 +8,7 @@ import type { Quad, Rect } from '@/utils/geometry.utils'
 import { BAR_HEIGHT, DOT_RADIUS, EDGE_WIDTH, LINE_WIDTH } from './ScanInspector.constants'
 import { styles } from './ScanInspector.styles'
 import type { InspectorView } from '@/scan/utils/inspector.utils'
+import { cellRect } from '@/utils/grid.utils'
 
 function fileUri(path: string | undefined): string | null {
   return path == null ? null : `file://${path.replace(/^file:\/\//, '')}`
@@ -36,8 +37,8 @@ export function ScanInspector({ view, result, region, threshold }: Props) {
           <SkiaRect
             // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
             key={n}
-            x={box.x + (n % 9) * cell}
-            y={box.y + (Math.floor(n / 9) + 1) * cell - BAR_HEIGHT}
+            x={cellRect(box, cell, n).left}
+            y={cellRect(box, cell, n).top + cell - BAR_HEIGHT}
             width={cell * read.confidence}
             height={BAR_HEIGHT}
             color={read.confidence < threshold ? theme.colors.warning : theme.colors.accent}
@@ -59,8 +60,8 @@ export function ScanInspector({ view, result, region, threshold }: Props) {
           <SkiaRect
             // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
             key={n}
-            x={box.x + (n % 9) * cell + margin}
-            y={box.y + Math.floor(n / 9) * cell + margin}
+            x={cellRect(box, cell, n).left + margin}
+            y={cellRect(box, cell, n).top + margin}
             width={inner}
             height={inner}
             style="stroke"
