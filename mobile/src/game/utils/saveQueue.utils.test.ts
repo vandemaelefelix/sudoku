@@ -1,5 +1,5 @@
 import { createGame, place, select, type Digit, type Game } from '@sudoku/core'
-import { createSaveQueue } from './save.utils'
+import { createSaveQueue } from './saveQueue.utils'
 import { sampleStart } from './sample.utils'
 
 // Cell 2 is empty in the canvas puzzle. Its solution is 4.

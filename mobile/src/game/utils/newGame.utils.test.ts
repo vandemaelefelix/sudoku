@@ -1,6 +1,6 @@
 import { generate, grade, LEVELS, type Level } from '@sudoku/core'
-import { SEED_COUNT } from '@/game/constants/start.constants'
-import { newGeneratedGame, scannedLevel } from './start.utils'
+import { SEED_COUNT } from '@/game/constants/newGame.constants'
+import { newGeneratedGame, scannedLevel } from './newGame.utils'
 
 it('generates a game at the level, with the seed from the random number', () => {
   const { game, seed } = newGeneratedGame('hard', () => 0.5)

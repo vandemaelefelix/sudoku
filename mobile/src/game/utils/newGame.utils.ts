@@ -1,5 +1,5 @@
 import { createGame, generate, grade, type Game, type Level, type Random } from '@sudoku/core'
-import { SEED_COUNT } from '@/game/constants/start.constants'
+import { SEED_COUNT } from '@/game/constants/newGame.constants'
 
 export type GeneratedGame = { game: Game; seed: number }
 
