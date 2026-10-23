@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { Text, View } from 'react-native'
 import { GRID_CELLS, valueAt, type Game } from '@sudoku/core'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 import { styles } from './CardGrid.styles'
 
 const SIDE = Math.sqrt(GRID_CELLS)
@@ -9,8 +10,8 @@ const ROWS = Array.from({ length: SIDE }, (_row, row) =>
 )
 
 function edgeStyles(cell: number) {
-  const column = cell % 9
-  const row = Math.floor(cell / 9)
+  const column = columnOf(cell)
+  const row = rowOf(cell)
   return [
     column === 2 || column === 5 ? styles.boxRight : null,
     row === 2 || row === 5 ? styles.boxBottom : null,

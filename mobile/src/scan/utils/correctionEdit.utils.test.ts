@@ -4,7 +4,7 @@ import type { CellLook } from '@/scan/utils/correction.utils'
 import {
   answerNo,
   answerYes,
-  cellPlace,
+  cellPlaceLabel,
   clearCell,
   closeCell,
   correctedGrid,
@@ -204,10 +204,10 @@ describe('correctedGrid', () => {
   })
 })
 
-describe('cellPlace', () => {
+describe('cellPlaceLabel', () => {
   it('says the row and the column, from 1', () => {
-    expect(cellPlace(en, 0)).toBe('Row 1, column 1')
-    expect(cellPlace(en, 23)).toBe('Row 3, column 6')
+    expect(cellPlaceLabel(en, 0)).toBe('Row 1, column 1')
+    expect(cellPlaceLabel(en, 23)).toBe('Row 3, column 6')
   })
 })
 
@@ -227,7 +227,7 @@ describe('correctionCellLabel', () => {
 
 describe('the cell text in Dutch', () => {
   it('names the place, the kind and the questions in Dutch', () => {
-    expect(cellPlace(nl, 23)).toBe('Rij 3, kolom 6')
+    expect(cellPlaceLabel(nl, 23)).toBe('Rij 3, kolom 6')
     expect(correctionCellLabel(nl, 10, entry(7), false)).toBe('Rij 2, kolom 2, ingevuld cijfer 7')
     expect(panelQuestion(nl, given(4, true), false)).toBe('Is dit een 4?')
     expect(yesLabel(nl, EMPTY)).toBe('Ja, leeg')

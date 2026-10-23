@@ -1,4 +1,5 @@
 import type { Rect } from '@/utils/geometry.utils'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 import { CELL_SIZE, CELLS } from './preprocess'
 
 /** Raw pixels as nitro-image gives them. A row may end in padding: the row length is byteLength / height. */
@@ -86,8 +87,8 @@ export function sliceCells(flat: Uint8Array): Uint8Array {
   const rowLength = CELL_SIZE * 3
   const out = new Uint8Array(CELLS * CELL_SIZE * CELL_SIZE * 3)
   for (let n = 0; n < CELLS; n++) {
-    const top = Math.floor(n / 9) * CELL_SIZE
-    const left = (n % 9) * CELL_SIZE
+    const top = rowOf(n) * CELL_SIZE
+    const left = columnOf(n) * CELL_SIZE
     for (let y = 0; y < CELL_SIZE; y++) {
       const start = ((top + y) * FLAT_SIZE + left) * 3
       out.set(flat.subarray(start, start + rowLength), (n * CELL_SIZE + y) * rowLength)

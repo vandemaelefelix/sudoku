@@ -1,6 +1,7 @@
 import type { HintMessage, HintPart, HintTechniqueId, HintValue } from '@sudoku/core'
 import type { MessageId } from '@/i18n/messages'
 import type { Formatter } from '@/i18n/utils/intl.utils'
+import { cellPlace } from '@/utils/grid.utils'
 
 // The hint text of @sudoku/core comes as message ids with values (ADR-033, point 8). These helpers write each part from the
 // catalogue, so each language builds its own cell names, lists and plurals.
@@ -17,12 +18,12 @@ const BOX_PLACES = [
   'hint.part.box.bottomRight',
 ] as const satisfies readonly MessageId[]
 
-const rowOf = (cell: number): number => Math.floor(cell / 9) + 1
-const columnOf = (cell: number): number => (cell % 9) + 1
+const rowNumber = (cell: number): number => cellPlace(cell).row
+const columnNumber = (cell: number): number => cellPlace(cell).column
 
 /** "row 4, column 9". ADR-032 point 10: never "r4c9". */
 export function cellName(intl: Formatter, cell: number): string {
-  return intl.formatMessage({ id: 'hint.part.cell' }, { row: rowOf(cell), column: columnOf(cell) })
+  return intl.formatMessage({ id: 'hint.part.cell' }, cellPlace(cell))
 }
 
 /** "row 2", "column 5" or "the top-left box". unit: 0-8 rows, 9-17 columns, 18-26 boxes. */
@@ -52,8 +53,8 @@ export function listOf(
  */
 export function cellsName(intl: Formatter, cells: readonly number[]): string {
   if (cells.length === 1) return cellName(intl, cells[0]!)
-  const rows = cells.map(rowOf)
-  const columns = cells.map(columnOf)
+  const rows = cells.map(rowNumber)
+  const columns = cells.map(columnNumber)
   if (rows.every((row) => row === rows[0])) {
     return intl.formatMessage({ id: 'hint.part.rowCells' }, { row: rows[0], columns: listOf(intl, columns) })
   }
@@ -73,11 +74,20 @@ function cellsIn(intl: Formatter, unit: number, cells: readonly number[]): strin
   if (unit < 9) {
     return intl.formatMessage(
       { id: 'hint.part.columnsIn' },
-      { count: cells.length, list: listOf(intl, cells.map(columnOf)) },
+      {
+        count: cells.length,
+        list: listOf(intl, cells.map(columnNumber)),
+      },
     )
   }
   if (unit < 18) {
-    return intl.formatMessage({ id: 'hint.part.rowsIn' }, { count: cells.length, list: listOf(intl, cells.map(rowOf)) })
+    return intl.formatMessage(
+      { id: 'hint.part.rowsIn' },
+      {
+        count: cells.length,
+        list: listOf(intl, cells.map(rowNumber)),
+      },
+    )
   }
   return cellsName(intl, cells)
 }

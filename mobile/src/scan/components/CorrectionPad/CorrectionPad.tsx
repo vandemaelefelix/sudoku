@@ -2,7 +2,7 @@ import { Pressable, Text, View } from 'react-native'
 import type { Digit } from '@sudoku/core'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { CellLook } from '@/scan/utils/correction.utils'
-import { cellRowColumn } from '@/scan/utils/correctionEdit.utils'
+import { cellPlace } from '@/utils/grid.utils'
 import { PAD_ROWS } from './CorrectionPad.constants'
 import { styles } from './CorrectionPad.styles'
 
@@ -20,7 +20,7 @@ type CorrectionPadProps = {
 export function CorrectionPad({ cell, look, hint, onDigit, onClear }: CorrectionPadProps) {
   // The keypad replaces the panel content, so each key says which cell it changes.
   const intl = useIntl()
-  const accessibilityHint = intl.formatMessage({ id: 'scan.pad.hint' }, cellRowColumn(cell))
+  const accessibilityHint = intl.formatMessage({ id: 'scan.pad.hint' }, cellPlace(cell))
   return (
     <View testID="correction-pad" style={styles.pad}>
       {PAD_ROWS.map((digits, row) => (
