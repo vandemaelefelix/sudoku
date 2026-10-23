@@ -31,7 +31,6 @@ function fakeCanvas() {
 
 type MockShaderEffect = { makeShader: jest.Mock }
 
-beforeEach(() => jest.clearAllMocks())
 
 describe('latticeUniforms', () => {
   it('gives the 14 floats in the order of the shader uniforms', () => {

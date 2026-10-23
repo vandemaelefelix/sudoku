@@ -31,7 +31,6 @@ function Harness({ crossFade }: { crossFade: boolean }) {
   return <TransitionCanvas session={{ captureFrame, image, quad: locked, crossFade }} view={view} side={320} />
 }
 
-beforeEach(() => jest.clearAllMocks())
 
 it.each([false, true])('draws one picture over the view (cross-fade %s)', (crossFade) => {
   render(<Harness crossFade={crossFade} />)

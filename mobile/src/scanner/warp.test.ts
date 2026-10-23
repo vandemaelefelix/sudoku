@@ -38,7 +38,6 @@ function at<T>(items: ArrayLike<T>, index: number): T {
 
 beforeEach(() => {
   created.length = 0
-  jest.clearAllMocks()
 })
 
 it('returns side × side pixels in the source format', () => {

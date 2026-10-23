@@ -115,7 +115,6 @@ function runFrames(session: () => ReturnType<typeof useCaptureSession>, seconds:
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   frameTime = 0
   IMAGE = { dispose: jest.fn() } as unknown as SkImage
   jest.mocked(useReducedMotion).mockReturnValue(false)

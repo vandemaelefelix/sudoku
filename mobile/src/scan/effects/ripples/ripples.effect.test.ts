@@ -40,7 +40,6 @@ function drawnUniforms(scene: Scene) {
   return { canvas, kit, uniforms: effect.makeShader.mock.calls[0][0] as number[] }
 }
 
-beforeEach(() => jest.clearAllMocks())
 
 describe('rippleUniforms', () => {
   it('gives the 15 floats in the order of the shader uniforms', () => {
