@@ -14,7 +14,8 @@ import type { Theme } from '@/theme/theme.types'
 import { cobalt } from '@/theme/themes/cobalt'
 import { forest } from '@/theme/themes/forest'
 import { bordeaux } from '@/theme/themes/bordeaux'
-import { type CorrectionProps, CorrectionScreen } from './CorrectionScreen'
+import { capturing, okResult, review } from '@/scan/scanTestKit'
+import { CorrectionScreen } from './CorrectionScreen'
 import { digitAlpha, panelAt, ringsAt } from '@/scan/utils/transition.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
@@ -30,46 +31,10 @@ jest.mock('@/scan/components/ScanInspector', () => {
 })
 
 const layout = correctionLayout({ width: 402, height: 874 }, { top: 62, bottom: 34, left: 0, right: 0 })
-const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
-
-function okResult(over: { [n: number]: Partial<CellResult> } = {}): CaptureResult {
-  const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
-  return { ok: true, cells, quad: [] as never, corners: 'detected' as never, cornerOffset: null, timings: {} as never }
-}
-
 const given = { digit: 5, kind: 'printed', confidence: 1 } as const
 const entry = { digit: 7, kind: 'handwritten', confidence: 1 } as const
 const style = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style)
 const clock = (value: number) => ({ value }) as SharedValue<number>
-type Session = CorrectionProps['session']
-/** The finished scan: the player can edit, and every layer shows. */
-const review = (result: CaptureResult | null, origin: Session['origin'] = 'camera'): Session => ({
-  phase: 'review',
-  origin,
-  result,
-  crossFade: false,
-  clock: clock(0),
-  waiting: { value: false } as SharedValue<boolean>,
-  resultsAt: clock(0),
-})
-/** The transition: the clock drives the layers. The results arrived at 0 unless the test says otherwise, so the sweep does not shift. */
-const capturing = (
-  result: CaptureResult | null,
-  over: {
-    clock?: SharedValue<number>
-    waiting?: SharedValue<boolean>
-    resultsAt?: SharedValue<number>
-    reduceMotion?: boolean
-  } = {},
-): Session => ({
-  phase: 'capturing',
-  origin: 'camera',
-  result,
-  crossFade: over.reduceMotion ?? false,
-  clock: over.clock ?? clock(0),
-  waiting: over.waiting ?? ({ value: false } as SharedValue<boolean>),
-  resultsAt: over.resultsAt ?? clock(0),
-})
 /** The entering animation of the nearest element, the node itself or above it, that takes one. */
 const entering = (node: ReturnType<typeof screen.getByTestId> | null): unknown => {
   for (let at = node; at; at = at.parent) if ('entering' in at.props) return at.props.entering
@@ -296,7 +261,7 @@ describe('CorrectionScreen in review', () => {
 
 const failureUi = (shared: SharedValue<number>, reduceMotion = false) => (
   <CorrectionScreen
-    session={capturing({ ok: false, reason: 'x' }, { clock: shared, reduceMotion: reduceMotion })}
+    session={capturing({ ok: false, reason: 'x' }, { clock: shared, crossFade: reduceMotion })}
     layout={layout}
     onRetake={jest.fn()}
   />

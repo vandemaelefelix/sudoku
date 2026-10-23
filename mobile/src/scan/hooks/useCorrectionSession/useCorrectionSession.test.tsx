@@ -3,10 +3,11 @@ import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import { type Digit, generate, peersOf } from '@sudoku/core'
 import type { CellResult } from '@/scanner'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
-import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
+import type { CaptureResult } from '@/scan/utils/captureResult.utils'
 import { scannedLevel } from '@/game/utils/start.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
+import { capturing, okResult, printed, review, type ScanSession } from '@/scan/scanTestKit'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
 
 const mockPlay = jest.fn()
@@ -14,43 +15,11 @@ jest.mock('@/settings/hooks/useHaptics', () => ({
   useHaptics: () => ({ on: true, setOn: jest.fn(), play: mockPlay }),
 }))
 
-const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
-const printed = (digit: number, confidence = 1): Partial<CellResult> => ({ digit, kind: 'printed', confidence })
-
-function okResult(over: { [n: number]: Partial<CellResult> } = {}, extra: Partial<CaptureOk> = {}): CaptureResult {
-  const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
-  return {
-    ok: true,
-    cells,
-    quad: [] as never,
-    corners: 'detected' as never,
-    cornerOffset: null,
-    timings: {} as never,
-    ...extra,
-  }
-}
-
 const shared = <T,>(value: T) => ({ value }) as SharedValue<T>
-const review = (result: CaptureResult | null) => ({
-  phase: 'review' as const,
-  result,
-  crossFade: false,
-  clock: shared(0),
-  resultsAt: shared(0),
-})
-const capturing = (result: CaptureResult | null, clock = 0.4, resultsAt = -1, crossFade = false) => ({
-  phase: 'capturing' as const,
-  result,
-  crossFade,
-  clock: shared(clock),
-  resultsAt: shared(resultsAt),
-})
-type Capture = ReturnType<typeof review> | ReturnType<typeof capturing>
-
-function session(capture: Capture, exits: Partial<CorrectionExits> = {}) {
+function session(capture: ScanSession, exits: Partial<CorrectionExits> = {}) {
   const all: CorrectionExits = { onRetake: jest.fn(), ...exits }
   return {
-    ...renderHook((props: { capture: Capture }) => useCorrectionSession(props.capture, all), {
+    ...renderHook((props: { capture: ScanSession }) => useCorrectionSession(props.capture, all), {
       initialProps: { capture },
     }),
     exits: all,
@@ -137,7 +106,7 @@ describe('the panel state', () => {
   })
 
   it('keeps the cells inert during the transition', () => {
-    const { result } = session(capturing(flowScan(), 1.5))
+    const { result } = session(capturing(flowScan(), { clock: 1.5 }))
     expect(result.current.editable).toBe(false)
     act(() => result.current.actions.select(0))
     expect(result.current.openCell).toBeNull()
@@ -156,7 +125,7 @@ describe('the panel state', () => {
 
 describe('the sweep timing', () => {
   it('hands the clock, the results time and the cross-fade flag of a transition', () => {
-    const transition = capturing(okResult(), 0.6, 0.2, true)
+    const transition = capturing(okResult(), { clock: 0.6, resultsAt: 0.2, crossFade: true })
     const { result } = session(transition)
     expect(result.current.timing).toEqual({ clock: transition.clock, resultsAt: transition.resultsAt, crossFade: true })
   })
@@ -248,7 +217,7 @@ describe('the play gate', () => {
   })
 
   it('does not check the givens during the transition', () => {
-    session(capturing(scanOf(puzzle.givens), 1.5))
+    session(capturing(scanOf(puzzle.givens), { clock: 1.5 }))
     expect(checkSpy).not.toHaveBeenCalled()
   })
 
@@ -395,7 +364,7 @@ describe('the haptic cues', () => {
   it('plays success when the results gate opens for a recognised grid, once', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
     const resultsAt = shared(-1)
-    const { result } = session({ ...capturing(okResult(), 0.6), resultsAt })
+    const { result } = session({ ...capturing(okResult(), { clock: 0.6 }), resultsAt })
     expect(result.current.panel).toBe('summary')
     const { prepare, react } = await reactionPlaying('success')
     expect(prepare()).toBe(false)
@@ -409,7 +378,7 @@ describe('the haptic cues', () => {
 
   it('plays a warning when the failure panel starts to slide, from the results gate', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
-    const { result } = session(capturing({ ok: false, reason: 'x' }, 0.5))
+    const { result } = session(capturing({ ok: false, reason: 'x' }, { clock: 0.5 }))
     expect(result.current.panel).toBe('failure')
     const { prepare, react } = await reactionPlaying('warning')
     expect(prepare()).toBe(false)
@@ -423,10 +392,10 @@ describe('the haptic cues', () => {
 
   it('opens the failure gate with Reduce Motion at any clock value, and at the results gate without it', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
-    session(capturing({ ok: false, reason: 'x' }, 0, -1, true))
+    session(capturing({ ok: false, reason: 'x' }, { crossFade: true, resultsAt: -1 }))
     expect((await reactionPlaying('warning')).prepare()).toBe(true)
     jest.mocked(useAnimatedReaction).mockClear()
-    session(capturing({ ok: false, reason: 'x' }, GATE_RESULTS))
+    session(capturing({ ok: false, reason: 'x' }, { clock: GATE_RESULTS, resultsAt: -1 }))
     expect((await reactionPlaying('warning')).prepare()).toBe(true)
   })
 })
@@ -470,7 +439,7 @@ describe('leaving the screen', () => {
 
   it('does not report a screen that was never editable, such as a transition that ends early', () => {
     const onExit = jest.fn()
-    session(capturing(okResult(), 1.5), { onExit }).unmount()
+    session(capturing(okResult(), { clock: 1.5 }), { onExit }).unmount()
     session(review({ ok: false, reason: 'x' }), { onExit }).unmount()
     expect(onExit).not.toHaveBeenCalled()
   })
@@ -478,7 +447,7 @@ describe('leaving the screen', () => {
   it('reports an exit after the transition ended', () => {
     const onExit = jest.fn()
     const result = okResult()
-    const { rerender, unmount } = session(capturing(result, 1.5), { onExit })
+    const { rerender, unmount } = session(capturing(result, { clock: 1.5 }), { onExit })
     rerender({ capture: review(result) })
     unmount()
     expect(onExit).toHaveBeenCalledTimes(1)
