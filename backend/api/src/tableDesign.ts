@@ -1,4 +1,4 @@
-// No imports: backend/infra/storage.ts reads this file, so the deployed table and the test table match (ADR-027).
+// No imports: backend/infra/storage.ts and backend/infra/scans-bucket.ts read this file, so the deployed table and the test table match (ADR-027).
 
 export const BY_SYNCED = 'bySynced'
 // ADR-030. Only scan rows that wait for pull-scans have gsiPending, so the index stays sparse.

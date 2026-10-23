@@ -19,7 +19,7 @@ interface StageReport {
   warnings: string[]
 }
 
-// A failure stops the stage report as FAILED. A warning leaves the stage stopped (the throttle is the stop).
+// A failure marks the stage FAILED. A warning leaves the stage stopped (the throttle is the stop).
 type Severity = 'failures' | 'warnings'
 
 const describe = (error: unknown): string =>

@@ -7,7 +7,7 @@ export const NOW = new Date('2026-10-15T09:00:00.000Z')
 
 let generatedIds = 0
 
-// Creates one table for the describe block that calls it, and drops the table after the last test.
+// Creates one table for the describe block that calls it. It drops the table after the last test.
 // The returned object reads the table at use time, because beforeAll has not run when the describe body runs.
 export function suiteTable(): TestTable {
   let created: TestTable | undefined
