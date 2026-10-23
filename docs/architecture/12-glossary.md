@@ -22,8 +22,9 @@ status: DRAFT
 | End-to-end flow | A Maestro YAML file in `mobile/e2e/` that drives the Release app on the iOS Simulator, the way a player does. Layer 5 of ADR-010 |
 | Maestro | The tool that runs the end-to-end flows. It finds elements by `testID` (ADR-010) |
 | Holdout | The fixture split that is not looked at while training, only scored at promote (ADR-007) |
-| Near-duplicate group | Cells with almost the same image, found by a difference hash. The split keeps a group in one set, so near-twins do not leak between training and validation |
-| Test split | The cells that the model never trains on. `split_cells` in `ml/src/sudoku_ml/dataset.py` computes it. Training and the Check screen both call it, so they use the same cells. It leaves out the cells that no person verified and keeps the cells of one scan photo together |
+| Near-duplicate group | Cells with almost the same image, found by a difference hash, or the cells of one sudoku page. The split keeps a group in one set, so near-twins do not leak between training and test (ADR-035) |
+| Page key | The smallest photo id of the photos that show the same sudoku page. `page_keys` in `ml/src/sudoku_ml/dataset.py` finds it from the labelled digits. The cells of one page share it (ADR-035) |
+| Test split | The cells that the model never trains on. `split_cells` in `ml/src/sudoku_ml/dataset.py` computes it. Training and the Check screen both call it, so they use the same cells. It leaves out the cells that no person verified. It keeps the cells of one page together, and a hash of the group key gives the side, so new cells do not move old ones (ADR-035) |
 | Reference pair | A synthetic cell image in `shared/fixtures/preprocess/` with its expected 32 × 32 model input. Python and the app both test against it |
 | Temperature | A number that divides the digit logits before the softmax. Fitted on the validation set so that the confidence matches the accuracy |
 | Expected calibration error (ECE) | The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better |

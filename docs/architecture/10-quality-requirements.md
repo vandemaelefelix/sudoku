@@ -98,7 +98,8 @@ before the label check. The labels are not reviewed yet.
 | Expected calibration error (ECE) | 0.63 % |
 | Wrong labels in the data | `just suspects` ranks 150 cells. 89 get under 5 % probability for their label |
 
-The split is by group: 16,206 labelled cells in 14,899 near-duplicate groups, 80/10/10.
+The split is by group: 16,206 labelled cells in 14,899 near-duplicate groups, 80/10/10. These numbers come from the split
+before [ADR-035](adr/adr-035-split-by-page.md). That split let the cells of one photo leak between training and test.
 
 ## 10.5 Measurements on the device
 

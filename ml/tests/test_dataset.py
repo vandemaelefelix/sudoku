@@ -7,11 +7,16 @@ from PIL import Image
 from sudoku_ml.contract import UNKNOWN_KIND, kind_index
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import (
+    SAME_PAGE_MIN_DIGITS,
     cell_paths,
     dhash,
     group_ids,
     load_cells,
+    page_keys,
+    read_real_cells,
+    side_of,
     split_by_group,
+    split_cells,
     stack,
 )
 from sudoku_ml.synthetic import Sample
@@ -59,7 +64,8 @@ def test_near_identical_cells_share_a_group():
 
 def test_split_never_splits_a_group():
     groups = np.repeat(np.arange(100), 3)
-    train, val, test = split_by_group(groups, (0.8, 0.1, 0.1), seed=4)
+    keys = [f"cell-{i}" for i in range(300)]
+    train, val, test = split_by_group(groups, keys, (0.8, 0.1, 0.1), seed=4)
     assert len(train) + len(val) + len(test) == 300
     sides = [set(groups[train]), set(groups[val]), set(groups[test])]
     assert not (sides[0] & sides[1] or sides[0] & sides[2] or sides[1] & sides[2])
@@ -68,14 +74,32 @@ def test_split_never_splits_a_group():
 
 def test_split_is_deterministic():
     groups = np.arange(50)
+    keys = [f"cell-{i}" for i in range(50)]
     assert all(
         np.array_equal(a, b)
         for a, b in zip(
-            split_by_group(groups, (0.8, 0.1, 0.1), 1),
-            split_by_group(groups, (0.8, 0.1, 0.1), 1),
+            split_by_group(groups, keys, (0.8, 0.1, 0.1), 1),
+            split_by_group(groups, keys, (0.8, 0.1, 0.1), 1),
             strict=True,
         )
     )
+
+
+def test_new_groups_never_move_the_old_ones():
+    keys = [f"cell-{i}" for i in range(200)]
+    before = [side_of(k, (0.8, 0.1, 0.1), 7) for k in keys]
+    more = keys + [f"new-{i}" for i in range(500)]
+    groups = np.arange(len(more))
+    sides = split_by_group(groups, more, (0.8, 0.1, 0.1), 7)
+    after = {int(i): side for side, indices in enumerate(sides) for i in indices}
+    assert [after[i] for i in range(200)] == before
+
+
+def test_a_group_takes_the_side_of_its_smallest_key():
+    groups = np.array([0, 0, 0])
+    train, val, test = split_by_group(groups, ["c", "a", "b"], (0.5, 0.25, 0.25), 3)
+    side = side_of("a", (0.5, 0.25, 0.25), 3)
+    assert [len(train), len(val), len(test)][side] == 3
 
 
 def test_stack_shapes():
@@ -136,3 +160,68 @@ def accepted_scan() -> PhotoRow:
     return PhotoRow(
         PHOTO, "a.jpg", "app-scan", "player-contributed", "", "accepted", "1 2 3 4 5 6 7 8"
     )
+
+
+def photo_id(n: int) -> str:
+    return f"{n:02x}" * 32
+
+
+def digit_rows(photo: str, digits: dict[tuple[int, int], str]) -> list[CellRow]:
+    return [
+        CellRow(f"{photo[:4]}{r}{c}" + "0" * 58, d, "printed", (photo, r, c))
+        for (r, c), d in digits.items()
+    ]
+
+
+def test_photos_of_the_same_page_get_one_key():
+    page = {
+        (r, c): str((r * 3 + r // 3 + c) % 9 + 1)
+        for r in range(9)
+        for c in range(9)
+        if (r + c) % 3 == 0
+    }
+    other = {k: str(int(v) % 9 + 1) for k, v in page.items()}
+    one_wrong = dict(page) | {(0, 0): "5" if page[(0, 0)] != "5" else "6"}
+    rows = (
+        digit_rows(photo_id(3), page)
+        + digit_rows(photo_id(1), one_wrong)
+        + digit_rows(photo_id(2), other)
+        + digit_rows(photo_id(4), dict(list(page.items())[: SAME_PAGE_MIN_DIGITS - 1]))
+    )
+    keys = page_keys(rows)
+    assert keys[photo_id(3)] == keys[photo_id(1)] == photo_id(1)
+    assert keys[photo_id(2)] == photo_id(2)
+    assert keys[photo_id(4)] == photo_id(4)
+
+
+def test_the_cells_of_an_imported_photo_stay_on_one_side(tmp_path: Path):
+    data = DataPaths.under(tmp_path / "data", tmp_path)
+    rows = []
+    for n in range(40):
+        photo = photo_id(n + 1)
+        for c in range(3):
+            stem = f"{n:08x}{c:08x}"
+            folder = str(c + 1)
+            (data.cells / folder).mkdir(parents=True, exist_ok=True)
+            Image.fromarray(pattern(n * 3 + c)).save(data.cells / folder / f"{stem}.png")
+            rows.append(CellRow(stem + "0" * 48, folder, "printed", (photo, 0, c)))
+    write_cells(data.cells_csv, rows)
+    write_photos(data.photos_csv, [])
+    sides = split_cells(read_real_cells(data), (0.5, 0.25, 0.25), seed=2)
+    owners: dict[str, set[int]] = {}
+    for side, cells in enumerate(sides):
+        for cell in cells:
+            owners.setdefault(cell.sample.photo, set()).add(side)
+    assert len(owners) == 40 and all(len(s) == 1 for s in owners.values())
+
+
+def test_two_rows_at_one_position_count_once():
+    positions = [(0, c) for c in range(9)] + [(1, 0)]
+    first = {p: "1" for p in positions}
+    # Photo 5 holds two digits at each position. The last row counts, so it does not match photo 6.
+    rows = digit_rows(photo_id(5), first) + [
+        CellRow(f"e{n:063x}", "2", "printed", (photo_id(5), r, c))
+        for n, (r, c) in enumerate(positions)
+    ]
+    keys = page_keys(rows + digit_rows(photo_id(6), {p: "1" for p in positions}))
+    assert keys[photo_id(5)] != keys[photo_id(6)]
