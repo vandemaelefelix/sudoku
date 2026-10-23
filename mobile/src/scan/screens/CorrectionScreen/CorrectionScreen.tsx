@@ -31,15 +31,13 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   const { theme } = useUnistyles()
   const intl = useIntl()
   const correction = useCorrectionSession(capture, exits)
-  const { actions, editable, looks, openCell, timing, dev } = correction
+  const { actions, editable, looks, openCell, timing, waiting, dev } = correction
   const { grid } = layout
   const cellSize = grid.width / 9
   const digitSizes = useDigitSizes(cellSize)
   const { board, lines } = useCorrectionBoard(grid.width)
   const overlay = useDevOverlay({ editable, scan: dev.scan, looks, threshold: dev.threshold })
   const failed = correction.panel === 'failure'
-  // The transition clock exists until the review. In the review, every layer shows and nothing waits.
-  const waiting = capture.phase === 'review' ? undefined : capture.waiting
   const { motion, titleStyle, panelStyle, waitingStyle } = useCorrectionMotion({
     timing,
     waiting,

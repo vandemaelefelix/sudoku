@@ -1,5 +1,6 @@
 import type { SkImage } from '@shopify/react-native-skia'
 import { useMemo, useState } from 'react'
+import type { SharedValue } from 'react-native-reanimated'
 import type { Digit, Level } from '@sudoku/core'
 import type { Pulse } from '@/game/hooks/usePulse'
 import { scannedLevel } from '@/game/utils/start.utils'
@@ -88,6 +89,7 @@ export type CorrectionDev = {
  * of the player and the checks of the grid. The screen sends intents through `actions`.
  *
  * timing: what the cells, the rings and the panel follow. It keeps its identity while the clock, the results time and the flag stay.
+ * waiting: the results gate held longer than SPINNER_DELAY. Both are undefined in the review: every layer shows and nothing waits.
  * editable: the player can edit. It is false during the capture transition, and for a failed or missing result.
  * panel: null until the result arrives. openCell: the cell in the panel. picking: its keypad. hint: the second guess of the scanner
  * for that cell.
@@ -99,6 +101,7 @@ export type CorrectionDev = {
  */
 export type CorrectionSession = {
   timing: SweepTiming
+  waiting: SharedValue<boolean> | undefined
   editable: boolean
   panel: PanelState | null
   looks: readonly CellLook[]
@@ -129,7 +132,7 @@ const NO_HINTS: Readonly<Record<number, number>> = {}
  * result. The ring threshold of the dev menu is not saved: a new scan starts at REVIEW_CONFIDENCE.
  */
 export function useCorrectionSession(
-  capture: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'resultsAt'>,
+  capture: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'resultsAt' | 'waiting'>,
   exits: CorrectionExits,
 ): CorrectionSession {
   const { result } = capture
@@ -137,6 +140,7 @@ export function useCorrectionSession(
   const transition = capture.phase === 'review' ? null : capture
   const clock = transition?.clock
   const resultsAt = transition?.resultsAt
+  const waiting = transition?.waiting
   const crossFade = transition?.crossFade ?? false
   const timing = useMemo<SweepTiming>(() => ({ clock, resultsAt, crossFade }), [clock, resultsAt, crossFade])
   const failed = result != null && !result.ok
@@ -253,6 +257,7 @@ export function useCorrectionSession(
   const openLook = open === null ? undefined : looks[open]
   return {
     timing,
+    waiting,
     editable,
     panel: result == null ? null : panelState(failed, open, picking),
     looks,

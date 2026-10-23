@@ -102,11 +102,13 @@ describe('the sweep timing', () => {
     const transition = capturing(okResult(), { clock: 0.6, resultsAt: 0.2, crossFade: true })
     const { result } = session(transition)
     expect(result.current.timing).toEqual({ clock: transition.clock, resultsAt: transition.resultsAt, crossFade: true })
+    expect(result.current.waiting).toBe(transition.waiting)
   })
 
   it('has no clock in the review, so every layer shows', () => {
     const { result } = session(review(okResult()))
     expect(result.current.timing).toEqual({ clock: undefined, resultsAt: undefined, crossFade: false })
+    expect(result.current.waiting).toBeUndefined()
   })
 
   it('keeps the same object while the inputs stay, so a memo cell skips its render', () => {
