@@ -1,9 +1,19 @@
+import csv
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 from sudoku_ml.contract import UNKNOWN_KIND, kind_index
-from sudoku_ml.suspects import FIELDS, rank_kind_suspects, rank_suspects, write_suspects
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.suspects import (
+    FIELDS,
+    find_suspects,
+    rank_kind_suspects,
+    rank_suspects,
+    write_suspects,
+)
+from sudoku_ml.tables import CellRow, PhotoRow, write_cells, write_photos
 
 P, H = kind_index("printed"), kind_index("handwritten")
 
@@ -48,3 +58,36 @@ def test_write_suspects_writes_the_header_without_rows(tmp_path: Path):
     path = tmp_path / "suspects.csv"
     write_suspects([], path)
     assert path.read_text().splitlines() == [",".join(FIELDS)]
+
+
+def test_a_cell_that_may_not_train_is_left_out_and_the_rest_keep_their_files(tmp_path: Path):
+    data = DataPaths.under(tmp_path / "data", tmp_path)
+    scan = "a" * 64
+    rows = []
+    for n, folder in enumerate(["empty", "1", "2", "3", "4", "5", "6", "7"]):
+        stem = f"{n + 1:016x}"
+        (data.cells / folder).mkdir(parents=True)
+        rng = np.random.default_rng(n)
+        pixels = np.kron(rng.integers(0, 256, (8, 8, 3)), np.ones((8, 8, 1))).astype(np.uint8)
+        Image.fromarray(pixels).save(data.cells / folder / f"{stem}.png")
+        kind = None if folder == "empty" else "printed"
+        # Only the untrusted cell comes from the scan. Cells of one scan form one group.
+        if folder == "4":
+            rows.append(CellRow(stem + "0" * 48, folder, kind, (scan, 0, n), "app-unedited"))
+        else:
+            rows.append(CellRow(stem + "0" * 48, folder, kind, None))
+    write_cells(data.cells_csv, rows)
+    corners = "1 2 3 4 5 6 7 8"
+    write_photos(
+        data.photos_csv,
+        [PhotoRow(scan, "a.jpg", "app-scan", "player-contributed", "", "accepted", corners)],
+    )
+
+    with find_suspects(data, folds=2, epochs=1).open() as file:
+        suspects = list(csv.DictReader(file))
+
+    folder_of = {r.cell_id[:16]: r.digit for r in rows}
+    assert f"{5:016x}" not in {s["file"] for s in suspects}
+    digit_rows = [s for s in suspects if s["field"] == "digit"]
+    assert digit_rows
+    assert all(folder_of[s["file"]] == s["label"] for s in digit_rows)
