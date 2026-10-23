@@ -154,6 +154,27 @@ describe('the panel state', () => {
   })
 })
 
+describe('the sweep timing', () => {
+  it('hands the clock, the results time and the cross-fade flag of a transition', () => {
+    const transition = capturing(okResult(), 0.6, 0.2, true)
+    const { result } = session(transition)
+    expect(result.current.timing).toEqual({ clock: transition.clock, resultsAt: transition.resultsAt, crossFade: true })
+  })
+
+  it('has no clock in the review, so every layer shows', () => {
+    const { result } = session(review(okResult()))
+    expect(result.current.timing).toEqual({ clock: undefined, resultsAt: undefined, crossFade: false })
+  })
+
+  it('keeps the same object while the inputs stay, so a memo cell skips its render', () => {
+    const transition = capturing(okResult())
+    const { result, rerender } = session(transition)
+    const first = result.current.timing
+    rerender({ capture: { ...transition } })
+    expect(result.current.timing).toBe(first)
+  })
+})
+
 describe('the given conflicts', () => {
   it('marks two givens with the same digit, and the mark goes when one is fixed', () => {
     const { result } = session(review(okResult({ 0: printed(5), 1: printed(5) })))

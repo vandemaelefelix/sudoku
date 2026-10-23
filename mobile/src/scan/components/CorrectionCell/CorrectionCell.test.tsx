@@ -9,7 +9,7 @@ import { CorrectionCell } from './CorrectionCell'
 import { cobalt, cobaltColour } from '@/theme/themes/cobalt'
 
 const look = { digit: '7', style: 'entry', uncertain: true } as const
-const at = { size: 40, digitSizes: { given: 28, entry: 22 }, left: 0, top: 0, reduceMotion: false } as const
+const at = { size: 40, digitSizes: { given: 28, entry: 22 }, left: 0, top: 0, timing: { crossFade: false } } as const
 
 it('reads no theme hook, so a theme switch does not re-render the 81 cells (ADR-015)', () => {
   const unistyles = jest.requireMock<typeof import('react-native-unistyles')>('react-native-unistyles')

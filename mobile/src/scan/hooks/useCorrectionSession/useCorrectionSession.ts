@@ -16,7 +16,7 @@ import type { CellLook } from '@/scan/utils/correction.utils'
 import { isFull, markedCells, panelState, type PanelState } from '@/scan/utils/correctionSession.utils'
 import { finalGrid } from '@/scan/utils/finalGrid.utils'
 import { checkPlay, type PlayBlock, type ScannedStart } from '@/scan/utils/play.utils'
-import { resultsGateReached } from '@/scan/utils/transition.utils'
+import { resultsGateReached, type SweepTiming } from '@/scan/utils/transition.utils'
 import { useHaptics } from '@/settings/hooks/useHaptics'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 
@@ -73,6 +73,8 @@ export type CorrectionActions = Omit<CorrectionEditActions, 'yes' | 'no' | 'setD
  * celebrated: the solved pulse runs. It starts once the open cell closes, and it stays until the verdict changes.
  */
 export type CorrectionSession = {
+  /** What the cells, the rings and the panel follow. It keeps its identity while the clock, the results time and the flag stay. */
+  timing: SweepTiming
   editable: boolean
   panel: PanelState | null
   looks: readonly CellLook[]
@@ -120,7 +122,8 @@ export function useCorrectionSession(
   const transition = capture.phase === 'review' ? null : capture
   const clock = transition?.clock
   const resultsAt = transition?.resultsAt
-  const reduceMotion = transition?.crossFade ?? false
+  const crossFade = transition?.crossFade ?? false
+  const timing = useMemo<SweepTiming>(() => ({ clock, resultsAt, crossFade }), [clock, resultsAt, crossFade])
   const failed = result != null && !result.ok
   const ok = result?.ok === true ? result : null
   const { play } = useHaptics()
@@ -196,7 +199,7 @@ export function useCorrectionSession(
   )
   // A failure keeps the results gate closed. Its warning plays when the failure panel starts to slide in.
   useAnimatedReaction(
-    () => failed && resultsGateReached(clock?.value, reduceMotion),
+    () => failed && resultsGateReached(clock?.value, crossFade),
     (go, previous) => {
       if (go && go !== previous) scheduleOnRN(play, 'warning')
     },
@@ -276,6 +279,7 @@ export function useCorrectionSession(
 
   const openLook = open === null ? undefined : looks[open]
   return {
+    timing,
     editable,
     panel: result == null ? null : panelState(failed, open, picking),
     looks,

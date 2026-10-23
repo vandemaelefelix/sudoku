@@ -5,7 +5,7 @@ import { RING_INSET } from './CorrectionRing.constants'
 import { styles } from './CorrectionRing.styles'
 
 /** active: the cell is open in the panel, so its ring turns solid. */
-type CorrectionRingProps = SweepTiming & { n: number; size: number; left: number; top: number; active?: boolean }
+type CorrectionRingProps = { n: number; size: number; left: number; top: number; active?: boolean; timing: SweepTiming }
 
 /** The dashed ring around an uncertain cell. n: the cell index, row-major. */
 export const CorrectionRing = memo(function CorrectionRing({
@@ -14,14 +14,13 @@ export const CorrectionRing = memo(function CorrectionRing({
   left,
   top,
   active = false,
-  clock,
-  resultsAt,
-  reduceMotion,
+  timing,
 }: CorrectionRingProps) {
+  const { clock, resultsAt, crossFade } = timing
   const style = useAnimatedStyle(() => {
     if (!clock) return { opacity: 1 }
     const t = clock.value
-    return { opacity: ringsAt(t, reduceMotion, shiftOf(t, resultsAt, reduceMotion)) }
+    return { opacity: ringsAt(t, crossFade, shiftOf(t, resultsAt, crossFade)) }
   })
   return (
     <Animated.View

@@ -36,7 +36,7 @@ export type CellConfidence = { tag: string; value: string; low: boolean }
 /** Font sizes in points of a given and an entry. The screen sets them from the type scale of the theme. */
 export type DigitSizes = { given: number; entry: number }
 
-type CorrectionCellProps = SweepTiming & {
+type CorrectionCellProps = {
   n: number
   look: CellLook
   size: number
@@ -54,6 +54,7 @@ type CorrectionCellProps = SweepTiming & {
   pulse?: Pulse | undefined
   /** Without it, the cell is not pressable: the transition shows the cells before the player can edit them. */
   onSelect?: ((cell: number) => void) | undefined
+  timing: SweepTiming
 }
 
 /** One cell of the correction screen, with a ring when it is uncertain. n: the cell index, row-major. */
@@ -71,10 +72,9 @@ export const CorrectionCell = memo(function CorrectionCell({
   confidence = null,
   pulse,
   onSelect,
-  clock,
-  resultsAt,
-  reduceMotion,
+  timing,
 }: CorrectionCellProps) {
+  const { clock, resultsAt, crossFade } = timing
   const intl = useIntl()
   const row = rowOf(n)
   const col = columnOf(n)
@@ -97,7 +97,7 @@ export const CorrectionCell = memo(function CorrectionCell({
     let alpha = 1
     if (clock) {
       const t = clock.value
-      alpha = digitAlpha(t, row, col, reduceMotion, shiftOf(t, resultsAt, reduceMotion))
+      alpha = digitAlpha(t, row, col, crossFade, shiftOf(t, resultsAt, crossFade))
     }
     const picked = pick.get()
     const rise = (1 - alpha) * DIGIT_RISE + (systemReduceMotion ? 0 : (1 - picked) * DIGIT_RISE)
@@ -178,18 +178,7 @@ export const CorrectionCell = memo(function CorrectionCell({
           </>
         )}
       </Pressable>
-      {look.uncertain && (
-        <CorrectionRing
-          n={n}
-          size={size}
-          left={left}
-          top={top}
-          active={selected}
-          clock={clock}
-          resultsAt={resultsAt}
-          reduceMotion={reduceMotion}
-        />
-      )}
+      {look.uncertain && <CorrectionRing n={n} size={size} left={left} top={top} active={selected} timing={timing} />}
     </>
   )
 })

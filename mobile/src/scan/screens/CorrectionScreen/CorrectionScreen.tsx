@@ -66,17 +66,15 @@ const SWAP_OUT = FadeOut.duration(SWAP_OUT_MS).easing(easeOut)
 const PANEL_RESIZE = LinearTransition.duration(PANEL_RESIZE_MS).easing(easeOut)
 
 export function CorrectionScreen({ session: capture, layout, ...exits }: CorrectionProps) {
-  // The transition clock exists until the review. In the review, every layer shows and nothing waits.
-  const transition = capture.phase === 'review' ? null : capture
-  const clock = transition?.clock
-  const reduceMotion = transition?.crossFade ?? false
-  const waiting = transition?.waiting
-  const resultsAt = transition?.resultsAt
   const { theme } = useUnistyles()
   const intl = useIntl()
   const { bottom } = useSafeAreaInsets()
   const systemReduceMotion = useReducedMotion()
-  const motion = !(reduceMotion || systemReduceMotion)
+  const correction = useCorrectionSession(capture, exits)
+  const { clock, resultsAt, crossFade } = correction.timing
+  // The transition clock exists until the review. In the review, every layer shows and nothing waits.
+  const waiting = capture.phase === 'review' ? undefined : capture.waiting
+  const motion = !(crossFade || systemReduceMotion)
   const { bar, title, grid, panel, panelInset } = layout
   const cellSize = grid.width / 9
   // A theme sets its digit sizes relative to the system font: a serif given needs more size than a sans entry to look as large.
@@ -90,7 +88,6 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
     [cellSize, givenRole.scale, entryRole.scale, baseScale],
   )
 
-  const correction = useCorrectionSession(capture, exits)
   const { actions, editable, looks, openCell, picking, scan, solution, solved, threshold } = correction
   const open = openCell?.cell ?? null
   const failed = correction.panel === 'failure'
@@ -166,12 +163,12 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
   // display frame, so a canvas that mounted at the end of the transition would blink.
   const boardBox = [gridBox, { opacity: clock ? 0 : 1 }]
 
-  const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, reduceMotion).title : 1 }))
+  const titleStyle = useAnimatedStyle(() => ({ opacity: clock ? transitionAt(clock.value, crossFade).title : 1 }))
   // A failure keeps the results gate closed, so the clock never reaches the panel ramp. The failure panel slides in on its own
-  // timing instead, from the moment the clock reaches the results gate (any held clock with Reduce Motion).
+  // timing instead, from the moment the clock reaches the results gate (any held clock in the cross-fade).
   const failureSlide = useSharedValue(0)
   useAnimatedReaction(
-    () => failed && resultsGateReached(clock?.value, reduceMotion),
+    () => failed && resultsGateReached(clock?.value, crossFade),
     (go, previous) => {
       if (go === previous) return
       failureSlide.set(go ? withTiming(1, { duration: FAILURE_SLIDE_MS, easing: easeOut }) : 0)
@@ -181,7 +178,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
     let slide = 1
     if (clock) {
       const t = clock.value
-      slide = failed ? failureSlide.value : panelAt(t, reduceMotion, shiftOf(t, resultsAt, reduceMotion))
+      slide = failed ? failureSlide.value : panelAt(t, crossFade, shiftOf(t, resultsAt, crossFade))
     }
     return { transform: [{ translateY: (1 - slide) * PANEL_HIDDEN * panel.height }] }
   })
@@ -263,9 +260,7 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
             solution={solution === null || look.digit !== '' ? '' : String(solution[n] ?? '')}
             confidence={confidences?.[n] ?? null}
             onSelect={editable ? actions.select : undefined}
-            clock={clock}
-            resultsAt={resultsAt}
-            reduceMotion={reduceMotion}
+            timing={correction.timing}
           />
         )
       })}

@@ -197,11 +197,11 @@ describe('digitAlpha', () => {
 
 describe('ringsAt and panelAt', () => {
   it('match the channels of transitionAt', () => {
-    for (const reduceMotion of [false, true]) {
+    for (const crossFade of [false, true]) {
       for (let t = 0; t <= 1.7; t += 0.05) {
-        const c = transitionAt(t, reduceMotion, 0.1)
-        expect(ringsAt(t, reduceMotion, 0.1)).toBe(c.rings)
-        expect(panelAt(t, reduceMotion, 0.1)).toBe(c.panel)
+        const c = transitionAt(t, crossFade, 0.1)
+        expect(ringsAt(t, crossFade, 0.1)).toBe(c.rings)
+        expect(panelAt(t, crossFade, 0.1)).toBe(c.panel)
       }
     }
   })
