@@ -2,9 +2,13 @@ import { useState } from 'react'
 
 import { get, outlineImage, post } from '../api/client'
 import type { OutlinePage } from '../api/types'
-import { Empty, Failure, Frame, Working } from '../components/Frame'
-import { go, useKeys, useLoad } from '../hooks'
-import { useAction } from '../useAction'
+import { Frame } from '../components/Frame'
+import { StepState } from '../components/StepState'
+import { plural } from '../format'
+import { useAction } from '../hooks/useAction'
+import { useKeys } from '../hooks/useKeys'
+import { useLoad } from '../hooks/useLoad'
+import { go } from '../hooks/useRoute'
 
 /** The marked outlines that wait for the large view, in gallery order. The large view takes the next one. */
 export const fixQueue: string[] = []
@@ -24,12 +28,9 @@ export function nextToFix(note?: string): void {
   go(next ? `outlines/${next}` : 'outlines')
 }
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-
 export function Outlines() {
-  const [round, setRound] = useState(0)
-  const page = useLoad(() => get<OutlinePage>('/api/outlines'), `outlines:${round}`)
-  const action = useAction(() => setRound((n) => n + 1))
+  const page = useLoad(() => get<OutlinePage>('/api/outlines'), 'outlines')
+  const action = useAction(page.reload)
   const [arrived] = useState(takeCarried)
   const [marks, setMarks] = useState<Set<string>>(new Set())
   const scans = page.data?.scans ?? []
@@ -59,18 +60,12 @@ export function Outlines() {
           (photos ? ' Undo cannot reverse an imported photo.' : '') +
           (marked.length ? ` Next: fix the ${plural(marked.length, 'marked one')}.` : ''),
       )
-      if (done === undefined) {
-        // A refusal can follow a change on the server: show the gallery as it is now.
-        setRound((n) => n + 1)
-        return
-      }
+      if (done === undefined) return
     }
     setMarks(new Set())
     if (marked.length) {
       fixQueue.splice(0, fixQueue.length, ...marked)
       nextToFix()
-    } else {
-      setRound((n) => n + 1)
     }
   }
 
@@ -102,36 +97,41 @@ export function Outlines() {
         ) : undefined
       }
     >
-      {page.error ? <Failure message={page.error} retry={page.reload} /> : null}
-      {page.loading && !page.data ? <Working what="Scoring the outlines. A new photo takes a moment…" /> : null}
-      {page.data && !scans.length ? (
-        <Empty
-          why="Every outline is checked."
-          next={
-            <button type="button" className="primary" onClick={() => go('digits')}>
-              Next: Digits
+      <StepState
+        load={page}
+        working="Scoring the outlines. A new photo takes a moment…"
+        empty={
+          scans.length
+            ? undefined
+            : {
+                why: 'Every outline is checked.',
+                next: (
+                  <button type="button" className="primary" onClick={() => go('digits')}>
+                    Next: Digits
+                  </button>
+                ),
+              }
+        }
+      >
+        <div className="outline-grid">
+          {scans.map((s) => (
+            <button
+              key={s.photo}
+              type="button"
+              className={`outline-tile${marked.includes(s.photo) ? ' marked' : ''}`}
+              aria-pressed={marked.includes(s.photo)}
+              onClick={() => toggle(s.photo)}
+              title={s.corners ? `Grid fit ${s.fit.toFixed(2)}` : 'No outline found: set the corners in the large view'}
+            >
+              <img src={outlineImage(s.photo, page.round)} alt={`Scan ${s.photo}`} loading="lazy" />
+              <span className="tile-tags">
+                <span className="tag">{s.source === 'app' ? 'Scan' : 'Photo'}</span>
+                {s.corners ? null : <span className="tag warn">No outline</span>}
+              </span>
             </button>
-          }
-        />
-      ) : null}
-      <div className="outline-grid">
-        {scans.map((s) => (
-          <button
-            key={s.photo}
-            type="button"
-            className={`outline-tile${marked.includes(s.photo) ? ' marked' : ''}`}
-            aria-pressed={marked.includes(s.photo)}
-            onClick={() => toggle(s.photo)}
-            title={s.corners ? `Grid fit ${s.fit.toFixed(2)}` : 'No outline found: set the corners in the large view'}
-          >
-            <img src={outlineImage(s.photo, round)} alt={`Scan ${s.photo}`} loading="lazy" />
-            <span className="tile-tags">
-              <span className="tag">{s.source === 'app' ? 'Scan' : 'Photo'}</span>
-              {s.corners ? null : <span className="tag warn">No outline</span>}
-            </span>
-          </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      </StepState>
     </Frame>
   )
 }

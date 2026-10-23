@@ -2,9 +2,12 @@ import { useState } from 'react'
 
 import { get, post } from '../api/client'
 import type { FinishResult, StartCounts } from '../api/types'
-import { Empty, Failure, Frame, Working } from '../components/Frame'
-import { go, useKeys, useLoad } from '../hooks'
-import { useAction } from '../useAction'
+import { Frame } from '../components/Frame'
+import { StepState } from '../components/StepState'
+import { useAction } from '../hooks/useAction'
+import { useKeys } from '../hooks/useKeys'
+import { useLoad } from '../hooks/useLoad'
+import { go } from '../hooks/useRoute'
 
 export function Finish() {
   const counts = useLoad(() => get<StartCounts>('/api/start'), 'finish')
@@ -20,7 +23,6 @@ export function Finish() {
       () => 'Finished. Z can no longer undo these changes. Git keeps the old tables.',
     )
     if (done) setResult(done)
-    counts.reload()
   }
 
   useKeys({ Enter: finish, z: action.undo, Escape: () => go('') })
@@ -51,29 +53,35 @@ export function Finish() {
         ) : undefined
       }
     >
-      {counts.error ? <Failure message={counts.error} retry={counts.reload} /> : null}
-      {action.busy ? <Working what="Checking the data and writing the tables…" /> : null}
-      {result ? (
-        <div className="panel">
-          <p className="result">Next: commit the tables with git add ml/dataset, then commit.</p>
-          <pre className="report">{result.text}</pre>
-        </div>
-      ) : null}
-      {counts.data && !changes && !result ? (
-        <Empty
-          why="Nothing to finish: every change is in the tables."
-          next={
-            <button type="button" className="primary" onClick={() => go('')}>
-              Back to the start
-            </button>
-          }
-        />
-      ) : null}
-      {counts.data && changes && !result && !action.busy ? (
-        <p className="panel">
-          {changes} changes wait in the journal. Until Finish, Z can undo them. A stop of the server keeps them.
-        </p>
-      ) : null}
+      <StepState
+        load={counts}
+        working="Counting the open work…"
+        busy={action.busy ? 'Checking the data and writing the tables…' : undefined}
+        empty={
+          changes || result
+            ? undefined
+            : {
+                why: 'Nothing to finish: every change is in the tables.',
+                next: (
+                  <button type="button" className="primary" onClick={() => go('')}>
+                    Back to the start
+                  </button>
+                ),
+              }
+        }
+      >
+        {result ? (
+          <div className="panel">
+            <p className="result">Next: commit the tables with git add ml/dataset, then commit.</p>
+            <pre className="report">{result.text}</pre>
+          </div>
+        ) : null}
+        {changes && !result && !action.busy ? (
+          <p className="panel">
+            {changes} changes wait in the journal. Until Finish, Z can undo them. A stop of the server keeps them.
+          </p>
+        ) : null}
+      </StepState>
     </Frame>
   )
 }

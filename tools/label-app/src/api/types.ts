@@ -63,10 +63,12 @@ export type Signal =
   | { signal: 'not-unique' }
   | { signal: 'no-guess' }
 
+/** The order of `CellProbs.kind`. */
+export const KIND_PROB_NAMES = ['none', 'printed', 'handwritten', 'notes'] as const
+
 export interface CellProbs {
   /** In the order of DIGITS. */
   digit: number[]
-  /** In the order none, printed, handwritten, notes. */
   kind: number[]
 }
 

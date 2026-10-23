@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 
 import { get, post } from '../api/client'
 import { DIGITS, type CheckCell, type CheckPage, type Kind, type KindTab, type Label } from '../api/types'
-import { CellDetail, percent } from '../components/CellDetail'
+import { CellDetail } from '../components/CellDetail'
 import { KIND_LETTER, CellTile, labelText } from '../components/CellTile'
 import { Empty, Failure, Frame, Working } from '../components/Frame'
-import { go, useKeys, useLoad, type KeyHandlers } from '../hooks'
-import { useAction } from '../useAction'
+import { percent, plural } from '../format'
+import { useAction } from '../hooks/useAction'
+import { useKeys, type KeyHandlers } from '../hooks/useKeys'
+import { useLoad } from '../hooks/useLoad'
+import { go } from '../hooks/useRoute'
 
 export type Mode = 'digits' | 'kinds'
 
@@ -46,8 +49,6 @@ interface Box {
   height: number
 }
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-
 /** The Digits step and the Kind step: one screen, the most doubtful cells first. */
 export function Check({
   mode,
@@ -63,16 +64,15 @@ export function Check({
   // Only the Kind step has kind tabs. No kind in the route means All.
   const kind: KindTab = mode === 'kinds' && KIND_TABS.includes(askedKind as KindTab) ? (askedKind as KindTab) : 'all'
   const route = (t: string, k: KindTab = kind): string => routeOf(mode, t, k)
-  const [round, setRound] = useState(0)
   const [percentSure, setPercentSure] = useState(config.threshold)
   const [draft, setDraft] = useState(String(config.threshold))
   const threshold = Number((percentSure / 100).toFixed(2))
   const page = useLoad(
     () =>
       get<CheckPage>(`/api/check/${mode}?digit=${tab}&threshold=${threshold}${kind === 'all' ? '' : `&kind=${kind}`}`),
-    `${mode}:${tab}:${kind}:${threshold}:${round}`,
+    `${mode}:${tab}:${kind}:${threshold}`,
   )
-  const action = useAction(() => setRound((n) => n + 1))
+  const action = useAction(page.reload)
   const [fixes, setFixes] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [anchor, setAnchor] = useState<string | null>(null)
@@ -257,7 +257,6 @@ export function Check({
       setFixes((all) => Object.fromEntries(Object.entries(all).filter(([id]) => !ids.has(id))))
       setSelected(new Set())
     }
-    setRound((n) => n + 1)
   }
 
   const confirmSure = async (): Promise<void> => {
@@ -273,7 +272,6 @@ export function Check({
         `Confirmed ${plural(r.cells, 'sure cell')} of this tab. The cells that are left need a look. Select the wrong ones and press a key.`,
     )
     if (done !== undefined) setSelected(new Set())
-    setRound((n) => n + 1)
   }
 
   const clearOrBack = (): void => {

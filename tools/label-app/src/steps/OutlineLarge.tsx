@@ -2,9 +2,12 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react'
 
 import { flatImage, get, photoImage, post } from '../api/client'
 import type { Corners, FixResult, Outline } from '../api/types'
-import { Failure, Frame, Working } from '../components/Frame'
-import { go, useKeys, useLoad } from '../hooks'
-import { useAction } from '../useAction'
+import { Frame } from '../components/Frame'
+import { StepState } from '../components/StepState'
+import { useAction } from '../hooks/useAction'
+import { useKeys } from '../hooks/useKeys'
+import { useLoad } from '../hooks/useLoad'
+import { go } from '../hooks/useRoute'
 import { fixQueue, nextToFix } from './Outlines'
 
 const CORNER_NAMES = ['top left', 'top right', 'bottom right', 'bottom left']
@@ -121,42 +124,42 @@ export function OutlineLarge({ photo }: { photo: string }) {
         ) : undefined
       }
     >
-      {one.error ? <Failure message={one.error} retry={one.reload} /> : null}
-      {!data && !one.error ? <Working what="Opening the photo…" /> : null}
-      {data && corners ? (
-        <div className="large">
-          <svg
-            ref={svg}
-            className="photo-view"
-            viewBox={`0 0 ${data.width} ${data.height}`}
-            onPointerMove={move}
-            onPointerUp={() => setDragging(null)}
-            onPointerLeave={() => setDragging(null)}
-            role="img"
-            aria-label="The photo with its outline"
-          >
-            <image href={photoImage(photo)} width={data.width} height={data.height} />
-            <polygon className="quad" points={corners.map((c) => c.join(',')).join(' ')} />
-            {corners.map(([x, y], n) => (
-              <circle
-                key={CORNER_NAMES[n]}
-                className={`handle${n === 0 ? ' first' : ''}`}
-                cx={x}
-                cy={y}
-                r={Math.max(data.width, data.height) / 70}
-                onPointerDown={(event) => {
-                  event.currentTarget.ownerSVGElement?.setPointerCapture?.(event.pointerId)
-                  setDragging(n)
-                }}
-              />
-            ))}
-          </svg>
-          <figure className="flat">
-            {preview ? <img src={flatImage(photo, preview)} alt="The cut of these corners" /> : null}
-            <figcaption>The cut of these corners. The top left corner has the filled handle.</figcaption>
-          </figure>
-        </div>
-      ) : null}
+      <StepState load={{ data, error: one.error, reload: one.reload }} working="Opening the photo…">
+        {data && corners ? (
+          <div className="large">
+            <svg
+              ref={svg}
+              className="photo-view"
+              viewBox={`0 0 ${data.width} ${data.height}`}
+              onPointerMove={move}
+              onPointerUp={() => setDragging(null)}
+              onPointerLeave={() => setDragging(null)}
+              role="img"
+              aria-label="The photo with its outline"
+            >
+              <image href={photoImage(photo)} width={data.width} height={data.height} />
+              <polygon className="quad" points={corners.map((c) => c.join(',')).join(' ')} />
+              {corners.map(([x, y], n) => (
+                <circle
+                  key={CORNER_NAMES[n]}
+                  className={`handle${n === 0 ? ' first' : ''}`}
+                  cx={x}
+                  cy={y}
+                  r={Math.max(data.width, data.height) / 70}
+                  onPointerDown={(event) => {
+                    event.currentTarget.ownerSVGElement?.setPointerCapture?.(event.pointerId)
+                    setDragging(n)
+                  }}
+                />
+              ))}
+            </svg>
+            <figure className="flat">
+              {preview ? <img src={flatImage(photo, preview)} alt="The cut of these corners" /> : null}
+              <figcaption>The cut of these corners. The top left corner has the filled handle.</figcaption>
+            </figure>
+          </div>
+        ) : null}
+      </StepState>
     </Frame>
   )
 }
