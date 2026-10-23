@@ -1,12 +1,12 @@
 import { Alert } from 'react-native'
-import { memoryOwnerCache } from '@/account/accountTestKit'
+import { memoryOwnerCache } from '@/account/account.testkit'
 import type { Account } from '@/account/hooks/useAccount'
 import type { GameStorage } from '@/storage'
 import { createAppSync } from './createAppSync'
 import type { AccountApi } from './syncApi'
 import type { SyncApiResult } from './sync.types'
 import type { SyncSession } from './sync.types'
-import { ALICE, BOB, createTestStorage, finishGame, noSleep, scriptedApi, seedCursor } from './syncTestKit'
+import { ALICE, BOB, createTestStorage, finishGame, noSleep, scriptedApi, seedCursor } from './sync.testkit'
 
 let storage: GameStorage
 

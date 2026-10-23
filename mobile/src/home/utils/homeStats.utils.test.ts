@@ -1,5 +1,5 @@
 import { createMemoryStorage } from '@/storage'
-import { newGame, wonGame } from '@/storage/repositories.contract'
+import { newGame, wonGame } from '@/storage/contract/fixtures.testkit'
 import { loadHomeStats } from './homeStats.utils'
 
 it('gives no win rate and no streak on a device without games', async () => {

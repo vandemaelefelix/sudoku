@@ -1,7 +1,7 @@
 import { place, select, toSavedGame } from '@sudoku/core'
 import { MIGRATIONS, migrate } from './migrations'
 import { openNodeDatabase, temporaryDatabaseFile, type NodeDatabase } from './nodeDatabase'
-import { newGame, testDeps } from './repositories.contract'
+import { newGame, testDeps } from './contract/fixtures.testkit'
 import { createSqliteStorage } from './sqliteStorage'
 import type { SqlDatabase } from './sql.types'
 

@@ -1,6 +1,6 @@
 import type { GameStorage } from '@/storage'
 import { runAdoptStep } from './adoptStep'
-import { ALICE, createTestStorage, finishGame } from './syncTestKit'
+import { ALICE, createTestStorage, finishGame } from './sync.testkit'
 
 let storage: GameStorage
 

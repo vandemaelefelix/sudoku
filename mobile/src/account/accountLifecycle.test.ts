@@ -3,8 +3,8 @@ import type { Account } from '@/account/hooks/useAccount'
 import type { GameStorage } from '@/storage'
 import type { DeleteAccountResult } from '@/sync/sync.types'
 import type { AccountApi } from '@/sync/syncApi'
-import { ALICE, BOB, createTestStorage, finishGame, seedCursor } from '@/sync/syncTestKit'
-import { memoryOwnerCache } from './accountTestKit'
+import { ALICE, BOB, createTestStorage, finishGame, seedCursor } from '@/sync/sync.testkit'
+import { memoryOwnerCache } from './account.testkit'
 import { createAccountLifecycle, resumePendingSignOut } from './accountLifecycle'
 
 let storage: GameStorage

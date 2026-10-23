@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react-native'
 import { Text } from 'react-native'
 import { useGameStorage } from '@/storage/hooks/useGameStorage'
 import { createMemoryStorage, type GameStorage } from '@/storage'
-import { newGame, wonGame } from '@/storage/repositories.contract'
+import { newGame, wonGame } from '@/storage/contract/fixtures.testkit'
 import { GameStorageProvider } from './GameStorageProvider'
 
 function Probe({ expected }: { expected?: GameStorage }) {

@@ -12,7 +12,7 @@ import {
   scriptedApi,
   seedCursor,
   uuid,
-} from './syncTestKit'
+} from './sync.testkit'
 import type { SyncApiResult, SyncSession } from './sync.types'
 import type { SyncApi } from './syncApi'
 

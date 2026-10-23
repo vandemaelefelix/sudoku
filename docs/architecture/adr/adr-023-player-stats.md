@@ -93,7 +93,7 @@ after a backend exists.
 
    The streak counts back from today. A streak stays alive until the end of the next day.
 5. **One contract test fixes the rules for every implementation.**
-   - It extends `repositories.contract.ts`.
+   - It extends `describeGameStorage` in `mobile/src/storage/contract/`.
    - The SQLite repository and the in-memory fake must pass it. A future remote or sync
      implementation must pass it too.
    - The contract test is the one place that states the numbers for a given history.
