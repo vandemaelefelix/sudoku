@@ -86,8 +86,9 @@ moved groups of old cells to other sides. The Check screen then got other test c
   sibling cells made the test only a little easier. The ECE and the kind accuracy show the larger effect: a model is
   less sure on a new photo.
 - The test set is smaller and its size varies with the hash. A photo holds up to 81 cells, so one photo more or less
-  in the test set moves its size. On the committed tables of 2026-10-23 the test set has 1 884 cells (5.5 %), the
-  validation set 2 100 (6.1 %). The confidence interval of the test accuracy is wider.
+  in the test set moves its size. On the committed tables of 2026-10-23 the test set has 1 884 of the 34 218 training
+  cells (5.5 %), and the validation set 2 100 (6.1 %). The fractions apply to groups, not to cells. A few photos
+  with many cells decide how many cells a side gets, so a side can fall under its 10 %. The confidence interval of the test accuracy is wider.
 - A new cell never moves an old group, unless it joins that group and has a smaller key. A new photo of a known page
   with a smaller photo id moves the page. Both are rare.
 - The Check screen shows other test cells once. The earlier answers in `kind-checks.jsonl` stay valid as a measure of

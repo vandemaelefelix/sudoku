@@ -50,7 +50,10 @@ def page_keys(rows: list[CellRow]) -> dict[str, str]:
     onehot = np.zeros((len(photos), 81, 9), dtype=np.float32)
     for r in rows:
         if r.source and r.digit in DIGIT_CLASSES[1:]:
-            onehot[index[r.source[0]], r.source[1] * 9 + r.source[2], int(r.digit) - 1] = 1
+            cell = onehot[index[r.source[0]], r.source[1] * 9 + r.source[2]]
+            # Two rows at one position keep one digit, so `equal` never exceeds `shared`.
+            cell[:] = 0
+            cell[int(r.digit) - 1] = 1
     flat = onehot.reshape(len(photos), 81 * 9)
     filled = onehot.max(axis=2)
     shared, equal = filled @ filled.T, flat @ flat.T

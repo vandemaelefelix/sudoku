@@ -213,3 +213,15 @@ def test_the_cells_of_an_imported_photo_stay_on_one_side(tmp_path: Path):
         for cell in cells:
             owners.setdefault(cell.sample.photo, set()).add(side)
     assert len(owners) == 40 and all(len(s) == 1 for s in owners.values())
+
+
+def test_two_rows_at_one_position_count_once():
+    positions = [(0, c) for c in range(9)] + [(1, 0)]
+    first = {p: "1" for p in positions}
+    # Photo 5 holds two digits at each position. The last row counts, so it does not match photo 6.
+    rows = digit_rows(photo_id(5), first) + [
+        CellRow(f"e{n:063x}", "2", "printed", (photo_id(5), r, c))
+        for n, (r, c) in enumerate(positions)
+    ]
+    keys = page_keys(rows + digit_rows(photo_id(6), {p: "1" for p in positions}))
+    assert keys[photo_id(5)] != keys[photo_id(6)]
