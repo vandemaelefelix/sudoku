@@ -1,5 +1,5 @@
-import { createGame, type Game } from '@sudoku/core'
-import { sampleStart } from '@/game/utils/sample.utils'
+import type { Game } from '@sudoku/core'
+import { sampleGame } from '@/game/sample.testkit'
 import { finishView, formatPuzzleNumber, type FinishInfo } from './finish.utils'
 import { createAppIntl } from '@/i18n/utils/intl.utils'
 
@@ -9,7 +9,7 @@ const en = createAppIntl('en')
 const FINISHED_AT = new Date(Date.UTC(2026, 9, 12, 9, 0, 0))
 const GENERATED: FinishInfo = { level: 'medium', source: 'generated', seed: 412_077, bestBeforeMs: 810_000 }
 
-const board = (changes: Partial<Game> = {}): Game => ({ ...createGame(sampleStart()), ...changes })
+const board = (changes: Partial<Game> = {}): Game => ({ ...sampleGame(), ...changes })
 
 describe('formatPuzzleNumber', () => {
   it.each([

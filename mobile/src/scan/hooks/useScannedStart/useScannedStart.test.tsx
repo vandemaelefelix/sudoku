@@ -3,7 +3,7 @@ import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-li
 import { Alert, Pressable, Text, type AlertButton } from 'react-native'
 import { createGame, generate, isWrong } from '@sudoku/core'
 import type { ScannedStart } from '@/scan/utils/play.utils'
-import { scannedLevel } from '@/game/utils/start.utils'
+import { scannedLevel } from '@/game/utils/newGame.utils'
 import { createMemoryStorage, type GameStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
