@@ -24,7 +24,8 @@ The hash catches copies with almost the same pixels only. On synthetic digit cel
 no bit, but camera noise with a sigma of 3 changes 5 bits and a shift of 1 pixel changes 8. Two photos of one page,
 or two cells of one photo, never give such copies.
 
-A measure on the dataset of 2026-10-23 (34 218 cells, seed 7, split 80/10/10) showed the leakage:
+A measure on the working copy of the dataset of 2026-10-23 (34 218 cells, seed 7, split 80/10/10) showed the
+leakage:
 
 | Measure | Old split |
 | --- | --- |
@@ -70,11 +71,23 @@ moved groups of old cells to other sides. The Check screen then got other test c
 
 - The test set changes once. On the same data the leakage falls to 0: no test cell has a photo in training, and no
   page has cells on two sides.
-- The test accuracy falls to an honest value. On the dataset of 2026-10-23, seed 7: the old split gives
-  OLD_ACCURACY, the new split gives NEW_ACCURACY digit accuracy on its test cells.
+- The test numbers become honest, and they barely move. Two runs of `configs/cell-classifier.toml` (seed 7) on the
+  committed tables of 2026-10-23 gave:
+
+  | Measure | Old split | New split |
+  | --- | --- | --- |
+  | Digit accuracy | 99.31 % | 99.20 % |
+  | Accuracy at a 2 % review rate | 99.94 % | 99.95 % |
+  | ECE | 0.39 % | 0.97 % |
+  | Kind accuracy (real test cells) | 98.88 % | 98.21 % |
+  | Test cells | 3 168 | 1 884 |
+
+  The digit accuracy falls by 0.1 points. That is inside the 95 % interval of about ±0.4 points for 1 884 cells. The
+  sibling cells made the test only a little easier. The ECE and the kind accuracy show the larger effect: a model is
+  less sure on a new photo.
 - The test set is smaller and its size varies with the hash. A photo holds up to 81 cells, so one photo more or less
-  in the test set moves its size. On the dataset of 2026-10-23 the test set has 1 884 cells (5.5 %), the validation
-  set 2 100 (6.1 %). The confidence interval of the test accuracy is wider.
+  in the test set moves its size. On the committed tables of 2026-10-23 the test set has 1 884 cells (5.5 %), the
+  validation set 2 100 (6.1 %). The confidence interval of the test accuracy is wider.
 - A new cell never moves an old group, unless it joins that group and has a smaller key. A new photo of a known page
   with a smaller photo id moves the page. Both are rare.
 - The Check screen shows other test cells once. The earlier answers in `kind-checks.jsonl` stay valid as a measure of
