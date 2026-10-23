@@ -117,6 +117,15 @@ and its generation, the two gates, the transition clock, the plan with the cross
 The camera screen, the overlay, the transition canvas and the correction screen read the session. They do not pass clock
 values to each other.
 
+The session has four parts. Each part has one file:
+
+| Part | File | What it owns |
+| --- | --- | --- |
+| Attempt | `captureAttempt.ts` | The pure reducer of the attempt, the cross-fade rule and the two gates |
+| Pipelines | `captureRun.ts` | The capture and the import pipelines. One `fail()` helper settles each failure |
+| Clock | `useTransitionClock` | The UI-thread shared values and the step worklet |
+| Frame maths | `transition.utils.ts` | The worklets `frameStep`, `stepClockState` and `frameAt` |
+
 ```mermaid
 stateDiagram-v2
     [*] --> live
@@ -256,8 +265,16 @@ One module, the correction session (`useCorrectionSession`), owns the state of t
 for the phase and the result. It combines the edits (`useCorrectionEdits`), the verdict (`useVerify`) and the solved pulse
 (`useSolvedPulse`). The screen renders its view. It sends the intents of the player to the session.
 
-The screen keeps four things. They are the layout, the Skia pictures, the transition presentation and the switches of the dev menu.
-The transition presentation is the clock, the results time and the Reduce Motion rule of the cells, the rings and the panel.
+The session has three helper hooks. `useCorrectionCues` plays the haptic cues of the state. `useExitReport` reports the final grid
+when the screen unmounts. `useSaveState` runs the save of the dev menu. The result of the session groups the fields of the play gate
+in `play` and the fields of the dev menu in `dev`.
+
+The session returns `timing` once. It holds the clock, the results time and the `crossFade` flag. The cells, the rings and the panel
+read it. Without a clock (the review), every layer shows and nothing waits. Only the session writes this rule.
+
+The screen composes the pieces. `CorrectionBar`, `CorrectionPanel` and `FailurePanel` draw the bar, the panel and the failure.
+`useCorrectionBoard`, `useDigitSizes`, `useCorrectionMotion` and `useDevOverlay` hold the Skia pictures, the digit sizes, the
+animated styles of the transition and the switches of the dev menu. `failureCopy` picks the words of the failure panel.
 
 ```mermaid
 stateDiagram-v2
