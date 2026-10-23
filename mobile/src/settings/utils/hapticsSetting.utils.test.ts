@@ -1,7 +1,7 @@
 import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
 import { createMemorySettings } from '@/settings/memorySettings'
 import { createSettingStore } from '@/settings/settingStore'
-import { HAPTICS_SETTING, parseHapticsOn } from './haptics.utils'
+import { HAPTICS_SETTING, parseHapticsOn } from './hapticsSetting.utils'
 
 describe('parseHapticsOn', () => {
   it.each([

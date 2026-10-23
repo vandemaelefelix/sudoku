@@ -33,7 +33,6 @@ function freshScanner(): Promise<import('./scanner').Scanner> {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   jest.mocked(loadClassifier).mockResolvedValue({
     model: MODEL,
     manifest: { outputs: { digit: 0, kind: 1 } },

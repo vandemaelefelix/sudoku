@@ -95,7 +95,6 @@ const quad: Quad = [
 ]
 
 beforeEach(() => {
-  jest.clearAllMocks()
   device.mockReturnValue({ id: 'back' } as unknown as ReturnType<typeof useCameraDevice>)
 })
 

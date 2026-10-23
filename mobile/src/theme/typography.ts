@@ -26,3 +26,8 @@ export function roleFont(role: TypeRole): RoleFont {
 export function roleText(role: TypeRole): RoleFont & { fontSize: number; letterSpacing: number } {
   return { ...roleFont(role), fontSize: role.scale, letterSpacing: role.scale * role.tracking }
 }
+
+/** roleFont with the size of the role, for text that does not need the letter spacing. */
+export function roleSized(role: TypeRole): RoleFont & { fontSize: number } {
+  return { ...roleFont(role), fontSize: role.scale }
+}

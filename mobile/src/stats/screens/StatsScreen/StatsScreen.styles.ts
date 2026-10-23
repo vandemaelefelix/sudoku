@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont, roleText } from '@/theme/typography'
+import { roleSized, roleText } from '@/theme/typography'
 import { contentInset } from '@/theme/content'
 
 // Unistyles reads the safe-area insets natively, as on the settings screen.
@@ -19,11 +19,11 @@ export const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  barTitle: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
+  barTitle: { ...roleSized(theme.type.title), color: theme.colors.text },
   titleBlock: { height: theme.size.titleBlock, justifyContent: 'flex-end', marginBottom: theme.space.md },
   display: { ...roleText(theme.type.display), color: theme.colors.text },
   card: { marginBottom: theme.space.xl + theme.space.xs },
-  message: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
+  message: { ...roleSized(theme.type.body), color: theme.colors.textMuted },
   stripHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -31,8 +31,8 @@ export const styles = StyleSheet.create((theme, rt) => ({
     paddingTop: theme.space.md,
     paddingBottom: theme.space.sm,
   },
-  stripTitle: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.text },
-  stripNote: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
+  stripTitle: { ...roleSized(theme.type.body), color: theme.colors.text },
+  stripNote: { ...roleSized(theme.type.caption), color: theme.colors.textMuted },
   settings: {
     marginTop: theme.space.xxl + theme.space.sm,
     borderTopWidth: theme.shape.stroke.thin,

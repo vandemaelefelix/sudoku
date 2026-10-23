@@ -6,8 +6,6 @@ import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
 import { useStats } from './useStats'
 
-jest.mock('@/utils/timeZone.utils', () => ({ deviceTimeZone: () => 'UTC' }))
-
 function wrapperFor(storage: ReturnType<typeof createMemoryStorage>, owner: string | null = null) {
   return ({ children }: { children: ReactNode }) => (
     <GameStorageContext value={storage}>

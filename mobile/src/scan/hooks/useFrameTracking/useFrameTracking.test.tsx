@@ -39,8 +39,6 @@ function setup(detectGrid?: GridDetector | (() => never), size = { width: 360, h
   return { hook, onFrame: config.onFrame, prepare, react }
 }
 
-beforeEach(() => jest.clearAllMocks())
-
 afterEach(() => jest.restoreAllMocks())
 
 describe('useFrameTracking', () => {

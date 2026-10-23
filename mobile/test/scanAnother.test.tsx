@@ -72,7 +72,6 @@ function runFrames(seconds: number) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   mockFiles.clear()
   mockEvents.length = 0
   frameTime = 0

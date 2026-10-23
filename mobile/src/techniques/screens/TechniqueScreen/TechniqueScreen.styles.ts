@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { contentInset } from '@/theme/content'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme, rt) => ({
   screen: { flex: 1, backgroundColor: theme.colors.background },
@@ -10,15 +10,14 @@ export const styles = StyleSheet.create((theme, rt) => ({
     paddingBottom: rt.insets.bottom + theme.space.lg,
     paddingHorizontal: contentInset(theme, rt.screen.width),
   },
-  definition: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.text },
-  level: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
-  body: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.text },
+  definition: { ...roleSized(theme.type.button), color: theme.colors.text },
+  level: { ...roleSized(theme.type.caption), color: theme.colors.textMuted },
+  body: { ...roleSized(theme.type.body), color: theme.colors.text },
   section: {
-    ...roleFont(theme.type.section),
-    fontSize: theme.type.section.scale,
+    ...roleSized(theme.type.section),
     letterSpacing: theme.type.section.scale * theme.type.section.tracking,
     textTransform: 'uppercase',
     color: theme.colors.text,
   },
-  caption: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
+  caption: { ...roleSized(theme.type.caption), color: theme.colors.textMuted },
 }))

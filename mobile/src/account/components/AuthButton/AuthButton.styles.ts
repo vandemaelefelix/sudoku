@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   button: {
@@ -21,9 +21,8 @@ export const styles = StyleSheet.create((theme) => ({
   // The busy and the disabled look: the button stays in place and fades.
   idle: { opacity: theme.opacity.disabled },
   primaryText: {
-    ...roleFont(theme.type.button),
-    fontSize: theme.type.button.scale,
+    ...roleSized(theme.type.button),
     color: theme.components.button.onPrimary,
   },
-  outlineText: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.text },
+  outlineText: { ...roleSized(theme.type.button), color: theme.colors.text },
 }))

@@ -248,3 +248,6 @@ jest.mock('expo-network', () => ({
 
 // expo-crypto is native. Tests get a real v4 UUID from Node.
 jest.mock('expo-crypto', () => ({ randomUUID: () => require('node:crypto').randomUUID() }))
+
+// The zone is fixed so that day boundaries do not depend on the machine that runs the tests.
+jest.mock('@/utils/timeZone.utils', () => ({ deviceTimeZone: () => 'UTC' }))
