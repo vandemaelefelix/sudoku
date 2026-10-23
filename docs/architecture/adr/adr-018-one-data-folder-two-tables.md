@@ -127,3 +127,10 @@ The code on `develop` proves this decision. The status moves from Proposed to Ac
   [ADR-029](adr-029-repository-layout.md) moved the folder from `data/` to `ml/dataset/`.
 - `ml/src/sudoku_ml/journal.py` holds the session journal. `ml/src/sudoku_ml/data_paths.py` reads `SUDOKU_IMAGES`.
 - `ml/src/sudoku_ml/tables.py` is the one owner of the two tables (#190).
+
+## Amendment 2026-10-23: decision 10 is done
+
+The data moved to the new layout. No old dataset tree is left. The decision text above does not change.
+
+- Decision 10 is done. Issue #265 removed `migrate_layout.py`, its test and the `just migrate-layout` recipe.
+- Git keeps the tool. Check out a commit before the removal to run it again.

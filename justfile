@@ -235,10 +235,6 @@ label-rollback session:
     uv run --directory ml python -m sudoku_ml.label_server rollback {{session}}
     just dataset-manifest
 
-# Copy the old layout (<old_ml_root>/datasets and data/) into ml/dataset/ and the image store. Dry run without --apply. Flags: --apply, --force, --prefer-log
-migrate-layout old_ml_root *flags:
-    old="$(realpath "{{old_ml_root}}")" && uv run --directory ml python -m sudoku_ml.migrate_layout "$old" {{flags}}
-
 # SST reads AWS_* variables before its own profile. These recipes remove them, so only the profile sudoku is used (ADR-027)
 sudoku_aws := "env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN AWS_PROFILE=sudoku"
 

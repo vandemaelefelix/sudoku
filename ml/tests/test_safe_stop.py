@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from test_label_store import Clock, add_cell, build, pattern, save_kinds
+from cells import Clock, add_cell, build, move_digit, pattern, save_kinds
 
 from sudoku_ml.label_server import main
 from sudoku_ml.label_store import LabelStore
@@ -14,9 +14,9 @@ def reopened(paths) -> LabelStore:
     return LabelStore(paths, Clock())
 
 
-def test_every_save_is_in_the_files_when_its_call_returns(tmp_path: Path):
+def test_every_save_is_in_the_files_when_its_call_returns(tmp_path: Path, make_store):
     paths, ids = build(tmp_path, {"7": 2, "unlabeled": 3})
-    store = LabelStore(paths, Clock())
+    store = make_store(paths)
     waiting = ids["unlabeled"]
 
     store.confirm_digits(
@@ -29,7 +29,7 @@ def test_every_save_is_in_the_files_when_its_call_returns(tmp_path: Path):
     save_kinds(store, [{"id": ids["7"][0], "kind": "printed"}])
     assert reopened(paths).kinds()[ids["7"][0]] == "printed"
 
-    store.move(ids["7"][1], "3", "groups")
+    move_digit(store, ids["7"][1], "3", "groups")
     assert reopened(paths).folder[ids["7"][1]] == "3"
 
     store.undo()
@@ -38,10 +38,10 @@ def test_every_save_is_in_the_files_when_its_call_returns(tmp_path: Path):
     assert unlabeled == [waiting[2]]
 
 
-def test_a_stop_between_the_file_move_and_the_log_line_is_repaired(tmp_path: Path):
+def test_a_stop_between_the_file_move_and_the_log_line_is_repaired(tmp_path: Path, make_store):
     paths, ids = build(tmp_path, {"7": 1})
     cell = ids["7"][0]
-    save_kinds(LabelStore(paths, Clock()), [{"id": cell, "kind": "handwritten"}])
+    save_kinds(make_store(paths), [{"id": cell, "kind": "handwritten"}])
     # The process dies after the move and before the log line.
     move_cells(paths.cells, {cell[:16]: "empty"})
     store = reopened(paths)

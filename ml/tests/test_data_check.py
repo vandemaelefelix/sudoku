@@ -1,49 +1,13 @@
 import json
 import shutil
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from photos import grid_photo, save_photo
-from PIL import Image
+from photos import grid_photo, save_photo, valid_root
 
 from sudoku_ml.data_check import check_data, format_report, main
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.manifest import write_cells_manifest
-from sudoku_ml.photo_check import PhotoCheck
-from sudoku_ml.photo_import import import_folder
-from sudoku_ml.tables import pixel_id
-
-FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
-
-
-def clock() -> datetime:
-    return datetime(2026, 10, 12, 9, 0, 0, tzinfo=UTC)
-
-
-def add_plain_cell(folder: Path, grey: int) -> str:
-    folder.mkdir(parents=True, exist_ok=True)
-    Image.new("RGB", (64, 64), (grey,) * 3).save(folder / "tmp.png")
-    cell_id = pixel_id(folder / "tmp.png")
-    (folder / "tmp.png").rename(folder / f"{cell_id[:16]}.png")
-    return cell_id
-
-
-def valid_root(tmp_path: Path) -> DataPaths:
-    """3 sudoku photos: one accepted (cells cut and linked), one rejected, one pending. One
-    older cell in empty/ and one in discarded/ have no source."""
-    paths = DataPaths.under(tmp_path / "data")
-    for n in range(3):
-        save_photo(grid_photo(seed=n), tmp_path / "in" / f"p{n}.png")
-    import_folder(tmp_path / "in", paths, source="phone", licence="own")
-    check = PhotoCheck(paths, "s1", clock)
-    first, second, _ = check.pending()
-    check.accept(first, FULL)
-    check.reject(second)
-    add_plain_cell(paths.cells / "empty", 9)
-    add_plain_cell(paths.cells / "discarded", 7)
-    write_cells_manifest(paths)
-    return paths
 
 
 def test_a_valid_root_has_no_problems_and_a_report(tmp_path: Path):

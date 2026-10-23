@@ -23,7 +23,6 @@ Run these from the repository root. Run `just --list` for all commands.
 - `just relabel <file>`: move cells to the digits in a relabel CSV (header `file,new_label`).
 - `just check-data`: check that the images and the tables agree. Exit code 1 on a problem.
 - `just reset-scan-outlines`: set the uploaded scans with the status `accepted` back to `unchecked`. Run it once, for the scans of the first pull.
-- `just migrate-layout <old_ml_root> [--apply] [--force] [--prefer-log]`: copy the old `ml/datasets/` and `ml/data/` layout into `ml/dataset/` (ADR-018). A dry run without `--apply`.
 
 Runs land in `ml/artifacts/`. This folder is not in git. A model trained with `real_cells = true`
 stays private (ADR-013).

@@ -5,10 +5,10 @@ from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+from cells import Clock
 from PIL import Image
-from test_label_store import Clock
-from test_train import smoke_config
 
+from configs import smoke_config
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import read_real_cells, split_cells

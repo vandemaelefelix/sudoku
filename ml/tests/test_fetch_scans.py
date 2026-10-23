@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 from botocore.exceptions import ClientError, CredentialRetrievalError
-from test_pull_scans import SCAN_A, FakeBucket, FakeTable, jpeg, record
+from scans import SCAN_A, FakeBucket, FakeTable, jpeg, record
 
 from sudoku_ml import fetch_scans
 from sudoku_ml.data_paths import DataPaths
