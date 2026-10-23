@@ -48,7 +48,7 @@ describe('function defaults (ADR-027 decision 3)', () => {
 
   // The 30 s timeout is the intended exception: the delete route removes every row of a player (ADR-027 amendment).
   it('are overridden by the sync function only for the timeout', () => {
-    const block = /new sst\.aws\.Function\('SyncApiFunction', \{([^}]*)\}/.exec(root('backend/infra/api.ts'))
+    const block = /new sst\.aws\.Function\(API_FUNCTION_NAMES\.sync, \{([^}]*)\}/.exec(root('backend/infra/api.ts'))
     assert.ok(block)
     assert.doesNotMatch(block[1] ?? '', /runtime|architecture|memory|logging/)
     assert.match(block[1] ?? '', /timeout: '30 seconds'/)

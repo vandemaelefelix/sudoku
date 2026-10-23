@@ -2,6 +2,7 @@ import manifest from '@assets/models/manifest.json'
 import type { CellResult } from '@/scanner'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import type { Quad } from '@/utils/geometry.utils'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 
 /** The scan.json of a corrected scan. Row and col count from 0. The corners are normalised to the upright photo. */
 export type ScanRecord = {
@@ -34,8 +35,8 @@ export function buildScanRecord(
       kindCorrected: false,
     }
     return {
-      row: Math.floor(index / 9),
-      col: index % 9,
+      row: rowOf(index),
+      col: columnOf(index),
       model: { digit: cell.digit, kind: cell.kind, confidence: cell.confidence },
       final: { digit, kind },
       digitCorrected,

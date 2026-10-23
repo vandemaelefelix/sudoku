@@ -1,11 +1,9 @@
 import { cellImage, scanImage } from '../api/client'
-import { DIGITS, type CheckCell, type Signal } from '../api/types'
+import { DIGITS, KIND_PROB_NAMES, type CheckCell, type Signal } from '../api/types'
+import { percent } from '../format'
 import { labelText } from './CellTile'
 
-export const percent = (p: number): string => `${Math.round(p * 100)} %`
-
 const UNIT = { row: 'row', col: 'column', box: 'box' } as const
-const KIND_NAMES = ['none', 'printed', 'handwritten', 'notes'] as const
 
 const read = (what: string): string => (what === 'empty' ? 'an empty cell' : what)
 
@@ -29,7 +27,7 @@ export function signalText(s: Signal): string {
 
 function modelText(cell: CheckCell, mode: 'digits' | 'kinds'): string {
   if (!cell.probs) return 'No guess'
-  const names: readonly string[] = mode === 'digits' ? DIGITS : KIND_NAMES
+  const names: readonly string[] = mode === 'digits' ? DIGITS : KIND_PROB_NAMES
   const probs = mode === 'digits' ? cell.probs.digit : cell.probs.kind
   return probs
     .map((p, i) => ({ name: names[i] ?? '?', p }))

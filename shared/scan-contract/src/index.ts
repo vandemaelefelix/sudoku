@@ -4,6 +4,15 @@ export const SCAN_SCHEMA_VERSION = 1
 /** Bytes. The photo limit of ADR-030 decision 8. */
 export const MAX_JPEG_BYTES = 1_000_000
 
+/** The header that carries the shared app key. The key is not a secret (SUD-11). */
+export const APP_KEY_HEADER = 'x-app-key'
+/** The header that carries the photo length in bytes. The route signs it into the upload URL. */
+export const JPEG_BYTES_HEADER = 'x-jpeg-bytes'
+
+/** The answer of `POST /v1/scans` (ADR-030). */
+export const scanAnswerSchema = z.object({ uploadUrl: z.string() })
+export type ScanAnswer = z.infer<typeof scanAnswerSchema>
+
 const GRID_CELLS = 81
 const DIGIT_CLASSES = 10
 const KIND_CLASSES = 4

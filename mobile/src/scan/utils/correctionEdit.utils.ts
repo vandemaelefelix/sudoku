@@ -1,5 +1,6 @@
 import { BOXES, COLUMNS, GRID_CELLS, ROWS, type Digit } from '@sudoku/core'
 import type { Formatter } from '@/i18n/utils/intl.utils'
+import { cellPlace } from '@/utils/grid.utils'
 import { hasDigit, type CellLook, type CellStyle } from '@/scan/utils/correction.utils'
 
 /**
@@ -140,14 +141,9 @@ export function correctedGrid(looks: readonly CellLook[]): CorrectedGrid {
   return { givens, entries }
 }
 
-/** The row and the column of a cell, from 1. cell: the index, row-major. */
-export function cellRowColumn(cell: number): { row: number; column: number } {
-  return { row: Math.floor(cell / 9) + 1, column: (cell % 9) + 1 }
-}
-
 /** For example "Row 1, column 3". cell: the index, row-major. */
-export function cellPlace(intl: Formatter, cell: number): string {
-  return intl.formatMessage({ id: 'scan.cell.place' }, cellRowColumn(cell))
+export function cellPlaceLabel(intl: Formatter, cell: number): string {
+  return intl.formatMessage({ id: 'scan.cell.place' }, cellPlace(cell))
 }
 
 function kindWords(intl: Formatter, look: CellLook): string {
@@ -166,7 +162,7 @@ export function correctionCellLabel(
   conflict: boolean,
   hint = '',
 ): string {
-  const parts = [cellPlace(intl, cell), kindWords(intl, look)]
+  const parts = [cellPlaceLabel(intl, cell), kindWords(intl, look)]
   if (hint !== '') parts.push(intl.formatMessage({ id: 'scan.cell.differs' }, { digit: hint }))
   else if (conflict) {
     parts.push(intl.formatMessage({ id: look.style === 'entry' ? 'scan.cell.sameAsCell' : 'scan.cell.sameAsGiven' }))

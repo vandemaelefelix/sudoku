@@ -3,7 +3,9 @@ import { useState } from 'react'
 import { ApiError, post } from '../api/client'
 import type { FetchReport } from '../api/types'
 import { Frame, Working } from '../components/Frame'
-import { go, useKeys } from '../hooks'
+import { errorMessage } from '../format'
+import { useKeys } from '../hooks/useKeys'
+import { go } from '../hooks/useRoute'
 
 const STAGES = ['production', 'dev', 'felix'] as const
 type Stage = (typeof STAGES)[number]
@@ -42,7 +44,7 @@ export function Fetch() {
       setState({ kind: 'done', report: await post<FetchReport>('/api/fetch', { stage }) })
     } catch (error) {
       if (error instanceof ApiError && error.signIn) setState({ kind: 'sign-in' })
-      else setState({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
+      else setState({ kind: 'failed', message: errorMessage(error) })
     }
   }
 
@@ -51,7 +53,7 @@ export function Fetch() {
       await post('/api/aws-login')
       setState({ kind: 'signing-in' })
     } catch (error) {
-      setState({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
+      setState({ kind: 'failed', message: errorMessage(error) })
     }
   }
 

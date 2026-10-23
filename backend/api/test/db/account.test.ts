@@ -1,13 +1,5 @@
-import {
-  BatchWriteCommand,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  ScanCommand,
-  TransactWriteCommand,
-  UpdateCommand,
-} from '@aws-sdk/lib-dynamodb'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { BatchWriteCommand, PutCommand, ScanCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { describe, expect, it, vi } from 'vitest'
 import type { SyncDeps } from '../../src/deps'
 import { ClerkError, lazyClerkClient } from '../../src/clerk'
 import type { LogFields } from '../../src/log'
@@ -16,15 +8,13 @@ import { BY_SYNCED, countSk, identityKey, userPk } from '../../src/tableDesign'
 import { entryWithId } from '../fixtures'
 import { syncEvent } from './event'
 import { seedGames, times } from './seed'
-import { createTestTable, type TestTable } from './table'
+import { NOW, getItem, makeDeps, queryPartition, suiteTable } from './harness'
 
-const NOW = new Date('2026-10-15T09:00:00.000Z')
 const DAY = 86_400
 const DELETE = 'DELETE /v1/account'
 
 describe('DELETE /v1/account', () => {
-  let table: TestTable
-  let n = 0
+  const table = suiteTable()
   let clerkCalls: string[]
   let clerk: SyncDeps['clerk']
   let logged: LogFields[]
@@ -32,55 +22,23 @@ describe('DELETE /v1/account', () => {
   let photoFailure: boolean
   let sendWrap: ((db: SyncDeps['db']) => SyncDeps['db']) | undefined
 
-  const deps = (): SyncDeps => ({
-    db: sendWrap ? sendWrap(table.db) : table.db,
-    tableName: table.tableName,
-    now: () => NOW,
-    newUserId: () => `user-${++n}`,
-    log: (fields) => logged.push(fields),
-    sleep: async () => undefined,
-    clerk,
-    photos: {
-      delete: async (key) => {
-        if (photoFailure) throw new Error('S3 down')
-        photoDeletes.push(key)
+  const deps = (): SyncDeps =>
+    makeDeps(table, {
+      db: sendWrap ? sendWrap(table.db) : table.db,
+      log: (fields) => logged.push(fields),
+      clerk,
+      photos: {
+        delete: async (key) => {
+          if (photoFailure) throw new Error('S3 down')
+          photoDeletes.push(key)
+        },
       },
-    },
-  })
+    })
   const del = (sub: string) => route(deps(), syncEvent(null, { sub, routeKey: DELETE }))
   const sync = (sub: string) => route(deps(), syncEvent({ entries: [], cursor: null }, { sub }))
-  const rows = async (userId: string) =>
-    (
-      await table.db.send(
-        new QueryCommand({
-          TableName: table.tableName,
-          KeyConditionExpression: 'pk = :pk',
-          ExpressionAttributeValues: { ':pk': userPk(userId) },
-          ConsistentRead: true,
-        }),
-      )
-    ).Items ?? []
-  const bySynced = async (userId: string) =>
-    (
-      await table.db.send(
-        new QueryCommand({
-          TableName: table.tableName,
-          IndexName: BY_SYNCED,
-          KeyConditionExpression: 'pk = :pk',
-          ExpressionAttributeValues: { ':pk': userPk(userId) },
-        }),
-      )
-    ).Items ?? []
-  const identity = async (sub: string) =>
-    (
-      await table.db.send(
-        new GetCommand({
-          TableName: table.tableName,
-          Key: identityKey(sub),
-          ConsistentRead: true,
-        }),
-      )
-    ).Item
+  const rows = (userId: string) => queryPartition(table, userPk(userId))
+  const bySynced = (userId: string) => queryPartition(table, userPk(userId), { indexName: BY_SYNCED })
+  const identity = (sub: string) => getItem(table, identityKey(sub))
   const seedPlayer = async (sub: string, userId: string, games: number) => {
     await table.db.send(
       new PutCommand({
@@ -102,12 +60,6 @@ describe('DELETE /v1/account', () => {
     )
   }
 
-  beforeAll(async () => {
-    table = await createTestTable()
-  })
-  afterAll(async () => {
-    await table.drop()
-  })
   const reset = () => {
     clerkCalls = []
     logged = []

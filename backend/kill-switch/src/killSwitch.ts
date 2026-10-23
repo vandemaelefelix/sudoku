@@ -19,14 +19,48 @@ interface StageReport {
   warnings: string[]
 }
 
-async function attempt(report: StageReport, label: string, step: () => Promise<void>): Promise<void> {
+// A failure marks the stage FAILED. A warning leaves the stage stopped (the throttle is the stop).
+type Severity = 'failures' | 'warnings'
+
+const describe = (error: unknown): string =>
+  error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+
+// The text carries the severity, so the summary prints it as it is.
+const problem = (label: string, reason: string, severity: Severity): string =>
+  severity === 'warnings' ? `${label}: failed, ${reason}` : `${label}: ${reason}`
+
+async function attempt(
+  report: StageReport,
+  label: string,
+  step: () => Promise<void>,
+  severity: Severity = 'failures',
+): Promise<void> {
   try {
     await step()
     report.stopped.push(label)
   } catch (error) {
-    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-    report.failures.push(`${label}: ${reason}`)
+    const reason = describe(error)
+    report[severity].push(problem(label, reason, severity))
     console.error(`Kill switch step failed. stage=${report.stage} step=${label} reason=${reason}`)
+  }
+}
+
+// Finds the resources of one kind and stops each one by one. A failed lookup counts like a failed stop.
+async function stopAll(
+  report: StageReport,
+  kind: { name: string; noun: string },
+  find: () => Promise<string[]>,
+  stop: (id: string) => Promise<void>,
+  severity: Severity,
+): Promise<void> {
+  try {
+    for (const id of await find()) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- The calls run one by one, so the report keeps the order.
+      await attempt(report, `${kind.name} ${id}`, () => stop(id), severity)
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    report[severity].push(problem(`find the ${kind.noun}`, reason, severity))
   }
 }
 
@@ -36,28 +70,22 @@ async function stopStage(deps: KillSwitchDeps, stage: string): Promise<StageRepo
   // A stage without resources gets the flag too, so a later deploy cannot start it.
   const value: FlagValue = { at: deps.now().toISOString(), reason: 'budget' }
   await attempt(report, 'flag', () => deps.setFlag(stage, value))
-  try {
-    for (const apiId of await deps.findApis(stage)) {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- The calls run one by one, so the report keeps the order.
-      await attempt(report, `api ${apiId}`, () => deps.stopApi(apiId))
-    }
-  } catch (error) {
-    report.failures.push(`find the API: ${error instanceof Error ? error.message : String(error)}`)
-  }
+  await stopAll(
+    report,
+    { name: 'api', noun: 'API' },
+    () => deps.findApis(stage),
+    (id) => deps.stopApi(id),
+    'failures',
+  )
   // The concurrency stop is best-effort when the throttle is in place. Without a throttle it is the only stop.
   const throttled = report.stopped.some((label) => label.startsWith('api ')) && report.failures.length === 0
-  const functionReport: StageReport = { stage, stopped: [], failures: [], warnings: [] }
-  try {
-    for (const name of await deps.findFunctions(stage)) {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- The calls run one by one, so the report keeps the order.
-      await attempt(functionReport, `function ${name}`, () => deps.stopFunction(name))
-    }
-  } catch (error) {
-    functionReport.failures.push(`find the function: ${error instanceof Error ? error.message : String(error)}`)
-  }
-  report.stopped.push(...functionReport.stopped)
-  if (throttled) report.warnings.push(...functionReport.failures.map((f) => f.replace(': ', ': failed, ')))
-  else report.failures.push(...functionReport.failures)
+  await stopAll(
+    report,
+    { name: 'function', noun: 'function' },
+    () => deps.findFunctions(stage),
+    (name) => deps.stopFunction(name),
+    throttled ? 'warnings' : 'failures',
+  )
   return report
 }
 

@@ -1,10 +1,10 @@
-import { useRoute } from './hooks'
-import { Check } from './steps/Check'
+import { useRoute } from './hooks/useRoute'
+import { Check } from './steps/check/Check'
 import { Doubtful } from './steps/Doubtful'
 import { Fetch } from './steps/Fetch'
 import { Finish } from './steps/Finish'
-import { OutlineLarge } from './steps/OutlineLarge'
-import { Outlines } from './steps/Outlines'
+import { OutlineLarge } from './steps/outlines/OutlineLarge'
+import { Outlines } from './steps/outlines/Outlines'
 import { Start } from './steps/Start'
 
 export function App() {

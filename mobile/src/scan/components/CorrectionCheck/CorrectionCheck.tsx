@@ -9,7 +9,7 @@ import { CorrectionPad } from '@/scan/components/CorrectionPad'
 import { PanelButton } from '@/components/PanelButton'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { CellLook, CellStyle } from '@/scan/utils/correction.utils'
-import { cellPlace, panelQuestion, yesLabel } from '@/scan/utils/correctionEdit.utils'
+import { cellPlaceLabel, panelQuestion, yesLabel } from '@/scan/utils/correctionEdit.utils'
 import { swapInButtons } from '@/scan/utils/swap.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
@@ -111,7 +111,7 @@ export function CorrectionCheck({
           <Text testID="correction-question" style={styles.question}>
             {panelQuestion(intl, look, picking)}
           </Text>
-          <Text style={styles.place}>{cellPlace(intl, cell)}</Text>
+          <Text style={styles.place}>{cellPlaceLabel(intl, cell)}</Text>
         </Animated.View>
         <Pressable
           testID="correction-close"

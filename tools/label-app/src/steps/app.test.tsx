@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from '../App'
 import { fakeServer, Refusal, START } from '../test/fakeServer'
-import { fixQueue } from './Outlines'
+import { fixQueue } from './outlines/fixQueue'
 
 beforeEach(() => {
   window.location.hash = ''
-  fixQueue.length = 0
+  fixQueue.clear()
 })
 afterEach(() => vi.unstubAllGlobals())
 

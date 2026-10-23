@@ -1,7 +1,7 @@
 import { isWrong, UNITS, valueAt, type Game, type Step } from '@sudoku/core'
 import type { Assists } from '@/game/constants/assists.constants'
 import type { Theme } from '@/theme/theme.types'
-import { boxOf, columnOf, rowOf } from './grid.utils'
+import { boxOf, columnOf, rowOf } from '@/utils/grid.utils'
 
 export type CellFill = 'plain' | 'peer' | 'same' | 'conflict'
 

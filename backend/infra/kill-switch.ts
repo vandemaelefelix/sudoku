@@ -1,3 +1,4 @@
+import { APP_NAME, FLAG_PREFIX } from '../kill-switch/src/flag.ts'
 import { STAGES } from './config.ts'
 import { LOG_DELIVERY_ACTIONS } from './kill-switch-settings.ts'
 
@@ -59,11 +60,11 @@ export function createKillSwitch(email: $util.Input<string>): { topicArn: $util.
       { actions: ['lambda:ListFunctions'], resources: ['*'] },
       {
         actions: ['lambda:PutFunctionConcurrency'],
-        resources: [$interpolate`arn:aws:lambda:*:${accountId}:function:sudoku-*`],
+        resources: [$interpolate`arn:aws:lambda:*:${accountId}:function:${APP_NAME}-*`],
       },
       {
         actions: ['ssm:PutParameter'],
-        resources: [$interpolate`arn:aws:ssm:*:${accountId}:parameter/sudoku/kill-switch/*`],
+        resources: [$interpolate`arn:aws:ssm:*:${accountId}:parameter${FLAG_PREFIX}/*`],
       },
       { actions: ['sns:Publish'], resources: [alertTopic.arn] },
     ],

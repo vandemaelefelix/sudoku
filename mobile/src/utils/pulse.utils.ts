@@ -1,13 +1,10 @@
 import { BOXES, COLUMNS, ROWS, type Completion, type Game } from '@sudoku/core'
 import { LONGEST_PULSE_STEPS, NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/constants/pulse.constants'
 import type { Theme } from '@/theme/theme.types'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 
 /** The part of a game move that a pulse reads. A game `Move` fits it. */
 export type PulseMove = { id: number; cell: number | null; completed: Completion }
-
-const SIDE = ROWS.length
-const rowOf = (cell: number): number => Math.floor(cell / SIDE)
-const columnOf = (cell: number): number => cell % SIDE
 
 /** The theme tokens of one pulse. Times in milliseconds. */
 export type PulseLook = { stepMs: number; waveMs: number; popMs: number; waveOpacity: number; popScale: number }

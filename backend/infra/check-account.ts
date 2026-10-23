@@ -1,21 +1,15 @@
 // Layer 1 of the account guard (backend/infra/README.md). The just recipes and the deploy workflows run it before every sst command,
 // because the SST bootstrap writes its state bucket before run() can check the account.
-import { execFileSync } from 'node:child_process'
-
-import { accountProblem, callerAccountArgs } from './account.ts'
+import { CALLER_ACCOUNT_ARGS, accountProblem } from './account.ts'
+import { isCi, runAws } from './awsCli.ts'
 import { AWS_ACCOUNT_ID } from './config.ts'
-
-const inCi = process.env.GITHUB_ACTIONS === 'true'
 
 let actual: string
 try {
-  actual = execFileSync('aws', callerAccountArgs(inCi), {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'inherit'],
-  }).trim()
+  actual = runAws(CALLER_ACCOUNT_ARGS, { stderr: 'inherit' })
 } catch {
   console.error(
-    inCi
+    isCi()
       ? 'The role credentials are not valid. Check the repository variable of the deploy role.'
       : 'The profile sudoku has no valid credentials. Run: aws login --profile sudoku-login',
   )
