@@ -5,7 +5,7 @@ import { AssistRow } from '@/settings/components/AssistRow'
 import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { POLICY_URL } from '@/scanShare/constants/scanShare.constants'
-import { useScanShare } from '@/scanShare/useScanShare'
+import { useScanShare } from '@/scanShare/hooks/useScanShare'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './ScanningSection.styles'
 

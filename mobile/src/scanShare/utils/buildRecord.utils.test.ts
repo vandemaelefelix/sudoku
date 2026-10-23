@@ -1,7 +1,7 @@
 import { validateScanRecord } from '@sudoku/scan-contract'
 import type { CellResult } from '@/scanner'
 import type { FinalCell, FinalGrid } from '@/utils/finalGrid.utils'
-import { buildRecord } from './buildRecord'
+import { buildRecord } from './buildRecord.utils'
 
 const UUID_A = '7f3a91c2-0000-4000-8000-000000000001'
 const UUID_B = '7f3a91c2-0000-4000-8000-000000000002'

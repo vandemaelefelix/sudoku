@@ -13,7 +13,7 @@ jest.mock('@/scan/utils/correctionStore', () => ({ saveScanCorrection: (...args:
 
 const mockDiscard = jest.fn()
 const mockEnqueue = jest.fn()
-jest.mock('@/scanShare/useScanShare', () => ({
+jest.mock('@/scanShare/hooks/useScanShare', () => ({
   useScanShare: () => ({ enqueueScan: mockEnqueue, discardPhoto: mockDiscard }),
 }))
 

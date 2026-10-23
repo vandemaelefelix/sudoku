@@ -6,7 +6,7 @@ import { ScanShareNotice } from './ScanShareNotice'
 let mockDue = true
 const mockAccept = jest.fn()
 const mockDecline = jest.fn()
-jest.mock('@/scanShare/useScanShare', () => ({
+jest.mock('@/scanShare/hooks/useScanShare', () => ({
   useScanShare: () => ({ noticeDue: mockDue, acceptNotice: mockAccept, declineNotice: mockDecline }),
 }))
 

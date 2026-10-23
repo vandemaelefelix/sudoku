@@ -1,0 +1,1 @@
+export { useScanShare } from './useScanShare'
