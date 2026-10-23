@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { Text, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
+import { CardRow } from '@/components/CardRow'
 import { Screen } from '@/components/Screen'
 import { ScreenHeader } from '@/components/ScreenHeader'
-import { AssistRow } from '@/settings/components/AssistRow'
+import { Toggle } from '@/components/Toggle'
 import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { DayStrip } from '@/stats/components/DayStrip'
 import { LevelDetail } from '@/stats/components/LevelDetail'
@@ -60,6 +61,8 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
   const haptics = useHaptics()
   const intl = useIntl()
   const title = intl.formatMessage({ id: 'stats.title' })
+  const scannedLabel = intl.formatMessage({ id: 'stats.includeScanned.label' })
+  const scannedDescription = intl.formatMessage({ id: 'stats.includeScanned.description' })
   // A reset changes the key, so the numbers load again.
   const [reloadKey, setReloadKey] = useState(0)
   const state = useStats(includeScanned, reloadKey + refreshKey)
@@ -97,14 +100,21 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
             <LevelDetail level={tab} summary={state.data.levels[tab]} times={state.data.times[tab]} />
           )}
           <View style={styles.settings}>
-            <AssistRow
-              label={intl.formatMessage({ id: 'stats.includeScanned.label' })}
-              description={intl.formatMessage({ id: 'stats.includeScanned.description' })}
-              value={includeScanned}
-              onChange={(on) => {
-                haptics.play('tick')
-                setIncludeScanned(on)
-              }}
+            <CardRow
+              testID={`assist-row-${scannedLabel}`}
+              label={scannedLabel}
+              description={scannedDescription}
+              trailing={
+                <Toggle
+                  label={scannedLabel}
+                  hint={scannedDescription}
+                  value={includeScanned}
+                  onChange={(on) => {
+                    haptics.play('tick')
+                    setIncludeScanned(on)
+                  }}
+                />
+              }
             />
           </View>
           {isDevelopmentVariant() && <ResetStats onReset={() => setReloadKey((key) => key + 1)} />}

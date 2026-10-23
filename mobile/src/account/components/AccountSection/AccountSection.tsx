@@ -1,15 +1,14 @@
 import { getNetworkStateAsync } from 'expo-network'
 import { useRef, useState } from 'react'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { Alert } from 'react-native'
 import { useAccount } from '@/account/hooks/useAccount'
+import { CardRow } from '@/components/CardRow'
 import { FramedCard } from '@/components/FramedCard'
 import { SectionHeading } from '@/components/SectionHeading'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { MessageId } from '@/i18n/messages'
 import { useAccountLifecycle } from '@/account/hooks/useAccountLifecycle'
 import { useDeleteAccount } from '@/account/hooks/useDeleteAccount'
-import { pressedStyles } from '@/theme/pressed.styles'
-import { styles } from './AccountSection.styles'
 
 type AccountSectionProps = { onSignIn(): void }
 
@@ -75,44 +74,25 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
       <SectionHeading title={t('account.section.title')} hint={hint} />
       {status === 'signedOut' ? (
         <FramedCard>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onSignIn}
-            style={({ pressed }) => [styles.row, pressed && pressedStyles.pressed]}
-          >
-            <Text style={styles.action}>{t('account.section.signIn')}</Text>
-          </Pressable>
+          <CardRow label={t('account.section.signIn')} onPress={onSignIn} />
         </FramedCard>
       ) : null}
       {status === 'signedIn' ? (
         <FramedCard>
-          <View
-            style={styles.row}
-            accessible
+          <CardRow
+            label={email ?? ''}
+            tone="quiet"
             accessibilityLabel={intl.formatMessage({ id: 'account.section.signedInAs' }, { email })}
-          >
-            <Text style={styles.email}>{email}</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: deleting }}
-            disabled={deleting}
-            onPress={confirmSignOut}
-            style={({ pressed }) => [styles.row, pressed && pressedStyles.pressed]}
-          >
-            <Text style={styles.action}>{t('account.section.signOut')}</Text>
-          </Pressable>
+          />
+          <CardRow label={t('account.section.signOut')} disabled={deleting} onPress={confirmSignOut} />
           {canDelete ? (
-            <Pressable
-              accessibilityRole="button"
+            <CardRow
+              label={t('account.delete.action')}
+              tone="danger"
               accessibilityHint={t('account.delete.hint')}
-              accessibilityState={{ disabled: deleting }}
               disabled={deleting}
               onPress={confirmDelete}
-              style={({ pressed }) => [styles.row, pressed && pressedStyles.pressed]}
-            >
-              <Text style={styles.destructiveAction}>{t('account.delete.action')}</Text>
-            </Pressable>
+            />
           ) : null}
         </FramedCard>
       ) : null}

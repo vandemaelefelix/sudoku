@@ -1,7 +1,6 @@
 import { StyleSheet } from 'react-native-unistyles'
 import { roleSized } from '@/theme/typography'
 
-// The row of AssistRow, with a chevron in place of the toggle.
 export const styles = StyleSheet.create((theme) => ({
   row: {
     minHeight: theme.size.touch,
@@ -13,6 +12,8 @@ export const styles = StyleSheet.create((theme) => ({
   },
   text: { flex: 1, minWidth: 0 },
   label: { ...roleSized(theme.type.button), color: theme.colors.text },
+  danger: { color: theme.colors.danger },
+  quiet: { ...roleSized(theme.type.body), color: theme.colors.textMuted },
   description: {
     ...roleSized(theme.type.caption),
     marginTop: theme.space.xs / 2,
