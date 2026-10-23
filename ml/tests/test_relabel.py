@@ -118,3 +118,13 @@ def test_move_cells_checks_everything_before_it_moves(tmp_path: Path):
     with pytest.raises(ValueError, match="unknown label"):
         move_cells(cells, {"aaaaaaaaaaaaaaaa": "3", "bbbbbbbbbbbbbbbb": "10"})
     assert (cells / "6" / "aaaaaaaaaaaaaaaa.png").exists()
+
+
+def test_main_prints_one_line_and_returns_1_on_a_value_error(tmp_path, capsys):
+    from sudoku_ml.data_paths import DataPaths
+    from sudoku_ml.relabel import main
+
+    bad = tmp_path / "bad.csv"
+    bad.write_text("name,label\n")
+    assert main([str(bad)], DataPaths.under(tmp_path / "data", tmp_path / "images")) == 1
+    assert capsys.readouterr().err == "relabel CSV needs the header file,new_label\n"

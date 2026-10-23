@@ -14,6 +14,7 @@ from sudoku_ml.dataset import load_cells
 from sudoku_ml.fixtures import FIXTURE_SEED
 from sudoku_ml.journal import Line, append_records
 from sudoku_ml.manifest import write_cells_manifest
+from sudoku_ml.model import CellClassifier
 from sudoku_ml.tables import pixel_id, read_cells
 from sudoku_ml.train import (
     expected_calibration_error,
@@ -188,3 +189,59 @@ def test_the_flag_for_unedited_scan_cells_is_gone(tmp_path: Path, monkeypatch):
     assert train_module.main([str(path)]) == tmp_path
     with pytest.raises(SystemExit):
         train_module.main([str(path), "--app-unedited"])
+
+
+@pytest.mark.parametrize("split", [[0.8, 0.1, 0.2], [0.5, 0.2, 0.2]])
+def test_a_split_that_does_not_add_up_to_one_is_rejected(tmp_path: Path, split: list[float]):
+    with pytest.raises(ValueError, match="not 1"):
+        load_config(smoke_config(tmp_path, split=split))
+
+
+def test_fit_draws_from_every_pool_and_trains_in_place():
+    images, digit, kind = (
+        torch.zeros(8, 64, 64, 3, dtype=torch.uint8),
+        torch.zeros(8, dtype=torch.long),
+        torch.zeros(8, dtype=torch.long),
+    )
+    model = CellClassifier()
+    before = [p.clone() for p in model.parameters()]
+    pools = [train_module.Pool(images, digit, kind, 2), train_module.Pool(images, digit, kind, 2)]
+    train_module.fit(model, pools, 1, torch.device("cpu"), torch.Generator().manual_seed(0))
+    assert any(not torch.equal(a, b) for a, b in zip(before, model.parameters(), strict=True))
+
+
+def test_fit_draws_the_pools_in_order_for_every_step(monkeypatch):
+    # The draw order fixes the random stream, so a reorder would change every trained model.
+    calls = []
+    real_randint = torch.randint
+
+    def spy(high, size, generator):
+        calls.append((high, size[0]))
+        return real_randint(high, size, generator=generator)
+
+    monkeypatch.setattr(train_module.torch, "randint", spy)
+    pools = [
+        train_module.Pool(
+            torch.zeros(n, 64, 64, 3, dtype=torch.uint8),
+            torch.zeros(n, dtype=torch.long),
+            torch.zeros(n, dtype=torch.long),
+            per_batch,
+        )
+        for n, per_batch in ((6, 3), (4, 1))
+    ]
+    model = CellClassifier()
+    train_module.fit(model, pools, 2, torch.device("cpu"), torch.Generator().manual_seed(0))
+    assert calls == [(6, 3), (4, 1)] * 4
+
+
+def test_fit_with_the_same_seed_gives_the_same_model():
+    def trained() -> list[torch.Tensor]:
+        torch.manual_seed(0)
+        model = CellClassifier()
+        rng = torch.Generator().manual_seed(0)
+        images = torch.randint(0, 256, (8, 64, 64, 3), dtype=torch.uint8, generator=rng)
+        pool = train_module.Pool(images, torch.arange(8) % 10, torch.zeros(8, dtype=torch.long), 4)
+        train_module.fit(model, [pool], 1, torch.device("cpu"), torch.Generator().manual_seed(1))
+        return [p.detach().clone() for p in model.parameters()]
+
+    assert all(torch.equal(a, b) for a, b in zip(trained(), trained(), strict=True))

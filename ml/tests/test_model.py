@@ -27,3 +27,14 @@ def test_temperature_scales_only_the_digit_head():
     out = ExportModel(inner, temperature=2.0)(x)
     assert torch.allclose(out["digit"], (logits / 2.0).softmax(1), atol=1e-6)
     assert torch.allclose(out["kind"], kind_logits.softmax(1), atol=1e-6)
+
+
+def test_load_run_returns_the_eval_model_and_the_temperature(tmp_path):
+    import json
+
+    from sudoku_ml.model import load_run
+
+    torch.save(CellClassifier().state_dict(), tmp_path / "model.pt")
+    (tmp_path / "metrics.json").write_text(json.dumps({"temperature": 1.5}))
+    model, temperature = load_run(tmp_path)
+    assert not model.training and temperature == 1.5

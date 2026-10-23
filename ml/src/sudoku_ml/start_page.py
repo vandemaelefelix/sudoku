@@ -2,7 +2,9 @@
 hold. Neither reads a cell image or runs a model."""
 
 from collections import Counter
+from datetime import UTC, datetime
 
+from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.kind_check import summary
 from sudoku_ml.label_state import LabelState
 from sudoku_ml.open_cells import OpenCells, open_cells_of
@@ -38,3 +40,10 @@ def label_summary(state: LabelState, review: Review) -> dict:
         "review_open": len(review.items()),
         "check": summary(state.checks),
     }
+
+
+def read_label_state(paths: DataPaths) -> dict:
+    """`label_summary` of the journal and the tables under `paths`. Raises ValueError when
+    cells.csv is stale."""
+    state = LabelState(paths, lambda: datetime.now(UTC))
+    return label_summary(state, Review(state))
