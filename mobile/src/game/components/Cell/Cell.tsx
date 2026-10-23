@@ -1,40 +1,24 @@
-import { memo, useEffect, useState, type ReactNode } from 'react'
-import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native'
-import { useUnistyles } from 'react-native-unistyles'
-import Animated, {
-  FadeIn,
-  FadeOut,
-  ReduceMotion,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated'
+import { memo, type ComponentProps } from 'react'
+import { Pressable, Text, View } from 'react-native'
+import Animated, { FadeIn, FadeOut, useAnimatedStyle } from 'react-native-reanimated'
 import { ConflictHatch } from '@/game/components/ConflictHatch'
 import { INTRO_RISE } from '@/game/constants/intro.constants'
-import {
-  FILL_FADE_MS,
-  FLASH_IN_MS,
-  FLASH_OUT_MS,
-  HINT_PEAK,
-  SHAKE_STEP_MS,
-  SHAKE_STEPS,
-  UNDO_PEAK,
-} from '@/game/constants/mark.constants'
 import { HINT_FADE_MS } from '@/game/constants/hint.constants'
 import { NO_PULSE } from '@/constants/pulse.constants'
 import type { Intro } from '@/game/hooks/useGridIntro'
 import type { Pulse } from '@/hooks/usePulse'
 import type { SelectionTile } from '@/game/hooks/useSelectionTile'
 import { popScale, waveOpacity } from '@/utils/pulse.utils'
-import { displayFill, type CellView, type DigitSize } from '@/game/utils/cell.utils'
+import type { CellView, DigitSize } from '@/game/utils/cell.utils'
 import { columnOf, rowOf } from '@/utils/grid.utils'
 import { introCellAlpha } from '@/game/utils/intro.utils'
 import type { MarkKind } from '@/game/utils/mark.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { NOTE_PLACES } from './Cell.constants'
 import { styles } from './Cell.styles'
+import { CellFlash, MistakeShake } from './CellEffects'
+import { FillFade } from './FillFade'
+import { TileLayer } from './TileLayer'
 
 /** Without a pulse and an intro, the cell stays still: a grid outside a game has no moves and no entrance. */
 type CellProps = CellView & {
@@ -53,107 +37,68 @@ type CellProps = CellView & {
   markId?: number | undefined
 }
 
-type Fill = CellView['fill']
-
-/** The new fill over the old one. It starts clear after a change and fades in. A fade moves nothing, so Reduce Motion keeps it. */
-function FillOver({ cell, fill, fade }: { cell: number; fill: Fill; fade: boolean }) {
-  const { theme } = useUnistyles()
-  const opacity = useSharedValue(fade ? 0 : 1)
-  useEffect(() => {
-    if (fade) opacity.set(withTiming(1, { duration: FILL_FADE_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }))
-  }, [fade, opacity])
-  const style = useAnimatedStyle(() => ({ opacity: opacity.get() }))
-  return (
-    <Animated.View testID={`cell-${cell}-fill-fade`} style={[RNStyleSheet.absoluteFill, style]}>
-      <View testID={`cell-${cell}-fill`} style={[styles.fillLayer, displayFill(theme.components.cell, fill)]} />
-    </Animated.View>
-  )
-}
-
-/**
- * The fill of a display cell, which crossfades on a change. The colours come from the theme hook, not from the cell
- * styles: after Settings opens a second time, Unistyles no longer updates the fill styles of the preview on a theme
- * switch. Only a display grid renders this, so the cells of a game still read no theme hook (ADR-015).
- */
-function FillFade({ cell, fill }: { cell: number; fill: Fill }) {
-  const { theme } = useUnistyles()
-  const [layers, setLayers] = useState({ under: fill, over: fill })
-  if (layers.over !== fill) setLayers({ under: layers.over, over: fill })
-  return (
-    <>
-      <View
-        testID={`cell-${cell}-fill-under`}
-        style={[styles.fillLayer, displayFill(theme.components.cell, layers.under)]}
-      />
-      <FillOver key={layers.over} cell={cell} fill={layers.over} fade={layers.under !== layers.over} />
-    </>
-  )
-}
-
-/** The digit of a mistake shakes once. Reduce Motion keeps it still: the colour of the digit already tells. */
-function MistakeShake({ children }: { children: ReactNode }) {
-  const reduceMotion = useReducedMotion()
-  const offset = useSharedValue(0)
-  useEffect(() => {
-    if (reduceMotion) return
-    const steps = SHAKE_STEPS.map((to) => withTiming(to, { duration: SHAKE_STEP_MS, easing: easeOut }))
-    offset.set(withSequence(...steps))
-  }, [offset, reduceMotion])
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: offset.get() }] }))
-  return <Animated.View style={style}>{children}</Animated.View>
-}
-
-/** A glow that rises and fades once over the cell: accent for a hint, quiet for an undo. A fade moves nothing, so Reduce Motion keeps it. */
-function CellFlash({ kind }: { kind: 'hint' | 'undo' }) {
-  const opacity = useSharedValue(0)
-  useEffect(() => {
-    const peak = kind === 'hint' ? HINT_PEAK : UNDO_PEAK
-    opacity.set(
-      withSequence(
-        withTiming(peak, { duration: FLASH_IN_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }),
-        withTiming(0, { duration: FLASH_OUT_MS, easing: easeOut, reduceMotion: ReduceMotion.Never }),
-      ),
-    )
-  }, [kind, opacity])
-  const style = useAnimatedStyle(() => ({ opacity: opacity.get() }))
-  return (
-    <Animated.View
-      testID={`cell-flash-${kind}`}
-      style={[styles.flash, kind === 'hint' ? styles.flashHint : styles.flashUndo, style]}
-    />
-  )
-}
-
-/**
- * This cell's part of the selection tile, above its fill and under its digit (ADR-026). Every cell draws the tile moved
- * by its distance from the cell, cut to its own square. So the tile slides as one, and never covers a grid line.
- */
-function TileLayer({ cell, tile }: { cell: number; tile: SelectionTile }) {
-  const row = rowOf(cell)
-  const column = columnOf(cell)
-  const style = useAnimatedStyle(() => {
-    const step = tile.step.get()
-    const boxExtra = tile.boxExtra.get()
-    // The point where cell line x starts: one step per cell, and the extra width of each box line before it.
-    const at = (x: number) => x * step + Math.floor(x / 3) * boxExtra
-    return {
-      // Before the grid has its size, every cell would draw the tile at offset 0.
-      opacity: step > 0 ? tile.shown.get() : 0,
-      transform: [{ translateX: at(tile.column.get()) - at(column) }, { translateY: at(tile.row.get()) - at(row) }],
-    }
-  })
-  return (
-    <View style={styles.tileClip} pointerEvents="none">
-      <Animated.View testID={`cell-${cell}-tile`} style={[styles.tile, style]} />
-    </View>
-  )
-}
-
 // A hint role fades in and out. A layout animation follows the system setting, so with Reduce Motion a role shows at once.
 const ROLE_IN = FadeIn.duration(HINT_FADE_MS).easing(easeOut)
 const ROLE_OUT = FadeOut.duration(HINT_FADE_MS).easing(easeOut)
 
 const HINT_FILL_STYLE = { focus: 'hintFocusFill', pattern: 'hintPatternFill', target: 'hintTargetFill' } as const
+
+type AnimatedStyleProp = ComponentProps<typeof Animated.View>['style']
+
+type CellDigitProps = {
+  digit: number
+  /** The key of the digit style, with the size already applied. */
+  digitKey: CellView['digitStyle'] | `${CellView['digitStyle']}Small`
+  hintSupport: boolean
+  introStyle: AnimatedStyleProp
+  popStyle: ComponentProps<typeof Animated.Text>['style']
+}
+
+function CellDigit({ digit, digitKey, hintSupport, introStyle, popStyle }: CellDigitProps) {
+  return (
+    <Animated.View style={introStyle}>
+      <Animated.Text
+        key={hintSupport ? 'support' : 'digit'}
+        allowFontScaling={false}
+        {...(hintSupport ? { entering: ROLE_IN, exiting: ROLE_OUT } : {})}
+        style={[styles[digitKey], hintSupport && styles.hintSupport, popStyle]}
+      >
+        {digit}
+      </Animated.Text>
+    </Animated.View>
+  )
+}
+
+type CellNotesProps = {
+  notes: string
+  hintStruck: string
+  selected: boolean
+  introStyle: AnimatedStyleProp
+}
+
+function CellNotes({ notes, hintStruck, selected, introStyle }: CellNotesProps) {
+  return (
+    <Animated.View style={[styles.notes, introStyle]}>
+      {NOTE_PLACES.map((place) => (
+        <View key={place} testID={`note-slot-${place}`} style={styles.noteSlot}>
+          {notes.includes(place) && (
+            <Text allowFontScaling={false} style={[styles.note, selected && styles.noteSelected]}>
+              {place}
+            </Text>
+          )}
+          {hintStruck.includes(place) && (
+            <Animated.View
+              testID={`note-strike-${place}`}
+              entering={ROLE_IN}
+              exiting={ROLE_OUT}
+              style={styles.noteStrike}
+            />
+          )}
+        </View>
+      ))}
+    </Animated.View>
+  )
+}
 
 /**
  * One cell. The props are primitives, plus onSelect, pulse and intro, which keep their identity for the whole game.
@@ -196,16 +141,13 @@ export const Cell = memo(function Cell({
   }))
   const digitKey = digitSize === 'small' ? (`${digitStyle}Small` as const) : digitStyle
   const digitView = digit !== 0 && (
-    <Animated.View style={introStyle}>
-      <Animated.Text
-        key={hintSupport ? 'support' : 'digit'}
-        allowFontScaling={false}
-        {...(hintSupport ? { entering: ROLE_IN, exiting: ROLE_OUT } : {})}
-        style={[styles[digitKey], hintSupport && styles.hintSupport, popStyle]}
-      >
-        {digit}
-      </Animated.Text>
-    </Animated.View>
+    <CellDigit
+      digit={digit}
+      digitKey={digitKey}
+      hintSupport={hintSupport}
+      introStyle={introStyle}
+      popStyle={popStyle}
+    />
   )
   const content = (
     <>
@@ -224,25 +166,7 @@ export const Cell = memo(function Cell({
       {(markKind === 'hint' || markKind === 'undo') && <CellFlash key={markId} kind={markKind} />}
       {markKind === 'mistake' && digitView ? <MistakeShake key={markId}>{digitView}</MistakeShake> : digitView}
       {digit === 0 && notes !== '' && digitSize === 'full' && (
-        <Animated.View style={[styles.notes, introStyle]}>
-          {NOTE_PLACES.map((place) => (
-            <View key={place} testID={`note-slot-${place}`} style={styles.noteSlot}>
-              {notes.includes(place) && (
-                <Text allowFontScaling={false} style={[styles.note, selected && styles.noteSelected]}>
-                  {place}
-                </Text>
-              )}
-              {hintStruck.includes(place) && (
-                <Animated.View
-                  testID={`note-strike-${place}`}
-                  entering={ROLE_IN}
-                  exiting={ROLE_OUT}
-                  style={styles.noteStrike}
-                />
-              )}
-            </View>
-          ))}
-        </Animated.View>
+        <CellNotes notes={notes} hintStruck={hintStruck} selected={selected} introStyle={introStyle} />
       )}
       {digit === 0 && hintTarget !== 0 && digitSize === 'full' && (
         <Animated.Text
