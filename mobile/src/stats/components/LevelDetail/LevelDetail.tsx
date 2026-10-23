@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native'
+import { FramedCard } from '@/components/FramedCard'
 import { LEVEL_LABELS } from '@/constants/level.constants'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { MessageId } from '@/i18n/messages'
@@ -20,13 +21,15 @@ export function LevelDetail({ level, summary, times }: LevelDetailProps) {
   if (summary.played === 0 && summary.abandoned === 0) {
     return (
       <View style={styles.empty}>
-        <ThemeDecoration slot="summaryEdge" />
-        <View style={styles.emptyBody}>
-          <Text accessibilityRole="header" style={styles.emptyTitle}>
-            {intl.formatMessage({ id: 'stats.level.emptyTitle' }, { level: t(LEVEL_LABELS[level]) })}
-          </Text>
-          <Text style={styles.emptyText}>{t('stats.level.emptyText')}</Text>
-        </View>
+        <FramedCard divided={false} filled={false}>
+          <ThemeDecoration slot="summaryEdge" />
+          <View style={styles.emptyBody}>
+            <Text accessibilityRole="header" style={styles.emptyTitle}>
+              {intl.formatMessage({ id: 'stats.level.emptyTitle' }, { level: t(LEVEL_LABELS[level]) })}
+            </Text>
+            <Text style={styles.emptyText}>{t('stats.level.emptyText')}</Text>
+          </View>
+        </FramedCard>
       </View>
     )
   }

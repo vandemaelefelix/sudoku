@@ -22,7 +22,7 @@ import {
   transitionEnd,
 } from '@/scan/utils/transition.utils'
 import { shareStore } from '@/scanShare/shareStore'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { lerpQuad, type Quad, rectQuad, type ViewSize } from '@/utils/geometry.utils'
 import { devLog, devWarn, errorMessage } from '@/utils/log.utils'
 import { IMAGE_MAX_SIDE, MAX_CLOCK_STEP } from './useCaptureSession.constants'

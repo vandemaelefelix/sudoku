@@ -14,7 +14,7 @@ import Animated, {
 import { useUnistyles } from 'react-native-unistyles'
 import type { TechniqueId } from '@sudoku/core'
 import { PanelButton } from '@/components/PanelButton'
-import { Icon } from '@/game/components/Icon'
+import { Icon } from '@/components/Icon'
 import { HINT_SLIDE } from '@/game/constants/hint.constants'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { hintCardView } from '@/game/utils/hint.utils'

@@ -9,10 +9,9 @@ import {
 } from 'react-native-reanimated'
 import { UnistylesRuntime } from 'react-native-unistyles'
 import { GRID_CELLS, type Game } from '@sudoku/core'
-import { NO_PULSE } from '@/game/constants/pulse.constants'
-import { useSystemReduceMotion } from '@/game/hooks/useSystemReduceMotion'
-import { pulseDelays, pulseDuration, pulseLook, type PulseLook } from '@/game/utils/pulse.utils'
-import type { Move } from '@/game/utils/session.utils'
+import { NO_PULSE } from '@/constants/pulse.constants'
+import { useSystemReduceMotion } from '@/hooks/useSystemReduceMotion'
+import { pulseDelays, pulseDuration, pulseLook, type PulseLook, type PulseMove } from '@/utils/pulse.utils'
 
 /** delays: one per cell in ms, or NO_PULSE. elapsed: ms since the move of the last pulse. look: the theme tokens of that pulse. */
 export type Pulse = {
@@ -27,7 +26,7 @@ const STILL: readonly number[] = Array.from({ length: GRID_CELLS }, () => NO_PUL
  * Starts a pulse for each move that completes something. The pulse runs on the UI thread and renders nothing.
  * It follows Reduce Motion live. Turning it on stops a running pulse.
  */
-export function usePulse(board: Game, move: Move | null): Pulse {
+export function usePulse(board: Game, move: PulseMove | null): Pulse {
   const delays = useSharedValue<readonly number[]>(STILL)
   const elapsed = useSharedValue(0)
   const look = useSharedValue<PulseLook>(pulseLook(UnistylesRuntime.getTheme()))

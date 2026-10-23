@@ -1,5 +1,5 @@
 import { Pressable } from 'react-native'
-import { Icon } from '@/game/components/Icon'
+import { Icon } from '@/components/Icon'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { FIXED_COLORS } from '@/theme/fixed.colors'
 import { pressedStyles } from '@/theme/pressed.styles'

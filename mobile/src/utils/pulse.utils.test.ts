@@ -1,10 +1,10 @@
 import type { Digit } from '@sudoku/core'
-import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
+import { NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/constants/pulse.constants'
 import { cobalt } from '@/theme/themes/cobalt'
 import { forest } from '@/theme/themes/forest'
 import { popScale, pulseDelays, pulseDuration, pulseLook, solvePulseDuration, waveOpacity } from './pulse.utils'
-import { sampleStart } from './sample.utils'
-import { reduceSession, startSession, type Session } from './session.utils'
+import { sampleStart } from '@/game/utils/sample.utils'
+import { reduceSession, startSession, type Session } from '@/game/utils/session.utils'
 
 // Cell 2 (row 0, column 2) is empty in the canvas puzzle. Its solution is 4.
 const LAST = 2

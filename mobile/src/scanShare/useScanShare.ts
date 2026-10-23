@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useAccount } from '@/account/hooks/useAccount'
+import { useSettingValue } from '@/preferences/hooks/useSettingValue'
 import { versionLabel } from './scanConfig'
 import { contributorId, drainQueue, scanShare, setTokenSource } from './scanShareRuntime'
 import { noticeStore } from './noticeStore'
@@ -10,7 +11,7 @@ import { shareStore } from './shareStore'
  * `enqueueScan` and `drainQueue` never throw. The queue and the uploader are one module value, so every screen uses the same one.
  */
 export function useScanShare() {
-  const on = useSyncExternalStore(shareStore.subscribe, shareStore.get)
+  const on = useSettingValue(shareStore)
   useSyncExternalStore(noticeStore.subscribe, noticeStore.snapshot)
   const { getApiToken } = useAccount()
   useEffect(() => setTokenSource(getApiToken), [getApiToken])

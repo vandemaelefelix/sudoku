@@ -2,7 +2,7 @@ import { LEVELS } from '@sudoku/core'
 import { LEVEL_LABELS } from '@/constants/level.constants'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { MessageId } from '@/i18n/messages'
-import { SegmentedControl } from '@/settings/components/SegmentedControl'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import type { StatsTab } from '@/stats/constants/stats.constants'
 
 type LevelTabsProps = { value: StatsTab; onChange(tab: StatsTab): void }

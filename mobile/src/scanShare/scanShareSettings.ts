@@ -1,5 +1,5 @@
-import type { SettingsRepository } from '@/settings/SettingsRepository'
-import { createSettingStore, type SettingDefinition } from '@/settings/settingStore'
+import type { SettingsRepository } from '@/preferences/SettingsRepository'
+import { createSettingStore, type SettingDefinition } from '@/preferences/settingStore'
 import { CONTRIBUTOR_ID_KEY, NOTICE_SEEN_KEY, SHARE_SCANS_KEY } from './constants/scanShare.constants'
 
 /** Sharing is on unless the player turned it off (ADR-030). A store that throws gives on, as the default says. */

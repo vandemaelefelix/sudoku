@@ -1,4 +1,4 @@
-import { createMemorySettings } from '@/settings/memorySettings'
+import { createMemorySettings } from '@/preferences/memorySettings'
 import {
   APPEARANCE_PREFERENCE_KEY,
   applyThemePreference,

@@ -1,0 +1,1 @@
+export { FramedCard } from './FramedCard'

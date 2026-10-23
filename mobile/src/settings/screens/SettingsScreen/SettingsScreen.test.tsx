@@ -6,8 +6,8 @@ import { Linking, ScrollView, StyleSheet } from 'react-native'
 import { AccountContext, UNCONFIGURED_ACCOUNT } from '@/account/hooks/useAccount'
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName } from '@/game/constants/assists.constants'
 import { useAssists } from '@/game/hooks/useAssists'
-import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { HAPTICS_KEY } from '@/preferences/constants/haptics.constants'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { POLICY_URL, SHARE_SCANS_KEY } from '@/scanShare/constants/scanShare.constants'
 import { shareStore } from '@/scanShare/shareStore'
 import { APPEARANCE_PREFERENCE_KEY, THEME_PREFERENCE_KEY } from '@/theme/preference'
@@ -92,6 +92,10 @@ it('shows a switch in the preview at once', async () => {
   expect(StyleSheet.flatten(cell31.props.style).backgroundColor).toBe(cobalt.components.cell.fill)
 })
 
+// FramedCard draws the line between rows as an overlay: a host View that ignores touches.
+const isRule = (node: { type: unknown; props: { pointerEvents?: string } }) =>
+  typeof node.type === 'string' && node.props.pointerEvents === 'none'
+
 describe('the haptics switch', () => {
   afterEach(async () => {
     const { result, unmount } = renderHook(() => useHaptics())
@@ -150,10 +154,14 @@ describe('the Op-art look of the page (ADR-026)', () => {
 
   it('divides the rows by the strong rule of the box-line weight', () => {
     render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} onTechniques={jest.fn()} />)
-    const second = screen.getByTestId('assist-row-Box')
-    expect(StyleSheet.flatten(second.props.style)).toMatchObject({
-      borderTopWidth: cobalt.components.summary.ruleWidth,
-      borderTopColor: cobalt.components.summary.rule,
+    // FramedCard wraps each row and draws the line as an overlay in that wrapper.
+    let line
+    for (let node = screen.getByTestId('assist-row-Box').parent; node && !line; node = node.parent) {
+      line = node.findAll(isRule)[0]
+    }
+    expect(StyleSheet.flatten(line?.props.style)).toMatchObject({
+      height: cobalt.components.summary.ruleWidth,
+      backgroundColor: cobalt.components.summary.rule,
     })
   })
 })

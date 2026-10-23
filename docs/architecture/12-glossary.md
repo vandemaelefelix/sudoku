@@ -171,7 +171,12 @@ status: DRAFT
 | Pulse | The short wave of colour that spreads from a cell when a correct number completes a row, column, box, number or the whole grid. A haptic tap goes with it |
 | Haptic | One named vibration of the app: tick, tap, thud, soft, success, warning or error. Each name has one meaning. `src/utils/haptics.utils.ts` lists them |
 | Haptics switch | The Settings switch that turns every haptic of the app on or off. It is on by default |
-| Setting store | `src/settings/settingStore.ts`. One store holds one saved setting: the value in memory, the save through `SettingsRepository`, the listeners and the default. A setting gives it a key, a parser and a serializer. Assists, the haptics switch, the scanned switch, the sharing switch and the notice flag use it (ADR-012) |
+| Setting store | `src/preferences/settingStore.ts`. One store holds one saved setting: the value in memory, the save through `SettingsRepository`, the listeners and the default. A setting gives it a key, a parser and a serializer. `useSettingValue` reads the value in a component. Assists, the haptics switch, the scanned switch, the sharing switch and the notice flag use it (ADR-012) |
+| Screen | `src/components/Screen`. The page of a secondary screen: the status bar, a scroll view, the safe-area insets and the side margin |
+| Framed card | `src/components/FramedCard`. The frame of a group on a secondary screen. It draws a line between its children |
+| Card row | `src/components/CardRow`. One row of a framed card: a label, an optional description, and a control or an arrow at the end |
+| Section heading | `src/components/SectionHeading`. The heading of a group on a secondary screen, with its wavy rule and an optional hint |
+| Preferences | `src/preferences/`. The folder of the saved settings: the repository, the setting store, `useSettingValue` and `useHaptics` |
 | Cell mark | The short effect of the last move on one cell: a shake for a mistake, a glow for a hint and a flash for an undo |
 | Lost hold | The 400 ms between the third mistake and the rise of the game over sheet, so the player sees the shake and the third dot |
 | Game over sheet | The sheet that rises after the third mistake. It offers to try the puzzle again, start a new puzzle or go home |

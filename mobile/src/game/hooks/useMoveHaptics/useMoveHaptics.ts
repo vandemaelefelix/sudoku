@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { Completion } from '@sudoku/core'
 import type { Move } from '@/game/utils/session.utils'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import type { HapticName } from '@/utils/haptics.utils'
 
 function completesAUnitOrNumber({ rows, columns, boxes, digits }: Completion): boolean {

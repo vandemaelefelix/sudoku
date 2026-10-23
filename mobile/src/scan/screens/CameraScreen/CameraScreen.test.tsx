@@ -4,7 +4,7 @@ import { launchImageLibraryAsync, type ImagePickerResult } from 'expo-image-pick
 import { useCameraDevice, useCameraPermission, useFrameOutput, usePhotoOutput } from 'react-native-vision-camera'
 import { useAnimatedReaction, useReducedMotion } from 'react-native-reanimated'
 import type { SkImage } from '@shopify/react-native-skia'
-import { kvSettings } from '@/settings/SettingsRepository'
+import { kvSettings } from '@/preferences/SettingsRepository'
 import { createScanner, type RecogniseResult } from '@/scanner'
 import { CameraScreen } from './CameraScreen'
 import { correctionLayout } from '@/scan/utils/correction.utils'

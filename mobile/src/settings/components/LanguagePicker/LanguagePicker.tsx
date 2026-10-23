@@ -1,6 +1,6 @@
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { LanguageChoice } from '@/i18n/utils/locale.utils'
-import { SegmentedControl } from '@/settings/components/SegmentedControl'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { LANGUAGE_OPTIONS } from './LanguagePicker.constants'
 
 type LanguagePickerProps = { value: LanguageChoice; onChange(choice: LanguageChoice): void }

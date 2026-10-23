@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
-import type { SettingsRepository } from '@/settings/SettingsRepository'
+import type { SettingsRepository } from '@/preferences/SettingsRepository'
 import { DEFAULT_INDEX, EFFECTS, effectIndex } from '@/scan/effects/registry'
 import { devLog, errorMessage } from '@/utils/log.utils'
 import { EFFECT_KEY, FAMILIES } from './EffectPicker.constants'

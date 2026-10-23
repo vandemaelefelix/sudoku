@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAnimatedReaction } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import type { Digit, Level } from '@sudoku/core'
-import type { Pulse } from '@/game/hooks/usePulse'
+import type { Pulse } from '@/hooks/usePulse'
 import { scannedLevel } from '@/game/utils/start.utils'
 import type { SaveState } from '@/scan/components/DevMenu'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
@@ -17,7 +17,7 @@ import { isFull, markedCells, panelState, type PanelState } from '@/scan/utils/c
 import { finalGrid } from '@/scan/utils/finalGrid.utils'
 import { checkPlay, type PlayBlock, type ScannedStart } from '@/scan/utils/play.utils'
 import { resultsGateReached } from '@/scan/utils/transition.utils'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 
 /**
