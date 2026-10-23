@@ -4,7 +4,6 @@ import Storage from 'expo-sqlite/kv-store'
 import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
 import { useHaptics } from './useHaptics'
 
-
 // The store is one module value for the whole test file, so each test turns haptics on again.
 afterEach(async () => {
   const { result, unmount } = renderHook(() => useHaptics())
