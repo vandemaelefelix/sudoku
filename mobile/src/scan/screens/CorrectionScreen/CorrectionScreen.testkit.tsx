@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
-import { okResult, review } from '@/scan/scanTestKit'
+import { okResult, review } from '@/scan/scan.testkit'
 import type { CaptureResult } from '@/scan/utils/captureResult.utils'
 import { correctionLayout } from '@/scan/utils/correction.utils'
 import { CorrectionScreen } from './CorrectionScreen'

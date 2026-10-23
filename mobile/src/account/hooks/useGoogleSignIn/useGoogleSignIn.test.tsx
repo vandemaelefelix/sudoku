@@ -1,14 +1,6 @@
-import { useSignInWithGoogle } from '@clerk/expo/google'
+import { googleAnswers } from '@/account/account.testkit'
 import { act, renderHook } from '@testing-library/react-native'
 import { useGoogleSignIn } from './useGoogleSignIn'
-
-function googleAnswers(flow: () => Promise<unknown>) {
-  const start = jest.fn(flow)
-  jest
-    .mocked(useSignInWithGoogle)
-    .mockReturnValue({ startGoogleAuthenticationFlow: start } as unknown as ReturnType<typeof useSignInWithGoogle>)
-  return start
-}
 
 it('activates the new session and finishes', async () => {
   const setActive = jest.fn(async () => undefined)

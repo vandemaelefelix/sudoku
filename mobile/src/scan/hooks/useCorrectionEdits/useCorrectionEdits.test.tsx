@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native'
 import type { RecogniseResult } from '@/scanner'
-import { okResult, printed } from '@/scan/scanTestKit'
+import { okResult, printed } from '@/scan/scan.testkit'
 import { useCorrectionEdits } from './useCorrectionEdits'
 
 it('starts from the scanner result, with no cell selected', () => {

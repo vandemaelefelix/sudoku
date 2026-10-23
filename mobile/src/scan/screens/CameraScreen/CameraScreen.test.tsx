@@ -23,7 +23,7 @@ jest.mock('@/scanner', () => ({
 jest.mock('@/scan/utils/photoImage.utils', () => ({ photoToSkImage: jest.fn() }))
 const mockStillImage = { width: 1206, height: 2622, dispose: jest.fn() }
 const mockStill = { toImageAsync: jest.fn(async () => mockStillImage) }
-jest.mock('@/scan/utils/photoFile', () => ({
+jest.mock('@/scan/photoFile', () => ({
   saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg'),
   stillPhoto: jest.fn(() => mockStill),
   deletePickedImage: jest.fn(),

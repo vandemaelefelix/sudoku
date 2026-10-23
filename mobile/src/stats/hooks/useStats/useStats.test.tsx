@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { createMemoryStorage } from '@/storage'
-import { newGame, wonGame } from '@/storage/repositories.contract'
+import { newGame, wonGame } from '@/storage/contract/fixtures.testkit'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
 import { useStats } from './useStats'

@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { createAccountLifecycle, type AccountLifecycle } from '@/account/accountLifecycle'
-import { memoryOwnerCache } from '@/account/accountTestKit'
+import { memoryOwnerCache } from '@/account/account.testkit'
 import { AccountContext, UNCONFIGURED_ACCOUNT, type AccountStatus } from '@/account/hooks/useAccount'
 import { AccountLifecycleContext } from '@/account/hooks/useAccountLifecycle'
 import { OwnerContext } from '@/storage/hooks/useOwner'

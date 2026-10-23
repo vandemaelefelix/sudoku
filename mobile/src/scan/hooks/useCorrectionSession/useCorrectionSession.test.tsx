@@ -4,8 +4,8 @@ import { peersOf } from '@sudoku/core'
 import { scannedLevel } from '@/game/utils/newGame.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
-import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzleTestKit'
-import { capturing, okResult, printed, review, type ScanSession } from '@/scan/scanTestKit'
+import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzle.testkit'
+import { capturing, okResult, printed, review, type ScanSession } from '@/scan/scan.testkit'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
 
 const mockPlay = jest.fn()

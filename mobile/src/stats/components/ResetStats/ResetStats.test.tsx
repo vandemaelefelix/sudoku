@@ -3,7 +3,7 @@ import { Alert, type AlertButton } from 'react-native'
 import { createMemoryStorage } from '@/storage'
 import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
-import { newGame, wonGame } from '@/storage/repositories.contract'
+import { newGame, wonGame } from '@/storage/contract/fixtures.testkit'
 import { ResetStats } from './ResetStats'
 
 afterEach(() => jest.restoreAllMocks())

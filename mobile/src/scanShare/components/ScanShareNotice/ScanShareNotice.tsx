@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PanelButton } from '@/components/PanelButton'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { POLICY_URL } from '@/scanShare/constants/scanShare.constants'
-import { useScanShare } from '@/scanShare/useScanShare'
+import { useScanShare } from '@/scanShare/hooks/useScanShare'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './ScanShareNotice.styles'
 

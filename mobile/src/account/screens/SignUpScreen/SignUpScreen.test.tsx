@@ -1,31 +1,8 @@
-import { useSignUp } from '@clerk/expo'
-import { useSignInWithGoogle } from '@clerk/expo/google'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
+import { fakeSignUp, googleAnswers as googleGives } from '@/account/account.testkit'
 import { AccountContext, UNCONFIGURED_ACCOUNT } from '@/account/hooks/useAccount'
 import { SignUpScreen } from './SignUpScreen'
-
-type Result = { error: unknown }
-const ok = async (): Promise<Result> => ({ error: null })
-
-function fakeSignUp() {
-  const signUp = {
-    status: 'missing_requirements',
-    password: jest.fn(ok),
-    verifications: {
-      sendEmailCode: jest.fn(ok),
-      verifyEmailCode: jest.fn(async (): Promise<Result> => {
-        signUp.status = 'complete'
-        return { error: null }
-      }),
-    },
-    finalize: jest.fn(ok),
-  }
-  jest
-    .mocked(useSignUp)
-    .mockReturnValue({ signUp, fetchStatus: 'idle', errors: {} } as unknown as ReturnType<typeof useSignUp>)
-  return signUp
-}
 
 function SignedOut({ children }: { children: ReactNode }) {
   return <AccountContext value={{ ...UNCONFIGURED_ACCOUNT, status: 'signedOut' }}>{children}</AccountContext>
@@ -88,12 +65,6 @@ it('shows only a short message when the build has no account', () => {
   expect(screen.getByText('Accounts are not available in this version of the app.')).toBeTruthy()
   expect(screen.queryByLabelText('Email')).toBeNull()
 })
-
-function googleGives(flow: () => Promise<unknown>) {
-  jest.mocked(useSignInWithGoogle).mockReturnValue({
-    startGoogleAuthenticationFlow: jest.fn(flow),
-  } as unknown as ReturnType<typeof useSignInWithGoogle>)
-}
 
 describe('Google', () => {
   it('finishes after the Google sheet gives a session', async () => {

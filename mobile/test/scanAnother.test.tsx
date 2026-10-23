@@ -24,14 +24,14 @@ jest.mock('@/scanner', () => ({
   createScanner: jest.fn(),
 }))
 jest.mock('@/scan/utils/photoImage.utils', () => ({ photoToSkImage: jest.fn() }))
-jest.mock('@/scan/utils/photoFile', () => ({
+jest.mock('@/scan/photoFile', () => ({
   saveUprightPhoto: jest.fn(async () => {
     mockFiles.add('/tmp/photo.jpg')
     return '/tmp/photo.jpg'
   }),
 }))
 jest.mock('@/scan/effects/components/EffectCanvas', () => ({ EffectCanvas: jest.fn(() => null) }))
-jest.mock('@/scanShare/useScanShare', () => ({
+jest.mock('@/scanShare/hooks/useScanShare', () => ({
   useScanShare: () => ({
     enqueueScan: jest.fn(async (photoPath: string | undefined) => {
       mockEvents.push(

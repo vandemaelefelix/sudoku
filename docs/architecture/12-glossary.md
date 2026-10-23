@@ -318,3 +318,5 @@ status: DRAFT
 | Step | One use of a technique. It lists the placements, the eliminations, the units, the pattern cells and the support cells. A chain step also lists its links. A colouring step also lists its two colour groups |
 | Pattern cell | A cell that forms the technique in a step, such as one cell of a naked pair |
 | Support cell | A cell with a digit on the board that causes a step, such as the cell that blocks a digit in a hidden single |
+| Test kit | A file named `<name>.testkit.ts` or `<name>.testkit.tsx`. It holds fixtures and fakes that more than one test file uses. Jest does not collect it. Only a test or another test kit imports it |
+| Service module | A module without UI that sits at the root of a feature folder: a repository, a store, a queue or an API client. A hook never counts as one |

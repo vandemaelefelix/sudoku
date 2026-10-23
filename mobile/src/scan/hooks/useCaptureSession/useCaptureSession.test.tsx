@@ -12,7 +12,7 @@ import {
   TRANSITION_END,
 } from '@/scan/constants/transition.constants'
 import { correctionLayout } from '@/scan/utils/correction.utils'
-import { deletePickedImage, saveUprightPhoto, stillPhoto } from '@/scan/utils/photoFile'
+import { deletePickedImage, saveUprightPhoto, stillPhoto } from '@/scan/photoFile'
 import { photoToSkImage } from '@/scan/utils/photoImage.utils'
 import { transitionAt } from '@/scan/utils/transition.utils'
 import type { Quad } from '@/utils/geometry.utils'
@@ -20,7 +20,7 @@ import { useCaptureSession } from './useCaptureSession'
 
 const mockStillImage = { width: 1206, height: 2622, dispose: jest.fn() }
 const mockStill = { toImageAsync: jest.fn(async () => mockStillImage) }
-jest.mock('@/scan/utils/photoFile', () => ({
+jest.mock('@/scan/photoFile', () => ({
   saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg'),
   stillPhoto: jest.fn(() => mockStill),
   deletePickedImage: jest.fn(),

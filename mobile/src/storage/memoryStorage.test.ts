@@ -1,5 +1,5 @@
 import { createMemoryStorage } from './memoryStorage'
-import { describeGameStorage } from './repositories.contract'
+import { describeGameStorage } from './contract/describeGameStorage.testkit'
 
 describeGameStorage('the in-memory storage', async (deps) => createMemoryStorage(deps))
 

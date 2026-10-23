@@ -1,6 +1,6 @@
 import type { SyncRequest } from '@sudoku/sync-contract'
 import { createMemoryStorage, toWireEntry, type GameStorage, type StorageDeps } from '@/storage'
-import { newGame, seedCursor, uuid, wonGame } from '@/storage/repositories.contract'
+import { newGame, seedCursor, uuid, wonGame } from '@/storage/contract/fixtures.testkit'
 import type { SyncApi } from './syncApi'
 import type { SyncApiResult } from './sync.types'
 

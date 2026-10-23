@@ -1,6 +1,6 @@
 import { MAX_JPEG_BYTES } from '@sudoku/scan-contract'
 import type { Quad, Rect } from '@/utils/geometry.utils'
-import { CROP_MARGIN, JPEG_QUALITIES, MAX_PHOTO_SIDE } from './constants/scanShare.constants'
+import { CROP_MARGIN, JPEG_QUALITIES, MAX_PHOTO_SIDE } from '@/scanShare/constants/scanShare.constants'
 
 /** The part of an image library that cropPhoto uses. `render` draws `source` (pixels of the file) at `out` size and encodes a JPEG. */
 export type ImageCodec = {

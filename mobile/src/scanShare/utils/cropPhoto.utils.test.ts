@@ -1,6 +1,6 @@
 import { MAX_JPEG_BYTES } from '@sudoku/scan-contract'
 import type { Quad } from '@/utils/geometry.utils'
-import { cropPhoto, cropRegion, type ImageCodec } from './cropPhoto'
+import { cropPhoto, cropRegion, type ImageCodec } from './cropPhoto.utils'
 
 // A grid in the middle of a 3000 x 4000 photo.
 const QUAD: Quad = [
