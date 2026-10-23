@@ -71,3 +71,11 @@ The folder layout of `mobile/src/` changes. Decisions 1 to 8 stay.
 - The features are `home`, `game`, `settings`, `stats`, `techniques` and `scan`.
 - Consequence: ADR-012 names `src/settings/SettingsRepository.ts`. The file is now `src/preferences/SettingsRepository.ts`.
 - Reassessment: remove a line of the allowlist when the code moves to a shared folder. Delete the allowlist when it is empty.
+
+## Amendment 2026-10-23: a licence file at the root
+
+The repository becomes public. `LICENSE` joins the known root files of decision 8. Decisions 1 to 8 stay.
+
+- Context: a public repository without a licence gives readers no right to reuse the code. GitHub reads the licence from a root file.
+- Decision: the root holds `LICENSE` with the MIT licence. `tools/layout/check-layout.mjs` lists it.
+- Consequence: the fonts in `ml/fonts/` and `mobile/assets/fonts/` keep their own OFL licences. The trained model and the images are not in git, so the licence does not cover them (ADR-009, ADR-013).
