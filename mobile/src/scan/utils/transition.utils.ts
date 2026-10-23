@@ -1,8 +1,15 @@
 import type { SharedValue } from 'react-native-reanimated'
-import type { Quad } from '@/utils/geometry.utils'
+import { lerpQuad, type Quad } from '@/utils/geometry.utils'
 import { type Homography, quadToQuad } from '@/utils/homography.utils'
 import { easeOut } from '@/utils/motion.utils'
-import { TRANSITION_END, REDUCED_END, GATE_PHOTO, GATE_RESULTS } from '@/scan/constants/transition.constants'
+import {
+  TRANSITION_END,
+  REDUCED_END,
+  GATE_PHOTO,
+  GATE_RESULTS,
+  MAX_CLOCK_STEP,
+  SPINNER_DELAY,
+} from '@/scan/constants/transition.constants'
 
 // Seconds from lock-on. docs/architecture/00-concepts/scan-pipeline.md describes the stages.
 
@@ -176,4 +183,61 @@ export function insetUnit(m: Homography, inset: number, side: number): Homograph
     (m[6] * a) / c,
     (m[7] * a) / c,
   ]
+}
+
+/**
+ * One frame of the transition, in view points. quad: the grid of the dots and the photo. grid: the grid of the cells and the lines.
+ * They are the same quad in the warp. In the cross-fade the dots stay on the locked grid, and the cells and lines are on the square.
+ * crossFade: true when the Reduce Motion channels fade the layers, also without Reduce Motion.
+ */
+export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels; crossFade: boolean }
+
+/**
+ * from: the locked grid in view points. to: the grid square of the correction screen. version: changes with each new plan, so the
+ * clock publishes the frame again while it holds at a gate.
+ */
+export type TransitionPlan = { from: Quad; to: Quad; crossFade: boolean; version: number }
+
+/**
+ * What the clock keeps from one frame to the next. clock: seconds since lock-on. resultsAt: the clock value when the results gate
+ * opened, or -1. held: seconds that the results gate has held the clock.
+ */
+export type ClockState = { clock: number; resultsAt: number; held: number }
+
+/** The next state, with shift (see sweepShift), late (the gate held longer than SPINNER_DELAY) and done (the transition ended). */
+export type ClockStep = ClockState & { shift: number; late: boolean; done: boolean }
+
+/** Seconds from the previous frame to this one, at most MAX_CLOCK_STEP. previous below 0: no frame came yet, so the step is 0. */
+export function frameStep(now: number, previous: number): number {
+  'worklet'
+  return previous < 0 ? 0 : Math.min(MAX_CLOCK_STEP, Math.max(0, now - previous))
+}
+
+/**
+ * The clock after dt seconds. The first step with an open results gate fixes resultsAt, and later steps keep it. The end needs
+ * an ok result, so done waits for the open results gate.
+ */
+export function stepClockState(state: ClockState, dt: number, gates: Gates, crossFade: boolean): ClockStep {
+  'worklet'
+  const resultsAt = gates.results && state.resultsAt < 0 ? state.clock : state.resultsAt
+  const shift = sweepShift(resultsAt, state.clock, crossFade)
+  const clock = advanceClock(state.clock, dt, gates, crossFade, shift)
+  const resultsGate = crossFade ? 0 : GATE_RESULTS
+  const held = !gates.results && clock >= resultsGate ? state.held + dt : 0
+  return {
+    clock,
+    resultsAt,
+    held,
+    shift,
+    late: held > SPINNER_DELAY,
+    done: gates.results && clock >= transitionEnd(crossFade, shift),
+  }
+}
+
+/** The frame at clock time t. shift: see sweepShift. */
+export function frameAt(t: number, shift: number, plan: TransitionPlan): CaptureFrame {
+  'worklet'
+  const channels = transitionAt(t, plan.crossFade, shift)
+  const grid = plan.crossFade ? plan.to : lerpQuad(plan.from, plan.to, channels.flatten)
+  return { quad: plan.crossFade ? plan.from : grid, grid, channels, crossFade: plan.crossFade }
 }

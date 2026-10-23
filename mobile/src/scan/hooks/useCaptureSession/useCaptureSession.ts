@@ -4,40 +4,21 @@ import { type SharedValue, useReducedMotion, useSharedValue } from 'react-native
 import type { CameraPhotoOutput } from 'react-native-vision-camera'
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets'
 import { createScanner } from '@/scanner'
-import { GATE_RESULTS, SPINNER_DELAY } from '@/scan/constants/transition.constants'
 import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
+import { useTransitionClock } from '@/scan/hooks/useTransitionClock'
 import type { CaptureResult, ScanOrigin } from '@/scan/utils/captureResult.utils'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import { claimLock, createLockLatch, type LockSource } from '@/scan/utils/lockOn.utils'
 import { deletePickedImage } from '@/scan/utils/photoFile'
 import { toPreview } from '@/scan/utils/preview.utils'
-import {
-  advanceClock,
-  type Channels,
-  type Gates,
-  sweepShift,
-  transitionAt,
-  transitionEnd,
-} from '@/scan/utils/transition.utils'
+import type { CaptureFrame } from '@/scan/utils/transition.utils'
 import { useHaptics } from '@/settings/hooks/useHaptics'
-import { lerpQuad, type Quad, rectQuad, type ViewSize } from '@/utils/geometry.utils'
+import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { devLog } from '@/utils/log.utils'
 import { type CapturePhase, crossFadeOf, gatesOf, LIVE, reduceAttempt } from './captureAttempt'
 import { type RunContext, runCapture, runImport } from './captureRun'
-import { MAX_CLOCK_STEP } from './useCaptureSession.constants'
 
-/**
- * One frame of the transition, in view points. quad: the grid of the dots and the photo. grid: the grid of the cells and the lines.
- * They are the same quad in the warp. In the cross-fade the dots stay on the locked grid, and the cells and lines are on the square.
- * crossFade: true when the Reduce Motion channels fade the layers, also without Reduce Motion.
- */
-export type CaptureFrame = { quad: Quad; grid: Quad; channels: Channels; crossFade: boolean }
-
-/**
- * from: the locked grid in view points. to: the grid square of the correction screen. version: changes with each new plan, so the
- * clock publishes the frame again while it holds at a gate.
- */
-type TransitionPlan = { from: Quad; to: Quad; crossFade: boolean; version: number }
+export type { CaptureFrame }
 
 /**
  * Everything a layer of the capture reads. Read it, do not copy it into other props.
@@ -103,19 +84,8 @@ export function useCaptureSession({
   const generation = useRef(0)
   const latch = useRef(createLockLatch())
   const latest = useRef(attempt)
-  const planVersion = useRef(0)
   const shownImage = useRef<SkImage | null>(null)
-  const clock = useSharedValue(0)
-  const waiting = useSharedValue(false)
-  const resultsAt = useSharedValue(-1)
-  const plan = useSharedValue<TransitionPlan | null>(null)
-  const gates = useSharedValue<Gates>({ photo: false, results: false })
-  const captureFrame = useSharedValue<CaptureFrame | null>(null)
   const image = useSharedValue<SkImage | null>(null)
-  const lastFrame = useSharedValue(-1)
-  const held = useSharedValue(0)
-  const shownVersion = useSharedValue(-1)
-  const ended = useSharedValue(false)
   const mounted = useRef(true)
 
   const crossFade = crossFadeOf(attempt, reduceMotion)
@@ -163,17 +133,6 @@ export function useCaptureSession({
   useEffect(() => {
     if (attempt.image != null) image.set(attempt.image)
   }, [attempt.image, image])
-
-  useEffect(() => {
-    if (!started) return
-    const to = rectQuad(layout.grid)
-    planVersion.current++
-    plan.set({ from: attempt.lockedView ?? to, to, crossFade, version: planVersion.current })
-  }, [started, crossFade, attempt.lockedView, layout.grid, plan])
-
-  useEffect(() => {
-    gates.set({ photo: photoReady, results: resultsReady })
-  }, [photoReady, resultsReady, gates])
 
   // One capture attempt. A newer attempt or an unmount makes it stale. A stale attempt must not change the state.
   const begin = useCallback((): RunContext => {
@@ -227,37 +186,14 @@ export function useCaptureSession({
     change({ type: 'end' })
   }, [])
 
-  const stepClock = (timestamp: number) => {
-    'worklet'
-    const path = plan.get()
-    if (path == null) return
-    const now = timestamp / 1000
-    const previous = lastFrame.get()
-    lastFrame.set(now)
-    const dt = previous < 0 ? 0 : Math.min(MAX_CLOCK_STEP, Math.max(0, now - previous))
-    const open = gates.get()
-    const before = clock.get()
-    // The first step with an open results gate fixes the arrival time, which later steps keep.
-    if (open.results && resultsAt.get() < 0) resultsAt.set(before)
-    const shift = sweepShift(resultsAt.get(), before, path.crossFade)
-    const t = advanceClock(before, dt, open, path.crossFade, shift)
-    const resultsGate = path.crossFade ? 0 : GATE_RESULTS
-    held.set(!open.results && t >= resultsGate ? held.get() + dt : 0)
-    const late = held.get() > SPINNER_DELAY
-    if (late !== waiting.get()) waiting.set(late)
-    if (t !== before || path.version !== shownVersion.get()) {
-      clock.set(t)
-      shownVersion.set(path.version)
-      const channels = transitionAt(t, path.crossFade, shift)
-      const grid = path.crossFade ? path.to : lerpQuad(path.from, path.to, channels.flatten)
-      captureFrame.set({ quad: path.crossFade ? path.from : grid, grid, channels, crossFade: path.crossFade })
-    }
-    // The end needs an ok result, so the latch waits for the open results gate.
-    if (open.results && t >= transitionEnd(path.crossFade, shift) && !ended.get()) {
-      ended.set(true)
-      scheduleOnRN(finish)
-    }
-  }
+  const { clock, waiting, resultsAt, captureFrame, stepClock } = useTransitionClock({
+    started,
+    crossFade,
+    lockedView: attempt.lockedView,
+    grid: layout.grid,
+    gates: { photo: photoReady, results: resultsReady },
+    onEnd: finish,
+  })
 
   return {
     phase: attempt.phase,

@@ -10,3 +10,6 @@ export const GATE_RESULTS = 0.7
 
 /** Seconds the results gate may hold before a spinner shows. */
 export const SPINNER_DELAY = 1
+
+/** Seconds. A stall of the UI thread must not skip a part of the transition. */
+export const MAX_CLOCK_STEP = 0.05
