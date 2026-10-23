@@ -1,0 +1,2583 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The app and the game screen · Sudoku guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="assets/guide.css" />
+    <script src="assets/guide.js" defer></script>
+    <style>
+      .file { overflow-wrap: anywhere; }
+      /* Page-specific styles for chapter 3. Only theme variables: dark mode works. */
+      .demo-wrap { display: grid; grid-template-columns: minmax(280px, 396px) minmax(260px, 1fr); gap: 24px; align-items: start; }
+      @media (max-width: 800px) { .demo-wrap { grid-template-columns: 1fr; } }
+      .demo-board { cursor: pointer; }
+      .demo-board .cell { cursor: pointer; }
+      .demo-board .cell.peer { background: var(--blue-soft); }
+      .demo-board .cell.sel { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+      .demo-board .cell.wrong { color: var(--red); background: var(--red-soft); }
+      .demo-board .cell.done { color: var(--blue); }
+      .demo-board .cell.pulse { background: var(--green-soft); transform: scale(1.12); z-index: 2; }
+      .demo-board .cell { transition: background 0.2s, transform 0.2s; }
+      .keypad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-top: 12px; width: min(100%, 396px); }
+      .keypad button, .toolrow button { font: 600 15px var(--sans); padding: 9px 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px; cursor: pointer; }
+      .keypad button:hover, .toolrow button:hover { border-color: var(--accent); }
+      .keypad button:focus-visible, .toolrow button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .toolrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; width: min(100%, 396px); }
+      .toolrow button { flex: 1; min-width: 70px; }
+      .toolrow button[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+      .toolrow button:disabled { opacity: 0.45; cursor: default; }
+      .state-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; font-size: 14px; }
+      .state-panel h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
+      .state-panel pre { margin: 0 0 12px; font: 12.5px/1.5 var(--mono); white-space: pre-wrap; background: var(--code-bg); padding: 8px 10px; border-radius: 6px; }
+      .state-panel ol { margin: 0; padding-left: 22px; font: 12.5px/1.6 var(--mono); }
+      .state-panel .same { color: var(--green); font-weight: 600; }
+      .state-panel .new { color: var(--accent); font-weight: 600; }
+      .segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin: 2px 8px 8px 0; }
+      .segmented button { font: 600 13px var(--sans); padding: 7px 14px; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; border-right: 1px solid var(--line); }
+      .segmented button:last-child { border-right: 0; }
+      .segmented button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); }
+      .segmented button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .swatch-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .swatch { width: 92px; font: 11.5px var(--mono); }
+      .swatch i { display: block; height: 34px; border-radius: 6px; border: 1px solid var(--line); margin-bottom: 4px; }
+      .look-board { display: grid; grid-template-columns: repeat(9, 1fr); width: min(100%, 360px); aspect-ratio: 1; font: 500 18px var(--sans); user-select: none; border: 2px solid var(--look-frame, #000); background: var(--look-page, #fff); }
+      .look-board .lc { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--look-line, #ccc); border-bottom: 1px solid var(--look-line, #ccc); color: var(--look-text, #000); position: relative; }
+      .look-board .lc:nth-child(9n + 3), .look-board .lc:nth-child(9n + 6) { border-right: 2px solid var(--look-frame, #000); }
+      .look-board .lc:nth-child(n + 19):nth-child(-n + 27), .look-board .lc:nth-child(n + 46):nth-child(-n + 54) { border-bottom: 2px solid var(--look-frame, #000); }
+      .look-board .lc.g { font-weight: 700; }
+      .look-board .lc.e { color: var(--look-entry, #00f); }
+      .look-board .lc.peer { background: var(--look-peer, #eee); }
+      .look-board .lc.same { background: var(--look-same, #ddd); }
+      .look-board .lc.sel { background: var(--look-sel, #ccc); }
+      .look-board .lc.bad { background: var(--look-bad, #fcc); color: var(--look-badtext, #c00); }
+      .look-board .lc.hatch { background-image: repeating-linear-gradient(45deg, var(--look-hatch, transparent) 0 1.6px, transparent 1.6px 5px); }
+      .look-card { padding: 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-2); }
+      code.path { word-break: break-word; }
+      .tl-note { font-size: 13.5px; color: var(--ink-2); }
+      @media (prefers-reduced-motion: reduce) { .demo-board .cell { transition: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar"><nav id="guide-nav" aria-label="Guide"></nav></aside>
+      <main class="content">
+        <div class="kicker">Chapter 3</div>
+        <h1>The app and the game screen</h1>
+        <p class="lead">
+          This chapter opens the phone app. You learn what Expo and React Native are, how the screens connect, where
+          each feature lives, and what happens behind one tap on a cell. You also meet the save system, the themes, the
+          animations, the splash, the translations and the stats.
+        </p>
+
+        <div class="callout tip">
+          <span class="callout-title">How to read this chapter</span>
+          Each core idea starts with a problem and an everyday picture. Then comes a diagram. Then the real files and
+          functions. Click, step and play with the widgets. They run in your browser and mirror the real code. Where
+          the docs and the code disagree, this chapter follows the code.
+        </div>
+
+        <!-- ============ 1 ============ -->
+        <h2 id="what-is-the-app">What the app is made of</h2>
+        <p>
+          The app is an iPhone game. The developer wrote it in <span class="term" data-def="A language that adds types to JavaScript. The compiler checks the types before the app runs.">TypeScript</span>,
+          not in Swift. Three tools make that possible: React Native, Expo and Expo Router.
+        </p>
+
+        <h3>The problem</h3>
+        <p>
+          A phone app needs buttons, lists, animations and the camera. Each phone system draws these in its own way.
+          Writing the app twice, once for iOS and once for Android, doubles the work. A web page in a wrapper feels
+          slow and not native.
+        </p>
+
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a stage play</span>
+          Think of a theatre. The script is the same every night. The actors are real people on a real stage.
+          <strong>React</strong> is the script: it says what the scene looks like now. <strong>React Native</strong>
+          is the stage crew: it turns the script into real iOS buttons and views. <strong>Expo</strong> is the theatre
+          company: it ships the tools, the props box and the ticket office.
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 270" role="img" aria-label="Your TypeScript code runs in the Hermes engine and sends view changes to native iOS views. Expo modules give access to SQLite, camera and haptics.">
+            <defs>
+              <marker id="c3-a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="20" y="20" width="230" height="230" rx="12" />
+            <text class="label" x="135" y="46" text-anchor="middle">JavaScript thread</text>
+            <text class="sublabel" x="135" y="64" text-anchor="middle">Hermes engine</text>
+            <rect class="box" x="40" y="80" width="190" height="40" rx="8" />
+            <text class="label" x="135" y="105" text-anchor="middle">React components</text>
+            <rect class="box" x="40" y="130" width="190" height="40" rx="8" />
+            <text class="label" x="135" y="155" text-anchor="middle">Game session</text>
+            <rect class="box" x="40" y="180" width="190" height="50" rx="8" />
+            <text class="label" x="135" y="202" text-anchor="middle">@sudoku/core</text>
+            <text class="sublabel" x="135" y="220" text-anchor="middle">pure rules, no I/O</text>
+
+            <rect class="box green" x="300" y="20" width="200" height="105" rx="12" />
+            <text class="label" x="400" y="46" text-anchor="middle">React Native</text>
+            <text class="sublabel" x="400" y="68" text-anchor="middle">View, Text, Pressable</text>
+            <text class="sublabel" x="400" y="86" text-anchor="middle">turn into real</text>
+            <text class="sublabel" x="400" y="104" text-anchor="middle">UIKit views</text>
+
+            <rect class="box violet" x="300" y="145" width="200" height="105" rx="12" />
+            <text class="label" x="400" y="171" text-anchor="middle">Native modules</text>
+            <text class="sublabel" x="400" y="193" text-anchor="middle">expo-sqlite, expo-haptics</text>
+            <text class="sublabel" x="400" y="211" text-anchor="middle">Skia, Reanimated</text>
+            <text class="sublabel" x="400" y="229" text-anchor="middle">camera, sensors</text>
+
+            <rect class="box accent" x="550" y="20" width="190" height="230" rx="12" />
+            <text class="label" x="645" y="46" text-anchor="middle">The iPhone</text>
+            <text class="sublabel" x="645" y="68" text-anchor="middle">screen, touch, battery</text>
+            <rect class="box" x="580" y="90" width="130" height="130" rx="18" />
+            <text class="mono sublabel" x="645" y="160" text-anchor="middle">a real UIView</text>
+            <text class="mono sublabel" x="645" y="178" text-anchor="middle">tree</text>
+
+            <path class="edge" d="M250,72 L298,72" marker-end="url(#c3-a1)" />
+            <path class="edge" d="M250,198 L298,198" marker-end="url(#c3-a1)" />
+            <path class="edge" d="M500,72 L548,72" marker-end="url(#c3-a1)" />
+            <path class="edge" d="M500,198 L548,198" marker-end="url(#c3-a1)" />
+          </svg>
+          <figcaption>
+            The rules and the screens are TypeScript. The Hermes engine runs them. React Native and the native modules
+            reach the real iPhone.
+          </figcaption>
+        </figure>
+
+        <h3>The three names</h3>
+        <div class="grid-3">
+          <div class="card">
+            <h4>React Native</h4>
+            <p>
+              You write a screen as a function that returns a tree of <code>View</code>, <code>Text</code> and
+              <code>Pressable</code>. React Native draws a real iOS view for each one. The app uses React Native
+              <code>0.86</code> and React <code>19.2</code>.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Expo</h4>
+            <p>
+              Expo is a set of tools and ready-made native modules around React Native. The app uses Expo SDK
+              <code>57</code>: <code>expo-sqlite</code> for data, <code>expo-haptics</code> for vibration,
+              <code>expo-localization</code> for the language.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Expo Router</h4>
+            <p>
+              Expo Router maps files to screens. A file in <code>mobile/src/app/</code> is a route. This is the same
+              idea as the pages folder of a web framework (ADR-016).
+            </p>
+          </div>
+        </div>
+
+        <div class="callout rule">
+          <span class="callout-title">Two rules from mobile/AGENTS.md</span>
+          <ul>
+            <li>
+              <code>ios/</code> and <code>android/</code> are generated (ADR-002). Nobody edits them. Native settings go in
+              <code>app.json</code> and config plugins.
+            </li>
+            <li>
+              The app runs on <strong>Hermes</strong>, a small JavaScript engine. Hermes lacks some new methods:
+              <code>toSorted</code>, <code>toReversed</code>, <code>findLast</code>, <code>Object.groupBy</code>. Sort a copy
+              instead: <code>[...items].sort()</code>. The Jest tests run on Node, which has these methods, so a test can hide the crash.
+            </li>
+          </ul>
+        </div>
+
+        <div class="callout note">
+          <span class="callout-title">Expo Go or a development build?</span>
+          Expo Go is a ready-made app that runs plain Expo projects. This app uses native modules that Expo Go does not
+          have (Skia, the camera frame processor, the scanner). So the developer builds their own
+          <strong>development build</strong> with <code>just ios-dev &lt;UDID&gt;</code>. The build is called "Sudoku Dev".
+          A change to a native module needs a new build. A change to TypeScript only needs a reload.
+        </div>
+
+        <!-- ============ 2 ============ -->
+        <h2 id="route-map">The route map: how screens connect</h2>
+
+        <h3>The problem</h3>
+        <p>
+          An app has many screens. The player must move between them, and the back button must work. Someone has to keep
+          the list of screens and the stack of open ones.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a stack of cards</span>
+          A <strong>Stack</strong> works like a pile of cards on a table. Opening a screen puts a card on top. Back takes
+          the top card away. Home is the bottom card and never leaves.
+        </div>
+
+        <p>
+          Expo Router builds the pile from the files in <code>mobile/src/app/</code>. The root file
+          <code>_layout.tsx</code> holds one <code>Stack</code>. Every other file is one card. Click a screen in the map
+          to read what it does.
+        </p>
+
+        <div class="figure explorer" data-explorer="home">
+          <svg viewBox="0 0 900 480" role="img" aria-label="Navigation map. The root layout holds a stack. Home opens Game, Scan, Stats and Settings. Settings opens Techniques and Sign in. Techniques and Game open a technique page. Sign in can switch to Sign up. Scan plays a game.">
+            <defs>
+              <marker id="c3-a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-node="layout">
+              <rect class="box violet" x="20" y="10" width="860" height="44" rx="10" />
+              <text class="label" x="450" y="38" text-anchor="middle">_layout.tsx: one Stack and the app-wide providers</text>
+            </g>
+
+            <path class="edge" d="M450,146 L105,200" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M450,146 L305,200" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M450,146 L505,200" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M450,146 L775,200" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M180,228 L228,228" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M305,256 L305,328" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M775,256 L595,328" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M775,256 L805,328" marker-end="url(#c3-a2)" />
+            <path class="edge" d="M520,358 L382,358" marker-end="url(#c3-a2)" />
+            <path class="edge dashed" d="M805,386 L805,408" marker-end="url(#c3-a2)" />
+
+            <g data-node="home">
+              <rect class="box accent" x="380" y="90" width="140" height="56" rx="10" />
+              <text class="label" x="450" y="114" text-anchor="middle">Home</text>
+              <text class="sublabel mono" x="450" y="132" text-anchor="middle">/</text>
+            </g>
+            <g data-node="scan">
+              <rect class="box blue" x="30" y="200" width="150" height="56" rx="10" />
+              <text class="label" x="105" y="224" text-anchor="middle">Scan</text>
+              <text class="sublabel mono" x="105" y="242" text-anchor="middle">/scan</text>
+            </g>
+            <g data-node="game">
+              <rect class="box green" x="230" y="200" width="150" height="56" rx="10" />
+              <text class="label" x="305" y="224" text-anchor="middle">Game</text>
+              <text class="sublabel mono" x="305" y="242" text-anchor="middle">/game</text>
+            </g>
+            <g data-node="stats">
+              <rect class="box" x="430" y="200" width="150" height="56" rx="10" />
+              <text class="label" x="505" y="224" text-anchor="middle">Stats</text>
+              <text class="sublabel mono" x="505" y="242" text-anchor="middle">/stats</text>
+            </g>
+            <g data-node="settings">
+              <rect class="box amber" x="700" y="200" width="150" height="56" rx="10" />
+              <text class="label" x="775" y="224" text-anchor="middle">Settings</text>
+              <text class="sublabel mono" x="775" y="242" text-anchor="middle">/settings</text>
+            </g>
+            <g data-node="technique">
+              <rect class="box" x="230" y="330" width="150" height="56" rx="10" />
+              <text class="label" x="305" y="354" text-anchor="middle">Technique page</text>
+              <text class="sublabel mono" x="305" y="372" text-anchor="middle">/techniques/[id]</text>
+            </g>
+            <g data-node="techniques">
+              <rect class="box" x="520" y="330" width="150" height="56" rx="10" />
+              <text class="label" x="595" y="354" text-anchor="middle">Techniques</text>
+              <text class="sublabel mono" x="595" y="372" text-anchor="middle">/techniques</text>
+            </g>
+            <g data-node="signin">
+              <rect class="box" x="730" y="330" width="150" height="56" rx="10" />
+              <text class="label" x="805" y="354" text-anchor="middle">Sign in</text>
+              <text class="sublabel mono" x="805" y="372" text-anchor="middle">/sign-in</text>
+            </g>
+            <g data-node="signup">
+              <rect class="box" x="730" y="410" width="150" height="56" rx="10" />
+              <text class="label" x="805" y="434" text-anchor="middle">Sign up</text>
+              <text class="sublabel mono" x="805" y="452" text-anchor="middle">/sign-up</text>
+            </g>
+            <text class="sublabel" x="204" y="218" text-anchor="middle">play</text>
+          </svg>
+          <p class="hint">Click a screen. Use Tab and Enter on a keyboard.</p>
+          <div class="panel" data-panel="layout">
+            <h4>_layout.tsx: the root</h4>
+            <p>
+              It renders one <code>Stack</code> with <code>headerShown: false</code>. Each screen draws its own themed header
+              (ADR-016). The layout also nests the providers that every screen needs. The next figure shows the order.
+            </p>
+          </div>
+          <div class="panel" data-panel="home">
+            <h4>Home: <code>app/index.tsx</code></h4>
+            <p>
+              The route file only returns <code>&lt;HomeScreen /&gt;</code> from <code>src/home/</code>. The screen shows the level
+              buttons, Continue, and a small stats card. It asks <code>puzzles.current()</code> whether a game is in progress,
+              each time it gets focus. A level button calls <code>puzzleStart.newGame(level, () =&gt; router.push('/game'))</code>.
+            </p>
+            <p>
+              Continue and the other buttons use <code>router.navigate</code>, not <code>push</code>. A second tap then finds
+              the open screen and does not open a copy. Two game screens for one game would both save, and the older one could
+              overwrite newer moves.
+            </p>
+          </div>
+          <div class="panel" data-panel="game">
+            <h4>Game: <code>app/game.tsx</code></h4>
+            <p>
+              It renders <code>PlayScreen</code> from <code>src/game/</code>. The route has no param: no game goes into a URL. The
+              screen reads the game in progress from the repository (ADR-016, point 3). Back calls
+              <code>router.dismissTo('/')</code>. The game stays saved, so Continue resumes it.
+            </p>
+          </div>
+          <div class="panel" data-panel="scan">
+            <h4>Scan: <code>app/scan.tsx</code></h4>
+            <p>
+              It renders <code>ScanFlow</code> from <code>src/scan/</code>: the camera, the correction screen and the start of a
+              game. The hook <code>useScannedStart</code> calls <code>puzzleStart.playScan(grid, () =&gt; router.replace('/game'))</code>. <code>replace</code> puts the game in the place of the scan, so Back from the game does not return to the camera.
+              <a href="04-scan-pipeline.html">Chapter 4</a> explains the scan itself.
+            </p>
+          </div>
+          <div class="panel" data-panel="stats">
+            <h4>Stats: <code>app/stats.tsx</code></h4>
+            <p>
+              It renders <code>StatsScreen</code>. The route gives it two extras: a <code>refreshKey</code> from
+              <code>useSync()</code>, so the numbers read again after a sync wrote entries, and a footer with the sync line. The
+              stats folder never imports the sync folder. The route joins them.
+            </p>
+          </div>
+          <div class="panel" data-panel="settings">
+            <h4>Settings: <code>app/settings.tsx</code></h4>
+            <p>
+              It renders <code>SettingsScreen</code> with three callbacks: back, sign in and techniques. The screen holds the
+              assists, the colourway, the appearance, the language, the haptics switch and the account section.
+            </p>
+          </div>
+          <div class="panel" data-panel="techniques">
+            <h4>Techniques: <code>app/techniques/index.tsx</code></h4>
+            <p>
+              A list of the solving techniques that the hints teach. A tap does
+              <code>router.push({ pathname: '/techniques/[technique]', params: { technique } })</code>.
+              <a href="02-sudoku-engine.html">Chapter 2</a> explains the techniques.
+            </p>
+          </div>
+          <div class="panel" data-panel="technique">
+            <h4>Technique page: <code>app/techniques/[technique].tsx</code></h4>
+            <p>
+              The square brackets mark a <strong>dynamic route</strong>. The part in brackets is a param, and a param is a URL
+              string. The route calls <code>toTechniqueId(technique)</code> to turn the string into a safe id. "Learn more" on the
+              hint card opens this page over the game. The game stays mounted below, so the hint is still open after Back.
+            </p>
+          </div>
+          <div class="panel" data-panel="signin">
+            <h4>Sign in: <code>app/sign-in.tsx</code></h4>
+            <p>
+              It renders <code>SignInScreen</code> from <code>src/account/</code>. The account is optional: the game works fully
+              offline (SUD-01). Signing in only turns on the history sync (see
+              <a href="06-backend-and-sync.html">chapter 6</a>). When it is done, the route calls
+              <code>router.dismissTo('/settings')</code>.
+            </p>
+          </div>
+          <div class="panel" data-panel="signup">
+            <h4>Sign up: <code>app/sign-up.tsx</code></h4>
+            <p>
+              The sign-in screen swaps to this one with <code>router.replace('/sign-up')</code>. <code>replace</code> puts the new
+              card in the place of the old one, so Back does not return to Sign in.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout rule">
+          <span class="callout-title">Rule: a route file is thin (ADR-016)</span>
+          A file in <code>src/app/</code> only renders one screen from a feature folder. It holds no logic, no state, no styles
+          and no tests. A route param is a URL string. Data comes from a repository, never from a param.
+        </div>
+
+        <h3>The providers around every screen</h3>
+        <p>
+          A <span class="term" data-def="A React component that makes a value available to every component below it, without passing it down by hand.">provider</span>
+          shares one thing with all the screens below it: the language, the theme switch, the account, the database. The
+          root layout nests seven of them. The order has reasons.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 330" role="img" aria-label="Nested boxes. From the outside in: I18nProvider, SplashProvider, ThemeTransitionProvider, AccountProvider, GameStorageProvider, SyncProvider, and in the middle the Stack with the routes.">
+            <rect class="box blue" x="10" y="8" width="740" height="314" rx="14" />
+            <text class="label" x="26" y="30">I18nProvider</text>
+            <text class="sublabel" x="190" y="30">the language: outside everything (ADR-033)</text>
+            <rect class="box violet" x="34" y="42" width="692" height="268" rx="12" />
+            <text class="label" x="50" y="64">SplashProvider</text>
+            <text class="sublabel" x="190" y="64">the SplashOverlay sits beside the next box, outside the storage (ADR-024)</text>
+            <rect class="box amber" x="58" y="76" width="644" height="222" rx="12" />
+            <text class="label" x="74" y="98">ThemeTransitionProvider</text>
+            <text class="sublabel" x="270" y="98">the cell wave over every screen (ADR-025)</text>
+            <rect class="box green" x="82" y="110" width="596" height="176" rx="12" />
+            <text class="label" x="98" y="132">AccountProvider</text>
+            <text class="sublabel" x="240" y="132">the owner of the games (ADR-028). Never waits for Clerk</text>
+            <rect class="box accent" x="106" y="144" width="548" height="130" rx="12" />
+            <text class="label" x="122" y="166">GameStorageProvider</text>
+            <text class="sublabel" x="300" y="166">opens SQLite, gives the repositories</text>
+            <rect class="box muted" x="130" y="178" width="500" height="84" rx="12" />
+            <text class="label" x="146" y="200">SyncProvider</text>
+            <text class="sublabel" x="260" y="200">syncs in the background</text>
+            <rect class="box" x="154" y="212" width="452" height="38" rx="8" />
+            <text class="label" x="380" y="236" text-anchor="middle">Stack: Home, Game, Scan, Settings, Stats ...</text>
+          </svg>
+          <figcaption>
+            Each ring needs the ring outside it. The sync needs the storage. The storage needs the owner. Every text needs the language.
+          </figcaption>
+        </figure>
+
+        <details class="deep">
+          <summary>Why does the order matter?</summary>
+          <ul>
+            <li><strong>Language outside everything.</strong> Even the splash and the scan notices use catalogue text.</li>
+            <li>
+              <strong>Splash overlay outside the storage.</strong> The overlay draws at once, before SQLite opens. A slow database
+              open must never delay the first frame.
+            </li>
+            <li>
+              <strong>Theme transition outside the screens.</strong> The wave draws a picture over every screen, so it must wrap the stack.
+            </li>
+            <li>
+              <strong>Sync inside the storage.</strong> The sync reads and writes the history through the repositories. It renders the
+              routes at once and works in the background.
+            </li>
+          </ul>
+          <p>The source is <code>mobile/src/app/_layout.tsx</code>. Its doc comment lists each reason with its ADR.</p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The developer wants a new "About" screen. Where does the code for the screen go?</p>
+          <div class="options">
+            <button>All in <code>src/app/about.tsx</code>, with its state and styles</button>
+            <button data-correct>The screen in a feature folder. <code>src/app/about.tsx</code> only renders it</button>
+            <button>In <code>ios/</code>, next to the other native screens</button>
+          </div>
+          <p class="explain">
+            A route file is thin (ADR-016). It renders one screen from a feature folder. The <code>ios/</code> folder is generated and nobody edits it.
+          </p>
+        </div>
+
+        <!-- ============ 3 ============ -->
+        <h2 id="feature-folders">The feature folders and their boundaries</h2>
+
+        <h3>The problem</h3>
+        <p>
+          An app grows. If every file may import every other file, one change breaks ten places. Nobody can find anything.
+          The rule must be simple enough that a tool can check it.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a shopping mall</span>
+          Each shop (feature) has its own stock room. A shop does not walk into the stock room of the shop next door. If two
+          shops need the same thing, it goes in the shared warehouse at the back: <code>components/</code>,
+          <code>hooks/</code>, <code>utils/</code>.
+        </div>
+
+        <p>
+          All the app code lives in <code>mobile/src/</code>. The folders fall into four layers.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 800 440" role="img" aria-label="Four layers of folders. Top: the app routes. Second: the six UI features home, game, scan, settings, stats, techniques. Third: the services storage, preferences, sync, account, scanShare, splash, i18n. Bottom: the shared folders components, hooks, utils, constants, theme. A dashed banner says one feature does not import another feature.">
+            <defs>
+              <marker id="c3-a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box violet" x="20" y="12" width="760" height="52" rx="10" />
+            <text class="label" x="400" y="36" text-anchor="middle">app/ : the routes</text>
+            <text class="sublabel" x="400" y="54" text-anchor="middle">thin files. Each renders one screen</text>
+
+            <path class="edge" d="M400,64 L400,92" marker-end="url(#c3-a3)" />
+
+            <rect class="box blue" x="20" y="96" width="760" height="112" rx="10" />
+            <text class="label" x="34" y="118">Features (UI)</text>
+            <g>
+              <rect class="box" x="34" y="130" width="108" height="64" rx="8" />
+              <text class="label mono" x="88" y="158" text-anchor="middle">home</text>
+              <text class="sublabel" x="88" y="176" text-anchor="middle">menu, stats card</text>
+              <rect class="box green" x="152" y="130" width="108" height="64" rx="8" />
+              <text class="label mono" x="206" y="158" text-anchor="middle">game</text>
+              <text class="sublabel" x="206" y="176" text-anchor="middle">board, session</text>
+              <rect class="box" x="270" y="130" width="108" height="64" rx="8" />
+              <text class="label mono" x="324" y="158" text-anchor="middle">scan</text>
+              <text class="sublabel" x="324" y="176" text-anchor="middle">camera, fix-up</text>
+              <rect class="box" x="388" y="130" width="108" height="64" rx="8" />
+              <text class="label mono" x="442" y="158" text-anchor="middle">settings</text>
+              <text class="sublabel" x="442" y="176" text-anchor="middle">pickers, toggles</text>
+              <rect class="box" x="506" y="130" width="108" height="64" rx="8" />
+              <text class="label mono" x="560" y="158" text-anchor="middle">stats</text>
+              <text class="sublabel" x="560" y="176" text-anchor="middle">numbers, charts</text>
+              <rect class="box" x="624" y="130" width="146" height="64" rx="8" />
+              <text class="label mono" x="697" y="158" text-anchor="middle">techniques</text>
+              <text class="sublabel" x="697" y="176" text-anchor="middle">technique pages</text>
+            </g>
+
+                        <text class="sublabel" x="400" y="226" text-anchor="middle">a feature does not import a sibling feature (rule 9, dependency-cruiser)</text>
+
+            <path class="edge" d="M400,234 L400,258" marker-end="url(#c3-a3)" />
+
+            <rect class="box amber" x="20" y="262" width="760" height="82" rx="10" />
+            <text class="label" x="34" y="284">Services (no screens of their own, or small ones)</text>
+            <g>
+              <rect class="box" x="34" y="296" width="96" height="38" rx="8" />
+              <text class="label mono" x="82" y="320" text-anchor="middle">storage</text>
+              <rect class="box" x="138" y="296" width="116" height="38" rx="8" />
+              <text class="label mono" x="196" y="320" text-anchor="middle">preferences</text>
+              <rect class="box" x="262" y="296" width="76" height="38" rx="8" />
+              <text class="label mono" x="300" y="320" text-anchor="middle">sync</text>
+              <rect class="box" x="346" y="296" width="96" height="38" rx="8" />
+              <text class="label mono" x="394" y="320" text-anchor="middle">account</text>
+              <rect class="box" x="450" y="296" width="110" height="38" rx="8" />
+              <text class="label mono" x="505" y="320" text-anchor="middle">scanShare</text>
+              <rect class="box" x="568" y="296" width="86" height="38" rx="8" />
+              <text class="label mono" x="611" y="320" text-anchor="middle">splash</text>
+              <rect class="box" x="662" y="296" width="108" height="38" rx="8" />
+              <text class="label mono" x="716" y="320" text-anchor="middle">i18n</text>
+            </g>
+
+            <path class="edge" d="M400,344 L400,366" marker-end="url(#c3-a3)" />
+
+            <rect class="box green" x="20" y="370" width="760" height="62" rx="10" />
+            <text class="label" x="34" y="392">Shared code (imports no feature)</text>
+            <g>
+              <rect class="box" x="34" y="400" width="130" height="26" rx="6" />
+              <text class="sublabel mono" x="99" y="418" text-anchor="middle">components/</text>
+              <rect class="box" x="172" y="400" width="100" height="26" rx="6" />
+              <text class="sublabel mono" x="222" y="418" text-anchor="middle">hooks/</text>
+              <rect class="box" x="280" y="400" width="100" height="26" rx="6" />
+              <text class="sublabel mono" x="330" y="418" text-anchor="middle">utils/</text>
+              <rect class="box" x="388" y="400" width="120" height="26" rx="6" />
+              <text class="sublabel mono" x="448" y="418" text-anchor="middle">constants/</text>
+              <rect class="box" x="516" y="400" width="100" height="26" rx="6" />
+              <text class="sublabel mono" x="566" y="418" text-anchor="middle">theme/</text>
+              <rect class="box" x="624" y="400" width="146" height="26" rx="6" />
+              <text class="sublabel mono" x="697" y="418" text-anchor="middle">scanner/ (index.ts)</text>
+            </g>
+          </svg>
+          <figcaption>
+            Arrows point from the importer to the folder it may import. The layers are a simplification. The exact allowlist is in
+            <code>.dependency-cruiser.cjs</code>.
+          </figcaption>
+        </figure>
+
+        <p>
+          The same rules from <code>mobile/AGENTS.md</code> in a table. <code>just lint</code> checks every one.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rule</th><th>What it means</th></tr></thead>
+            <tbody>
+              <tr><td>Import with <code>@/</code></td><td><code>@/game/hooks/useGameState</code>, never <code>../</code>. Use <code>./</code> only for a file in the same folder.</td></tr>
+              <tr><td>Import through <code>index.ts</code></td><td>A folder shows its public items in <code>index.ts</code>. Nothing else. No <code>export *</code>, no barrel that collects other folders.</td></tr>
+              <tr><td>No cycles</td><td>oxlint <code>import/no-cycle</code> and dependency-cruiser <code>no-circular</code> both check.</td></tr>
+              <tr><td>Pure code stays pure</td><td>A <code>*.utils.ts</code> or <code>*.constants.ts</code> file never imports React, React Native, components or hooks.</td></tr>
+              <tr><td>Styles are thin</td><td>A <code>*.styles.ts</code> file imports only <code>react-native</code>, <code>react-native-unistyles</code> and <code>src/theme/</code>.</td></tr>
+              <tr><td>Features stay apart</td><td><code>home</code>, <code>game</code>, <code>settings</code>, <code>stats</code>, <code>techniques</code>, <code>scan</code> do not import each other. Shared code moves to <code>components/</code>, <code>hooks/</code>, <code>preferences/</code>, <code>utils/</code> or <code>constants/</code>.</td></tr>
+              <tr><td>Shared stays free</td><td>Nothing in <code>components/</code>, <code>hooks/</code> or <code>preferences/</code> imports a feature.</td></tr>
+              <tr><td>The scanner is closed</td><td>Enter <code>src/scanner/</code> only through <code>src/scanner/index.ts</code> (SUD-05).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Inside a feature: one folder per kind of thing</h3>
+        <p>Every feature uses the same layout. Create a folder only when it has a file.</p>
+        <figure class="figure">
+          <svg viewBox="0 0 760 250" role="img" aria-label="A feature folder holds screens, components, hooks, utils and constants. A component folder holds the component file, a styles file, a constants file, tests and an index file.">
+            <defs>
+              <marker id="c3-a3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box green" x="20" y="14" width="330" height="222" rx="12" />
+            <text class="label mono" x="185" y="40" text-anchor="middle">src/game/</text>
+            <g class="mono">
+              <text class="sublabel" x="40" y="68">screens/GameScreen/   composes parts</text>
+              <text class="sublabel" x="40" y="94">components/Cell/      one piece of UI</text>
+              <text class="sublabel" x="40" y="120">hooks/useGameSession/ one hook per folder</text>
+              <text class="sublabel" x="40" y="146">utils/session.utils.ts  pure logic</text>
+              <text class="sublabel" x="40" y="172">constants/game.constants.ts values</text>
+              <text class="sublabel" x="40" y="198">sample.testkit.ts     fixtures for tests</text>
+            </g>
+            <path class="edge" d="M350,94 L408,94" marker-end="url(#c3-a3b)" />
+            <rect class="box blue" x="410" y="14" width="330" height="222" rx="12" />
+            <text class="label mono" x="575" y="40" text-anchor="middle">components/Cell/</text>
+            <g class="mono">
+              <text class="sublabel" x="430" y="68">Cell.tsx           the component</text>
+              <text class="sublabel" x="430" y="94">Cell.styles.ts     themed styles</text>
+              <text class="sublabel" x="430" y="120">Cell.constants.ts  values only Cell uses</text>
+              <text class="sublabel" x="430" y="146">Cell.test.tsx      the tests</text>
+              <text class="sublabel" x="430" y="172">index.ts           public exports</text>
+            </g>
+          </svg>
+          <figcaption>
+            The screen composes. The component draws. The hook holds the state logic. The util holds the pure rules. Each part has one job.
+          </figcaption>
+        </figure>
+
+        <div class="callout why">
+          <span class="callout-title">Why this much structure?</span>
+          Pure logic in <code>utils/</code> runs in a plain test with no React. That is why <code>createGameSession</code> and
+          <code>createPuzzleStart</code> are normal functions, not hooks. The hook is a thin wrapper that connects the function to React.
+          You will see this pattern again and again in this chapter.
+        </div>
+
+        <!-- ============ 4 ============ -->
+        <h2 id="starting-a-game">How a game starts</h2>
+
+        <h3>The problem</h3>
+        <p>
+          Four places start a game: a level button on Home, a scan, "New puzzle" on the finish card and "Try this puzzle again" on
+          the game-over sheet. If each place wrote its own code, they would drift apart. One would forget to ask before it throws away
+          a game in progress. Another would start two games with a double tap.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: one ticket desk</span>
+          A cinema has one ticket desk. Every customer, whether they came by phone or at the door, goes through the same desk. The desk
+          asks "do you want to leave your current film?" before it gives a new ticket. Only one customer is served at a time.
+        </div>
+        <p>
+          The desk is <code>createPuzzleStart</code> in <code>mobile/src/game/utils/puzzleStart.utils.ts</code>. It is plain TypeScript
+          (no React). The hook <code>usePuzzleStart</code> hands it the repository, the owner and the "are you sure?" dialog.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 800 330" role="img" aria-label="Flow of a start. A tap calls run. If a start is busy, return null. If ask is true and a game is in progress, show the confirm dialog. If the player cancels, return null. Then make the request, call puzzles.start, call the opened callback so the screen navigates, and await the write.">
+            <defs>
+              <marker id="c3-a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="14" y="20" width="110" height="52" rx="10" />
+            <text class="label" x="69" y="44" text-anchor="middle">Tap</text>
+            <text class="sublabel" x="69" y="62" text-anchor="middle">a level button</text>
+
+            <rect class="box" x="154" y="20" width="120" height="52" rx="10" />
+            <text class="label" x="214" y="44" text-anchor="middle">busy?</text>
+            <text class="sublabel" x="214" y="62" text-anchor="middle">yes: return null</text>
+
+            <rect class="box amber" x="304" y="20" width="140" height="52" rx="10" />
+            <text class="label" x="374" y="44" text-anchor="middle">Game in progress?</text>
+            <text class="sublabel" x="374" y="62" text-anchor="middle">peek() or current()</text>
+
+            <rect class="box violet" x="474" y="20" width="150" height="52" rx="10" />
+            <text class="label" x="549" y="44" text-anchor="middle">confirmReplace()</text>
+            <text class="sublabel" x="549" y="62" text-anchor="middle">cancel: return null</text>
+
+            <rect class="box blue" x="654" y="20" width="132" height="52" rx="10" />
+            <text class="label" x="720" y="44" text-anchor="middle">make()</text>
+            <text class="sublabel" x="720" y="62" text-anchor="middle">build the request</text>
+
+            <path class="edge" d="M124,46 L152,46" marker-end="url(#c3-a4)" />
+            <path class="edge" d="M274,46 L302,46" marker-end="url(#c3-a4)" />
+            <path class="edge" d="M444,46 L472,46" marker-end="url(#c3-a4)" />
+            <path class="edge" d="M624,46 L652,46" marker-end="url(#c3-a4)" />
+            <path class="edge dashed" d="M374,72 L374,100 L690,100 L690,132" marker-end="url(#c3-a4)" />
+            <text class="sublabel" x="540" y="119" text-anchor="middle">no game: skip the question</text>
+
+            <rect class="box green" x="560" y="136" width="226" height="64" rx="10" />
+            <text class="label mono" x="673" y="162" text-anchor="middle">puzzles.start(request)</text>
+            <text class="sublabel" x="673" y="182" text-anchor="middle">replaced game: abandoned</text>
+
+            <path class="edge" d="M720,72 L720,134" marker-end="url(#c3-a4)" />
+
+            <rect class="box accent" x="300" y="136" width="220" height="64" rx="10" />
+            <text class="label mono" x="410" y="162" text-anchor="middle">opened()</text>
+            <text class="sublabel" x="410" y="182" text-anchor="middle">router.push('/game') at once</text>
+            <path class="edge" d="M560,168 L522,168" marker-end="url(#c3-a4)" />
+
+            <rect class="box" x="40" y="136" width="220" height="64" rx="10" />
+            <text class="label mono" x="150" y="162" text-anchor="middle">await starting</text>
+            <text class="sublabel" x="150" y="182" text-anchor="middle">returns SavedProgress</text>
+            <path class="edge" d="M300,168 L262,168" marker-end="url(#c3-a4)" />
+
+            <rect class="box muted" x="14" y="236" width="772" height="74" rx="10" />
+            <text class="label" x="30" y="260">Why the screen opens before the write ends</text>
+            <text class="sublabel" x="30" y="282">The repository answers peek() the moment start() is called. The game screen draws the new game from peek().</text>
+            <text class="sublabel" x="30" y="300">The player sees the board at once. The database write runs in the background.</text>
+          </svg>
+          <figcaption>One start, one order: ask, make the game, start, tell the caller.</figcaption>
+        </figure>
+
+        <h3>The four ways in</h3>
+        <div class="tabs" data-tabs>
+          <section data-tab="Level (new game)">
+            <p><code>newGame(level, opened)</code>. Called from Home.</p>
+            <ol>
+              <li>It asks first, when a game is in progress.</li>
+              <li>
+                <code>newGeneratedGame(level, random)</code> in <code>newGame.utils.ts</code> draws a seed below one million
+                (<code>SEED_COUNT</code>), then calls the core <code>generate(level, seed)</code>. The same seed always gives the same puzzle. The seed is the "puzzle number" on the finish card (ADR-011).
+              </li>
+              <li>The request is <code>{ level, source: 'generated', seed, game }</code>.</li>
+            </ol>
+            <p>The core builds the puzzle. See <a href="02-sudoku-engine.html">chapter 2</a>.</p>
+          </section>
+          <section data-tab="Scan (play a scan)">
+            <p><code>playScan(grid, opened)</code>. Called from the scan flow after the correction screen.</p>
+            <ol>
+              <li>It asks first, as for a level.</li>
+              <li>
+                The level comes from <code>scannedLevel(givens)</code>. It grades the puzzle with the core <code>grade()</code>. A grade
+                of <code>beyond</code> becomes <code>expert</code>, so the four levels of the sync contract stay.
+              </li>
+              <li>The request has <code>source: 'scanned'</code> and <code>seed: null</code>. No seed exists for a paper puzzle.</li>
+            </ol>
+            <p>The scanned level is an estimate, so a scanned game never counts for a best time (ADR-012, ADR-023).</p>
+          </section>
+          <section data-tab="New puzzle">
+            <p><code>newPuzzle(from)</code>. Called from the finish card and the game-over sheet.</p>
+            <p>
+              It makes a new generated game at the level of the game that is over. It does <strong>not</strong> ask, because the game is over
+              and there is nothing to lose. It uses <code>ask: false</code>.
+            </p>
+          </section>
+          <section data-tab="Retry">
+            <p><code>retry(from)</code>. Called from "Try this puzzle again" on the game-over sheet.</p>
+            <p>
+              It rebuilds the game from the same <code>givens</code> and <code>solution</code>, with <code>startEntries</code> as the entries.
+              The result is a <strong>new game in progress</strong> with a new id and the same seed. The lost game stays in the history as one
+              entry. It does not ask.
+            </p>
+            <p>
+              The new id matters. <code>PlayScreen</code> gives <code>GameScreen</code> <code>key={progress.id}</code>, so React unmounts the old
+              session and mounts a fresh one.
+            </p>
+          </section>
+        </div>
+
+        <details class="deep">
+          <summary>The details of <code>run()</code></summary>
+          <ul>
+            <li>
+              <strong>The <code>busy</code> flag.</strong> <code>start()</code> discards the game before it. A second tap during the first start must not start a second game.
+              While <code>busy</code> is true, <code>run</code> returns <code>null</code>.
+            </li>
+            <li>
+              <strong>Return values.</strong> Each start gives the new <code>SavedProgress</code>, or <code>null</code>. <code>null</code> means cancel, busy or failed.
+              A failure writes a dev warning. The caller shows no error and keeps its screen.
+            </li>
+            <li>
+              <strong><code>peek()</code> before <code>current()</code>.</strong> The question reads the stored state. <code>peek()</code> follows the last read, so the tap waits for no database read.
+            </li>
+            <li>
+              <strong>A failed navigation is not a failed start.</strong> <code>opened()</code> sits in its own <code>try/catch</code>. The game did start, so the promise still resolves.
+            </li>
+            <li>
+              <strong>Measures.</strong> <code>startMeasures</code> records the time from the tap (quality scenario QR-12). A start that gives no game clears its mark.
+            </li>
+          </ul>
+        </details>
+
+        <!-- ============ 5 ============ -->
+        <h2 id="game-session">The game session: one tap, step by step</h2>
+
+        <h3>The problem</h3>
+        <p>
+          The game screen has 81 cells, a keypad, a timer and a hint card. They all show one game and they all change it. If each part kept its
+          own copy, the copies would disagree. The rules also need tests, and a test should not need a phone.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a bank counter</span>
+          The game is the account book. Nobody writes in it directly. A customer fills in a slip (an <strong>action</strong>). The clerk
+          (the <strong>reducer</strong>) reads the slip, checks the rules and returns a new page of the book. Then a bell rings, and every
+          screen that shows the balance looks again.
+        </div>
+
+        <p>
+          The idea has a name: a <span class="term" data-def="A pure function (state, action) -> new state. It never changes the old state. It returns a new one, or the same object when nothing changed.">reducer</span>.
+          Three layers cooperate:
+        </p>
+        <ol>
+          <li>
+            <strong>The core rules</strong> in <code>@sudoku/core</code> (<code>shared/core/src/game/actions.ts</code>): <code>select</code>,
+            <code>place</code>, <code>toggleNote</code>, <code>erase</code>, <code>undo</code>, <code>pause</code>, <code>resume</code>, <code>tick</code>.
+            Each takes a <code>Game</code> and returns a new <code>Game</code>. No React, no clock, no I/O (SUD-04).
+          </li>
+          <li>
+            <strong>The session</strong> in <code>mobile/src/game/utils/session.utils.ts</code> (<code>reduceSession</code>) wraps the game with
+            the screen state: notes mode, the last move, the open hint.
+          </li>
+          <li>
+            <strong>The session object</strong> in <code>gameSession.utils.ts</code> (<code>createGameSession</code>) adds the clock, the
+            subscribers and the saves.
+          </li>
+        </ol>
+
+        <p>Follow one tap. The player taps cell 40, then presses the key 5.</p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 800 190" role="img" aria-label="Seven stages in a row: tap a cell, action, reducer, new state, render, tap key 5, save.">
+            <defs>
+              <marker id="c3-a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g class="keep" data-steps="1">
+              <rect class="box accent" x="4" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="53" y="68" text-anchor="middle">Tap cell</text>
+              <text class="sublabel" x="53" y="88" text-anchor="middle">Cell.tsx</text>
+            </g>
+            <g class="keep" data-steps="2">
+              <rect class="box blue" x="116" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="165" y="68" text-anchor="middle">Action</text>
+              <text class="sublabel" x="165" y="88" text-anchor="middle">dispatch</text>
+            </g>
+            <g class="keep" data-steps="3">
+              <rect class="box violet" x="228" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="277" y="68" text-anchor="middle">Reducer</text>
+              <text class="sublabel" x="277" y="88" text-anchor="middle">reduceSession</text>
+            </g>
+            <g class="keep" data-steps="4">
+              <rect class="box green" x="340" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="389" y="68" text-anchor="middle">New state</text>
+              <text class="sublabel" x="389" y="88" text-anchor="middle">Session</text>
+            </g>
+            <g class="keep" data-steps="5">
+              <rect class="box amber" x="452" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="501" y="68" text-anchor="middle">Render</text>
+              <text class="sublabel" x="501" y="88" text-anchor="middle">subscribers</text>
+            </g>
+            <g class="keep" data-steps="6">
+              <rect class="box accent" x="564" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="613" y="68" text-anchor="middle">Tap key 5</text>
+              <text class="sublabel" x="613" y="88" text-anchor="middle">place()</text>
+            </g>
+            <g class="keep" data-steps="7">
+              <rect class="box green" x="676" y="40" width="98" height="64" rx="10" />
+              <text class="label" x="725" y="68" text-anchor="middle">Save</text>
+              <text class="sublabel" x="725" y="88" text-anchor="middle">needsSave</text>
+            </g>
+            <path class="edge keep" data-steps="2" d="M102,72 L114,72" marker-end="url(#c3-a5)" />
+            <path class="edge keep" data-steps="3" d="M214,72 L226,72" marker-end="url(#c3-a5)" />
+            <path class="edge keep" data-steps="4" d="M326,72 L338,72" marker-end="url(#c3-a5)" />
+            <path class="edge keep" data-steps="5" d="M438,72 L450,72" marker-end="url(#c3-a5)" />
+            <path class="edge keep" data-steps="6" d="M550,72 L562,72" marker-end="url(#c3-a5)" />
+            <path class="edge keep" data-steps="7" d="M662,72 L674,72" marker-end="url(#c3-a5)" />
+            <text class="sublabel mono keep" data-steps="2" x="165" y="140" text-anchor="middle">{ type: 'select', cell: 40 }</text>
+            <text class="sublabel mono keep" data-steps="4" x="389" y="140" text-anchor="middle">game.selected = 40</text>
+            <text class="sublabel mono keep" data-steps="6" x="613" y="140" text-anchor="middle">{ type: 'digit', digit: 5 }</text>
+            <text class="sublabel mono keep" data-steps="7" x="725" y="160" text-anchor="middle">entries changed</text>
+          </svg>
+          <div class="step">
+            <p class="step-title">1. The player taps cell 40</p>
+            <p>
+              The cell calls <code>actions.select(40)</code>. The <code>actions</code> object comes from <code>useGameActions()</code>. It is the same object for the whole game, so a cell never renders again because of it.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">2. The action is a small object</p>
+            <p>
+              <code>select</code> is a one-line function: <code>dispatch({ type: 'select', cell })</code>. An action says <em>what happened</em>, not how to handle it.
+              The type <code>SessionAction</code> lists every action the player can do: select, digit, erase, undo, hint, the hint-card buttons, toggleNotesMode, pause, resume, and the clock's tick.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">3. The reducer decides</p>
+            <p>
+              <code>dispatch</code> calls <code>reduceSession(session, action)</code>. A <code>switch</code> in <code>step()</code> picks the case. For <code>select</code> it calls the core
+              <code>select(game, cell)</code>. That function checks the range, returns the <em>same</em> game if the status is not <code>playing</code> or the cell is already selected, and otherwise returns <code>{ ...game, selected: cell }</code>.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">4. A new state, or the same one</p>
+            <p>
+              <code>withGame</code> checks identity: if the core returned the same game, the session stays the same object, and <code>dispatch</code> stops here (<code>if (session === previous) return</code>).
+              Otherwise the session is a new object. <code>dispatch</code> then calls <code>syncClock()</code> and asks <code>needsSave(lastSaved, session.game)</code>. A selection is not a save trigger, so no write happens.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">5. Everyone who listens renders again</p>
+            <p>
+              <code>dispatch</code> calls every listener. React's <code>useSyncExternalStore</code> in <code>useGameSession</code> reads <code>getSnapshot()</code>, sees a new object and renders.
+              <code>GameProvider</code> pushes the new state into context. The grid draws the selection tile on cell 40 and the assist shades.
+              The clock tick later changes only the time context, so the 81 cells do not render each second.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">6. The player presses 5</p>
+            <p>
+              <code>actions.digit(5)</code> becomes <code>{ type: 'digit', digit: 5 }</code>. In <code>placeDigit</code>: if notes mode is on, the key toggles a note. Otherwise the core <code>place()</code> runs.
+              It copies the entries with the new digit, clears the notes of that cell, removes 5 from the notes of the peers in the row, column and box, and pushes an <strong>undo step</strong>.
+              A wrong digit also raises <code>mistakes</code>. A <code>Move</code> record with <code>id + 1</code> goes into the session, so the haptics and animations know a move happened.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">7. The save</p>
+            <p>
+              Now <code>needsSave</code> is true: <code>entries</code> changed. <code>saveGame()</code> calls the <code>SaveGame</code> function that the play screen gave. That function is the <strong>save queue</strong>.
+              It returns at once and never throws, so the UI never waits for the database. The next section shows what the queue does.
+            </p>
+          </div>
+        </div>
+
+        <h3>Who holds what</h3>
+        <figure class="figure">
+          <svg viewBox="0 0 800 300" role="img" aria-label="Layers. The play screen creates the save queue and gives it through GameSaveContext. useGameSession creates the session and listens to AppState. The session calls the reducer, which calls the core. GameProvider splits the session into three contexts: actions, state and time.">
+            <defs>
+              <marker id="c3-a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="20" y="14" width="250" height="60" rx="10" />
+            <text class="label" x="145" y="40" text-anchor="middle">PlayScreen</text>
+            <text class="sublabel" x="145" y="58" text-anchor="middle">save queue, best times</text>
+
+            <rect class="box blue" x="20" y="100" width="250" height="60" rx="10" />
+            <text class="label" x="145" y="126" text-anchor="middle">useGameSession (hook)</text>
+            <text class="sublabel" x="145" y="144" text-anchor="middle">AppState listener, haptics</text>
+
+            <rect class="box violet" x="20" y="186" width="250" height="60" rx="10" />
+            <text class="label" x="145" y="212" text-anchor="middle">createGameSession</text>
+            <text class="sublabel" x="145" y="230" text-anchor="middle">clock, listeners, saves</text>
+
+            <rect class="box green" x="20" y="262" width="250" height="32" rx="10" />
+            <text class="label" x="145" y="283" text-anchor="middle">reduceSession then @sudoku/core</text>
+
+            <path class="edge" d="M145,74 L145,98" marker-end="url(#c3-a6)" />
+            <path class="edge" d="M145,160 L145,184" marker-end="url(#c3-a6)" />
+            <path class="edge" d="M145,246 L145,260" marker-end="url(#c3-a6)" />
+
+            <rect class="box" x="340" y="14" width="440" height="282" rx="12" />
+            <text class="label" x="560" y="40" text-anchor="middle">GameProvider: three contexts</text>
+            <rect class="box green" x="360" y="56" width="400" height="66" rx="10" />
+            <text class="label mono" x="560" y="82" text-anchor="middle">GameActionsContext</text>
+            <text class="sublabel" x="560" y="102" text-anchor="middle">never changes. Buttons read it. No re-render.</text>
+            <rect class="box blue" x="360" y="136" width="400" height="66" rx="10" />
+            <text class="label mono" x="560" y="162" text-anchor="middle">GameStateContext</text>
+            <text class="sublabel" x="560" y="182" text-anchor="middle">changes on a move: board, notesMode, move, hint</text>
+            <rect class="box amber" x="360" y="216" width="400" height="66" rx="10" />
+            <text class="label mono" x="560" y="242" text-anchor="middle">GameTimeContext</text>
+            <text class="sublabel" x="560" y="262" text-anchor="middle">changes once a second. Only the timer reads it.</text>
+
+            <path class="edge dashed" d="M270,130 L338,130" marker-end="url(#c3-a6)" />
+          </svg>
+          <figcaption>Three contexts split the session by how often each part changes. A clock tick renders only the timer.</figcaption>
+        </figure>
+
+        <details class="deep">
+          <summary>The trick of <code>board</code> and <code>game</code></summary>
+          <p>
+            The <code>Session</code> holds both <code>game</code> and <code>board</code>. A clock tick changes <code>game.playedMs</code> and makes a new <code>game</code> object.
+            If the grid read <code>game</code>, it would render every second. So <code>reduceSession</code> keeps <code>board</code> pointing at the game of the <em>last change other than time</em>.
+            After a tick, <code>board</code> is the same object. The doc comment on <code>Session</code> says so: <code>board.playedMs</code> is stale, read <code>game.playedMs</code> for the time.
+          </p>
+          <p>
+            The hook returns <code>{ state, playedMs, actions }</code>. <code>state</code> is memoised on <code>[board, notesMode, move, hint]</code>. This keeps the grid from rendering on every clock tick.
+          </p>
+        </details>
+
+        <details class="deep">
+          <summary>Why <code>useSyncExternalStore</code>?</summary>
+          <p>
+            The session is a plain object outside React. It offers <code>getSnapshot()</code> and <code>subscribe(listener)</code>. This is exactly the contract of
+            <code>useSyncExternalStore</code>, the React hook for "state that lives outside". The snapshot must be the same object until something changes, so React can compare by identity. That is why every reducer step returns the same object when nothing changed.
+          </p>
+        </details>
+
+        <!-- ============ 6 DEMO ============ -->
+        <h2 id="play-the-reducer">Play with a reducer</h2>
+        <p>
+          This board is a small copy of the idea. It has the same shape as the real code: an <code>Action</code> goes in, a pure
+          <code>reduce</code> function runs, and a new state comes out, or the <em>same object</em> when nothing changes. The panel
+          shows each action, and tells you if the state object is new. It is a teaching copy, not the real code. The real rules are in
+          <code>shared/core/src/game/actions.ts</code>.
+        </p>
+        <p>
+          Try these: tap a given (nothing changes). Tap a cell and press the same digit twice (the second press clears it). Turn Notes on and press two digits. Press Undo. Type a wrong digit three times.
+        </p>
+
+        <div class="demo-wrap">
+          <div>
+            <div class="board demo-board" id="demo-board" role="grid" aria-label="Playable mini sudoku"></div>
+            <div class="keypad" id="demo-keys"></div>
+            <div class="toolrow">
+              <button type="button" id="demo-undo">Undo</button>
+              <button type="button" id="demo-erase">Erase</button>
+              <button type="button" id="demo-notes" aria-pressed="false">Notes: off</button>
+              <button type="button" id="demo-reset">New game</button>
+            </div>
+          </div>
+          <div class="state-panel" aria-live="polite">
+            <h4>State</h4>
+            <pre id="demo-state">...</pre>
+            <h4>Actions dispatched (newest first)</h4>
+            <ol id="demo-log"></ol>
+          </div>
+        </div>
+
+        <div class="callout note">
+          <span class="callout-title">What to notice</span>
+          A tap on a given dispatches <code>select</code>, and the log says <span class="same">same state</span>: the reducer refused, so nobody renders again.
+          After a wrong digit the mistakes rise, and <strong>Undo does not give the mistake back</strong>, as in the real core (<code>undo</code> never changes the mistakes, the hints, the selected cell or the time).
+          After the third mistake the status becomes <code>lost</code> and the board stops accepting actions.
+        </div>
+
+        <!-- ============ 7 INPUT ============ -->
+        <h2 id="input-notes-undo">Input: digits, notes, undo and mistakes</h2>
+
+        <h3>The problem</h3>
+        <p>
+          A player does more than type a digit. They pencil in candidates, take a move back, clear a cell. And the game must punish a wrong
+          digit, but not too hard. Each of these needs a rule. All rules must live in one place, so the screen can stay dumb.
+        </p>
+
+        <h3>One keypad, two meanings</h3>
+        <p>
+          The keypad has nine keys. What a key does depends on <strong>notes mode</strong>. In the session, <code>notesMode</code> is screen
+          state, not a rule of the game. <code>placeDigit</code> in <code>session.utils.ts</code> reads it:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Mode</th><th>Key 5 calls</th><th>Move kind</th><th>Haptic</th></tr></thead>
+            <tbody>
+              <tr><td>Notes off</td><td><code>place(game, 5)</code></td><td><code>number</code> or <code>clear</code></td><td>tap</td></tr>
+              <tr><td>Notes on</td><td><code>toggleNote(game, 5)</code></td><td><code>note</code></td><td>tick</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The Notes toggle only works while the game is <code>playing</code>. A pause or an end turns it into a no-op.
+        </p>
+
+        <h3>What <code>place()</code> does, in order</h3>
+        <figure class="figure">
+          <svg viewBox="0 0 800 300" role="img" aria-label="Decision flow of place. No editable cell: nothing. Same digit as the entry: clear the cell. Digit complete: nothing. Otherwise write the digit and push an undo step. If the digit differs from the solution: add a mistake and maybe lose. Otherwise settle: maybe win, and report the completions.">
+            <defs>
+              <marker id="c3-a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="10" y="20" width="150" height="56" rx="10" />
+            <text class="label" x="85" y="44" text-anchor="middle">place(game, d)</text>
+            <text class="sublabel" x="85" y="62" text-anchor="middle">core, pure</text>
+
+            <rect class="box" x="190" y="20" width="170" height="56" rx="10" />
+            <text class="label" x="275" y="44" text-anchor="middle">Editable cell?</text>
+            <text class="sublabel" x="275" y="62" text-anchor="middle">playing, not a given</text>
+
+            <rect class="box" x="390" y="20" width="170" height="56" rx="10" />
+            <text class="label" x="475" y="44" text-anchor="middle">Same digit there?</text>
+            <text class="sublabel" x="475" y="62" text-anchor="middle">then clear the cell</text>
+
+            <rect class="box" x="590" y="20" width="190" height="56" rx="10" />
+            <text class="label" x="685" y="44" text-anchor="middle">Number complete?</text>
+            <text class="sublabel" x="685" y="62" text-anchor="middle">all nine right: ignore</text>
+
+            <path class="edge" d="M160,48 L188,48" marker-end="url(#c3-a7)" />
+            <path class="edge" d="M360,48 L388,48" marker-end="url(#c3-a7)" />
+            <path class="edge" d="M560,48 L588,48" marker-end="url(#c3-a7)" />
+
+            <path class="edge dashed" d="M685,76 L685,120" marker-end="url(#c3-a7)" />
+            <rect class="box blue" x="560" y="124" width="220" height="68" rx="10" />
+            <text class="label" x="670" y="150" text-anchor="middle">Write the digit</text>
+            <text class="sublabel" x="670" y="168" text-anchor="middle">push an undo step, clear own</text>
+            <text class="sublabel" x="670" y="184" text-anchor="middle">notes, strike peer notes</text>
+
+            <path class="edge" d="M560,158 L480,158" marker-end="url(#c3-a7)" />
+            <rect class="box" x="300" y="124" width="180" height="68" rx="10" />
+            <text class="label" x="390" y="150" text-anchor="middle">Equals solution?</text>
+            <text class="sublabel" x="390" y="170" text-anchor="middle">core knows the answer</text>
+
+            <path class="edge" d="M340,192 L260,232" marker-end="url(#c3-a7)" />
+            <path class="edge" d="M440,192 L560,232" marker-end="url(#c3-a7)" />
+            <rect class="box accent" x="60" y="232" width="260" height="56" rx="10" />
+            <text class="label" x="190" y="256" text-anchor="middle">No: mistakes + 1</text>
+            <text class="sublabel" x="190" y="274" text-anchor="middle">3 mistakes: status lost</text>
+            <rect class="box green" x="520" y="232" width="260" height="56" rx="10" />
+            <text class="label" x="650" y="256" text-anchor="middle">Yes: settle()</text>
+            <text class="sublabel" x="650" y="274" text-anchor="middle">grid solved: won. Completions.</text>
+            <text class="sublabel" x="288" y="210" text-anchor="end">wrong</text>
+            <text class="sublabel" x="516" y="210">right</text>
+          </svg>
+          <figcaption>Each digit goes into the grid, even a wrong one. The core finds the mistake by comparing with <code>game.solution</code>.</figcaption>
+        </figure>
+
+        <ul>
+          <li>
+            <strong>A wrong digit stays in the cell.</strong> It shows with the conflict colour. The player can fix it, or leave it. Each new
+            wrong digit adds a mistake. <code>MAX_MISTAKES</code> is 3. The third one sets <code>status: 'lost'</code>.
+          </li>
+          <li>
+            <strong>Entry check with the solution.</strong> The app knows the solution of every puzzle (the generator makes it, and a scan is verified to have exactly one). That is why a mistake is a fact, not an opinion.
+          </li>
+          <li>
+            <strong>A complete number is locked.</strong> When all nine copies of a digit are right, its key is disabled and faded. A wrong copy of a complete number can still be cleared with its own key.
+          </li>
+          <li>
+            <strong>Notes clean up after themselves.</strong> A placed digit removes itself from the notes of its peers (<code>withNumber</code> uses <code>peersOf(cell)</code> from the core).
+          </li>
+          <li>
+            <strong>Notes are sorted.</strong> <code>toggleNote</code> keeps them in order 1 to 9, so two games with the same notes are equal.
+          </li>
+        </ul>
+
+        <h3>Undo</h3>
+        <p>
+          Every edit (<code>place</code>, <code>toggleNote</code>, <code>erase</code>, hint fill) calls <code>withUndoStep(game)</code>. It pushes the old
+          <code>entries</code> and <code>notes</code> onto <code>undoSteps</code> and keeps at most <code>UNDO_LIMIT</code> (100) steps.
+          <code>undo()</code> pops the last step and restores both. It never changes the mistakes, the hints used, the selected cell or the time.
+          So a player cannot undo a wrong digit to dodge the penalty.
+        </p>
+        <p>
+          The UI asks "can I undo?" with <code>canUndo(game)</code>: it runs <code>undo(game)</code> and checks whether the game object changed.
+          The same idea is behind <code>canErase</code>. No extra flag exists to keep in sync.
+        </p>
+
+        <div class="callout why">
+          <span class="callout-title">Why "same object means no change"?</span>
+          Every core action returns the <em>same</em> game when it does nothing. The session and the session object compare with <code>===</code>.
+          That one rule gives a cheap "did anything happen?" test for renders, saves, haptics and the can-undo button. It is the quiet backbone of the app.
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-title">Not what you think: ADR-020</span>
+          The name "full-cell input" can sound like a typing mode. It is not. ADR-020 says that the <strong>digit model</strong> reads the whole 64 x 64 cell
+          image, with the grid lines still in it, not a cropped cell. That is part of the scan pipeline. See <a href="05-machine-learning.html">chapter 5</a> and
+          <a href="04-scan-pipeline.html">chapter 4</a>. In the game the player always types into one selected cell, and the keypad has no other input mode.
+        </div>
+
+        <h3>Assists</h3>
+        <p>
+          An <span class="term" data-def="A shade on the grid that helps the player read the board. The player turns each one on or off in Settings.">assist</span> only changes how the grid is drawn.
+          It never changes the rules. There are four. All are on by default. <code>mobile/src/game/constants/assists.constants.ts</code> holds the type and the defaults.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Assist key</th><th>Shades</th></tr></thead>
+            <tbody>
+              <tr><td><code>rowColumn</code></td><td>The row and the column of the selected cell</td></tr>
+              <tr><td><code>box</code></td><td>The 3 x 3 box of the selected cell</td></tr>
+              <tr><td><code>selectedCell</code></td><td>The selection tile on the selected cell</td></tr>
+              <tr><td><code>sameNumbers</code></td><td>Every cell that holds the number of the selected cell</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The Settings screen shows a switch for each one, with a small live preview grid (<code>AssistPreview</code>). The four booleans are saved as one JSON text under the key <code>game.assists</code>
+          (see the preferences section). <code>parseAssists</code> is forgiving: a missing or broken value gives the default, and an assist that a later version adds starts <em>on</em>.
+        </p>
+        <p>
+          Each cell gets a <code>CellView</code> from <code>cell.utils.ts</code>: <code>fill</code> is one of <code>plain</code>, <code>peer</code>, <code>same</code> or <code>conflict</code>.
+          A wrong entry keeps its conflict fill, whatever the assists say.
+        </p>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A player presses Undo after a wrong digit. What happens to the three mistake dots?</p>
+          <div class="options">
+            <button>One dot empties, because the move is undone</button>
+            <button data-correct>They stay as they are. Undo never gives a mistake back</button>
+            <button>All three dots empty, because the board is back to a good state</button>
+          </div>
+          <p class="explain">
+            In the core, <code>undo()</code> restores only <code>entries</code> and <code>notes</code>. The mistakes, the hints used, the selected cell and the time stay.
+          </p>
+        </div>
+
+        <!-- ============ 8 TIMER ============ -->
+        <h2 id="timer-and-pause">The timer and the pause</h2>
+
+        <h3>The problem</h3>
+        <p>
+          A timer looks simple. It is not. The app can go to the background in the middle of a second. iOS can freeze the JavaScript. The phone can
+          be killed. The timer must still tell the truth, and the player must not lose time or gain time.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a chess clock</span>
+          A chess clock does not count while a player thinks about leaving. Pressing the button stops one side. Here the clock stops when the game is paused, when the game ends,
+          and when the app leaves the screen.
+        </div>
+
+        <h3>Who counts the time</h3>
+        <ul>
+          <li>
+            <strong>The core never reads a clock</strong> (SUD-04). <code>tick(game, elapsedMs)</code> only adds the number the app gives it. It does nothing unless <code>status === 'playing'</code>, or when the number is not finite or is not above zero.
+          </li>
+          <li>
+            <strong>The session measures.</strong> A <code>setInterval</code> fires every <code>CLOCK_INTERVAL_MS</code> (1000 ms). <code>flushClock</code> computes <code>now - last</code> and dispatches <code>{ type: 'tick', elapsedMs }</code>.
+          </li>
+          <li>
+            <strong>The interval only runs while it should.</strong> <code>syncClock()</code> starts it when the session is attached and the status is <code>playing</code>. It stops it in every other case. The function runs after each dispatch.
+          </li>
+          <li>
+            <strong>One report counts at most <code>MAX_ELAPSED_MS</code> (2000 ms).</strong> iOS can freeze JavaScript before the pause on <code>AppState</code> arrives.
+            The first report after the return would hold all the frozen time. The cap guards against that.
+          </li>
+        </ul>
+
+        <h3>The pause</h3>
+        <figure class="figure">
+          <svg viewBox="0 0 760 260" role="img" aria-label="State diagram. Playing goes to paused when the timer is tapped or the app leaves the foreground. Paused goes back to playing on a tap. Playing goes to lost on the third mistake and to won on the last correct number.">
+            <defs>
+              <marker id="c3-a8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box green" x="30" y="90" width="150" height="60" rx="30" />
+            <text class="label" x="105" y="116" text-anchor="middle">playing</text>
+            <text class="sublabel" x="105" y="134" text-anchor="middle">clock runs</text>
+
+            <rect class="box amber" x="300" y="20" width="150" height="60" rx="30" />
+            <text class="label" x="375" y="46" text-anchor="middle">paused</text>
+            <text class="sublabel" x="375" y="64" text-anchor="middle">clock stopped</text>
+
+            <rect class="box accent" x="580" y="20" width="150" height="60" rx="30" />
+            <text class="label" x="655" y="46" text-anchor="middle">lost</text>
+            <text class="sublabel" x="655" y="64" text-anchor="middle">game over sheet</text>
+
+            <rect class="box blue" x="580" y="170" width="150" height="60" rx="30" />
+            <text class="label" x="655" y="196" text-anchor="middle">won</text>
+            <text class="sublabel" x="655" y="214" text-anchor="middle">finish card</text>
+
+            <path class="edge" d="M170,96 C220,70 250,56 298,52" marker-end="url(#c3-a8)" />
+            <path class="edge" d="M298,64 C250,80 220,100 172,112" marker-end="url(#c3-a8)" />
+            <path class="edge" d="M180,124 C400,128 500,100 578,56" marker-end="url(#c3-a8)" />
+            <path class="edge" d="M120,150 C120,200 400,200 578,200" marker-end="url(#c3-a8)" />
+            <text class="sublabel" x="220" y="62" text-anchor="middle">pause</text>
+            <text class="sublabel" x="244" y="106">resume</text>
+            <text class="sublabel" x="470" y="134">3rd mistake</text>
+            <text class="sublabel" x="360" y="186">last correct number</text>
+          </svg>
+          <figcaption>These are the four <code>GameStatus</code> values of the core. The screen adds its own moments on top: solving and finished.</figcaption>
+        </figure>
+
+        <p>The player pauses by tapping the timer, which is also the pause button. The <code>PauseLayer</code> then covers the grid, hides every digit and note, and says "Tap to resume". A tap resumes with a soft haptic.</p>
+
+        <p>When the app leaves the foreground, <code>session.background()</code> runs these steps <strong>in this order</strong>:</p>
+        <ol>
+          <li>It counts the time since the last clock report (<code>flushClock</code>).</li>
+          <li>It pauses the game. The flush must come first: the core ignores a tick once the game is paused.</li>
+          <li>It saves the paused game with the exact time played. This is one write.</li>
+        </ol>
+        <p>
+          <code>useGameSession</code> adds the one <code>AppState</code> listener. The listener calls <code>session.background()</code> for every state that is not <code>active</code>.
+          The cleanup of <code>attach()</code> does the same at the end: it flushes the last slice of time, saves once more if the game changed, and stops the clock (QR-11: a killed app resumes at the last move).
+        </p>
+
+        <div class="callout warn">
+          <span class="callout-title">Pitfall: the order</span>
+          If the session paused first and flushed after, the last seconds before the pause would be lost, because the core drops a tick for a paused game. The comment in the code says it: "The flush comes first".
+        </div>
+
+        <!-- ============ 9 GAME OVER ============ -->
+        <h2 id="game-over-and-finish">Game over and the finish card</h2>
+        <p>Two moments end a game. They look very different, and they save in the same way.</p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4>The third mistake: game over</h4>
+            <ol>
+              <li>The core sets <code>status: 'lost'</code>. The last haptic is <code>error</code>.</li>
+              <li>The board stays visible for <code>LOST_HOLD_MS</code> (400 ms), so the player sees the digit that ended the game.</li>
+              <li>The <strong>game over sheet</strong> rises from the bottom. It shows how many cells were right (<code>rightCells</code>) and the time played.</li>
+              <li>
+                Three buttons: <strong>Try this puzzle again</strong> (<code>retry</code>), <strong>New puzzle</strong> (<code>newPuzzle</code>), <strong>Back to home</strong>.
+              </li>
+            </ol>
+          </div>
+          <div class="card">
+            <h4>The last number: finish</h4>
+            <ol>
+              <li>The core sets <code>status: 'won'</code> and reports <code>completed.grid = true</code>.</li>
+              <li>A <strong>solve pulse</strong> washes over the whole grid. A haptic <code>success</code> goes with it.</li>
+              <li><code>useSolveDelay(won)</code> waits until the pulse is over. With Reduce Motion on, it is true at once.</li>
+              <li>The <strong>finish card</strong> shows. Its numbers come from <code>finishView()</code> in <code>finish.utils.ts</code>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <h3>What the finish card shows</h3>
+        <ul>
+          <li>The title "Solved · Medium", the time, the mistakes (for example 1 of 3) and the hints.</li>
+          <li>The best time of the level, and a <strong>New best</strong> badge when this game beat it.</li>
+          <li>A small copy of the solved grid, with the givens and the entries in two styles.</li>
+          <li>The source: "Scanned from paper", or the puzzle number (the seed, with spaces: <code>formatPuzzleNumber</code>).</li>
+          <li>The date, formatted by <code>intl.formatDate</code> with the language of the player.</li>
+        </ul>
+        <div class="callout rule">
+          <span class="callout-title">When is it a "New best"?</span>
+          <code>finishView</code> asks the core: <code>countsForBestTime({ result: 'won', source, hintsUsed })</code>. Only a won <strong>generated</strong> game without hints counts (ADR-012).
+          Then <code>newBest = counts &amp;&amp; (bestBefore === null || playedMs &lt; bestBefore)</code>. The first counted win at a level is always a new best.
+        </div>
+        <p>
+          The card is built from one function that returns plain strings (<code>FinishView</code>), including a VoiceOver label of the whole card.
+          That makes it easy to test. It also tilts a little with the phone, as the motion section explains.
+        </p>
+
+        <details class="deep">
+          <summary>Where the "game over" screen moments differ from the core statuses</summary>
+          <p>
+            The core knows four statuses: playing, paused, lost, won. The screen shows five moments: playing, paused, game over, solving and finished. "Solving" is the short wait for the solve pulse.
+            "Finished" is the card. The concept page <a href="../architecture/00-concepts/game-screen.md">game-screen.md</a> has a state diagram that includes them. These are screen moments, not rules.
+          </p>
+        </details>
+
+        <!-- ============ 10 PERSISTENCE ============ -->
+        <h2 id="persistence">Saving: SQLite and the repositories</h2>
+
+        <h3>The problem</h3>
+        <p>
+          A phone app gets killed all the time. The player gets a call, swipes the app away, or the battery dies. The next start must show the same
+          board, the same notes and the same time (quality scenario QR-11). The history of finished games must also last, because the stats read it.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a notebook with a librarian</span>
+          The database is a notebook. Screens never write in it themselves. A <strong>librarian</strong> (the <span class="term" data-def="An interface with a few named methods, such as save() and current(). The screens use it and never write SQL. A fake can replace it in a test.">repository</span>)
+          takes a request, writes it neatly and hands back the answer. If the notebook changes shape, only the librarian learns the new shape.
+        </div>
+
+        <h3>The pieces</h3>
+        <ul>
+          <li><strong><code>expo-sqlite</code></strong> is a real SQL database in a file on the phone (ADR-012). It works offline (SUD-01).</li>
+          <li>
+            <strong>Repository interfaces</strong> in <code>mobile/src/storage/</code>: <code>PuzzleRepository</code> (the game in progress),
+            <code>HistoryRepository</code> (the finished games), <code>StatsRepository</code> (numbers for the stats screen), <code>SyncStateRepository</code> (the sync cursor and waiting list).
+            Screens use the interface, never SQL.
+          </li>
+          <li>
+            <strong>Two implementations of each.</strong> The SQLite one runs on the phone. An in-memory one (<code>memoryStorage.ts</code>) runs in fast tests. One <em>contract test</em> in
+            <code>storage/contract/</code> (<code>describeGameStorage</code>) runs against both. If they ever disagree, a test fails.
+          </li>
+          <li>
+            <strong>Numbered migrations.</strong> <code>migrations.ts</code> is a list of SQL texts. <code>PRAGMA user_version</code> holds the last one that ran.
+            Append a migration, never edit a shipped one. An app that meets a newer database refuses to start with a <code>RangeError</code>.
+          </li>
+          <li>
+            <strong>Sync-ready rows.</strong> Each row has a UUID, <code>created_at</code>, <code>updated_at</code> and a soft-delete <code>deleted_at</code>, so a later merge between devices only adds rows (ADR-012, ADR-028).
+          </li>
+        </ul>
+
+        <div class="callout warn">
+          <span class="callout-title">A name check: ADR-018</span>
+          ADR-018 is called "one data folder, two tables". It is about the <strong>training data of the machine learning side</strong> (<code>data/cells.csv</code> and <code>data/sudoku-photos.csv</code>), not about the app database. The app database has the tables in the next figure.
+          See <a href="05-machine-learning.html">chapter 5</a> for ADR-018. For the app, the decision is ADR-012 with its amendments, and ADR-023 and ADR-028.
+        </div>
+
+        <h3>The tables</h3>
+        <figure class="figure">
+          <svg viewBox="0 0 800 460" role="img" aria-label="The SQLite database has game_in_progress with the saved game as JSON, game_history with one row per finished game, sync_state with single values, and a key-value store for settings. A game moves from game_in_progress to game_history in one transaction when it is won or lost, or when a new game replaces it.">
+            <defs>
+              <marker id="c3-a9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="10" y="10" width="270" height="232" rx="10" />
+            <text class="label mono" x="145" y="34" text-anchor="middle">game_in_progress</text>
+            <text class="sublabel" x="145" y="52" text-anchor="middle">at most one live row</text>
+            <g class="mono sublabel">
+              <text x="26" y="78">id          TEXT  (UUID, key)</text>
+              <text x="26" y="98">level       easy..expert</text>
+              <text x="26" y="118">source      generated|scanned</text>
+              <text x="26" y="138">seed        INTEGER or null</text>
+              <text x="26" y="158">saved_game  TEXT (JSON)</text>
+              <text x="26" y="178">created_at  updated_at</text>
+              <text x="26" y="198">deleted_at  (soft delete)</text>
+            </g>
+            <text class="sublabel" x="26" y="226">saved_game = the whole Game, one row</text>
+
+            <rect class="box green" x="330" y="10" width="460" height="300" rx="10" />
+            <text class="label mono" x="560" y="34" text-anchor="middle">game_history</text>
+            <text class="sublabel" x="560" y="52" text-anchor="middle">one row per game that ended</text>
+            <g class="mono sublabel">
+              <text x="346" y="78">id          same as the game in progress</text>
+              <text x="346" y="98">level       source      seed</text>
+              <text x="346" y="118">result      won | lost | abandoned</text>
+              <text x="346" y="138">played_ms   mistakes    hints_used</text>
+              <text x="346" y="158">finished_at</text>
+              <text x="346" y="178">created_at  updated_at  deleted_at</text>
+              <text x="346" y="198">owner_id    Clerk user, null = signed out</text>
+              <text x="346" y="218">pushed_at   when the sync sent it</text>
+            </g>
+            <text class="sublabel" x="346" y="250">index game_history_best_time (level, result, played_ms)</text>
+            <text class="sublabel" x="346" y="270">index game_history_owner (owner_id, updated_at)</text>
+            <text class="sublabel" x="346" y="290">no moves are stored: only the result</text>
+
+            <path class="edge" d="M280,100 L328,100" marker-end="url(#c3-a9)" />
+            <text class="sublabel" x="304" y="90" text-anchor="middle">end</text>
+
+            <rect class="box violet" x="10" y="340" width="270" height="108" rx="10" />
+            <text class="label mono" x="145" y="364" text-anchor="middle">sync_state</text>
+            <g class="mono sublabel">
+              <text x="26" y="390">key    TEXT (key)</text>
+              <text x="26" y="410">value  TEXT</text>
+            </g>
+            <text class="sublabel" x="26" y="434">single values, such as the sync cursor</text>
+
+            <rect class="box amber" x="330" y="340" width="460" height="108" rx="10" />
+            <text class="label mono" x="560" y="364" text-anchor="middle">expo-sqlite/kv-store</text>
+            <text class="sublabel" x="560" y="386" text-anchor="middle">a separate key-value store: the settings</text>
+            <g class="mono sublabel">
+              <text x="346" y="410">game.assists  theme.preference  theme.appearance</text>
+              <text x="346" y="430">app.language  haptics  ...  values are strings</text>
+            </g>
+          </svg>
+          <figcaption>
+            Source: <code>mobile/src/storage/migrations.ts</code>. A game moves from the left table to the right one when it ends. The settings live in their own small store.
+          </figcaption>
+        </figure>
+
+        <h3>A game moves from "in progress" to "history"</h3>
+        <p><code>PuzzleRepository</code> hides the SQL behind five calls:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Call</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>start({ level, source, seed, game, owner })</code></td><td>Inserts a new game in progress. In the same transaction it soft-deletes the old one. If the old game had moves (<code>hasMoves</code>), a history entry with the result <code>abandoned</code> is written.</td></tr>
+              <tr><td><code>current()</code></td><td>The game in progress, or <code>null</code>. A saved game that does not load gives <code>null</code> and stays in the table.</td></tr>
+              <tr><td><code>save(id, game, owner)</code></td><td>Writes the whole game as JSON. When the game is won or lost, the same transaction soft-deletes the row and writes the history entry. It does nothing when <code>id</code> is not the game in progress.</td></tr>
+              <tr><td><code>discard(id)</code></td><td>Removes a game in progress.</td></tr>
+              <tr><td><code>peek()</code></td><td>The game as far as the repository knows, <em>without</em> a read. A screen draws it in its first frame.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>Snapshots, not moves.</strong> A save writes the whole game, with its undo steps, in one row (<code>toSavedGame</code> / <code>fromSavedGame</code> in the core). The history keeps only the result:
+          the time, the mistakes and the hints. A leaderboard would need a move log, and ADR-023 point 7 says that needs a new ADR.
+        </p>
+
+        <h3>The save queue: fast taps, few writes</h3>
+        <p>
+          A fast player makes ten moves in a second. Writing ten times is wasteful and could reorder. <code>createSaveQueue</code> in <code>saveQueue.utils.ts</code> follows two rules: one write runs at a time, and
+          while it runs, only the <strong>newest</strong> game waits.
+        </p>
+        <figure class="figure">
+          <svg viewBox="0 0 800 220" role="img" aria-label="Timeline. Move 1 starts a write. Moves 2, 3 and 4 arrive during the write. Only move 4 waits. When write 1 ends, write 4 starts. Moves 2 and 3 are dropped.">
+            <defs>
+              <marker id="c3-a10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <text class="sublabel" x="10" y="38">moves</text>
+            <g>
+              <circle cx="110" cy="34" r="14" class="box accent" />
+              <text class="label" x="110" y="39" text-anchor="middle">1</text>
+              <circle cx="220" cy="34" r="14" class="box" />
+              <text class="label" x="220" y="39" text-anchor="middle">2</text>
+              <circle cx="290" cy="34" r="14" class="box" />
+              <text class="label" x="290" y="39" text-anchor="middle">3</text>
+              <circle cx="360" cy="34" r="14" class="box accent" />
+              <text class="label" x="360" y="39" text-anchor="middle">4</text>
+            </g>
+            <text class="sublabel" x="10" y="110">writes</text>
+            <rect class="box blue" x="110" y="86" width="330" height="40" rx="8" />
+            <text class="label" x="275" y="111" text-anchor="middle">write of move 1 (running)</text>
+            <rect class="box green" x="450" y="86" width="250" height="40" rx="8" />
+            <text class="label" x="575" y="111" text-anchor="middle">write of move 4</text>
+            <path class="edge dashed" d="M220,50 L220,84" />
+            <path class="edge dashed" d="M290,50 L290,84" />
+            <path class="edge" d="M360,50 L360,84" />
+            <text class="sublabel" x="220" y="148" text-anchor="middle">dropped</text>
+            <text class="sublabel" x="290" y="148" text-anchor="middle">dropped</text>
+            <text class="sublabel" x="360" y="148" text-anchor="middle">waits</text>
+            <path class="edge" d="M360,154 C360,170 560,160 560,128" marker-end="url(#c3-a10)" />
+            <text class="sublabel" x="110" y="200">A game that is won or lost does not wait. It goes to the repository at once.</text>
+          </svg>
+          <figcaption>At most two writes for a burst of moves. The last move always lands.</figcaption>
+        </figure>
+        <p>
+          <strong>Why a finished game skips the queue.</strong> If the winning save waited, a "New puzzle" tap could run <code>start()</code> first. The repository would then record the finished game as <em>abandoned</em>. So <code>status !== 'playing'</code> sends at once, and the repository keeps the order of its own writes.
+        </p>
+        <p>
+          <code>useSaveQueue(id)</code> builds the queue for the id of the current game. It reads the owner at the time of the write, not at the time of the move, so a sign-in in the middle does not leave an older waiting game behind. In a development build it logs the time and size of each save, and tags slow saves (more than 50 ms).
+        </p>
+
+        <details class="deep">
+          <summary>Which changes trigger a save</summary>
+          <p>
+            <code>needsSave(previous, next)</code> in <code>savedGame.ts</code> compares fields by identity. A table <code>SAVE_TRIGGER: Record&lt;keyof Game, boolean&gt;</code> lists every field of <code>Game</code>.
+            <code>selected</code> and <code>playedMs</code> are <code>false</code>. All others are <code>true</code>. Because the record type needs every key, adding a new <code>Game</code> field makes the build fail until someone decides.
+          </p>
+          <p>
+            The clock tick does not save: it would write every second. The time is saved with the next move, or when the app leaves the foreground (<code>background()</code>), or when the screen closes.
+          </p>
+        </details>
+
+        <details class="deep">
+          <summary>Why does the Jest test run real SQL?</summary>
+          <p>
+            In Jest the repositories run on the SQLite that Node has built in, through a small adapter (<code>nodeDatabase.ts</code>). The adapter copies the behaviour of expo-sqlite 57: WAL mode, no busy timeout, a second connection for an exclusive transaction.
+            So the tests check the real SQL, the migrations and the transactions, not a mock. See ADR-012, amendment "the first tables", point 6.
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The player wins at 02:11. Which sentence is true?</p>
+          <div class="options">
+            <button>The save waits in the queue behind older writes</button>
+            <button>The app writes one row to <code>game_history</code> and leaves <code>game_in_progress</code> alone</button>
+            <button data-correct>The save goes out at once. One transaction soft-deletes the game in progress and inserts the history entry</button>
+          </div>
+          <p class="explain">
+            A finished game never waits (<code>createSaveQueue</code>), and <code>PuzzleRepository.save</code> does both writes in one transaction, with the same id.
+          </p>
+        </div>
+
+        <!-- ============ 11 PREFERENCES ============ -->
+        <h2 id="preferences">Preferences: settings that stick</h2>
+
+        <h3>The problem</h3>
+        <p>
+          Settings are small: a switch, a colour name, a language. They must be ready <em>before the first frame</em>, or the app would flash the wrong theme. They must also reach every screen at once when the player changes one.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 800 200" role="img" aria-label="A setting definition feeds createSettingStore. The store keeps the value in memory, tells the listeners first, and then saves through the SettingsRepository into the SQLite key-value store. The first read is synchronous.">
+            <defs>
+              <marker id="c3-a11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box violet" x="10" y="30" width="160" height="70" rx="10" />
+            <text class="label" x="90" y="58" text-anchor="middle">SettingDefinition</text>
+            <text class="sublabel" x="90" y="78" text-anchor="middle">key, parse, serialize</text>
+            <rect class="box blue" x="210" y="30" width="190" height="70" rx="10" />
+            <text class="label" x="305" y="58" text-anchor="middle">createSettingStore</text>
+            <text class="sublabel" x="305" y="78" text-anchor="middle">value in memory + listeners</text>
+            <rect class="box green" x="440" y="30" width="160" height="70" rx="10" />
+            <text class="label" x="520" y="58" text-anchor="middle">SettingsRepository</text>
+            <text class="sublabel" x="520" y="78" text-anchor="middle">get, getSync, set</text>
+            <rect class="box amber" x="640" y="30" width="150" height="70" rx="10" />
+            <text class="label" x="715" y="58" text-anchor="middle">kv-store</text>
+            <text class="sublabel" x="715" y="78" text-anchor="middle">expo-sqlite</text>
+            <path class="edge" d="M170,65 L208,65" marker-end="url(#c3-a11)" />
+            <path class="edge" d="M400,65 L438,65" marker-end="url(#c3-a11)" />
+            <path class="edge" d="M600,65 L638,65" marker-end="url(#c3-a11)" />
+            <rect class="box accent" x="210" y="130" width="190" height="52" rx="10" />
+            <text class="label" x="305" y="153" text-anchor="middle">useSettingValue(store)</text>
+            <text class="sublabel" x="305" y="171" text-anchor="middle">screens read and re-render</text>
+            <path class="edge" d="M305,100 L305,128" marker-end="url(#c3-a11)" />
+          </svg>
+          <figcaption>One definition per setting. One store per setting. Screens read through a hook.</figcaption>
+        </figure>
+
+        <ul>
+          <li>
+            <strong><code>SettingDefinition&lt;T&gt;</code></strong> has a <code>key</code> (saved text keeps this key forever, so an update keeps the player's choice), a <code>parse</code> that never throws and always gives a default, and a <code>serialize</code>.
+          </li>
+          <li>
+            <strong><code>createSettingStore</code></strong> (<code>preferences/settingStore.ts</code>) reads the saved value on the first <code>get()</code> with <code>getSync</code>. It is synchronous, so the first frame already has the value. A store that throws gives the default: the app must still start.
+          </li>
+          <li>
+            <strong><code>set(value)</code></strong> changes the value in memory and tells the listeners <em>first</em>, then saves. The screen does not wait for the database. <code>trySet</code> logs a failed save and keeps the value for this session.
+          </li>
+          <li>
+            <strong>Same text, no change.</strong> <code>set</code> compares the serialized texts. A value that serializes the same does nothing.
+          </li>
+          <li>
+            <strong>Hooks.</strong> <code>useSettingValue(store)</code> uses <code>useSyncExternalStore</code>, the same trick as the game session. <code>useHaptics()</code> gives <code>{ on, setOn, play }</code>. <code>play</code> reads the switch at the moment of the haptic, so it keeps its identity.
+          </li>
+        </ul>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Setting</th><th>Key</th><th>Values</th></tr></thead>
+            <tbody>
+              <tr><td>Assists</td><td><code>game.assists</code></td><td>JSON of four booleans, missing means on</td></tr>
+              <tr><td>Colourway</td><td><code>theme.preference</code></td><td><code>cobalt</code>, <code>forest</code>, <code>bordeaux</code>. Old values give cobalt</td></tr>
+              <tr><td>Appearance</td><td><code>theme.appearance</code></td><td><code>auto</code>, <code>light</code>, <code>colour</code>. Unknown gives light</td></tr>
+              <tr><td>Language</td><td><code>app.language</code></td><td><code>system</code>, <code>en</code>, <code>nl</code></td></tr>
+              <tr><td>Haptics</td><td>see <code>HAPTICS_SETTING</code></td><td>on or off</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ============ 12 THEMING ============ -->
+        <h2 id="theming">Theming: Unistyles, colourways and appearance</h2>
+
+        <h3>The problem</h3>
+        <p>
+          The app has three colourways and two looks, so six themes. Every button, cell and line must change colour when the player picks another one. If each component
+          held its own colours, one new colourway would touch hundreds of files. And a colour with too little contrast is a bug, not a taste.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: paint by number</span>
+          A paint-by-number picture says "area 7 is the sky". The paint set decides what colour "sky" is. Components say "I need the <code>colors.accent</code>". The theme is the paint set.
+        </div>
+
+        <h3>Tokens, in three tiers (ADR-015)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tier</th><th>Example</th><th>Who reads it</th></tr></thead>
+            <tbody>
+              <tr><td>Primitive token</td><td><code>accent: '#1f3fd1'</code> in a <code>palette.ts</code></td><td>Only the folder of its own theme</td></tr>
+              <tr><td>Semantic token</td><td><code>colors.text</code>, <code>type.given</code>, <code>shape.radius.md</code></td><td>Most components</td></tr>
+              <tr><td>Component token</td><td><code>components.cell.selected</code>, <code>components.key.fill</code></td><td>One component only</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          A theme is one typed object, <code>Theme</code> in <code>theme.types.ts</code>. TypeScript refuses a theme that lacks a token. A unit test (<code>contrast.test.ts</code>) checks every text pair of every theme for a WCAG AA contrast of 4.5 to 1.
+          Only <code>src/theme/</code> may hold a colour value. <code>just lint</code> refuses hex values, <code>rgb()</code> and <code>hsl()</code> elsewhere.
+        </p>
+
+        <h3>How a component gets its colour</h3>
+        <p>
+          Unistyles (<code>react-native-unistyles</code> 3) is the styling library. A <code>*.styles.ts</code> file looks like this:
+        </p>
+<pre><code>export const styles = StyleSheet.create((theme) =&gt; ({
+  key: { backgroundColor: theme.components.key.fill },
+}))</code></pre>
+        <p>
+          The function takes the theme. Unistyles binds each style to the theme <em>on the native side</em>. When the theme changes, the native layer updates the views. React does not render again. That is why the game grid
+          "reads no theme hook" and a theme switch does not render it (ADR-015, ADR-031).
+        </p>
+        <div class="callout warn">
+          <span class="callout-title">Pitfall: do not spread a Unistyles style</span>
+          <code>{ ...styles.cell, left }</code> loses the theme binding. Pass an array instead: <code>[styles.cell, { left }]</code>. A Skia canvas reads the theme with <code>useUnistyles()</code> and makes its paints again on a change, because Skia is not a style.
+        </div>
+
+        <h3>Six themes from three palettes</h3>
+        <p>
+          ADR-025 replaced the first four themes (Daylight, Midnight, Op-art, Progressive) with three <strong>colourways</strong> in the Op-art style: Cobalt, Forest and Bordeaux. ADR-026 added an <strong>appearance</strong>.
+          A look is a colourway plus an appearance:
+        </p>
+        <ul>
+          <li><strong>Light:</strong> a white page, coloured content.</li>
+          <li><strong>Colour:</strong> the accent colour is the page. The content is white or light.</li>
+          <li><strong>Auto:</strong> a preference, never a theme. A light iPhone gives Light. A dark iPhone gives Colour (<code>resolveAppearance</code> in <code>theme/preference.ts</code>).</li>
+        </ul>
+        <p>
+          Each colourway is a folder in <code>src/theme/themes/</code> with a <code>palette.ts</code> of about 14 values. One builder, <code>buildOpartTheme</code>, turns a palette into a full <code>Theme</code>. It runs twice: <code>opart.light.ts</code> and <code>opart.colour.ts</code>.
+          The Colour look is <strong>derived</strong> from the accent: the page is the accent mixed with black by 0.16, and every other shade is the page with white laid over it (<code>white(k)</code>).
+          Nobody writes the Colour values by hand.
+        </p>
+        <p>Unistyles registers six names: <code>cobalt</code>, <code>forest</code>, <code>bordeaux</code> and the same with <code>-colour</code>. Play with it. The board uses the real palette values from the repository.</p>
+
+        <div class="figure" id="look-demo">
+          <div>
+            <span class="file">Colourway</span><br />
+            <div class="segmented" id="look-way" role="group" aria-label="Colourway"></div>
+            <br />
+            <span class="file">Appearance</span><br />
+            <div class="segmented" id="look-app" role="group" aria-label="Appearance"></div>
+            <label style="font-size:14px;margin-left:4px" id="look-sys-wrap">
+              <input type="checkbox" id="look-sys" /> The iPhone is in dark mode (only Auto reads this)
+            </label>
+          </div>
+          <div class="demo-wrap" style="margin-top:12px">
+            <div class="look-card"><div class="look-board" id="look-board" role="img" aria-label="A sample sudoku in the chosen look"></div></div>
+            <div>
+              <p style="margin-top:0">
+                Resolved appearance: <strong id="look-resolved"></strong><br />
+                Unistyles theme name: <code id="look-name"></code>
+              </p>
+              <div class="swatch-row" id="look-swatches"></div>
+              <p class="tl-note" style="margin-top:12px">
+                The board shows a selected given 7, its row, column and box (the peer fill), the other 7s (the same-number fill), a typed entry, and a conflict.
+                In Colour the conflict is the peer fill with white stripes and a white digit, because red would not read on a coloured page (ADR-026).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <h3>Rules that keep it consistent</h3>
+        <ul>
+          <li>Do not import the <code>palette.ts</code> of a theme from outside its folder. <code>just lint</code> checks this.</li>
+          <li>To add a colourway: add its name to <code>ThemeName</code>, add a folder, add one line to <code>THEMES</code> and one to <code>COLOUR_THEMES</code> (<code>themes/registry.ts</code>), add the two names to <code>APP_THEMES</code> (<code>unistyles.ts</code>) and one line to <code>DECORATIONS</code>. TypeScript names every place that misses it.</li>
+          <li>The saved preference is read <em>before</em> the first frame. <code>unistyles.ts</code> calls <code>StyleSheet.configure</code> with <code>startupSettings(...)</code>, so Auto already knows the iPhone scheme.</li>
+          <li>The app is light only: <code>userInterfaceStyle</code> in <code>app.json</code> is <code>light</code>. Colour is a look of the app, not the iOS dark mode.</li>
+          <li>Theme <strong>decorations</strong> (the wavy Op-art bands on the correction panel, the finish card and the summary) live in a registry (<code>theme/decorations/registry.ts</code>), outside the theme object. A component renders <code>&lt;ThemeDecoration slot="panelEdge" /&gt;</code>. An empty slot renders nothing.</li>
+        </ul>
+
+        <details class="deep">
+          <summary>The theme switch wave (ADR-025, point 10)</summary>
+          <p>
+            A change of the colourway or the appearance does not just snap. <code>ThemeTransitionProvider</code> takes a picture of the whole app with Skia <code>makeImageFromView</code>, draws it over every screen, then switches the theme under the picture.
+            A wave of sudoku cells rises from the bottom row to the top row (700 ms). Each cell grows solid, erases its rectangle from the picture, and fades to show the live new theme.
+            The cells are the splash cells (<code>SplashCells</code>) in the colours of the <em>new</em> theme, read from <code>THEMES[next]</code>, because the effect draws before the switch is final.
+          </p>
+          <p>
+            The wave waits until the screens have rendered the new theme (a Skia surface takes the new colours only in a render), at most 250 ms. The overlay takes no touch.
+          </p>
+        </details>
+
+        <details class="deep">
+          <summary>ADR-031: display grids and fill colours</summary>
+          <p>
+            The game grid cell reads no theme hook. Its fills come from Unistyles styles. But a small <em>display grid</em>, such as the assist preview, crossfades its fill layers. Those layers need plain colour values, so <code>displayFill</code> gives them from <code>useUnistyles()</code>.
+            The values are the same tokens. The interactive grid does not change.
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The developer adds a fourth colourway, "Plum". Which file does a <em>component</em> need to change?</p>
+          <div class="options">
+            <button>Every <code>*.styles.ts</code> file, to add the Plum colours</button>
+            <button>The cell and the keypad, because they use the most colours</button>
+            <button data-correct>None. Components read tokens, so the new theme folder and the registry lines are enough</button>
+          </div>
+          <p class="explain">
+            Components read semantic tokens such as <code>colors.accent</code>. A new colourway is a new <code>palette.ts</code>, a builder call and a few registry lines.
+          </p>
+        </div>
+
+        <!-- ============ 13 MOTION ============ -->
+        <h2 id="motion-and-haptics">Motion: pulses, haptics and the card tilt</h2>
+
+        <h3>The problem</h3>
+        <p>
+          A game feels good when it answers your finger. A correct number should feel different from a wrong one. A finished row should feel like a small win. But motion costs battery, can make some players sick,
+          and must never block play.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a drop in a pond</span>
+          A <strong>pulse</strong> is a ripple. The cell you touched is the drop. The ripple spreads cell by cell. Cells far away move later.
+        </div>
+
+        <h3>Pulses</h3>
+        <p>
+          A correct number can complete a row, a column, a box, all nine copies of a digit, or the whole grid. The core reports this in <code>Completion</code>
+          (<code>{ rows, columns, boxes, digits, grid }</code>). The app turns it into delays:
+        </p>
+        <ul>
+          <li><code>pulsedCells(board, completed)</code> collects the cells of every completed unit. For a digit it uses the <em>solution</em>, so a wrong copy never pulses.</li>
+          <li>
+            <code>pulseDelays(board, move, stepMs)</code> gives each cell a delay of <code>steps × stepMs</code>. The <em>steps</em> are the Manhattan distance (rows plus columns) from the cell of the move. The longest way is 16 steps, from one corner to the other.
+            A cell outside the pulse gets <code>NO_PULSE</code> (-1).
+          </li>
+          <li>The look (<code>stepMs</code>, wave time, pop time, strength) comes from theme tokens (<code>motion.pulseStep</code>, <code>components.pulse</code>), so a colourway can tune it.</li>
+        </ul>
+        <p>Try it. Click a cell to choose the origin. Then pick what completed.</p>
+
+        <div class="figure" id="pulse-demo">
+          <div>
+            <div class="segmented" id="pulse-kind" role="group" aria-label="What completed"></div>
+          </div>
+          <div class="demo-wrap">
+            <div class="board demo-board" id="pulse-board" role="grid" aria-label="Pulse playground"></div>
+            <div class="state-panel">
+              <h4>Delays (ms)</h4>
+              <pre id="pulse-info">Click a cell.</pre>
+              <p class="tl-note">The number is the delay of each cell: distance from the origin × 45 ms. The real step comes from the theme token.</p>
+            </div>
+          </div>
+        </div>
+
+        <h3>Haptics: one move, one haptic</h3>
+        <p>
+          <code>hapticOf(move, lost)</code> in <code>useMoveHaptics.ts</code> picks the strongest haptic that fits a move. It checks in this order, so two taps never blur:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Check, in order</th><th>Haptic</th><th>iOS feedback</th></tr></thead>
+            <tbody>
+              <tr><td>A mistake. The third one ends the game</td><td><code>warning</code>, or <code>error</code> if lost</td><td>notification</td></tr>
+              <tr><td>The grid is complete</td><td><code>success</code></td><td>notification</td></tr>
+              <tr><td>A row, column, box or digit completed</td><td><code>thud</code></td><td>medium impact</td></tr>
+              <tr><td>A normal number</td><td><code>tap</code></td><td>light impact</td></tr>
+              <tr><td>A hint fill</td><td><code>soft</code></td><td>soft impact</td></tr>
+              <tr><td>A note, a clear, an erase, an undo</td><td><code>tick</code></td><td>selection</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>useHaptics().play(name)</code> checks the haptics switch in Settings. The hook <code>useMoveHaptics</code> runs an effect on the <code>move</code> record, which grows its <code>id</code> by one per move.
+          That is how the same kind of move twice still plays twice. A phone without a haptic engine rejects the call, and <code>playHaptic</code> swallows the rejection.
+        </p>
+        <div class="callout rule">
+          <span class="callout-title">Reduce Motion</span>
+          When iOS "Reduce Motion" is on: fades stay, slides, scales and the shake go. No pulse animation plays, and the finish card shows at once. <strong>Haptics stay on</strong>, because Reduce Motion is not a haptics switch.
+          Only the haptics switch in Settings turns them off (game-screen concept).
+        </div>
+
+        <h3>Cell marks</h3>
+        <p>
+          Some moves also mark the cell. <code>mark.constants.ts</code> holds the numbers: the mistake <strong>shake</strong> (steps of -3, 3, -2, 2, 0 points, 48 ms each), the hint <strong>glow</strong> (peak 0.35) and the undo <strong>flash</strong> (peak 0.22, quieter on purpose).
+          A key that becomes complete grows 12 percent and fades (<code>KEY_DONE</code>, 500 ms).
+          The grid also sweeps its digits in from the top left to the bottom right when it appears (<code>useGridIntro</code>, 28 ms per diagonal).
+        </p>
+
+        <h3>The finish card tilts (ADR-017)</h3>
+        <p>
+          The card reads the phone's rotation with Reanimated <code>useAnimatedSensor(SensorType.ROTATION)</code>. The first reading is the rest position. The card then turns by the <em>change</em> from it.
+          A change of <code>TILT_RANGE = 0.35</code> radians tilts the card fully: <code>MAX_ROTATE_X = 8</code> degrees and <code>MAX_ROTATE_Y = 10</code> degrees, with a perspective of 900 points.
+          A shine streak and a glare spot move with it. The glare moves 1.6 times as far (<code>SPOT_PARALLAX</code>) because it is the light itself. On iOS the device attitude needs no permission.
+          With Reduce Motion on, the card does not read the sensor at all. <code>tilt.utils.ts</code> holds the math as a pure function, so a test checks it without a phone.
+        </p>
+
+        <h3>The scan effects (ADR-014)</h3>
+        <p>
+          The camera screen has its own animation engine. Each <strong>effect</strong> is a module with three worklets (<code>create</code>, <code>step</code>, <code>draw</code>). One engine, <code>EffectCanvas</code>, runs one frame callback and records one Skia picture per frame.
+          A shader effect is a Skia runtime shader written in SkSL. In a development build, a pill on the camera screen switches effects at once. A release build runs only the default one.
+          <a href="04-scan-pipeline.html">Chapter 4</a> shows where the effects sit in the scan.
+        </p>
+        <div class="callout warn">
+          <span class="callout-title">Pitfall: worklets capture early</span>
+          A <span class="term" data-def="A small JavaScript function that Reanimated copies to the UI thread so it runs without waiting for the JavaScript thread.">worklet</span> captures the values outside it when it is <em>defined</em>.
+          A helper declared further down the file is still <code>undefined</code> inside the worklet. Put helpers and constants <em>above</em> the worklet. An imported value is always safe (<code>mobile/AGENTS.md</code>).
+        </div>
+
+        <!-- ============ 14 SPLASH ============ -->
+        <h2 id="splash">The animated splash</h2>
+
+        <h3>The problem</h3>
+        <p>
+          iOS shows a launch screen while the app loads. That screen is a static picture. The app wants a short animation of its own, but the native layer cannot read the saved theme, and the first frame
+          must match the native one, or the player sees a flash.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a curtain</span>
+          The native splash is a closed white curtain. The overlay is a second curtain in the same white, in front of it. The first one lifts unseen. The second then plays the show, and rises when the home screen is ready.
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 800 330" role="img" aria-label="Timeline of the splash. Intro: a hold of 250 ms and the letters of Sudoku until 925 ms. Exit: the word rises and fades for 600 ms, the wave of cells rises about 940 ms, the ground clears from 246 to 950 ms. The exit starts when the intro is done and the home is ready, or after 3 seconds.">
+            <text class="label" x="10" y="26">Intro (runs at once)</text>
+            <rect class="box muted" x="130" y="40" width="150" height="34" rx="6" />
+            <text class="sublabel" x="205" y="62" text-anchor="middle">hold 0 to 250 ms</text>
+            <rect class="box blue" x="280" y="40" width="405" height="34" rx="6" />
+            <text class="sublabel" x="482" y="62" text-anchor="middle">"Sudoku" letters rise, 45 ms apart, until 925 ms</text>
+            <path class="edge dashed" d="M685,80 L685,128" />
+            <text class="sublabel" x="696" y="106">intro done</text>
+            <rect class="box accent" x="300" y="100" width="160" height="30" rx="15" />
+            <text class="sublabel" x="380" y="120" text-anchor="middle">+ home ready</text>
+            <text class="sublabel" x="470" y="120">or after 3 s</text>
+
+            <text class="label" x="10" y="176">Exit (starts at 0)</text>
+            <rect class="box amber" x="130" y="190" width="360" height="30" rx="6" />
+            <text class="sublabel" x="310" y="210" text-anchor="middle">word rises 40 pt and fades: 0 to 600 ms</text>
+            <rect class="box green" x="130" y="228" width="564" height="30" rx="6" />
+            <text class="sublabel" x="412" y="248" text-anchor="middle">wave of cells, bottom row to top row: about 940 ms</text>
+            <rect class="box violet" x="278" y="266" width="422" height="30" rx="6" />
+            <text class="sublabel" x="489" y="286" text-anchor="middle">ground clears with a gradient edge: 246 to 950 ms</text>
+            <path class="edge" d="M130,310 L700,310" />
+            <text class="sublabel" x="130" y="326">0</text>
+            <text class="sublabel" x="690" y="326">about 950 ms</text>
+          </svg>
+          <figcaption>Times are the constants in <code>splash/constants/splash.constants.ts</code>. Time runs left to right at the same scale in each lane.</figcaption>
+        </figure>
+
+        <h3>The parts</h3>
+        <ul>
+          <li><strong><code>SplashProvider</code></strong> owns the phase: <code>intro</code>, <code>exit</code> or <code>done</code>. It calls <code>SplashScreen.preventAutoHideAsync()</code> in the global scope to keep the native splash until the overlay is ready.</li>
+          <li>
+            <strong><code>SplashRouteReady</code></strong> sits in the root layout. It calls <code>useSplashReady(usePathname() !== '/')</code>: the splash is "ready" as soon as the route is not Home, or when Home itself reports ready. A deep link that opens another screen first has no Home signal.
+          </li>
+          <li><strong>The exit</strong> starts when <code>ready &amp;&amp; introDone</code>. A timer of <code>MAX_WAIT_MS</code> (3 s) calls <code>markReady</code> as a safety net. A stuck screen cannot hold the splash forever.</li>
+          <li><strong><code>SplashOverlay</code></strong> has two parts: <code>SplashWord</code> (the six letters, in the title font of the saved theme, at twice the title size) and <code>SplashCells</code> (the wave, drawn with Skia). Its <code>pointerEvents</code> is <code>none</code>: touches fall through to the screen below.</li>
+          <li><strong>The digits</strong> in the wave (29 percent of the cells) follow a valid sudoku pattern. A tiny joke for people who look closely.</li>
+          <li><strong>Reduce Motion:</strong> the phase is <code>done</code> from the start. No overlay draws. The native splash hides when the home is ready.</li>
+          <li><strong>The colours.</strong> The first frame of the overlay is white, like the native splash (ADR-025). It fades inside the 250 ms hold to the page colour of the saved look. After that, the word and cells use <code>colors.text</code>, <code>colors.accent</code> and <code>colors.line</code> of the saved theme.</li>
+        </ul>
+
+        <p>The same cells draw the wave of the theme switch. One component, two jobs.</p>
+
+        <div class="callout why">
+          <span class="callout-title">Why not a video or a Lottie file?</span>
+          The animation uses the same cell grid as the game, so it can follow every colourway and respond to Reduce Motion. A video would not change colour and would add weight to the app.
+          The still icon is separate: it is cobalt in every colourway because an icon is a fixed image (ADR-025 point 9).
+        </div>
+
+        <!-- ============ 15 TRANSLATIONS ============ -->
+        <h2 id="translations">Translations</h2>
+
+        <h3>The problem</h3>
+        <p>
+          The developer is from Flanders. The app should speak English and Dutch, and a third language should not need a rewrite. The hardest part is not the words. It is plurals ("1 hint", "2 hints"),
+          dates, and the hint text that the sudoku engine writes.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy: a phrase book</span>
+          Code never says "Paused". It says "look up <code>game.pause.title</code>". Each language has its own phrase book. The book for the chosen language answers.
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 800 230" role="img" aria-label="A component calls intl.formatMessage with an id and values. The provider picks the English or Dutch catalogue by the language setting. The ICU message formats the plural and returns text.">
+            <defs>
+              <marker id="c3-a12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="10" y="20" width="220" height="70" rx="10" />
+            <text class="label mono" x="120" y="46" text-anchor="middle">formatMessage(</text>
+            <text class="sublabel mono" x="120" y="64" text-anchor="middle">{ id: 'finish.hints' },</text>
+            <text class="sublabel mono" x="120" y="80" text-anchor="middle">{ count: 1 })</text>
+            <rect class="box blue" x="280" y="20" width="220" height="70" rx="10" />
+            <text class="label" x="390" y="46" text-anchor="middle">I18nProvider</text>
+            <text class="sublabel" x="390" y="64" text-anchor="middle">language setting:</text>
+            <text class="sublabel" x="390" y="80" text-anchor="middle">system | en | nl</text>
+            <rect class="box green" x="550" y="20" width="240" height="70" rx="10" />
+            <text class="label" x="670" y="46" text-anchor="middle">en.ts or nl.ts</text>
+            <text class="sublabel" x="670" y="64" text-anchor="middle">one flat object:</text>
+            <text class="sublabel" x="670" y="80" text-anchor="middle">id to ICU message</text>
+            <path class="edge" d="M230,55 L278,55" marker-end="url(#c3-a12)" />
+            <path class="edge" d="M500,55 L548,55" marker-end="url(#c3-a12)" />
+            <rect class="box" x="10" y="130" width="780" height="80" rx="10" />
+            <text class="sublabel mono" x="26" y="156">en: 'finish.hints': '{count} hints'</text>
+            <text class="sublabel mono" x="26" y="178">nl: 'finish.hints': '{count, plural, one {# hint} other {# hints}}'</text>
+            <text class="sublabel" x="26" y="200">the ICU plural gives "1 hint" or "2 hints". The catalogue is the only place with player text.</text>
+            <path class="edge" d="M670,90 L670,128" marker-end="url(#c3-a12)" />
+          </svg>
+          <figcaption>The two catalogues are in <code>mobile/src/i18n/messages/</code>.</figcaption>
+        </figure>
+
+        <h3>How it holds together (ADR-033)</h3>
+        <ul>
+          <li><strong>FormatJS (<code>react-intl</code>).</strong> Messages use ICU syntax, with <code>{count, plural, one {#} other {#}}</code> for plurals.</li>
+          <li><strong>Typed ids.</strong> An id is <code>&lt;feature&gt;.&lt;part&gt;.&lt;name&gt;</code>, such as <code>settings.language.title</code>. An unknown id fails <code>just typecheck</code>. <code>nl.ts</code> has the type <code>Record&lt;MessageId, string&gt;</code>, so a missing Dutch message fails the build.</li>
+          <li><strong>One word, one meaning, per language.</strong> The glossary is the English dictionary. <code>nl.words.md</code> is the Dutch one: Dutch of Flanders.</li>
+          <li><strong>The language setting.</strong> <code>app.language</code> holds <code>system</code>, <code>en</code> or <code>nl</code>. <code>system</code> reads the iOS preferred languages with <code>expo-localization</code> and takes the first one the app has (<code>resolveLocale</code>). The formatting locale is the device tag when its language fits (<code>nl-NL</code>), else <code>en-GB</code> or <code>nl-BE</code>.</li>
+          <li><strong>Hermes polyfills.</strong> <code>i18n/polyfills.ts</code> loads first (in <code>mobile/index.ts</code>). It adds <code>Intl.Locale</code> and <code>PluralRules</code> only when the runtime lacks them. The app uses no <code>Intl</code> API that Hermes lacks (<code>RelativeTimeFormat</code>, <code>ListFormat</code>, <code>formatToParts</code>). "5 min ago" is an ICU plural.</li>
+          <li>
+            <strong>The engine writes ids, not text.</strong> The hint code in the core returns <code>{ id, values }</code> from <code>hintMessage(plan, step, rung)</code>. A value is a number or a typed part (a cell, a unit, a list of digits). The app formats each part from the catalogue. The core holds no player text, so it stays free of the app (SUD-04). A cell reads "row 4, column 9" or "rij 4, kolom 9", never "r4c9" (ADR-032). See <a href="02-sudoku-engine.html">chapter 2</a>.
+          </li>
+          <li><strong>iOS texts</strong> (the camera permission text) cannot use <code>react-intl</code>. Expo <code>locales</code> in <code>app.json</code> gives a Dutch version.</li>
+        </ul>
+        <div class="callout rule">
+          <span class="callout-title">Lint rule: no literal text</span>
+          <code>sudoku/no-literal-text</code> in <code>just lint</code> refuses JSX text with letters, strings in <code>label</code>, <code>title</code>, <code>accessibilityLabel</code>, <code>placeholder</code> and <code>Alert.alert</code>.
+          Log text, test ids and storage keys stay English. A util never calls <code>useIntl</code>: it gets a <code>Formatter</code> as a parameter (see <code>finishView(intl, ...)</code>). That is why utils stay pure and testable.
+        </div>
+
+        <!-- ============ 16 STATS ============ -->
+        <h2 id="stats">Player stats and how they read the history</h2>
+
+        <h3>The problem</h3>
+        <p>
+          "My best Hard time", "my win rate", "my streak". These numbers come from the history of all finished games. Computing them in every screen would repeat SQL and
+          would risk two screens that disagree.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 800 270" role="img" aria-label="The game_history table feeds StatsRepository. Its summary, byLevel and recentTimes use SQL aggregates. The streak reads win times and the core computeStreak groups them by day in the time zone of the device. The useStats hook reads all four at once for the StatsScreen. The Home stats card reads summary and streak.">
+            <defs>
+              <marker id="c3-a13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box green" x="10" y="90" width="150" height="70" rx="10" />
+            <text class="label mono" x="85" y="118" text-anchor="middle">game_history</text>
+            <text class="sublabel" x="85" y="138" text-anchor="middle">won, lost, abandoned</text>
+
+            <rect class="box blue" x="210" y="20" width="250" height="230" rx="10" />
+            <text class="label" x="335" y="44" text-anchor="middle">StatsRepository</text>
+            <g class="mono sublabel">
+              <text x="226" y="76">summary(level|null, filter)</text>
+              <text x="226" y="100">byLevel(filter)</text>
+              <text x="226" y="124">recentTimes(level, n, filter)</text>
+              <text x="226" y="148">streak(timeZone, filter)</text>
+            </g>
+            <text class="sublabel" x="226" y="182">the first three are SQL aggregates</text>
+            <text class="sublabel" x="226" y="202">the streak asks the core:</text>
+            <text class="sublabel mono" x="226" y="222">computeStreak(wins, zone)</text>
+
+            <rect class="box violet" x="510" y="20" width="280" height="100" rx="10" />
+            <text class="label" x="650" y="46" text-anchor="middle">useStats(includeScanned)</text>
+            <text class="sublabel" x="650" y="66" text-anchor="middle">reads all numbers at once</text>
+            <text class="sublabel" x="650" y="84" text-anchor="middle">keeps old numbers while loading</text>
+            <text class="sublabel" x="650" y="102" text-anchor="middle">then StatsScreen draws them</text>
+
+            <rect class="box amber" x="510" y="150" width="280" height="100" rx="10" />
+            <text class="label" x="650" y="176" text-anchor="middle">loadHomeStats</text>
+            <text class="sublabel" x="650" y="196" text-anchor="middle">win rate, played, current streak</text>
+            <text class="sublabel" x="650" y="214" text-anchor="middle">for the card on Home</text>
+
+            <path class="edge" d="M160,125 L208,125" marker-end="url(#c3-a13)" />
+            <path class="edge" d="M460,70 L508,70" marker-end="url(#c3-a13)" />
+            <path class="edge" d="M460,200 L508,200" marker-end="url(#c3-a13)" />
+          </svg>
+          <figcaption>Screens call the interface. They never write SQL.</figcaption>
+        </figure>
+
+        <h3>The rules (ADR-023)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Stat</th><th>Rule</th></tr></thead>
+            <tbody>
+              <tr><td>Played</td><td>Won and lost games. An abandoned game is a separate count.</td></tr>
+              <tr><td>Win rate</td><td>Won divided by played. <code>null</code> when nothing was played.</td></tr>
+              <tr><td>Best time</td><td>The shortest time of a won <em>generated</em> game with no hints. The SQL: <code>MIN(CASE WHEN result = 'won' AND hints_used = 0 AND source = 'generated' THEN played_ms END)</code>.</td></tr>
+              <tr><td>Average time</td><td>The mean of the same games. A level has an average only when it has a best time.</td></tr>
+              <tr><td>Flawless win</td><td>A won game with zero mistakes and zero hints.</td></tr>
+              <tr><td>Day streak</td><td>Days in a row with at least one win, in the time zone of the device. It stays alive until the end of the next day.</td></tr>
+              <tr><td>Scanned games</td><td>Off by default (<code>includeScanned</code>). A scanned level is an estimate. When on, they count in everything <em>except</em> the best and the average time.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul>
+          <li>
+            <strong>Abandoned.</strong> A game is <code>abandoned</code> when a new game replaces it (see the persistence section). A game with no moves writes no entry: opening a puzzle and leaving does not count. <code>hasMoves</code> in the core says what a move is: an undo step, a mistake or a hint. Selecting a cell is not a move.
+          </li>
+          <li>
+            <strong>The filter.</strong> <code>StatsFilter = { includeScanned, owner }</code>. Only the entries of the <code>owner</code> count: a Clerk user ID, or <code>null</code> for games finished while signed out. Each device keeps its own stats after the sync (SUD-01).
+          </li>
+          <li>
+            <strong>Why the streak is in the core.</strong> SQLite has no time zones. <code>computeStreak</code> in <code>@sudoku/core</code> groups the win times by day. Every implementation, SQLite and in-memory, uses the same function.
+          </li>
+          <li>
+            <strong>One contract test.</strong> <code>describeStats.testkit.ts</code> is the one place that states the numbers for a known history. The SQLite repository and the in-memory fake both must pass it.
+          </li>
+          <li>
+            <strong>The stats refresh after a sync.</strong> The route <code>app/stats.tsx</code> passes <code>refreshKey={revision}</code> from <code>useSync()</code>. A new key makes <code>useStats</code> read again, so entries from another device show up. The sync is described in <a href="06-backend-and-sync.html">chapter 6</a>.
+          </li>
+          <li><strong>Reset (development only).</strong> A "Reset stats" button shows when <code>isDevelopmentVariant()</code> is true. The production app has no way to delete the history.</li>
+        </ul>
+
+        <!-- ============ 17 VARIANTS ============ -->
+        <h2 id="app-variants">App variants (ADR-022)</h2>
+        <p>
+          The developer has two copies of the app on the same iPhone: one to play, one to test. They must not share data or icons, and the developer must see which is which.
+        </p>
+        <div class="grid-2">
+          <div class="card">
+            <h4>Development</h4>
+            <ul>
+              <li>Name "Sudoku Dev"</li>
+              <li>Bundle id with <code>.dev</code> at the end</li>
+              <li>URL scheme <code>sudoku-dev</code></li>
+              <li>Icons with a DEV ribbon</li>
+              <li>Effect lab pill, reset stats, measure logs</li>
+              <li><code>just ios-dev &lt;UDID&gt;</code></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Production</h4>
+            <ul>
+              <li>Name "Sudoku"</li>
+              <li>The plain bundle id</li>
+              <li>Release build</li>
+              <li>No lab, no reset</li>
+              <li>Backend values from <code>PRODUCTION_BACKEND</code>. With a null key, the account section and the sync are off</li>
+              <li><code>just ios-release &lt;UDID&gt;</code></li>
+            </ul>
+          </div>
+        </div>
+        <p>
+          <code>app.json</code> holds the production config. <code>app.config.ts</code> reads the environment variable <code>APP_VARIANT</code>. Unset or empty means development. An unknown value stops the build.
+          The app asks <code>isDevelopmentVariant()</code> (it reads <code>Constants.expoConfig.extra.appVariant</code>). The icons are drawn from one 100 x 100 design by <code>just icons</code>. Change the design in <code>tools/icons/geometry.mjs</code>, never in the PNGs.
+        </p>
+
+        <div class="callout why">
+          <span class="callout-title">Why two different bundle ids?</span>
+          iOS treats an app with another bundle id as another app. So the development copy has its own database, its own settings and its own sign-in. A test build can never damage the games of the production copy.
+        </div>
+
+        <!-- ============ SUMMARY ============ -->
+        <h2 id="recap">Recap</h2>
+        <div class="grid-3">
+          <div class="card"><h4>Shape</h4><p>Expo and React Native run TypeScript. Routes are thin files. Features sit in their own folders and do not import each other.</p></div>
+          <div class="card"><h4>Game</h4><p>Core rules are pure. The session wraps them with notes mode, a clock and saves. React only listens through <code>useSyncExternalStore</code>.</p></div>
+          <div class="card"><h4>Data</h4><p>SQLite holds one game in progress and the history. Repositories hide the SQL. A save queue keeps writes few and in order.</p></div>
+          <div class="card"><h4>Look</h4><p>Tokens, not colours. Three palettes make six themes. A wave of cells switches theme.</p></div>
+          <div class="card"><h4>Feel</h4><p>One haptic per move. Pulses spread by distance. Reduce Motion drops the movement, not the haptics.</p></div>
+          <div class="card"><h4>Words</h4><p>Every text is an id in a catalogue. The engine returns ids with values. A lint rule enforces it.</p></div>
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A new feature needs a function that both the <code>home</code> folder and the <code>stats</code> folder use. Where does it go?</p>
+          <div class="options">
+            <button>In <code>src/home/utils/</code>, and <code>stats</code> imports it from there</button>
+            <button data-correct>In <code>src/utils/</code> (or <code>src/components/</code>, <code>src/hooks/</code> for UI), which both features may import</button>
+            <button>Copy it into both folders so they stay apart</button>
+          </div>
+          <p class="explain">
+            Features do not import sibling features (rule 9). Code that more than one feature uses moves to the shared folders. Copying would give two versions that drift apart.
+          </p>
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The app is in the background for 30 seconds while the player plays. Then iOS freezes JavaScript, and the app comes back. How much time does the first clock report add?</p>
+          <div class="options">
+            <button>30 seconds, because that is the real time that passed</button>
+            <button>Zero, because the clock was off</button>
+            <button data-correct>At most 2 seconds (<code>MAX_ELAPSED_MS</code>), and normally none because <code>background()</code> already paused the game</button>
+          </div>
+          <p class="explain">
+            <code>background()</code> flushes the time, pauses the game and saves. A paused game ignores ticks. The 2 second cap is a second guard for the case that JavaScript was frozen before the pause ran.
+          </p>
+        </div>
+
+        <h2 id="where-to-read-more">Where to read more</h2>
+        <ul>
+          <li><a href="../../mobile/AGENTS.md">mobile/AGENTS.md</a>: the rules of the Expo app, the folder layout and the import rules</li>
+          <li><a href="../architecture/00-concepts/game-screen.md">Game screen concept</a>: the states, the pulses, the feedback table, the hint card</li>
+          <li><a href="../architecture/00-concepts/splash-screen.md">Splash screen concept</a></li>
+          <li><a href="../architecture/adr/adr-012-local-persistence.md">ADR-012 local persistence</a> and <a href="../architecture/adr/adr-023-player-stats.md">ADR-023 player stats</a></li>
+          <li><a href="../architecture/adr/adr-014-overlay-effects.md">ADR-014 overlay effects</a> and <a href="../architecture/adr/adr-017-card-motion-sensor.md">ADR-017 card motion sensor</a></li>
+          <li><a href="../architecture/adr/adr-015-theming.md">ADR-015 theming</a>, <a href="../architecture/adr/adr-021-four-themes.md">ADR-021</a>, <a href="../architecture/adr/adr-025-opart-colourways.md">ADR-025 colourways</a>, <a href="../architecture/adr/adr-026-appearance.md">ADR-026 appearance</a> and <a href="../architecture/adr/adr-031-display-grid-fill-colours.md">ADR-031</a></li>
+          <li><a href="../architecture/adr/adr-016-navigation.md">ADR-016 navigation</a>, <a href="../architecture/adr/adr-022-app-variants.md">ADR-022 app variants</a>, <a href="../architecture/adr/adr-024-animated-splash.md">ADR-024 animated splash</a>, <a href="../architecture/adr/adr-033-translations.md">ADR-033 translations</a></li>
+          <li><a href="../architecture/12-glossary.md">The glossary</a></li>
+          <li>Next: <a href="04-scan-pipeline.html">Chapter 4, scanning a paper sudoku</a>. Earlier: <a href="02-sudoku-engine.html">Chapter 2, the sudoku engine</a>. Later: <a href="06-backend-and-sync.html">Chapter 6, backend and sync</a>.</li>
+        </ul>
+        <!-- guide.js appends the "mark as read" button and the previous / next links. -->
+      </main>
+    </div>
+    <script>
+      ;(function () {
+        'use strict'
+
+        /* ---------- 1. The mini reducer demo ---------- */
+        var GIVENS = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
+        var SOLUTION = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+        var MAX_MISTAKES = 3
+
+        function peersOf(cell) {
+          var r = Math.floor(cell / 9)
+          var c = cell % 9
+          var br = r - (r % 3)
+          var bc = c - (c % 3)
+          var out = []
+          for (var i = 0; i < 81; i++) {
+            var ir = Math.floor(i / 9)
+            var ic = i % 9
+            if (i !== cell && (ir === r || ic === c || (ir >= br && ir < br + 3 && ic >= bc && ic < bc + 3))) out.push(i)
+          }
+          return out
+        }
+        var PEERS = []
+        for (var p = 0; p < 81; p++) PEERS.push(peersOf(p))
+
+        function newSession() {
+          var entries = []
+          var notes = []
+          for (var i = 0; i < 81; i++) {
+            entries.push(0)
+            notes.push([])
+          }
+          return {
+            game: { entries: entries, notes: notes, selected: null, mistakes: 0, status: 'playing', undoSteps: [] },
+            notesMode: false,
+          }
+        }
+
+        function isGiven(cell) {
+          return GIVENS[cell] !== '0'
+        }
+        function editable(game) {
+          if (game.status !== 'playing' || game.selected === null || isGiven(game.selected)) return null
+          return game.selected
+        }
+        function withUndo(game) {
+          return game.undoSteps.concat([{ entries: game.entries, notes: game.notes }])
+        }
+        function copyWith(arr, i, v) {
+          var c = arr.slice()
+          c[i] = v
+          return c
+        }
+
+        // The same idea as the core: each function returns the SAME object when nothing changes.
+        function coreSelect(game, cell) {
+          if (game.status !== 'playing' || game.selected === cell) return game
+          return Object.assign({}, game, { selected: cell })
+        }
+        function corePlace(game, digit) {
+          var cell = editable(game)
+          if (cell === null) return game
+          if (game.entries[cell] === digit) {
+            return Object.assign({}, game, { entries: copyWith(game.entries, cell, 0), undoSteps: withUndo(game) })
+          }
+          var peers = PEERS[cell]
+          var notes = game.notes.map(function (n, i) {
+            if (i === cell) return []
+            return peers.indexOf(i) >= 0 ? n.filter(function (d) { return d !== digit }) : n
+          })
+          var next = Object.assign({}, game, {
+            entries: copyWith(game.entries, cell, digit),
+            notes: notes,
+            undoSteps: withUndo(game),
+          })
+          if (String(digit) !== SOLUTION[cell]) {
+            var mistakes = game.mistakes + 1
+            next.mistakes = mistakes
+            if (mistakes >= MAX_MISTAKES) next.status = 'lost'
+            return next
+          }
+          var solved = next.entries.every(function (d, i) { return isGiven(i) || String(d) === SOLUTION[i] })
+          if (solved) next.status = 'won'
+          return next
+        }
+        function coreToggleNote(game, digit) {
+          var cell = editable(game)
+          if (cell === null || game.entries[cell] !== 0) return game
+          var cur = game.notes[cell]
+          var nn = cur.indexOf(digit) >= 0
+            ? cur.filter(function (d) { return d !== digit })
+            : cur.concat([digit]).sort()
+          return Object.assign({}, game, { notes: copyWith(game.notes, cell, nn), undoSteps: withUndo(game) })
+        }
+        function coreErase(game) {
+          var cell = editable(game)
+          if (cell === null || (game.entries[cell] === 0 && game.notes[cell].length === 0)) return game
+          return Object.assign({}, game, {
+            entries: copyWith(game.entries, cell, 0),
+            notes: copyWith(game.notes, cell, []),
+            undoSteps: withUndo(game),
+          })
+        }
+        // Undo restores entries and notes only. Mistakes and selection stay.
+        function coreUndo(game) {
+          var step = game.undoSteps[game.undoSteps.length - 1]
+          if (game.status !== 'playing' || !step) return game
+          return Object.assign({}, game, {
+            entries: step.entries,
+            notes: step.notes,
+            undoSteps: game.undoSteps.slice(0, -1),
+          })
+        }
+
+        function withGame(session, game) {
+          return game === session.game ? session : Object.assign({}, session, { game: game })
+        }
+        function reduceSession(session, action) {
+          switch (action.type) {
+            case 'select':
+              return withGame(session, coreSelect(session.game, action.cell))
+            case 'digit':
+              return session.notesMode
+                ? withGame(session, coreToggleNote(session.game, action.digit))
+                : withGame(session, corePlace(session.game, action.digit))
+            case 'erase':
+              return withGame(session, coreErase(session.game))
+            case 'undo':
+              return withGame(session, coreUndo(session.game))
+            case 'toggleNotesMode':
+              return session.game.status === 'playing'
+                ? Object.assign({}, session, { notesMode: !session.notesMode })
+                : session
+            default:
+              return session
+          }
+        }
+
+        var boardEl = document.getElementById('demo-board')
+        var keysEl = document.getElementById('demo-keys')
+        var stateEl = document.getElementById('demo-state')
+        var logEl = document.getElementById('demo-log')
+        var undoBtn = document.getElementById('demo-undo')
+        var eraseBtn = document.getElementById('demo-erase')
+        var notesBtn = document.getElementById('demo-notes')
+        var resetBtn = document.getElementById('demo-reset')
+
+        if (boardEl && keysEl) {
+          var session = newSession()
+          var counter = 0
+          var log = []
+          var cells = []
+
+          for (var i = 0; i < 81; i++) {
+            var cell = document.createElement('div')
+            cell.className = 'cell'
+            cell.setAttribute('role', 'gridcell')
+            cell.setAttribute('tabindex', i === 0 ? '0' : '-1')
+            cell.dataset.i = String(i)
+            var num = document.createElement('span')
+            var notesBox = document.createElement('div')
+            notesBox.className = 'notes'
+            for (var k = 1; k <= 9; k++) {
+              var sp = document.createElement('span')
+              sp.dataset.d = String(k)
+              notesBox.appendChild(sp)
+            }
+            cell.appendChild(num)
+            cell.appendChild(notesBox)
+            boardEl.appendChild(cell)
+            cells.push({ el: cell, num: num, notes: notesBox })
+          }
+          for (var d = 1; d <= 9; d++) {
+            var key = document.createElement('button')
+            key.type = 'button'
+            key.textContent = String(d)
+            key.dataset.d = String(d)
+            key.setAttribute('aria-label', 'Key ' + d)
+            keysEl.appendChild(key)
+          }
+
+          var dispatch = function (action) {
+            var before = session
+            session = reduceSession(session, action)
+            counter += 1
+            log.unshift({ n: counter, action: action, same: session === before })
+            if (log.length > 8) log.pop()
+            render()
+          }
+
+          var render = function () {
+            var g = session.game
+            var sel = g.selected
+            var peerSet = sel === null ? [] : PEERS[sel]
+            for (var c = 0; c < 81; c++) {
+              var view = cells[c]
+              var el = view.el
+              var given = isGiven(c)
+              var value = given ? Number(GIVENS[c]) : g.entries[c]
+              var wrong = !given && value !== 0 && String(value) !== SOLUTION[c]
+              el.className = 'cell' +
+                (given ? ' given' : '') +
+                (!given && value !== 0 && !wrong ? ' mine' : '') +
+                (peerSet.indexOf(c) >= 0 ? ' peer' : '') +
+                (c === sel ? ' sel' : '') +
+                (wrong ? ' wrong' : '')
+              view.num.textContent = value === 0 ? '' : String(value)
+              var nn = g.notes[c]
+              var spans = view.notes.children
+              for (var s = 0; s < 9; s++) spans[s].textContent = value === 0 && nn.indexOf(s + 1) >= 0 ? String(s + 1) : ''
+              el.setAttribute('aria-selected', c === sel ? 'true' : 'false')
+            }
+            var filled = 0
+            for (var f = 0; f < 81; f++) if (g.entries[f] !== 0) filled += 1
+            stateEl.textContent =
+              'status      : ' + g.status + '\n' +
+              'selected    : ' + (g.selected === null ? 'null' : g.selected) + '\n' +
+              'notesMode   : ' + session.notesMode + '  (screen state)\n' +
+              'mistakes    : ' + g.mistakes + ' of ' + MAX_MISTAKES + '\n' +
+              'entries     : ' + filled + ' typed\n' +
+              'undoSteps   : ' + g.undoSteps.length
+            logEl.innerHTML = ''
+            log.forEach(function (item) {
+              var li = document.createElement('li')
+              var text = JSON.stringify(item.action)
+              li.appendChild(document.createTextNode('#' + item.n + ' ' + text + ' → '))
+              var tag = document.createElement('span')
+              tag.className = item.same ? 'same' : 'new'
+              tag.textContent = item.same ? 'same state' : 'new state'
+              li.appendChild(tag)
+              logEl.appendChild(li)
+            })
+            var playing = g.status === 'playing'
+            undoBtn.disabled = !(playing && g.undoSteps.length > 0)
+            eraseBtn.disabled = !playing
+            notesBtn.setAttribute('aria-pressed', String(session.notesMode))
+            notesBtn.textContent = 'Notes: ' + (session.notesMode ? 'on' : 'off')
+            if (g.status === 'lost') stateEl.textContent += '\n\nGAME OVER: three mistakes. Press New game.'
+            if (g.status === 'won') stateEl.textContent += '\n\nSOLVED. The finish card would show now.'
+          }
+
+          boardEl.addEventListener('click', function (event) {
+            var target = event.target.closest('.cell')
+            if (target) dispatch({ type: 'select', cell: Number(target.dataset.i) })
+          })
+          boardEl.addEventListener('keydown', function (event) {
+            var target = event.target.closest('.cell')
+            if (!target) return
+            var idx = Number(target.dataset.i)
+            var next = idx
+            if (event.key === 'ArrowRight') next = Math.min(80, idx + 1)
+            else if (event.key === 'ArrowLeft') next = Math.max(0, idx - 1)
+            else if (event.key === 'ArrowDown') next = Math.min(80, idx + 9)
+            else if (event.key === 'ArrowUp') next = Math.max(0, idx - 9)
+            else if (/^[1-9]$/.test(event.key)) {
+              dispatch({ type: 'digit', digit: Number(event.key) })
+              return
+            } else return
+            event.preventDefault()
+            cells[idx].el.setAttribute('tabindex', '-1')
+            cells[next].el.setAttribute('tabindex', '0')
+            cells[next].el.focus()
+            dispatch({ type: 'select', cell: next })
+          })
+          keysEl.addEventListener('click', function (event) {
+            var b = event.target.closest('button')
+            if (b) dispatch({ type: 'digit', digit: Number(b.dataset.d) })
+          })
+          undoBtn.addEventListener('click', function () { dispatch({ type: 'undo' }) })
+          eraseBtn.addEventListener('click', function () { dispatch({ type: 'erase' }) })
+          notesBtn.addEventListener('click', function () { dispatch({ type: 'toggleNotesMode' }) })
+          resetBtn.addEventListener('click', function () {
+            session = newSession()
+            counter = 0
+            log = []
+            render()
+          })
+          render()
+        }
+
+        /* ---------- 2. The look demo (palettes from the palette.ts files of mobile/src/theme/themes) ---------- */
+        var PALETTES = {
+          cobalt: { accent: '#1f3fd1', ink: '#0f1d5c', entry: '#2547f0', colourEntry: '#e0e7ff', tint300: '#c3cbef', tint200: '#d3d9f7', tint150: '#e3e8ff', tint100: '#eef1ff', danger: '#c4162a', dangerSurface: '#fde0e3' },
+          forest: { accent: '#14603c', ink: '#0a2a1a', entry: '#166a42', colourEntry: '#c9f6dc', tint300: '#b9cfc5', tint200: '#d0dfd8', tint150: '#e0eae6', tint100: '#edf3f0', danger: '#c4162a', dangerSurface: '#fde0e3' },
+          bordeaux: { accent: '#7b1631', ink: '#3a0b18', entry: '#a31d45', colourEntry: '#ffd9e4', tint300: '#d7b9c1', tint200: '#e5d0d6', tint150: '#eee1e4', tint100: '#f5eef0', danger: '#a83d06', dangerSurface: '#fde6d6' },
+        }
+
+        function hexToRgb(h) {
+          return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
+        }
+        function mix(a, b, t) {
+          var x = hexToRgb(a)
+          var y = hexToRgb(b)
+          var out = x.map(function (v, i) { return Math.round(v + (y[i] - v) * t) })
+          return '#' + out.map(function (v) { return ('0' + v.toString(16)).slice(-2) }).join('')
+        }
+
+        var lookBoard = document.getElementById('look-board')
+        if (lookBoard) {
+          var way = 'cobalt'
+          var appearancePref = 'light'
+          var wayBox = document.getElementById('look-way')
+          var appBox = document.getElementById('look-app')
+          var sysBox = document.getElementById('look-sys')
+          var sysWrap = document.getElementById('look-sys-wrap')
+          var resolvedEl = document.getElementById('look-resolved')
+          var nameEl = document.getElementById('look-name')
+          var swEl = document.getElementById('look-swatches')
+
+          var LOOK_ENTRIES = { 2: 4, 3: 5 }
+          var SELECTED = 4
+          var lcells = []
+          for (var q = 0; q < 81; q++) {
+            var lc = document.createElement('div')
+            lc.className = 'lc'
+            lookBoard.appendChild(lc)
+            lcells.push(lc)
+          }
+
+          var makeSeg = function (box, values, current, onPick) {
+            box.innerHTML = ''
+            values.forEach(function (v) {
+              var b = document.createElement('button')
+              b.type = 'button'
+              b.textContent = v.label
+              b.setAttribute('aria-pressed', String(v.id === current))
+              b.addEventListener('click', function () { onPick(v.id) })
+              box.appendChild(b)
+            })
+          }
+
+          var renderLook = function () {
+            var pal = PALETTES[way]
+            var scheme = sysBox.checked ? 'dark' : 'light'
+            var resolved = appearancePref === 'auto' ? (scheme === 'dark' ? 'colour' : 'light') : appearancePref
+            var colour = resolved === 'colour'
+            var page = mix(pal.accent, '#000000', 0.16)
+            var w = function (k) { return mix(page, '#ffffff', k) }
+            var look = colour
+              ? { page: page, text: '#ffffff', frame: w(0.9), line: w(0.3), peer: w(0.12), same: w(0.16), sel: w(0.28), entry: pal.colourEntry, bad: w(0.12), badtext: '#ffffff', hatch: 'rgba(255,255,255,0.2)' }
+              : { page: '#ffffff', text: pal.ink, frame: pal.accent, line: pal.tint200, peer: pal.tint100, same: pal.tint150, sel: pal.tint300, entry: pal.entry, bad: pal.dangerSurface, badtext: pal.danger, hatch: 'transparent' }
+            var st = lookBoard.style
+            st.setProperty('--look-page', look.page)
+            st.setProperty('--look-text', look.text)
+            st.setProperty('--look-frame', look.frame)
+            st.setProperty('--look-line', look.line)
+            st.setProperty('--look-peer', look.peer)
+            st.setProperty('--look-same', look.same)
+            st.setProperty('--look-sel', look.sel)
+            st.setProperty('--look-entry', look.entry)
+            st.setProperty('--look-bad', look.bad)
+            st.setProperty('--look-badtext', look.badtext)
+            st.setProperty('--look-hatch', look.hatch)
+            var peers = PEERS[SELECTED]
+            for (var c = 0; c < 81; c++) {
+              var el = lcells[c]
+              var cls = 'lc'
+              var text = ''
+              if (isGiven(c)) { cls += ' g'; text = GIVENS[c] }
+              else if (LOOK_ENTRIES[c] !== undefined) { cls += ' e'; text = String(LOOK_ENTRIES[c]) }
+              if (c === 3) cls += ' bad' + (colour ? ' hatch' : '')
+              else if (c === SELECTED) cls += ' sel'
+              else if (text === '7') cls += ' same'
+              else if (peers.indexOf(c) >= 0) cls += ' peer'
+              el.className = cls
+              el.textContent = text
+            }
+            makeSeg(wayBox, [{ id: 'cobalt', label: 'Cobalt' }, { id: 'forest', label: 'Forest' }, { id: 'bordeaux', label: 'Bordeaux' }], way, function (v) { way = v; renderLook() })
+            makeSeg(appBox, [{ id: 'light', label: 'Light' }, { id: 'colour', label: 'Colour' }, { id: 'auto', label: 'Auto' }], appearancePref, function (v) { appearancePref = v; renderLook() })
+            sysWrap.style.opacity = appearancePref === 'auto' ? '1' : '0.5'
+            resolvedEl.textContent = resolved + (appearancePref === 'auto' ? ' (from Auto and the iPhone scheme "' + scheme + '")' : '')
+            nameEl.textContent = colour ? way + '-colour' : way
+            var swatches = [
+              ['page', look.page], ['text', look.text], ['accent', colour ? '#ffffff' : pal.accent],
+              ['typed digit', look.entry], ['peer fill', look.peer], ['same number', look.same], ['selected', look.sel],
+              ['line', look.line], ['conflict', colour ? look.badtext : pal.danger],
+            ]
+            swEl.innerHTML = ''
+            swatches.forEach(function (s) {
+              var box = document.createElement('div')
+              box.className = 'swatch'
+              var chip = document.createElement('i')
+              chip.style.background = s[1]
+              box.appendChild(chip)
+              box.appendChild(document.createTextNode(s[0]))
+              box.appendChild(document.createElement('br'))
+              box.appendChild(document.createTextNode(s[1]))
+              swEl.appendChild(box)
+            })
+          }
+          sysBox.addEventListener('change', renderLook)
+          renderLook()
+        }
+
+        /* ---------- 3. The pulse demo ---------- */
+        var pulseBoard = document.getElementById('pulse-board')
+        if (pulseBoard) {
+          var STEP_MS = 45
+          var pKind = 'row'
+          var origin = 40
+          var pcells = []
+          var timers = []
+          var info = document.getElementById('pulse-info')
+          var kindBox = document.getElementById('pulse-kind')
+          var reduce = false
+          try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch (e) { reduce = false }
+
+          for (var z = 0; z < 81; z++) {
+            var pc = document.createElement('div')
+            pc.className = 'cell'
+            pc.dataset.i = String(z)
+            pc.setAttribute('role', 'gridcell')
+            pulseBoard.appendChild(pc)
+            pcells.push(pc)
+          }
+
+          var unitCells = function (kind, cell) {
+            var r = Math.floor(cell / 9)
+            var c = cell % 9
+            var out = []
+            for (var i = 0; i < 81; i++) {
+              var ir = Math.floor(i / 9)
+              var ic = i % 9
+              if (kind === 'grid') out.push(i)
+              else if (kind === 'row' && ir === r) out.push(i)
+              else if (kind === 'column' && ic === c) out.push(i)
+              else if (kind === 'box' && Math.floor(ir / 3) === Math.floor(r / 3) && Math.floor(ic / 3) === Math.floor(c / 3)) out.push(i)
+            }
+            return out
+          }
+
+          var playPulse = function () {
+            timers.forEach(clearTimeout)
+            timers = []
+            var set = unitCells(pKind, origin)
+            var r0 = Math.floor(origin / 9)
+            var c0 = origin % 9
+            var delays = {}
+            var lines = []
+            for (var i = 0; i < 81; i++) {
+              pcells[i].classList.remove('pulse')
+              pcells[i].textContent = ''
+              pcells[i].classList.toggle('sel', i === origin)
+            }
+            set.forEach(function (cell) {
+              var steps = Math.abs(Math.floor(cell / 9) - r0) + Math.abs((cell % 9) - c0)
+              var delay = reduce ? 0 : steps * STEP_MS
+              delays[cell] = delay
+              pcells[cell].textContent = String(delay)
+              pcells[cell].style.fontSize = '10px'
+              timers.push(setTimeout(function () { pcells[cell].classList.add('pulse') }, delay))
+              timers.push(setTimeout(function () { pcells[cell].classList.remove('pulse') }, delay + 380))
+            })
+            var maxSteps = 0
+            set.forEach(function (cell) { maxSteps = Math.max(maxSteps, delays[cell]) })
+            lines.push('origin cell : ' + origin + ' (row ' + (r0 + 1) + ', column ' + (c0 + 1) + ')')
+            lines.push('completed   : ' + pKind)
+            lines.push('cells       : ' + set.length)
+            lines.push('longest wait: ' + maxSteps + ' ms')
+            if (reduce) lines.push('Reduce Motion is on: no delay, as in the app.')
+            info.textContent = lines.join('\n')
+          }
+
+          var drawKinds = function () {
+            kindBox.innerHTML = ''
+            ;[['row', 'Row'], ['column', 'Column'], ['box', 'Box'], ['grid', 'Whole grid']].forEach(function (k) {
+              var b = document.createElement('button')
+              b.type = 'button'
+              b.textContent = k[1]
+              b.setAttribute('aria-pressed', String(pKind === k[0]))
+              b.addEventListener('click', function () { pKind = k[0]; drawKinds(); playPulse() })
+              kindBox.appendChild(b)
+            })
+          }
+          pulseBoard.addEventListener('click', function (event) {
+            var t = event.target.closest('.cell')
+            if (!t) return
+            origin = Number(t.dataset.i)
+            playPulse()
+          })
+          drawKinds()
+          for (var y = 0; y < 81; y++) pcells[y].classList.toggle('sel', y === origin)
+        }
+      })()
+    </script>
+  </body>
+</html>

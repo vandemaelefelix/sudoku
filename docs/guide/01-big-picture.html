@@ -1,0 +1,1964 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The big picture · Sudoku guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="assets/guide.css" />
+    <script src="assets/guide.js" defer></script>
+    <style>
+      /* A flex child must be allowed to shrink, so a wide tab list scrolls inside itself on a phone. */
+      .content { min-width: 0; }
+      /* Page-specific helpers. Colours come from the theme variables only. */
+      svg .edge.no {
+        stroke: var(--red);
+        stroke-dasharray: 6 4;
+      }
+      svg .cross {
+        stroke: var(--red);
+        stroke-width: 4;
+        stroke-linecap: round;
+        fill: none;
+      }
+      svg .tiny {
+        fill: var(--ink-2);
+        font-size: 11px;
+      }
+      .stepper svg text.only:not(.is-active) {
+        opacity: 0;
+      }
+      svg .zone {
+        fill: none;
+        stroke: var(--line);
+        stroke-width: 1.5;
+        stroke-dasharray: 3 5;
+      }
+      svg .zone-title {
+        fill: var(--ink-2);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      svg .box.red {
+        fill: var(--red-soft);
+        stroke: var(--red);
+      }
+      svg .redtext {
+        fill: var(--red);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 14px;
+        margin: 20px 0;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+      }
+      .card h4 {
+        margin: 0 0 6px;
+        font-size: 15px;
+      }
+      .card p {
+        margin: 0;
+        font-size: 14px;
+      }
+      .card .tag {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+      .sim {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin: 24px 0;
+        box-shadow: var(--shadow);
+      }
+      .sim-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 640px) {
+        .sim-row {
+          grid-template-columns: 1fr;
+        }
+      }
+      .sim label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink-2);
+        margin-bottom: 4px;
+      }
+      .sim select {
+        width: 100%;
+        padding: 8px 10px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .sim-arrow {
+        text-align: center;
+        font-size: 22px;
+        margin: 10px 0 2px;
+        color: var(--ink-2);
+      }
+      .sim-result {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 2px solid var(--line);
+      }
+      .sim-result.ok {
+        background: var(--green-soft);
+        border-color: var(--green);
+      }
+      .sim-result.bad {
+        background: var(--red-soft);
+        border-color: var(--red);
+      }
+      .sim-result strong {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+      .sim-result p {
+        margin: 4px 0 0;
+        font-size: 14px;
+      }
+      .sim-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .sim-presets button {
+        font: inherit;
+        font-size: 13px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .sim-presets button:hover {
+        border-color: var(--accent);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 16px;
+        font-size: 13px;
+        color: var(--ink-2);
+        margin-top: 10px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: -1px;
+        border: 1.5px solid var(--line);
+      }
+      .legend i.b { background: var(--blue-soft); border-color: var(--blue); }
+      .legend i.g { background: var(--green-soft); border-color: var(--green); }
+      .legend i.a { background: var(--amber-soft); border-color: var(--amber); }
+      .legend i.v { background: var(--violet-soft); border-color: var(--violet); }
+      .legend i.m { background: var(--surface-2); }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar"><nav id="guide-nav" aria-label="Guide"></nav></aside>
+      <main class="content">
+        <div class="kicker">Chapter 1</div>
+        <h1>The big picture</h1>
+        <p class="lead">
+          What the project is, why it exists and how the repository holds together. You learn the three parts, the folders,
+          the rules about who may use whom, and how the team writes down its decisions. The later chapters zoom into each
+          part.
+        </p>
+
+        <!-- ============================================================ -->
+        <h2 id="what-and-why">What the project is, and why</h2>
+        <p>
+          This project is an ad-free sudoku game for the iPhone. You can play a generated puzzle. You can also point the
+          camera at a sudoku in a newspaper or a puzzle book. The phone reads the grid and loads it into the game. Then you
+          can play it, solve it or ask for a hint.
+        </p>
+        <p>The project has two reasons to exist:</p>
+        <ol>
+          <li>
+            <strong>Learning and portfolio.</strong> The developer builds the whole chain once and does it properly: data,
+            training, export, on-device inference, a live camera pipeline, a React Native app and a small cloud backend.
+            All of it is documented.
+          </li>
+          <li>
+            <strong>Replace an ad-heavy app.</strong> The developer plays sudoku every day. The old app shows too many ads.
+            This app has none, works without a network and starts at once.
+          </li>
+        </ol>
+        <div class="callout note">
+          <span class="callout-title">What is not a goal</span>
+          A release in the App Store is possible, but it is not a goal. No decision may block it, and no decision must
+          aim for it. Source: <a href="../architecture/01-introduction-and-goals.md">chapter 1 of the architecture docs</a>.
+        </div>
+
+        <h3 id="three-parts">The three parts</h3>
+        <p>
+          The architecture docs say the system has three parts. Each part solves one problem. The figure shows how they
+          connect.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 780 290" role="img" aria-label="Three parts: the scan loads a puzzle into the game. The game syncs finished games to the backend, which is optional. The scan and the game work offline.">
+            <defs>
+              <marker id="p1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="20" y="30" width="210" height="150" rx="12" />
+            <text class="label" x="125" y="62" text-anchor="middle">2. Scan</text>
+            <text class="sublabel" x="125" y="92" text-anchor="middle">camera, live outline,</text>
+            <text class="sublabel" x="125" y="110" text-anchor="middle">digit model, correction</text>
+            <text class="sublabel" x="125" y="140" text-anchor="middle">Paper in, puzzle out</text>
+
+            <rect class="box blue" x="285" y="30" width="210" height="150" rx="12" />
+            <text class="label" x="390" y="62" text-anchor="middle">1. Game</text>
+            <text class="sublabel" x="390" y="92" text-anchor="middle">levels, notes, undo,</text>
+            <text class="sublabel" x="390" y="110" text-anchor="middle">timer, hints, stats</text>
+            <text class="sublabel" x="390" y="140" text-anchor="middle">The daily habit</text>
+
+            <rect class="box violet" x="550" y="30" width="210" height="150" rx="12" />
+            <text class="label" x="655" y="62" text-anchor="middle">3. Backend</text>
+            <text class="sublabel" x="655" y="92" text-anchor="middle">accounts, history sync,</text>
+            <text class="sublabel" x="655" y="110" text-anchor="middle">scan collection</text>
+            <text class="sublabel" x="655" y="140" text-anchor="middle">Optional, on AWS</text>
+
+            <path class="edge" d="M230,105 L283,105" marker-end="url(#p1-arrow)" />
+            <text class="tiny" x="257" y="96" text-anchor="middle">loads</text>
+            <path class="edge dashed" d="M495,105 L548,105" marker-end="url(#p1-arrow)" />
+            <text class="tiny" x="522" y="96" text-anchor="middle">syncs</text>
+
+            <path class="edge" d="M20,205 L20,215 L495,215 L495,205" />
+            <text class="label" x="257" y="240" text-anchor="middle">Works with no network (SUD-01)</text>
+            <text class="sublabel" x="257" y="260" text-anchor="middle">on the phone, always</text>
+            <path class="edge dashed" d="M550,205 L550,215 L760,215 L760,205" />
+            <text class="label" x="655" y="240" text-anchor="middle">Needs a network</text>
+            <text class="sublabel" x="655" y="260" text-anchor="middle">only when you sign in</text>
+          </svg>
+          <figcaption>
+            The three parts of the product. The scan and the game need no network. The backend is an extra, and the game
+            never waits for it.
+          </figcaption>
+        </figure>
+
+        <div class="cards">
+          <div class="card">
+            <span class="tag">Part 1</span>
+            <h4>Game</h4>
+            <p>
+              Four levels: easy, medium, hard and expert. Notes, undo, a timer, pause and mistake highlighting. Hints that
+              teach the technique. Stats and streaks. It works from the first day, even without any machine learning.
+            </p>
+          </div>
+          <div class="card">
+            <span class="tag">Part 2</span>
+            <h4>Scan</h4>
+            <p>
+              A live outline snaps onto the grid. A small neural network reads each cell: the digit and its kind (printed,
+              handwritten or notes). You check the result on a correction screen before you play.
+            </p>
+          </div>
+          <div class="card">
+            <span class="tag">Part 3</span>
+            <h4>Backend</h4>
+            <p>
+              An account with Clerk. A copy of your finished games on AWS, so a second phone shows the same history.
+              A private bucket for scans that you choose to share. One Lambda and one table keep the cost low.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          Think of a pocket calculator with an optional cloud notebook. The calculator (game and scan) always works. The
+          notebook (backend) only saves a copy of your finished sums, so you can read them on another device.
+        </div>
+
+        <h3 id="quality-goals">Quality goals, in order</h3>
+        <p>
+          When two goals fight, the higher one wins. The list is in chapter 1.2 of the architecture docs. It explains many
+          choices that look odd later.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Goal</th><th>Why it matters</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><strong>Recognition correctness</strong></td><td>One wrong digit breaks the puzzle. The whole grid must be right, not the average cell. Chapter 5 shows how the project measures this as <em>grid-exact accuracy</em>.</td></tr>
+              <tr><td>2</td><td><strong>Smooth scanning</strong></td><td>The live outline is the feature people notice. Jitter makes the app feel broken.</td></tr>
+              <tr><td>3</td><td><strong>Offline and private</strong></td><td>A daily game that needs a network is worse than the app it replaces. Camera frames stay on the phone.</td></tr>
+              <tr><td>4</td><td><strong>Understandable architecture</strong></td><td>It is a learning and portfolio project. A reader must follow every boundary. This guide is part of that goal.</td></tr>
+              <tr><td>5</td><td><strong>Everyday game</strong></td><td>Instant start, no lost progress and a hint when you are stuck.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The scanner reads a digit wrongly in 1 cell out of 81. Which quality goal does this hurt most?</p>
+          <div class="options">
+            <button>Smooth scanning</button>
+            <button data-correct>Recognition correctness</button>
+            <button>Offline and private</button>
+          </div>
+          <p class="explain">
+            Goal 1. A sudoku with one wrong given digit has no valid solution, or a different one. That is why the team
+            scores the model on whole grids and not on single cells.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="system-context">The system and its neighbours</h2>
+        <p>
+          <strong>The problem:</strong> before you read code, you need to know what lives outside the code. Who uses the
+          system? Which outside services does it call? The architecture docs call this the <em>system context</em> (chapter
+          3).
+        </p>
+        <p>
+          <strong>The analogy:</strong> draw the app as a shop. The context diagram shows the street, the customers, the
+          suppliers and the delivery vans. It does not show the shelves inside.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 760 450" role="img" aria-label="System context. The Sudoku app on the iPhone in the centre. Around it: the player, a paper sudoku, the ML workstation, Apple TestFlight, GitHub, Clerk, the AWS backend and the Vercel web site. Click a box to read about it.">
+            <defs>
+              <marker id="ctx-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+
+            <!-- edges first, so the boxes sit on top -->
+            <path class="edge" d="M190,70 L290,172" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="246" y="116">plays, fixes scans</text>
+            <path class="edge dashed" d="M190,220 L273,220" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="196" y="210">camera</text>
+            <path class="edge" d="M190,372 L290,268" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="30" y="338">model file, via the repo</text>
+            <path class="edge" d="M380,350 L380,277" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="388" y="318">installs</text>
+            <path class="edge" d="M485,185 L580,72" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="512" y="146" text-anchor="end">sign in</text>
+            <path class="edge" d="M485,220 L568,220" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="500" y="210">sync</text>
+            <path class="edge dashed" d="M655,185 L655,92" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="663" y="146">checks token</text>
+            <path class="edge dashed" d="M465,60 L590,188" marker-end="url(#ctx-arrow)" />
+            <text class="tiny" x="596" y="160">deploys</text>
+
+            <g data-node="player">
+              <rect class="box green" x="20" y="20" width="170" height="70" rx="10" />
+              <text class="label" x="105" y="52" text-anchor="middle">Player</text>
+              <text class="sublabel" x="105" y="72" text-anchor="middle">plays and scans</text>
+            </g>
+            <g data-node="paper">
+              <rect class="box muted" x="20" y="185" width="170" height="70" rx="10" />
+              <text class="label" x="105" y="217" text-anchor="middle">Paper sudoku</text>
+              <text class="sublabel" x="105" y="237" text-anchor="middle">newspaper, book</text>
+            </g>
+            <g data-node="ml">
+              <rect class="box green" x="20" y="350" width="170" height="70" rx="10" />
+              <text class="label" x="105" y="382" text-anchor="middle">ML workstation</text>
+              <text class="sublabel" x="105" y="402" text-anchor="middle">Mac, Python</text>
+            </g>
+            <g data-node="github">
+              <rect class="box muted" x="295" y="20" width="170" height="70" rx="10" />
+              <text class="label" x="380" y="52" text-anchor="middle">GitHub</text>
+              <text class="sublabel" x="380" y="72" text-anchor="middle">repo, CI, deploys</text>
+            </g>
+            <g data-node="app">
+              <rect class="box accent" x="275" y="165" width="210" height="110" rx="12" />
+              <text class="label" x="380" y="205" text-anchor="middle">Sudoku app</text>
+              <text class="sublabel" x="380" y="226" text-anchor="middle">iPhone, Expo, React Native</text>
+              <text class="sublabel" x="380" y="246" text-anchor="middle">game + scanner, offline</text>
+            </g>
+            <g data-node="apple">
+              <rect class="box muted" x="295" y="350" width="170" height="70" rx="10" />
+              <text class="label" x="380" y="382" text-anchor="middle">TestFlight</text>
+              <text class="sublabel" x="380" y="402" text-anchor="middle">Apple, builds</text>
+            </g>
+            <g data-node="clerk">
+              <rect class="box violet" x="570" y="20" width="170" height="70" rx="10" />
+              <text class="label" x="655" y="52" text-anchor="middle">Clerk</text>
+              <text class="sublabel" x="655" y="72" text-anchor="middle">sign-in, tokens</text>
+            </g>
+            <g data-node="aws">
+              <rect class="box violet" x="570" y="185" width="170" height="70" rx="10" />
+              <text class="label" x="655" y="217" text-anchor="middle">AWS backend</text>
+              <text class="sublabel" x="655" y="237" text-anchor="middle">Lambda, DynamoDB</text>
+            </g>
+            <g data-node="web">
+              <rect class="box muted" x="570" y="350" width="170" height="70" rx="10" />
+              <text class="label" x="655" y="382" text-anchor="middle">Vercel web site</text>
+              <text class="sublabel" x="655" y="402" text-anchor="middle">home, privacy page</text>
+            </g>
+          </svg>
+          <p class="hint">Click a box to read about it.</p>
+          <div class="panel" data-panel="player">
+            <h4>Player</h4>
+            <p>
+              Plays generated puzzles, scans paper puzzles and corrects the digits that the model got wrong. The player
+              touches the screen and aims the camera. Nothing else.
+            </p>
+          </div>
+          <div class="panel" data-panel="paper">
+            <h4>Paper sudoku</h4>
+            <p>
+              A page in a newspaper or a book. The camera sees it. The photo, the flattened grid and the cell images stay
+              on the phone (SUD-02). The only exception is the setting <em>Help improve the app</em>, which sends a scan
+              photo for training. The player can turn it off. A photo from the photo library never leaves.
+            </p>
+          </div>
+          <div class="panel" data-panel="ml">
+            <h4>ML workstation</h4>
+            <p>
+              The developer's Apple Silicon Mac. It trains the digit model with PyTorch on the GPU (MPS). The model reaches
+              the app as a file. It travels through the repository, not through the network, and only after a gate
+              (SUD-06). Chapter 5 tells this story.
+            </p>
+          </div>
+          <div class="panel" data-panel="github">
+            <h4>GitHub</h4>
+            <p>
+              Holds the repository and runs CI. CI runs the tests and the boundary check on Linux, builds the iOS app for
+              the simulator on a macOS runner, and deploys the backend with an AWS role (OIDC, no stored keys). Workflows
+              are in <code>.github/workflows/</code>.
+            </p>
+          </div>
+          <div class="panel" data-panel="app">
+            <h4>Sudoku app</h4>
+            <p>
+              The centre of the system. One Expo app with the game, the scanner and local storage in SQLite. It needs no
+              server. The folder is <code>mobile/</code>. The next chapters open it.
+            </p>
+          </div>
+          <div class="panel" data-panel="apple">
+            <h4>TestFlight and the App Store</h4>
+            <p>
+              Apple distributes builds. TestFlight is how the developer installs the daily-use build. A public App Store
+              release is possible, not planned.
+            </p>
+          </div>
+          <div class="panel" data-panel="clerk">
+            <h4>Clerk</h4>
+            <p>
+              A hosted sign-in service. It holds the accounts, sends the verification emails and signs the tokens. The app
+              uses <code>@clerk/expo</code>. The backend only checks a token. It never sees a password
+              (<a href="../architecture/adr/adr-027-backend-platform.md">ADR-027</a>).
+            </p>
+          </div>
+          <div class="panel" data-panel="aws">
+            <h4>AWS backend</h4>
+            <p>
+              One personal account in <code>eu-west-1</code>. An HTTP API, a Lambda for the sync, one DynamoDB table, a
+              second Lambda for the scan upload and a private S3 bucket. SST builds it. A budget and a kill switch keep the
+              bill below 10 euro a month (SUD-11). Chapter 6 opens it.
+            </p>
+          </div>
+          <div class="panel" data-panel="web">
+            <h4>Vercel web site</h4>
+            <p>
+              A static home page and the privacy page at <code>sudoku.felixvandemaele.be</code>. It has no JavaScript, no
+              cookies and no analytics. It has no arrow to the app: nothing in <code>mobile/</code> or
+              <code>shared/</code> imports <code>web/</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why so few arrows into the cloud?</span>
+          Only two arrows leave the phone for a server the developer runs: the sync (after sign-in) and the optional scan
+          upload. Everything else on the left side of the figure is development tooling. This small surface is what makes
+          SUD-01 and SUD-02 easy to keep.
+        </div>
+
+        <h3 id="privacy-flow">What may leave the phone</h3>
+        <p>
+          SUD-02 is the rule that people ask about most. The figure sorts the data into what stays, what may leave and what
+          never leaves.
+        </p>
+        <figure class="figure">
+          <svg viewBox="0 0 780 360" role="img" aria-label="Data on the phone: camera frames and cell images never leave. Finished games sync after sign-in. A scan photo with corrections uploads only if the setting Help improve the app is on, and never for a photo-library image.">
+            <defs>
+              <marker id="pv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="zone" x="10" y="10" width="440" height="340" rx="16" />
+            <text class="zone-title" x="28" y="34">ON THE PHONE</text>
+            <rect class="box red" x="30" y="52" width="190" height="62" rx="10" />
+            <text class="label" x="125" y="80" text-anchor="middle">Camera frames</text>
+            <text class="sublabel" x="125" y="99" text-anchor="middle">live preview</text>
+            <rect class="box red" x="240" y="52" width="190" height="62" rx="10" />
+            <text class="label" x="335" y="80" text-anchor="middle">Cell images</text>
+            <text class="sublabel" x="335" y="99" text-anchor="middle">81 cells, 64 × 64 pixels</text>
+            <rect class="box blue" x="240" y="140" width="190" height="62" rx="10" />
+            <text class="label" x="335" y="168" text-anchor="middle">Finished games</text>
+            <text class="sublabel" x="335" y="187" text-anchor="middle">history in SQLite</text>
+            <rect class="box accent" x="240" y="228" width="190" height="62" rx="10" />
+            <text class="label" x="335" y="256" text-anchor="middle">Scan photo</text>
+            <text class="sublabel" x="335" y="275" text-anchor="middle">+ model answers, fixes</text>
+            <rect class="box red" x="30" y="228" width="190" height="62" rx="10" />
+            <text class="label" x="125" y="256" text-anchor="middle">Photo-library image</text>
+            <text class="sublabel" x="125" y="275" text-anchor="middle">may be scanned</text>
+            <text class="sublabel" x="30" y="326">Red boxes never upload. A library image is read on the phone only.</text>
+
+            <rect class="box violet" x="580" y="52" width="190" height="238" rx="12" />
+            <text class="label" x="675" y="160" text-anchor="middle">AWS backend</text>
+            <text class="sublabel" x="675" y="180" text-anchor="middle">DynamoDB table</text>
+            <text class="sublabel" x="675" y="198" text-anchor="middle">private S3 bucket</text>
+
+            <path class="edge no" d="M430,83 L578,83" />
+            <path class="cross" d="M492,69 L518,97 M518,69 L492,97" />
+            <text class="redtext" x="505" y="62" text-anchor="middle">never</text>
+
+            <path class="edge" d="M430,171 L578,171" marker-end="url(#pv-arrow)" />
+            <text class="tiny" x="505" y="148" text-anchor="middle">only a finished game,</text>
+            <text class="tiny" x="505" y="162" text-anchor="middle">after sign-in</text>
+
+            <path class="edge accent" d="M430,259 L578,259" marker-end="url(#pv-arrow)" />
+            <text class="tiny" x="505" y="236" text-anchor="middle">only if "Help improve</text>
+            <text class="tiny" x="505" y="250" text-anchor="middle">the app" is on</text>
+            <text class="redtext" x="125" y="312" text-anchor="middle"></text>
+          </svg>
+          <figcaption>
+            What may leave the phone under SUD-02. Frames and cell images never leave. A photo-library image never uploads. A scan
+            photo uploads only through the setting that the player can turn off.
+          </figcaption>
+        </figure>
+
+        <!-- ============================================================ -->
+        <h2 id="monorepo">The monorepo, folder by folder</h2>
+        <p>
+          <strong>The problem:</strong> the project needs two programming languages. The app and the backend use
+          TypeScript. The model training uses Python. They change together: a new model format touches the training code,
+          the export and the app loader in one go. Two repositories would split that change in two.
+        </p>
+        <p>
+          <strong>The answer</strong> (<a href="../architecture/adr/adr-001-polyglot-monorepo.md">ADR-001</a>): one
+          repository with two toolchains side by side. <span class="term" data-def="Package manager for the TypeScript side. A workspace lets several packages in one repository use each other.">pnpm workspaces</span>
+          run the TypeScript. <span class="term" data-def="A fast Python package and project manager. ml/ is a stand-alone uv project with its own lock file.">uv</span>
+          runs the Python. One <span class="term" data-def="A command runner. The justfile at the root lists every task for both languages.">justfile</span>
+          at the root lists every command for both.
+        </p>
+        <p>
+          <a href="../architecture/adr/adr-029-repository-layout.md">ADR-029</a> then gave the root a clear shape: one
+          folder per area. Click a folder to see what it holds, which stack it uses and who may import it.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 780 320" role="img" aria-label="The repository folders as clickable boxes, coloured by kind. Click a folder to read about it.">
+            <!-- column 1: TypeScript app and packages -->
+            <g data-node="mobile">
+              <rect class="box blue" x="15" y="20" width="180" height="58" rx="10" />
+              <text class="label" x="105" y="45" text-anchor="middle">mobile/</text>
+              <text class="sublabel" x="105" y="64" text-anchor="middle">Expo app for iOS</text>
+            </g>
+            <g data-node="core">
+              <rect class="box blue" x="15" y="95" width="180" height="58" rx="10" />
+              <text class="label" x="105" y="120" text-anchor="middle">shared/core</text>
+              <text class="sublabel" x="105" y="139" text-anchor="middle">@sudoku/core, pure TS</text>
+            </g>
+            <g data-node="sync">
+              <rect class="box blue" x="15" y="170" width="180" height="58" rx="10" />
+              <text class="label" x="105" y="195" text-anchor="middle">shared/sync-contract</text>
+              <text class="sublabel" x="105" y="214" text-anchor="middle">zod schemas, sync API</text>
+            </g>
+            <g data-node="scan-contract">
+              <rect class="box blue" x="15" y="245" width="180" height="58" rx="10" />
+              <text class="label" x="105" y="270" text-anchor="middle">shared/scan-contract</text>
+              <text class="sublabel" x="105" y="289" text-anchor="middle">zod schema, scan upload</text>
+            </g>
+            <!-- column 2: backend + web -->
+            <g data-node="api">
+              <rect class="box violet" x="205" y="20" width="180" height="58" rx="10" />
+              <text class="label" x="295" y="45" text-anchor="middle">backend/api</text>
+              <text class="sublabel" x="295" y="64" text-anchor="middle">sync + scan Lambdas</text>
+            </g>
+            <g data-node="kill">
+              <rect class="box violet" x="205" y="95" width="180" height="58" rx="10" />
+              <text class="label" x="295" y="120" text-anchor="middle">backend/kill-switch</text>
+              <text class="sublabel" x="295" y="139" text-anchor="middle">stops a stage at budget</text>
+            </g>
+            <g data-node="infra">
+              <rect class="box violet" x="205" y="170" width="180" height="58" rx="10" />
+              <text class="label" x="295" y="195" text-anchor="middle">backend/infra</text>
+              <text class="sublabel" x="295" y="214" text-anchor="middle">SST: the AWS resources</text>
+            </g>
+            <g data-node="web">
+              <rect class="box muted" x="205" y="245" width="180" height="58" rx="10" />
+              <text class="label" x="295" y="270" text-anchor="middle">web/</text>
+              <text class="sublabel" x="295" y="289" text-anchor="middle">home + privacy page</text>
+            </g>
+            <!-- column 3: Python + plain files -->
+            <g data-node="ml">
+              <rect class="box green" x="395" y="20" width="180" height="58" rx="10" />
+              <text class="label" x="485" y="45" text-anchor="middle">ml/</text>
+              <text class="sublabel" x="485" y="64" text-anchor="middle">Python: data, training</text>
+            </g>
+            <g data-node="model-contract">
+              <rect class="box amber" x="395" y="170" width="180" height="58" rx="10" />
+              <text class="label" x="485" y="195" text-anchor="middle">shared/model-contract</text>
+              <text class="sublabel" x="485" y="214" text-anchor="middle">plain files, not a package</text>
+            </g>
+            <g data-node="fixtures">
+              <rect class="box amber" x="395" y="245" width="180" height="58" rx="10" />
+              <text class="label" x="485" y="270" text-anchor="middle">shared/fixtures</text>
+              <text class="sublabel" x="485" y="289" text-anchor="middle">photos + true grids</text>
+            </g>
+            <!-- column 4: support -->
+            <g data-node="tools">
+              <rect class="box muted" x="585" y="20" width="180" height="58" rx="10" />
+              <text class="label" x="675" y="45" text-anchor="middle">tools/</text>
+              <text class="sublabel" x="675" y="64" text-anchor="middle">lint plugin, label app</text>
+            </g>
+            <g data-node="docs">
+              <rect class="box muted" x="585" y="95" width="180" height="58" rx="10" />
+              <text class="label" x="675" y="120" text-anchor="middle">docs/</text>
+              <text class="sublabel" x="675" y="139" text-anchor="middle">Arc42, runbook, guide</text>
+            </g>
+            <g data-node="root">
+              <rect class="box muted" x="585" y="170" width="180" height="58" rx="10" />
+              <text class="label" x="675" y="195" text-anchor="middle">root files</text>
+              <text class="sublabel" x="675" y="214" text-anchor="middle">justfile, sst.config.ts</text>
+            </g>
+          </svg>
+          <div class="legend">
+            <span><i class="b"></i>TypeScript code</span>
+            <span><i class="v"></i>Backend (TypeScript, SST)</span>
+            <span><i class="g"></i>Python</span>
+            <span><i class="a"></i>Plain files that both languages read</span>
+            <span><i class="m"></i>Support</span>
+          </div>
+          <p class="hint">Click a folder to read about it.</p>
+
+          <div class="panel" data-panel="mobile">
+            <h4>mobile/ &mdash; the Expo app</h4>
+            <p>
+              The iOS app: game UI, scan UI, the scanner module, storage, account and sync. It uses React Native 0.86 and
+              Expo SDK 57, with Expo Router for the screens. The source is in <code>mobile/src/</code>, one folder per
+              feature: <code>home</code>, <code>game</code>, <code>settings</code>, <code>stats</code>,
+              <code>techniques</code> and <code>scan</code>, plus <code>scanner</code>, <code>storage</code>,
+              <code>account</code>, <code>sync</code> and <code>scanShare</code>. Code that two features use lives in
+              <code>components/</code>, <code>hooks/</code>, <code>preferences/</code>, <code>utils/</code> and
+              <code>constants/</code>. Chapter <a href="03-the-app.html">3</a> opens this folder.
+            </p>
+          </div>
+          <div class="panel" data-panel="core">
+            <h4>shared/core &mdash; @sudoku/core</h4>
+            <p>
+              The sudoku brain: board, rules, solver, technique solver, generator, hints, streak and clock format. It is
+              pure TypeScript. It imports no React Native, no Expo and no I/O (SUD-04). That is why its tests run in
+              milliseconds in plain Node with Vitest. The app imports its source directly, with no build step. See chapter
+              <a href="02-sudoku-engine.html">2</a>.
+            </p>
+          </div>
+          <div class="panel" data-panel="sync">
+            <h4>shared/sync-contract</h4>
+            <p>
+              The zod schemas for the sync API. The app and the Lambda both import this one package, so a change in the
+              wire format fails in both places at compile time. It may depend on <code>zod</code> only. See chapter
+              <a href="06-backend-and-sync.html">6</a>.
+            </p>
+          </div>
+          <div class="panel" data-panel="scan-contract">
+            <h4>shared/scan-contract</h4>
+            <p>
+              The same idea for the scan upload (<a href="../architecture/adr/adr-030-scan-collection.md">ADR-030</a>): the
+              scan record schema, the size limit of 1,000,000 bytes and the header names. The app builds a record. The scans
+              Lambda validates it. Note that the root <code>boundaries</code> script does not cruise this folder yet. It
+              checks <code>shared/core/src</code> and <code>shared/sync-contract/src</code> only.
+            </p>
+          </div>
+          <div class="panel" data-panel="api">
+            <h4>backend/api &mdash; the Lambdas</h4>
+            <p>
+              Two Lambda handlers. The first, <code>src/handler.ts</code>, serves <code>POST /v1/sync</code> and the
+              account delete. It maps a Clerk token to our own user ID and reads and writes DynamoDB. The second,
+              <code>src/scans/handler.ts</code>, hands out a signed upload URL for the scan bucket. It never imports the
+              app and never imports <code>backend/infra</code>.
+            </p>
+          </div>
+          <div class="panel" data-panel="kill">
+            <h4>backend/kill-switch</h4>
+            <p>
+              A small Lambda that exists once, in <code>production</code>. When the AWS budget reaches 9 dollars, it sets an
+              SSM flag per stage, drops the route throttle to 0 and the concurrency to 0. This protects SUD-11, the spending
+              cap. <code>just api-on &lt;stage&gt;</code> clears it.
+            </p>
+          </div>
+          <div class="panel" data-panel="infra">
+            <h4>backend/infra &mdash; SST</h4>
+            <p>
+              Infrastructure as code with SST 4: one file per area (<code>storage.ts</code>, <code>api.ts</code>,
+              <code>kill-switch.ts</code>, <code>budget.ts</code>, and more). It may read exactly one Lambda file:
+              <code>backend/api/src/tableDesign.ts</code>, so the test table matches the real table.
+              <code>sst.config.ts</code> stays at the repository root because SST expects it there.
+            </p>
+          </div>
+          <div class="panel" data-panel="web">
+            <h4>web/ &mdash; the static site</h4>
+            <p>
+              A home page and a privacy page. A small build script writes <code>web/dist/</code>. The privacy page is built
+              from <code>docs/privacy/privacy-policy.md</code>, the only source. Vercel hosts it. No other folder imports it.
+            </p>
+          </div>
+          <div class="panel" data-panel="ml">
+            <h4>ml/ &mdash; the Python project</h4>
+            <p>
+              A stand-alone uv project. It holds the dataset (<code>ml/dataset/</code>), the labelling tools, training,
+              evaluation, export and the promote step. The code is in <code>ml/src/sudoku_ml/</code>. It uses PyTorch on
+              Apple MPS and exports TFLite. It never imports the TypeScript side (SUD-07). Chapter
+              <a href="05-machine-learning.html">5</a> opens it.
+            </p>
+          </div>
+          <div class="panel" data-panel="model-contract">
+            <h4>shared/model-contract</h4>
+            <p>
+              The agreement between Python and the app about the model: input size, outputs, labels and the manifest. The
+              spec itself is the Markdown file
+              <a href="../architecture/00-concepts/model-contract.md">model-contract.md</a>. These are plain files. This
+              folder is not a package, and it is not in the pnpm workspace.
+            </p>
+          </div>
+          <div class="panel" data-panel="fixtures">
+            <h4>shared/fixtures</h4>
+            <p>
+              Test data that Python and TypeScript both read: public-safe sudoku photos with their true grids
+              (<code>scans/</code>) and reference cell images for preprocessing parity (<code>preprocess/</code>). The
+              model never trains on a fixture cell (SUD-10). Private fixtures stay out of git (SUD-08).
+            </p>
+          </div>
+          <div class="panel" data-panel="tools">
+            <h4>tools/</h4>
+            <p>
+              Developer scripts: the custom oxlint plugin, the icon renderer, the layout check for SUD-12, the link check
+              and the scan delete tool. Also <code>tools/label-app/</code>, a Vite and React app that the developer uses to
+              label training cells. It talks only to a Python server on <code>127.0.0.1</code>
+              (<a href="../architecture/adr/adr-034-labelling-app.md">ADR-034</a>).
+            </p>
+          </div>
+          <div class="panel" data-panel="docs">
+            <h4>docs/</h4>
+            <p>
+              The architecture docs (Arc42), the operations runbook, the privacy policy, research notes and this guide.
+              A later section of this chapter explains how they fit together.
+            </p>
+          </div>
+          <div class="panel" data-panel="root">
+            <h4>The root files</h4>
+            <p>
+              <code>justfile</code> (every command), <code>package.json</code> and <code>pnpm-workspace.yaml</code> (the
+              TypeScript workspace), <code>sst.config.ts</code> (the SST app), <code>.dependency-cruiser.cjs</code> (the
+              boundary rules), <code>AGENTS.md</code> and <code>LICENSE</code> (MIT). SUD-12 says the root holds only the
+              entries that ADR-029 lists. <code>just lint</code> checks it with <code>tools/layout/check-layout.mjs</code>.
+            </p>
+          </div>
+        </div>
+
+        <h3 id="workspace-shape">What counts as a package?</h3>
+        <p>
+          A folder is a pnpm <em>package</em> only if <code>pnpm-workspace.yaml</code> lists it. Today that list holds eight
+          entries: <code>mobile</code>, <code>web</code>, <code>backend/api</code>, <code>backend/kill-switch</code>,
+          <code>shared/core</code>, <code>shared/sync-contract</code>, <code>shared/scan-contract</code> and
+          <code>tools/label-app</code>. The Python project, the model contract and the fixtures are not in the list. Python
+          cannot use a pnpm package, so a fake package would only mislead.
+        </p>
+
+        <div class="callout why">
+          <span class="callout-title">Why not Turborepo or Nx?</span>
+          ADR-001 and ADR-029 looked at both. The repository has few packages. Python would stay outside the task graph
+          anyway. A task cache does not pay yet. The reassessment trigger is written down: if CI takes more than 15
+          minutes, add a cache.
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">You want to add a folder <code>experiments/</code> at the repository root. What happens?</p>
+          <div class="options">
+            <button>Nothing. Folders at the root are free.</button>
+            <button data-correct><code>just lint</code> fails (SUD-12). You first write a new ADR that allows the folder.</button>
+            <button>pnpm refuses to install.</button>
+          </div>
+          <p class="explain">
+            SUD-12 lets the root hold only the folders that ADR-029 lists. <code>tools/layout/check-layout.mjs</code> runs
+            in <code>just lint</code>. A new top-level folder needs a new ADR.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="two-worlds">Two languages, one repository</h2>
+        <p>
+          The most important sentence in the repository is SUD-07: <em>the Python side and the TypeScript side share files
+          only. Neither imports the other.</em> The figure shows what that means.
+        </p>
+        <figure class="figure">
+          <svg viewBox="0 0 780 330" role="img" aria-label="Two worlds. TypeScript with pnpm on the left, Python with uv on the right. In the middle are plain shared files: the model contract, fixtures and the promoted model. Both sides read the files. A crossed arrow shows that neither side imports the other.">
+            <defs>
+              <marker id="tw-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="15" y="20" width="250" height="230" rx="14" />
+            <text class="label" x="140" y="48" text-anchor="middle">TypeScript world (pnpm)</text>
+            <text class="sublabel" x="140" y="70" text-anchor="middle">mobile, shared/core, backend, web</text>
+            <rect class="box" x="40" y="95" width="200" height="40" rx="8" />
+            <text class="sublabel" x="140" y="120" text-anchor="middle">scanner module (TFLite)</text>
+            <rect class="box" x="40" y="145" width="200" height="40" rx="8" />
+            <text class="sublabel" x="140" y="170" text-anchor="middle">fixture runner</text>
+            <rect class="box" x="40" y="195" width="200" height="40" rx="8" />
+            <text class="sublabel" x="140" y="220" text-anchor="middle">Jest, Vitest tests</text>
+
+            <rect class="box green" x="515" y="20" width="250" height="230" rx="14" />
+            <text class="label" x="640" y="48" text-anchor="middle">Python world (uv)</text>
+            <text class="sublabel" x="640" y="70" text-anchor="middle">ml/ only</text>
+            <rect class="box" x="540" y="95" width="200" height="40" rx="8" />
+            <text class="sublabel" x="640" y="120" text-anchor="middle">training (PyTorch, MPS)</text>
+            <rect class="box" x="540" y="145" width="200" height="40" rx="8" />
+            <text class="sublabel" x="640" y="170" text-anchor="middle">export + promote gate</text>
+            <rect class="box" x="540" y="195" width="200" height="40" rx="8" />
+            <text class="sublabel" x="640" y="220" text-anchor="middle">pytest, ruff</text>
+
+            <rect class="box amber" x="300" y="20" width="180" height="230" rx="14" />
+            <text class="label" x="390" y="48" text-anchor="middle">Plain files</text>
+            <text class="sublabel" x="390" y="70" text-anchor="middle">no code is shared</text>
+            <text class="sublabel mono" x="390" y="110" text-anchor="middle">model-contract/</text>
+            <text class="sublabel mono" x="390" y="140" text-anchor="middle">fixtures/</text>
+            <text class="sublabel mono" x="390" y="170" text-anchor="middle">cell-classifier.tflite</text>
+            <text class="sublabel mono" x="390" y="200" text-anchor="middle">manifest.json</text>
+
+            <path class="edge" d="M265,135 L298,135" marker-end="url(#tw-arrow)" />
+            <path class="edge" d="M515,135 L482,135" marker-end="url(#tw-arrow)" />
+            <path class="edge no" d="M265,280 L515,280" />
+            <path class="cross" d="M376,264 L404,296 M404,264 L376,296" />
+            <text class="redtext" x="390" y="318" text-anchor="middle">no import in either direction (SUD-07)</text>
+          </svg>
+          <figcaption>
+            The two toolchains meet only at plain files. The model file is produced by the Python side and read by the app.
+            It is git-ignored, because it learned from photos that may not be published.
+          </figcaption>
+        </figure>
+
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          Two kitchens, one in Italy and one in Japan, cook from the same recipe cards. The cards say exactly what goes
+          in and what comes out. The kitchens never share a stove, a knife or a cook. If one kitchen changes, the cards
+          tell the other what to expect.
+        </div>
+
+        <p>
+          That is what the <em>model contract</em> is. It is a written agreement: the model takes a 32 × 32 image and
+          returns a digit and a kind. Both Python and TypeScript have a test that checks the agreement against the same
+          reference files (<code>shared/fixtures/preprocess/</code>). If one side drifts, the test fails. Chapter 5 goes
+          deeper.
+        </p>
+
+        <div class="callout warn">
+          <span class="callout-title">Pitfall: the model is not in git</span>
+          The architecture docs say the promoted model lives in <code>mobile/assets/models/</code>. The file
+          <code>cell-classifier.tflite</code> is git-ignored, because it learned from photos that may not be published
+          (SUD-08, ADR-007). A fresh clone plays every game. The scanner needs a model: train one with
+          <code>just train</code> and install it with <code>just install-model</code>. Where the docs and the code
+          disagree, follow the code and the README.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="dependency-rules">Who may import whom</h2>
+        <p>
+          <strong>The problem:</strong> folders do not stop a developer from writing
+          <code>import ... from '../../scanner/...'</code> from the wrong place. A boundary that only lives in a README
+          rots in weeks. This project turns its boundaries into <em>failing checks</em>.
+        </p>
+        <p>
+          <strong>The tool:</strong> <span class="term" data-def="A tool that reads all import statements and checks them against rules. The config is .dependency-cruiser.cjs.">dependency-cruiser</span>.
+          It reads every import in the TypeScript code and compares the arrow with the rules in
+          <code>.dependency-cruiser.cjs</code>. <code>just boundaries</code> runs it. <code>just lint</code> includes it, and
+          CI runs it on every pull request that touches TypeScript.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          A restaurant. The dining room never walks into the kitchen (SUD-03). The kitchen has one pass-through window
+          (SUD-05). The accounts office cannot open the till (SUD-04, a pure core). Rules like these only work if a
+          manager checks them every day. dependency-cruiser is that manager.
+        </div>
+
+        <h3 id="allowed-directions">The allowed directions</h3>
+        <figure class="figure">
+          <svg viewBox="0 0 780 420" role="img" aria-label="Allowed import directions. The app and the Lambdas sit on top. They import the shared packages below them. The infra code reads one file of the API. The Python project reads plain files only.">
+            <defs>
+              <marker id="al-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <text class="zone-title" x="20" y="22">LAYER 1: APPS AND SERVICES</text>
+            <rect class="box blue" x="20" y="34" width="340" height="56" rx="10" />
+            <text class="label" x="190" y="60" text-anchor="middle">mobile/</text>
+            <text class="sublabel" x="190" y="78" text-anchor="middle">the app</text>
+            <rect class="box violet" x="400" y="34" width="190" height="56" rx="10" />
+            <text class="label" x="495" y="60" text-anchor="middle">backend/api</text>
+            <text class="sublabel" x="495" y="78" text-anchor="middle">and kill-switch</text>
+            <rect class="box violet" x="650" y="34" width="115" height="56" rx="10" />
+            <text class="label" x="707" y="60" text-anchor="middle">infra</text>
+            <text class="sublabel" x="707" y="78" text-anchor="middle">SST</text>
+            <path class="edge" d="M650,62 L592,62" marker-end="url(#al-arrow)" />
+            <text class="tiny" x="621" y="52" text-anchor="middle">one file</text>
+
+            <text class="zone-title" x="20" y="244">LAYER 2: SHARED PACKAGES, NO UPWARD IMPORTS</text>
+            <rect class="box blue" x="20" y="164" width="210" height="56" rx="10" />
+            <text class="label" x="125" y="190" text-anchor="middle">shared/core</text>
+            <text class="sublabel" x="125" y="208" text-anchor="middle">imports nothing</text>
+            <rect class="box blue" x="275" y="164" width="210" height="56" rx="10" />
+            <text class="label" x="380" y="190" text-anchor="middle">shared/sync-contract</text>
+            <text class="sublabel" x="380" y="208" text-anchor="middle">may use zod only</text>
+            <rect class="box blue" x="540" y="164" width="225" height="56" rx="10" />
+            <text class="label" x="652" y="190" text-anchor="middle">shared/scan-contract</text>
+            <text class="sublabel" x="652" y="208" text-anchor="middle">zod schema, scan upload</text>
+
+            <path class="edge" d="M110,90 L110,162" marker-end="url(#al-arrow)" />
+            <path class="edge" d="M300,90 L350,162" marker-end="url(#al-arrow)" />
+            <path class="edge" d="M455,90 L410,162" marker-end="url(#al-arrow)" />
+            <path class="edge" d="M580,90 L620,162" marker-end="url(#al-arrow)" />
+            <text class="tiny" x="118" y="132">solver, hints</text>
+            <text class="tiny" x="381" y="128" text-anchor="middle">wire format</text>
+            <text class="tiny" x="630" y="142">scan record</text>
+
+            <line class="zone" x1="20" y1="262" x2="760" y2="262" />
+            <text class="zone-title" x="20" y="286">SEPARATE WORLD: PYTHON AND PLAIN FILES</text>
+            <rect class="box green" x="20" y="300" width="200" height="56" rx="10" />
+            <text class="label" x="120" y="326" text-anchor="middle">ml/</text>
+            <text class="sublabel" x="120" y="344" text-anchor="middle">Python</text>
+            <rect class="box amber" x="290" y="300" width="200" height="56" rx="10" />
+            <text class="label" x="390" y="326" text-anchor="middle">model-contract + fixtures</text>
+            <text class="sublabel" x="390" y="344" text-anchor="middle">plain files</text>
+            <rect class="box amber" x="560" y="300" width="205" height="56" rx="10" />
+            <text class="label" x="662" y="326" text-anchor="middle">mobile/assets/models</text>
+            <text class="sublabel" x="662" y="344" text-anchor="middle">the promoted model</text>
+            <path class="edge" d="M220,328 L288,328" marker-end="url(#al-arrow)" />
+            <path class="edge" d="M490,328 L558,328" marker-end="url(#al-arrow)" />
+            <text class="tiny" x="254" y="318" text-anchor="middle">reads</text>
+            <text class="tiny" x="524" y="318" text-anchor="middle">scores</text>
+            <path class="edge accent" d="M120,358 L120,392 L662,392 L662,358" marker-end="url(#al-arrow)" />
+            <text class="tiny" x="390" y="410" text-anchor="middle">just promote-model (gated)</text>
+          </svg>
+          <figcaption>
+            Arrows mean "may import". Everything flows downwards. The shared packages never import an app or a service. The
+            scan contract has the same two users as the sync contract: the app and a Lambda.
+          </figcaption>
+        </figure>
+
+        <h3 id="forbidden-directions">The forbidden directions</h3>
+        <p>
+          The next figure shows the arrows that the checks refuse. Each row is one rule. Where a rule has an ID in
+          <code>.dependency-cruiser.cjs</code>, the table below the figure names it.
+        </p>
+        <figure class="figure">
+          <svg viewBox="0 0 780 470" role="img" aria-label="Seven forbidden import arrows, each crossed out with its rule: core to npm packages, game to scanner, app to backend, backend to app, ml to mobile, a feature to a sibling feature, game to account.">
+            <rect class="box blue" x="20" y="14" width="200" height="44" rx="8" />
+            <text class="label" x="120" y="42" text-anchor="middle">shared/core</text>
+            <path class="edge no" d="M222,36 L358,36" />
+            <path class="cross" d="M276,24 L302,48 M302,24 L276,48" />
+            <rect class="box" x="360" y="14" width="200" height="44" rx="8" />
+            <text class="label" x="460" y="42" text-anchor="middle">react-native, any npm</text>
+            <text class="redtext" x="580" y="32">SUD-04</text>
+            <text class="tiny" x="580" y="48">the core stays pure</text>
+
+            <rect class="box blue" x="20" y="84" width="200" height="44" rx="8" />
+            <text class="label" x="120" y="112" text-anchor="middle">mobile/src/game</text>
+            <path class="edge no" d="M222,106 L358,106" />
+            <path class="cross" d="M276,94 L302,118 M302,94 L276,118" />
+            <rect class="box accent" x="360" y="84" width="200" height="44" rx="8" />
+            <text class="label" x="460" y="112" text-anchor="middle">mobile/src/scanner</text>
+            <text class="redtext" x="580" y="102">SUD-03</text>
+            <text class="tiny" x="580" y="118">the game needs no scanner</text>
+
+            <rect class="box blue" x="20" y="154" width="200" height="44" rx="8" />
+            <text class="label" x="120" y="182" text-anchor="middle">mobile/ or shared/</text>
+            <path class="edge no" d="M222,176 L358,176" />
+            <path class="cross" d="M276,164 L302,188 M302,164 L276,188" />
+            <rect class="box violet" x="360" y="154" width="200" height="44" rx="8" />
+            <text class="label" x="460" y="182" text-anchor="middle">backend/api, infra</text>
+            <text class="redtext" x="580" y="172">ADR-027</text>
+            <text class="tiny" x="580" y="188">the API is the only link</text>
+
+            <rect class="box violet" x="20" y="224" width="200" height="44" rx="8" />
+            <text class="label" x="120" y="252" text-anchor="middle">backend/api</text>
+            <path class="edge no" d="M222,246 L358,246" />
+            <path class="cross" d="M276,234 L302,258 M302,234 L276,258" />
+            <rect class="box blue" x="360" y="224" width="200" height="44" rx="8" />
+            <text class="label" x="460" y="252" text-anchor="middle">mobile/</text>
+            <text class="redtext" x="580" y="242">ADR-027</text>
+            <text class="tiny" x="580" y="258">only sync-contract is shared</text>
+
+            <rect class="box green" x="20" y="294" width="200" height="44" rx="8" />
+            <text class="label" x="120" y="322" text-anchor="middle">ml/ (Python)</text>
+            <path class="edge no" d="M222,316 L358,316" />
+            <path class="cross" d="M276,304 L302,328 M302,304 L276,328" />
+            <rect class="box blue" x="360" y="294" width="200" height="44" rx="8" />
+            <text class="label" x="460" y="322" text-anchor="middle">mobile/, shared/core</text>
+            <text class="redtext" x="580" y="312">SUD-07</text>
+            <text class="tiny" x="580" y="328">files only, both ways</text>
+
+            <rect class="box blue" x="20" y="364" width="200" height="44" rx="8" />
+            <text class="label" x="120" y="392" text-anchor="middle">src/scan (a feature)</text>
+            <path class="edge no" d="M222,386 L358,386" />
+            <path class="cross" d="M276,374 L302,398 M302,374 L276,398" />
+            <rect class="box blue" x="360" y="364" width="200" height="44" rx="8" />
+            <text class="label" x="460" y="392" text-anchor="middle">src/game (a feature)</text>
+            <text class="redtext" x="580" y="382">ADR-029</text>
+            <text class="tiny" x="580" y="398">share through src/utils</text>
+
+            <rect class="box blue" x="20" y="434" width="200" height="30" rx="8" />
+            <text class="label" x="120" y="454" text-anchor="middle">src/game, src/stats</text>
+            <path class="edge no" d="M222,449 L358,449" />
+            <path class="cross" d="M276,440 L302,458 M302,440 L276,458" />
+            <rect class="box violet" x="360" y="434" width="200" height="30" rx="8" />
+            <text class="label" x="460" y="454" text-anchor="middle">src/account, src/sync</text>
+            <text class="redtext" x="580" y="446">ADR-028</text>
+            <text class="tiny" x="580" y="460">the game reads no account</text>
+          </svg>
+          <figcaption>Seven forbidden arrows. A red cross means that the check fails and the pull request cannot merge.</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Rule in <code>.dependency-cruiser.cjs</code></th><th>It forbids</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>sud-04-core-has-no-dependencies</code>, <code>sud-04-core-stays-in-its-package</code></td><td><code>shared/core/src</code> imports an npm package, a Node module or a file outside its folder</td><td>The core must run in plain Node and stay testable and portable.</td></tr>
+              <tr><td><code>sync-contract-needs-only-zod</code></td><td><code>shared/sync-contract/src</code> imports anything but <code>zod</code></td><td>Both the app and a Lambda import it. It must not drag React Native into a Lambda.</td></tr>
+              <tr><td><code>sud-03-game-does-not-use-scanner</code></td><td><code>mobile/src/game/</code> imports <code>mobile/src/scanner/</code></td><td>Scanning is an optional way into a puzzle.</td></tr>
+              <tr><td><code>sud-05-scanner-has-one-entry-point</code></td><td>Code outside the scanner imports anything but <code>scanner/index.ts</code></td><td>The scanner can change inside, and the rest of the app does not notice.</td></tr>
+              <tr><td><code>adr-027-*</code> (five rules)</td><td>App or shared code imports <code>backend/infra</code> or a Lambda. A Lambda imports the app or the infra code. The infra code reads a Lambda file other than <code>tableDesign.ts</code> and the kill-switch files</td><td>The HTTP API is the only link between the phone and the cloud.</td></tr>
+              <tr><td><code>adr-028-*</code> (two rules)</td><td><code>game</code>, <code>stats</code> and <code>storage</code> import <code>account</code> or <code>sync</code></td><td>The game reads the owner from storage. Storage tells the sync about a change through a subscription.</td></tr>
+              <tr><td><code>adr-030-scanshare-does-not-use-scan</code></td><td><code>mobile/src/scanShare/</code> imports <code>mobile/src/scan/</code></td><td>The upload code must not depend on the scan screens. A <code>FinalGrid</code> type in <code>src/utils/</code> carries the result.</td></tr>
+              <tr><td><code>a-feature-does-not-import-a-sibling-feature</code>, <code>shared-folders-do-not-import-a-feature</code></td><td>One feature imports another, or <code>components/</code>, <code>hooks/</code> and <code>preferences/</code> import a feature</td><td>Code that two features need moves to a shared folder. An allowlist in the config names the 11 imports that remain.</td></tr>
+              <tr><td><code>no-circular</code>, <code>no-unresolvable</code>, and the style and theme rules</td><td>Import cycles, unresolved imports, and the layering inside <code>src/theme/</code> and the <code>.styles.ts</code> files</td><td>A cycle gives an undefined import at start-up.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout note">
+          <span class="callout-title">SUD-07 has no rule</span>
+          A TypeScript rule cannot stop Python from importing TypeScript, and the reverse is impossible by nature. The
+          languages differ. The folder structure and the review process hold SUD-07. This is an example where a constraint
+          needs no tool.
+        </div>
+
+        <h3 id="import-checker">Try it: the import checker</h3>
+        <p>
+          The simulation below mirrors the main rules of <code>.dependency-cruiser.cjs</code>. Pick the file that
+          <em>imports</em> and the file that is <em>imported</em>. The checker tells you if the arrow passes and names the
+          rule. Try the presets first.
+        </p>
+
+        <div class="sim" id="sim-import">
+          <div class="sim-row">
+            <div>
+              <label for="sim-from">The file that imports (from)</label>
+              <select id="sim-from"></select>
+            </div>
+            <div>
+              <label for="sim-to">The file that is imported (to)</label>
+              <select id="sim-to"></select>
+            </div>
+          </div>
+          <div class="sim-arrow" aria-hidden="true">&#8595; import &#8595;</div>
+          <div class="sim-result" id="sim-result" role="status" aria-live="polite"></div>
+          <div class="sim-presets" id="sim-presets"></div>
+        </div>
+
+        <details class="deep">
+          <summary>How dependency-cruiser runs here</summary>
+          <p>
+            The root <code>package.json</code> has the script <code>boundaries</code>. It runs
+            <code>depcruise</code> over <code>mobile/index.ts</code>, <code>mobile/src</code>, <code>shared/core/src</code>,
+            <code>shared/sync-contract/src</code>, <code>backend/api/src</code>, <code>backend/kill-switch/src</code>,
+            <code>backend/infra</code> and <code>sst.config.ts</code>, with the config
+            <code>.dependency-cruiser.cjs</code>.
+          </p>
+          <ul>
+            <li>
+              <strong>Static analysis.</strong> The tool parses the source. It does not run it. It sees each
+              <code>import</code> as an arrow between two files and checks the arrow against every rule.
+            </li>
+            <li>
+              <strong>TypeScript aware.</strong> The option <code>tsPreCompilationDeps</code> counts imports that only
+              exist for types. The file <code>tsconfig.boundaries.json</code> copies the app aliases (<code>@/</code>,
+              <code>@assets/</code>), because the Expo base config cannot be read from the root.
+            </li>
+            <li>
+              <strong>The model file is special.</strong> The rule <code>no-unresolvable</code> ignores
+              <code>.tflite</code>, since the file is git-ignored and CI cannot resolve it.
+            </li>
+            <li>
+              <strong>The allowlist is a debt list.</strong> The constant <code>CROSS_FEATURE_ALLOWLIST</code> at the top of
+              the config names the 11 imports between features that still exist. Each line has a comment that says who
+              imports it. The rule: remove a line when the code moves to a shared folder, and delete the list when it is
+              empty.
+            </li>
+            <li>
+              <strong>Severity is <code>error</code> everywhere.</strong> There are no warnings to ignore.
+            </li>
+          </ul>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">
+            <code>mobile/src/scan/</code> needs a helper from <code>mobile/src/game/utils/gameSession.utils.ts</code>. What
+            is the right fix?
+          </p>
+          <div class="options">
+            <button>Import it. Both are in <code>mobile/</code>, so it is fine.</button>
+            <button>Add the file to <code>CROSS_FEATURE_ALLOWLIST</code>.</button>
+            <button data-correct>Move the shared code to <code>src/utils/</code> (or <code>src/hooks/</code>, <code>src/components/</code>) and import it from there.</button>
+          </div>
+          <p class="explain">
+            ADR-029 (amendment 2026-10-23): code that two features use belongs in a shared folder. The allowlist is for
+            debt that already exists. A new line makes the debt bigger.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="tech-stack">The tech stack</h2>
+        <p>
+          Each part uses the tool that fits it. The architecture docs also list the reason for each choice, so a reader can
+          judge it. Pick a tab.
+        </p>
+
+        <div class="tabs" data-tabs>
+          <section data-tab="App (TypeScript)">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Need</th><th>Tool</th><th>Why</th></tr></thead>
+                <tbody>
+                  <tr><td>UI framework</td><td>React Native 0.86 on Expo SDK 57, with Continuous Native Generation</td><td>The developer knows it (TC-2). Expo gives config plugins and development builds. <a href="../architecture/adr/adr-002-react-native-and-scanner-engine.md">ADR-002</a>.</td></tr>
+                  <tr><td>Screens</td><td>Expo Router with a native stack</td><td>A route file only renders a feature screen. <a href="../architecture/adr/adr-016-navigation.md">ADR-016</a>.</td></tr>
+                  <tr><td>Camera and vision</td><td>VisionCamera 5 frame processors, <code>fast-opencv</code>, <code>fast-tflite</code></td><td>Vision work runs natively, off the JS thread, so the overlay stays smooth.</td></tr>
+                  <tr><td>Drawing and motion</td><td>Skia, Reanimated</td><td>The live overlay and the animations draw at frame rate.</td></tr>
+                  <tr><td>Styling</td><td>Unistyles 3 with three token tiers</td><td>Themes and colourways without a re-render storm. <a href="../architecture/adr/adr-015-theming.md">ADR-015</a>.</td></tr>
+                  <tr><td>Storage</td><td><code>expo-sqlite</code> behind repository interfaces</td><td>Progress saved on every move. Rows are ready for sync. <a href="../architecture/adr/adr-012-local-persistence.md">ADR-012</a>.</td></tr>
+                  <tr><td>Languages</td><td>FormatJS (<code>react-intl</code>)</td><td>English and Dutch, typed message ids.</td></tr>
+                  <tr><td>Game logic</td><td><code>@sudoku/core</code> (plain TypeScript)</td><td>Pure, fast to test, no I/O.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section data-tab="Scanner and ML (Python)">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Need</th><th>Tool</th><th>Why</th></tr></thead>
+                <tbody>
+                  <tr><td>Project and packages</td><td>uv, a stand-alone project in <code>ml/</code></td><td>One lock file. It does not touch pnpm.</td></tr>
+                  <tr><td>Training</td><td>PyTorch on Apple MPS</td><td>The developer trains on a Mac, with no cloud GPU (TC-4). It is the current ML stack, which serves the learning goal.</td></tr>
+                  <tr><td>Model</td><td>One small CNN, about 73,000 parameters, two heads: digit and kind</td><td>Small enough to train in minutes and run on a phone CPU. <a href="../architecture/adr/adr-006-two-head-cell-classifier.md">ADR-006</a>.</td></tr>
+                  <tr><td>Export</td><td><code>litert-torch</code> to TFLite, float32 weights only</td><td>The iOS runtime is TFLite 2.17. <a href="../architecture/adr/adr-005-pytorch-to-tflite.md">ADR-005</a>.</td></tr>
+                  <tr><td>On the phone</td><td><code>fast-tflite</code> on the CPU</td><td>One batched call for the 81 cells.</td></tr>
+                  <tr><td>Tests and lint</td><td>pytest, ruff</td><td>Ruff also bans commented-out code.</td></tr>
+                  <tr><td>Labelling</td><td>A Python server plus <code>tools/label-app</code> (Vite, React)</td><td>The developer labels cells in a browser, on the Mac.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section data-tab="Backend (AWS)">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Need</th><th>Tool</th><th>Why</th></tr></thead>
+                <tbody>
+                  <tr><td>Infrastructure as code</td><td>SST 4 in <code>backend/infra/</code></td><td>One TypeScript file per area. Stages <code>felix</code>, <code>dev</code> and <code>production</code>.</td></tr>
+                  <tr><td>Compute</td><td>AWS Lambda: Node 24, arm64, 512 MB, 10 s</td><td>No server to run, and a cost near zero when idle.</td></tr>
+                  <tr><td>API</td><td>API Gateway HTTP API with a JWT authorizer</td><td><code>POST /v1/sync</code>, throttled per route.</td></tr>
+                  <tr><td>Data</td><td>One DynamoDB table, on demand, with a TTL attribute</td><td>One table, no capacity to plan.</td></tr>
+                  <tr><td>Sign-in</td><td>Clerk</td><td>The developer does not store passwords.</td></tr>
+                  <tr><td>Scans</td><td>A second Lambda and a private S3 bucket, 12 months</td><td>The scan collection of ADR-030.</td></tr>
+                  <tr><td>Cost guard</td><td>AWS Budgets, SNS and the kill-switch Lambda</td><td>SUD-11: below 10 euro a month.</td></tr>
+                  <tr><td>Region</td><td><code>eu-west-1</code></td><td>One personal AWS account, used only by this project.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section data-tab="Tooling and CI">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Need</th><th>Tool</th><th>Command</th></tr></thead>
+                <tbody>
+                  <tr><td>Commands</td><td>just</td><td><code>just --list</code> shows all of them</td></tr>
+                  <tr><td>Install</td><td>pnpm 12 and uv</td><td><code>just setup</code></td></tr>
+                  <tr><td>TypeScript tests</td><td>Vitest (core, contracts, API) and Jest (app)</td><td><code>just test</code></td></tr>
+                  <tr><td>Lint and format</td><td>oxlint, oxfmt, ruff and a custom oxlint plugin</td><td><code>just lint</code></td></tr>
+                  <tr><td>Boundaries</td><td>dependency-cruiser 18</td><td><code>just boundaries</code></td></tr>
+                  <tr><td>Backend tests</td><td>Vitest against DynamoDB Local in Docker</td><td><code>just test-api</code></td></tr>
+                  <tr><td>End-to-end</td><td>Maestro flows on the iOS Simulator</td><td><code>just e2e</code></td></tr>
+                  <tr><td>CI</td><td>GitHub Actions: <code>ci-ts</code>, <code>ci-ml</code>, <code>ci-docs</code>, <code>ios-simulator</code>, deploys</td><td>Linux for most, macOS for the iOS build</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <details class="deep">
+          <summary>The commands you run first</summary>
+          <p>The README lists the five commands that start a new developer. The <code>justfile</code> has many more.</p>
+          <ul>
+            <li><code>just setup</code> installs the TypeScript and the Python dependencies.</li>
+            <li><code>just test</code> runs the core, app, backend and ML tests.</li>
+            <li><code>just lint</code> runs oxlint, ruff, the layout check and the boundary rules.</li>
+            <li><code>just ios-simulator</code> builds the app for the iOS Simulator.</li>
+            <li><code>just app</code> starts the Expo dev server.</li>
+          </ul>
+          <p>
+            Prerequisites: Node 24, pnpm, uv, just, Xcode (for the app) and Docker (for the backend tests). See the
+            <a href="../../README.md">README</a>.
+          </p>
+        </details>
+
+        <!-- ============================================================ -->
+        <h2 id="constraints">The binding constraints</h2>
+        <p>
+          <strong>The problem:</strong> a project of this size has a few rules that must never break, and a few hundred
+          small choices that may change. If every choice looks equally important, the rules get lost.
+        </p>
+        <p>
+          <strong>The answer:</strong> the file <a href="../architecture/00-DECISIONS.md">00-DECISIONS.md</a> separates the
+          two. <em>Constraints</em> (<code>SUD-xx</code>) bind: a change that breaks one makes the solution unsound.
+          <em>Decisions</em> (<code>ADR-xxx</code>) inform: they hold until someone re-decides them. The file has a hard cap
+          of 20 constraints. It lists 12 today, ordered by impact: <em>Systemic</em>, <em>Cross-concept</em> and
+          <em>Concept</em>.
+        </p>
+
+        <div class="callout rule">
+          <span class="callout-title">The rule for every agent and developer</span>
+          Obey every <code>SUD-xx</code> constraint. If a change would break one, stop and say so. Do not work around it.
+          Do not change an accepted decision in code alone: write or amend an ADR first (AGENTS.md, rules 1 and 2).
+        </div>
+
+        <h3 id="the-systemic">The three systemic constraints</h3>
+        <div class="cards">
+          <div class="card">
+            <span class="tag">SUD-01</span>
+            <h4>Offline first</h4>
+            <p>
+              The game and the scanner work fully without a network. <strong>Analogy:</strong> a pocket calculator. It does
+              not call a server to add two numbers. <strong>How the code keeps it:</strong> the model runs on the phone
+              (ADR-003), puzzles generate on the phone, storage is SQLite, and the sync is optional and silent when it
+              fails.
+            </p>
+          </div>
+          <div class="card">
+            <span class="tag">SUD-02</span>
+            <h4>Privacy</h4>
+            <p>
+              Camera frames and cell images never leave the device. A scan photo leaves only through the setting
+              <em>Help improve the app</em>, on by default and easy to turn off. A library image never leaves.
+              <strong>Analogy:</strong> a photo booth that keeps your pictures unless you press the share button.
+              <strong>In code:</strong> <code>mobile/src/scanShare/</code> is the only module that uploads a scan.
+            </p>
+          </div>
+          <div class="card">
+            <span class="tag">SUD-07</span>
+            <h4>Files only between Python and TypeScript</h4>
+            <p>
+              <code>ml/</code> and the TypeScript side share <code>shared/model-contract/</code>,
+              <code>shared/fixtures/</code> and the promoted model, and nothing else. <strong>Analogy:</strong> two kitchens
+              with the same recipe cards. See the figure in the section above.
+            </p>
+          </div>
+        </div>
+
+        <h3 id="the-rest">The rest, in plain words</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>In plain words</th><th>Enforced by</th></tr></thead>
+            <tbody>
+              <tr><td>SUD-03</td><td>The game does not depend on the scanner. Scanning is an optional way to get a puzzle.</td><td>dependency-cruiser</td></tr>
+              <tr><td>SUD-04</td><td>The core has no React Native, no Expo and no I/O. It is pure logic.</td><td>dependency-cruiser</td></tr>
+              <tr><td>SUD-05</td><td>The app reaches the scanner only through <code>src/scanner/index.ts</code>.</td><td>dependency-cruiser</td></tr>
+              <tr><td>SUD-06</td><td>A model reaches the app only through <code>just promote-model</code>, which checks fixture scores. Until milestone M3, <code>just install-model</code> is the one exception.</td><td>The promote step</td></tr>
+              <tr><td>SUD-08</td><td>No training images or private fixtures in git. The public set in <code>shared/fixtures/scans</code> is the one exception.</td><td>Review, <code>.gitignore</code></td></tr>
+              <tr><td>SUD-09</td><td>Promote and the tests refuse a model with a contract major version that the scanner does not implement.</td><td>Tests, promote</td></tr>
+              <tr><td>SUD-10</td><td>Fixture cells never appear in a training set.</td><td>The split code in <code>ml/</code></td></tr>
+              <tr><td>SUD-11</td><td>The AWS bill stays below 10 euro a month. Throttles bound the worst case. A kill switch stops every stage at the budget.</td><td>Budget, kill switch</td></tr>
+              <tr><td>SUD-12</td><td>The repository root holds only what ADR-029 lists.</td><td><code>tools/layout/check-layout.mjs</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why SUD-04 helps so much</span>
+          Because the core imports nothing, a developer can test the solver with <code>pnpm --filter @sudoku/core test</code>
+          in milliseconds, with no phone and no mock. The same code could one day run in a Lambda, for example to check a
+          leaderboard result. The constraint costs a little freedom. It buys speed, trust and reuse.
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A player turns off "Help improve the app" and scans a puzzle. Which data leaves the phone because of the scan?</p>
+          <div class="options">
+            <button>The scan photo, but not the cell images.</button>
+            <button>The 81 cell images, to improve the model.</button>
+            <button data-correct>None. Nothing from the scan leaves the phone.</button>
+          </div>
+          <p class="explain">
+            SUD-02: a scan photo leaves only through that setting. With it off, nothing leaves. Only a finished game can sync,
+            and only if the player signs in.
+          </p>
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">Why does the core have no dependency on any npm package?</p>
+          <div class="options">
+            <button>npm packages are slow to install.</button>
+            <button data-correct>The core must stay pure: easy to test, portable to a backend, and free of platform code (SUD-04).</button>
+            <button>The pnpm workspace forbids it.</button>
+          </div>
+          <p class="explain">
+            It is a design choice that dependency-cruiser enforces with the rule
+            <code>sud-04-core-has-no-dependencies</code>. pnpm does not care.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="decisions">How the team writes down decisions</h2>
+        <p>
+          <strong>The problem:</strong> one developer, side-project hours and a project that runs for months. After a
+          break, nobody remembers why the model has two heads or why the root has seven folders. Chat history is lost.
+          Source code shows <em>what</em>, but never <em>why not the other way</em>.
+        </p>
+        <p>
+          <strong>The answer:</strong> the project documents its architecture with <span class="term" data-def="A template for architecture documentation with 12 numbered chapters. Free and widely used.">Arc42</span>.
+          The docs live in <code>docs/architecture/</code>. Click a box to see what each part is for.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 780 330" role="img" aria-label="The documentation map. AGENTS.md points to the decisions index, the twelve Arc42 chapters, the ADRs, the concepts and the glossary. Click a box to read about it.">
+            <defs>
+              <marker id="doc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <path class="edge" d="M390,76 L390,100" marker-end="url(#doc-arrow)" />
+            <path class="edge" d="M390,100 L130,130 L130,150" marker-end="url(#doc-arrow)" />
+            <path class="edge" d="M390,100 L390,150" marker-end="url(#doc-arrow)" />
+            <path class="edge" d="M390,100 L650,130 L650,150" marker-end="url(#doc-arrow)" />
+            <path class="edge dashed" d="M300,230 L150,250 L150,262" marker-end="url(#doc-arrow)" />
+            <path class="edge dashed" d="M480,230 L630,250 L630,262" marker-end="url(#doc-arrow)" />
+
+            <g data-node="agents">
+              <rect class="box accent" x="290" y="14" width="200" height="60" rx="10" />
+              <text class="label" x="390" y="40" text-anchor="middle">AGENTS.md</text>
+              <text class="sublabel" x="390" y="58" text-anchor="middle">where to look first</text>
+            </g>
+            <g data-node="arc42">
+              <rect class="box blue" x="20" y="150" width="220" height="80" rx="10" />
+              <text class="label" x="130" y="180" text-anchor="middle">Arc42 chapters 01-12</text>
+              <text class="sublabel" x="130" y="200" text-anchor="middle">goals, context, blocks,</text>
+              <text class="sublabel" x="130" y="216" text-anchor="middle">deployment, quality</text>
+            </g>
+            <g data-node="decisions">
+              <rect class="box accent" x="290" y="150" width="200" height="80" rx="10" />
+              <text class="label" x="390" y="180" text-anchor="middle">00-DECISIONS.md</text>
+              <text class="sublabel" x="390" y="200" text-anchor="middle">one line per rule</text>
+              <text class="sublabel" x="390" y="216" text-anchor="middle">SUD-xx and ADR-xxx</text>
+            </g>
+            <g data-node="concepts">
+              <rect class="box green" x="540" y="150" width="220" height="80" rx="10" />
+              <text class="label" x="650" y="180" text-anchor="middle">00-concepts/</text>
+              <text class="sublabel" x="650" y="200" text-anchor="middle">how one idea works:</text>
+              <text class="sublabel" x="650" y="216" text-anchor="middle">scan, game, sync, model</text>
+            </g>
+            <g data-node="adr">
+              <rect class="box violet" x="40" y="262" width="220" height="56" rx="10" />
+              <text class="label" x="150" y="288" text-anchor="middle">adr/adr-NNN-slug.md</text>
+              <text class="sublabel" x="150" y="306" text-anchor="middle">the reasoning</text>
+            </g>
+            <g data-node="glossary">
+              <rect class="box amber" x="520" y="262" width="220" height="56" rx="10" />
+              <text class="label" x="630" y="288" text-anchor="middle">12-glossary.md</text>
+              <text class="sublabel" x="630" y="306" text-anchor="middle">the dictionary</text>
+            </g>
+          </svg>
+          <p class="hint">Click a box to read about it.</p>
+          <div class="panel" data-panel="agents">
+            <h4>AGENTS.md</h4>
+            <p>
+              The entry point. It lists the rules that bind all work, the writing style, the comment rules, the work
+              tracking and the git rules. It has a table that says "if you need X, read file Y". Claude Code reads it
+              through <code>CLAUDE.md</code>, which only imports it. Other agents read it directly.
+              See <a href="../../AGENTS.md">AGENTS.md</a>.
+            </p>
+          </div>
+          <div class="panel" data-panel="arc42">
+            <h4>The Arc42 chapters</h4>
+            <p>
+              Numbered files <code>01-</code> to <code>12-</code>. Examples: <code>01</code> goals, <code>03</code> system
+              context, <code>05</code> building blocks, <code>07</code> deployment, <code>09</code> the list of ADRs,
+              <code>10</code> quality requirements, <code>12</code> the glossary. Each file starts with front matter:
+              <code>status: DRAFT</code> or <code>status: ACCEPTED</code>. They describe the system as a whole, from
+              several views.
+            </p>
+          </div>
+          <div class="panel" data-panel="decisions">
+            <h4>00-DECISIONS.md</h4>
+            <p>
+              An index, not a place for reasoning. It has a table of constraints (<code>SUD-xx</code>) and a table of
+              decisions (<code>ADR-xxx</code>), with impact, date, owner and a link to the source. A bold <strong>Pending</strong>
+              note marks an ADR with the status Proposed. Open this file first when you wonder "is there a rule about
+              this?". <a href="../architecture/00-DECISIONS.md">Read it here</a>.
+            </p>
+          </div>
+          <div class="panel" data-panel="concepts">
+            <h4>Concepts</h4>
+            <p>
+              One file per idea that spans many parts: <code>scan-pipeline.md</code>, <code>game-screen.md</code>,
+              <code>history-sync.md</code>, <code>model-contract.md</code>, <code>hints.md</code>,
+              <code>scan-collection.md</code> and <code>splash-screen.md</code>. Each has the sections Why, What, a diagram,
+              Open questions and Constraints. The chapters of this guide build on them.
+            </p>
+          </div>
+          <div class="panel" data-panel="adr">
+            <h4>ADRs</h4>
+            <p>
+              An <span class="term" data-def="Architecture Decision Record. A short file that says what was decided, which options were rejected, and when to look at the decision again.">ADR</span>
+              holds the reasoning for one decision. The sections are fixed: Context, Alternatives Evaluated, Decision,
+              Consequences and Reassessment Triggers, plus a metadata table at the top. There are 35 ADRs now. See the
+              lifecycle below.
+            </p>
+          </div>
+          <div class="panel" data-panel="glossary">
+            <h4>The glossary</h4>
+            <p>
+              The dictionary of the project's writing style. "One word, one meaning" is the first rule. If a document needs a
+              new term, it first goes in <a href="../architecture/12-glossary.md">12-glossary.md</a>. The tooltips in this guide use the same definitions.
+            </p>
+          </div>
+        </div>
+
+        <h3 id="adr-lifecycle">The life of an ADR</h3>
+        <p>
+          An ADR is not written once and forgotten. It moves through states. The stepper shows a typical path. Click
+          <em>Next</em>.
+        </p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 780 230" role="img" aria-label="The life of an ADR in six steps: need, Proposed, indexed, built, Accepted, then amended or superseded.">
+            <defs>
+              <marker id="lc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box muted keep" data-steps="1,2,3,4,5,6" x="8" y="40" width="108" height="64" rx="10" />
+            <text class="label" x="62" y="66" text-anchor="middle">Issue</text>
+            <text class="sublabel" x="62" y="86" text-anchor="middle">a need</text>
+            <rect class="box amber keep" data-steps="2,3,4,5,6" x="136" y="40" width="108" height="64" rx="10" />
+            <text class="label" x="190" y="66" text-anchor="middle">Proposed</text>
+            <text class="sublabel" x="190" y="86" text-anchor="middle">ADR written</text>
+            <rect class="box blue keep" data-steps="3,4,5,6" x="264" y="40" width="108" height="64" rx="10" />
+            <text class="label" x="318" y="66" text-anchor="middle">Indexed</text>
+            <text class="sublabel" x="318" y="86" text-anchor="middle">00 and 09</text>
+            <rect class="box violet keep" data-steps="4,5,6" x="392" y="40" width="108" height="64" rx="10" />
+            <text class="label" x="446" y="66" text-anchor="middle">Built</text>
+            <text class="sublabel" x="446" y="86" text-anchor="middle">code proves it</text>
+            <rect class="box green keep" data-steps="5,6" x="520" y="40" width="108" height="64" rx="10" />
+            <text class="label" x="574" y="66" text-anchor="middle">Accepted</text>
+            <text class="sublabel" x="574" y="86" text-anchor="middle">amendment</text>
+            <rect class="box accent keep" data-steps="6" x="648" y="40" width="118" height="64" rx="10" />
+            <text class="label" x="707" y="66" text-anchor="middle">Amended or</text>
+            <text class="label" x="707" y="84" text-anchor="middle">superseded</text>
+
+            <path class="edge" d="M116,72 L134,72" marker-end="url(#lc-arrow)" />
+            <path class="edge" d="M244,72 L262,72" marker-end="url(#lc-arrow)" />
+            <path class="edge" d="M372,72 L390,72" marker-end="url(#lc-arrow)" />
+            <path class="edge" d="M500,72 L518,72" marker-end="url(#lc-arrow)" />
+            <path class="edge" d="M628,72 L646,72" marker-end="url(#lc-arrow)" />
+
+            <text class="tiny" data-steps="1" x="62" y="130" text-anchor="middle">GitHub issue</text>
+            <text class="tiny" data-steps="2" x="190" y="130" text-anchor="middle">5 sections</text>
+            <text class="tiny" data-steps="3" x="318" y="130" text-anchor="middle">same change</text>
+            <text class="tiny" data-steps="4" x="446" y="130" text-anchor="middle">PR + iPhone</text>
+            <text class="tiny" data-steps="5" x="574" y="130" text-anchor="middle">status flips</text>
+            <text class="tiny" data-steps="6" x="707" y="130" text-anchor="middle">history stays</text>
+            <path class="edge accent" data-steps="6" d="M745,104 L745,170 L148,170 L148,108" marker-end="url(#lc-arrow)" />
+            <text class="tiny" data-steps="6" x="450" y="190" text-anchor="middle">a new ADR says "Supersedes ADR-NNN". The old one stays as it was.</text>
+          </svg>
+          <div class="step">
+            <p class="step-title">1. A need appears</p>
+            <p>
+              Every change starts from a GitHub issue. If the issue asks for a choice that is hard to undo, the developer
+              proposes an ADR. Example: "where should the backend folders go?" became
+              <a href="../architecture/adr/adr-029-repository-layout.md">ADR-029</a>.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">2. Write it as Proposed</p>
+            <p>
+              The ADR has a metadata table (project, status, date, contact) and five sections: Context, Alternatives
+              Evaluated, Decision, Consequences and Reassessment Triggers. The status is <code>Proposed</code>. A reader
+              can see the rejected options, and that is the main point.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">3. Update the index in the same change</p>
+            <p>
+              The rule in AGENTS.md: update <code>00-DECISIONS.md</code> and <code>09-architecture-decisions.md</code> in the
+              same change. A decision that is not in the index does not exist for the next reader. Every relative link must
+              resolve before the commit.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">4. Build it, and let the code test the idea</p>
+            <p>
+              The code is written. Some ADRs wait for a real-world check. Example: ADR-002 (React Native and the scanner
+              engine) still says <strong>Pending the walking skeleton</strong>. ADR-030 waits for an iPhone check. The
+              pending note names exactly what it waits for.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">5. Accept it with a dated amendment</p>
+            <p>
+              When the code proves the decision, the status moves from Proposed to Accepted, with an amendment such as
+              "Amendment 2026-10-22: accepted". The decision itself does not change. Example: ADR-008 got this amendment
+              after the boundary rules ran in CI.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">6. Change it with an amendment, or replace it</p>
+            <p>
+              A small change becomes a new, dated amendment at the end of the same ADR. ADR-011 (puzzle generation) has many.
+              A big change gets a new ADR that says "Supersedes ADR-NNN". Nobody rewrites the old decision, so the history
+              stays honest. ADR-029 superseded the folder layout of ADR-001, ADR-008 and ADR-018. Their other decisions
+              stand.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why the "Reassessment Triggers" section?</span>
+          A decision is right for a time. The trigger says when to look again. ADR-029 names three: a second deployable
+          app, CI above 15 minutes, and SST moving its config file. This turns "we should revisit this someday" into a
+          concrete test.
+        </div>
+
+        <details class="deep">
+          <summary>Where each kind of fact lives</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>You want to know</th><th>Read</th></tr></thead>
+              <tbody>
+                <tr><td>What we build and why</td><td><a href="../architecture/01-introduction-and-goals.md">01-introduction-and-goals.md</a></td></tr>
+                <tr><td>Constraints from outside (iOS first, one developer)</td><td><a href="../architecture/02-architecture-constraints.md">02-architecture-constraints.md</a></td></tr>
+                <tr><td>Neighbours of the system</td><td><a href="../architecture/03-system-scope-and-context.md">03-system-scope-and-context.md</a></td></tr>
+                <tr><td>Why each big technology was picked</td><td><a href="../architecture/04-solution-strategy.md">04-solution-strategy.md</a></td></tr>
+                <tr><td>Folders and building blocks</td><td><a href="../architecture/05-building-block-view.md">05-building-block-view.md</a></td></tr>
+                <tr><td>Where AWS, Clerk and Vercel run</td><td><a href="../architecture/07-deployment-view.md">07-deployment-view.md</a></td></tr>
+                <tr><td>Every ADR with its status</td><td><a href="../architecture/09-architecture-decisions.md">09-architecture-decisions.md</a></td></tr>
+                <tr><td>What to do when a backend part breaks</td><td><a href="../operations/runbook.md">docs/operations/runbook.md</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">An accepted ADR says the scanner uses fast-opencv. You want to switch one step to a Swift plugin. What do you do?</p>
+          <div class="options">
+            <button>Change the code. The ADR can be fixed later.</button>
+            <button>Edit the old ADR so that it matches the new code.</button>
+            <button data-correct>Write or amend an ADR first (an amendment, or a new one that supersedes it), update the two index files in the same change, then change the code.</button>
+          </div>
+          <p class="explain">
+            AGENTS.md rule 2: do not change an accepted decision in code alone. The history of the old decision stays. The
+            new text records the change and its reason.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="journey">The journey of one feature</h2>
+        <p>
+          You now know the parts, the folders and the rules. Follow one puzzle from paper to the cloud. This is the thread
+          that the next chapters pull. Click <em>Next</em>, and use the links to jump to a chapter.
+        </p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 780 270" role="img" aria-label="The journey of a scanned puzzle: scan, recognise, correct, play, finish, sync. The first five steps run on the phone. The last step talks to AWS.">
+            <defs>
+              <marker id="jr-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <text class="zone-title" x="12" y="22">ON THE PHONE, NO NETWORK</text>
+            <path class="edge" d="M10,32 L636,32" />
+            <text class="zone-title" x="640" y="22">AWS, OPTIONAL</text>
+            <path class="edge dashed" d="M640,32 L770,32" />
+
+            <rect class="box accent keep" data-steps="1" x="8" y="50" width="112" height="88" rx="10" />
+            <text class="label" x="64" y="80" text-anchor="middle">1. Scan</text>
+            <text class="sublabel" x="64" y="102" text-anchor="middle">find the grid</text>
+            <text class="sublabel" x="64" y="120" text-anchor="middle">lock on</text>
+            <rect class="box accent keep" data-steps="2" x="138" y="50" width="112" height="88" rx="10" />
+            <text class="label" x="194" y="80" text-anchor="middle">2. Recognise</text>
+            <text class="sublabel" x="194" y="102" text-anchor="middle">81 cells,</text>
+            <text class="sublabel" x="194" y="120" text-anchor="middle">digit + kind</text>
+            <rect class="box accent keep" data-steps="3" x="268" y="50" width="112" height="88" rx="10" />
+            <text class="label" x="324" y="80" text-anchor="middle">3. Correct</text>
+            <text class="sublabel" x="324" y="102" text-anchor="middle">fix errors,</text>
+            <text class="sublabel" x="324" y="120" text-anchor="middle">given or mine</text>
+            <rect class="box blue keep" data-steps="4" x="398" y="50" width="112" height="88" rx="10" />
+            <text class="label" x="454" y="80" text-anchor="middle">4. Play</text>
+            <text class="sublabel" x="454" y="102" text-anchor="middle">notes, hints,</text>
+            <text class="sublabel" x="454" y="120" text-anchor="middle">timer</text>
+            <rect class="box blue keep" data-steps="5" x="528" y="50" width="112" height="88" rx="10" />
+            <text class="label" x="584" y="80" text-anchor="middle">5. Finish</text>
+            <text class="sublabel" x="584" y="102" text-anchor="middle">save, stats,</text>
+            <text class="sublabel" x="584" y="120" text-anchor="middle">history</text>
+            <rect class="box violet keep" data-steps="6" x="658" y="50" width="112" height="88" rx="10" />
+            <text class="label" x="714" y="80" text-anchor="middle">6. Sync</text>
+            <text class="sublabel" x="714" y="102" text-anchor="middle">push, pull,</text>
+            <text class="sublabel" x="714" y="120" text-anchor="middle">cursor</text>
+
+            <path class="edge" d="M120,94 L136,94" marker-end="url(#jr-arrow)" />
+            <path class="edge" d="M250,94 L266,94" marker-end="url(#jr-arrow)" />
+            <path class="edge" d="M380,94 L396,94" marker-end="url(#jr-arrow)" />
+            <path class="edge" d="M510,94 L526,94" marker-end="url(#jr-arrow)" />
+            <path class="edge dashed" d="M640,94 L656,94" marker-end="url(#jr-arrow)" />
+
+            <text class="tiny" x="64" y="168" text-anchor="middle">scan/, scanner/</text>
+            <text class="tiny" x="194" y="168" text-anchor="middle">scanner/ + model</text>
+            <text class="tiny" x="324" y="168" text-anchor="middle">scan/ corrections</text>
+            <text class="tiny" x="454" y="168" text-anchor="middle">game/ + core</text>
+            <text class="tiny" x="584" y="168" text-anchor="middle">storage/ + core</text>
+            <text class="tiny" x="714" y="168" text-anchor="middle">sync/ + backend/</text>
+
+            <text class="label only" data-steps="1" x="390" y="215" text-anchor="middle">Chapter 4: Scanning a paper sudoku</text>
+            <text class="label only" data-steps="2" x="390" y="215" text-anchor="middle">Chapters 4 and 5: scanner and the digit model</text>
+            <text class="label only" data-steps="3" x="390" y="215" text-anchor="middle">Chapters 3 and 4: the app and the scan flow</text>
+            <text class="label only" data-steps="4" x="390" y="215" text-anchor="middle">Chapters 2 and 3: the engine and the game screen</text>
+            <text class="label only" data-steps="5" x="390" y="215" text-anchor="middle">Chapters 2 and 3: completion, storage, stats</text>
+            <text class="label only" data-steps="6" x="390" y="215" text-anchor="middle">Chapter 6: backend, accounts and sync</text>
+          </svg>
+          <div class="step">
+            <p class="step-title">1. Scan: the camera finds the grid</p>
+            <p>
+              Every camera frame goes to a VisionCamera frame processor. It downscales the frame, finds the largest
+              four-corner shape and reports it. The scan UI smooths the corners and draws the outline in Skia. When the
+              same grid stays in view long enough, the scan <em>locks on</em> and takes a full photo.
+              Files: <code>mobile/src/scanner/useGridDetector.ts</code>, <code>findGrid.ts</code>,
+              <code>mobile/src/scan/utils/lockOn.utils.ts</code>. The scan UI uses the scanner only through
+              <code>src/scanner/index.ts</code> (SUD-05). More in <a href="04-scan-pipeline.html">chapter 4</a>.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">2. Recognise: 81 cells become digits</p>
+            <p>
+              On capture, the scanner flattens the page and finds the 100 grid intersections. It cuts out each cell from its
+              own four corners, which fixes a curved book page piece by piece. The model reads all 81 cell images in one
+              batch and returns a digit and a kind for each: none, printed, handwritten or notes.
+              File: <code>mobile/src/scanner/recognise.ts</code>. The model file comes from
+              <code>ml/</code> (<a href="05-machine-learning.html">chapter 5</a>).
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">3. Correct: the player checks the result</p>
+            <p>
+              A correction screen shows the grid. The player fixes a wrong digit or switches a cell between
+              <em>given</em> (printed) and <em>mine</em> (handwritten). A half-solved book puzzle loads with the player's own
+              digits as the player's. If sharing is on, the corrected scan can go to the training set later, through
+              <code>mobile/src/scanShare/</code>. Files: <code>mobile/src/scan/correctionStore.ts</code>, the hooks in
+              <code>mobile/src/scan/hooks/useCorrectionSession/</code>.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">4. Play: the same game, from a scan or from a seed</p>
+            <p>
+              A generated puzzle and a scanned puzzle enter the game through the same function,
+              <code>createPuzzleStart</code> (<code>mobile/src/game/utils/puzzleStart.utils.ts</code>). The rules, the
+              solver and the hints come from <code>@sudoku/core</code>. A game session
+              (<code>gameSession.utils.ts</code>) holds the reducer, the clock, the pause and the saves. The solver that
+              grades a puzzle is the same solver that builds its hints. See
+              <a href="02-sudoku-engine.html">chapter 2</a> and <a href="03-the-app.html">chapter 3</a>.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">5. Finish: the result is saved</p>
+            <p>
+              When the grid is complete, or the player loses or gives up, the game writes a history entry through the
+              storage repositories (<code>mobile/src/storage/HistoryRepository.ts</code>). The stats count it in SQL
+              (<code>StatsRepository.ts</code>). The rule that decides whether a time counts as a best time is
+              <code>countsForBestTime</code> in <code>@sudoku/core</code>. Everything here works with no network.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">6. Sync: finished games reach the cloud</p>
+            <p>
+              Only a signed-in player syncs, and only finished games. Storage tells the sync that something changed,
+              through a subscription, because storage may not import the sync. <code>SyncService</code>
+              (<code>mobile/src/sync/SyncService.ts</code>) sends the waiting list in one <code>POST /v1/sync</code> and
+              pulls changes since a server cursor. The Lambda checks the Clerk token and writes to DynamoDB with
+              <code>push.ts</code> and <code>pull.ts</code>. A failure is silent: the game never waits for the network. See
+              <a href="06-backend-and-sync.html">chapter 6</a>.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          A newspaper puzzle goes on a trip. A photographer takes the picture (scan). An assistant reads it and writes the
+          numbers down (recognise). You check the assistant's work (correct). You solve it (play). You file the result in
+          your own notebook (finish). A copy of the notebook page goes to a safe in another city (sync). The assistant and
+          the notebook work with no phone line. Only the safe needs one.
+        </div>
+
+        <h3 id="milestones">Where the project is on its road</h3>
+        <p>
+          The developer plans the work in five milestones. The status line in AGENTS.md says that the game, the scanner and
+          the backend run, and that open work sits in M0 to M4. An epic is a group of GitHub issues for one player goal.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Milestone</th><th>Content</th><th>Where you read about it</th></tr></thead>
+            <tbody>
+              <tr><td>M0 Walking skeleton</td><td>The thinnest real path: live outline, capture and a tiny model on the iPhone. It proves ADR-002 and ADR-005.</td><td>Chapters 4 and 5</td></tr>
+              <tr><td>M1 Game</td><td><code>@sudoku/core</code>, local storage and the playable app. Needs no ML.</td><td>Chapters 2 and 3</td></tr>
+              <tr><td>M2 Scanner</td><td>Lock-on, capture, per-cell flatten, a first classifier and the correction screen.</td><td>Chapter 4</td></tr>
+              <tr><td>M3 Data loop</td><td>Fixtures, training-data export, retraining and the promote gate.</td><td>Chapter 5</td></tr>
+              <tr><td>M4 Backend</td><td>Accounts, history sync and scan collection on AWS.</td><td>Chapter 6</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">Why does the game <em>storage</em> tell the sync about a change through a subscription, and not by importing the sync?</p>
+          <div class="options">
+            <button>Subscriptions are faster than function calls.</button>
+            <button data-correct>The rule <code>adr-028-storage-does-not-use-sync-or-account</code> forbids the import. A subscription keeps the arrow pointing from sync to storage.</button>
+            <button>The sync lives on the server, so the app cannot import it.</button>
+          </div>
+          <p class="explain">
+            The sync (<code>mobile/src/sync/</code>) runs in the app, and it imports storage. If storage imported the sync,
+            you would get a cycle, and the game would depend on the account. The subscription reverses the direction of
+            knowledge without reversing the import.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="how-to-read">How to read the rest of the guide</h2>
+        <ul>
+          <li><a href="02-sudoku-engine.html">Chapter 2</a>: the sudoku engine in <code>shared/core</code>. How the solver, generator and hints work.</li>
+          <li><a href="03-the-app.html">Chapter 3</a>: the app and the game screen, storage and themes.</li>
+          <li><a href="04-scan-pipeline.html">Chapter 4</a>: the live scan, lock-on, flattening and the correction screen.</li>
+          <li><a href="05-machine-learning.html">Chapter 5</a>: the digit model, the dataset, training, the gate.</li>
+          <li><a href="06-backend-and-sync.html">Chapter 6</a>: the backend, accounts and the history sync.</li>
+          <li><a href="07-how-we-work.html">Chapter 7</a>: tests, CI, issues, pull requests and the writing style.</li>
+        </ul>
+
+        <h2 id="where-to-read-more">Where to read more</h2>
+        <ul>
+          <li><a href="../architecture/01-introduction-and-goals.md">Introduction and goals</a>: the requirements and the quality goals.</li>
+          <li><a href="../architecture/03-system-scope-and-context.md">System scope and context</a>: the neighbours of the system.</li>
+          <li><a href="../architecture/05-building-block-view.md">Building block view</a>: the folders and the boundary tables.</li>
+          <li><a href="../architecture/07-deployment-view.md">Deployment view</a>: where each part runs.</li>
+          <li><a href="../architecture/00-DECISIONS.md">Decisions and constraints</a> and <a href="../architecture/09-architecture-decisions.md">the ADR list</a>.</li>
+          <li><a href="../architecture/adr/adr-001-polyglot-monorepo.md">ADR-001 (polyglot monorepo)</a>, <a href="../architecture/adr/adr-008-package-boundaries.md">ADR-008 (package boundaries)</a>, <a href="../architecture/adr/adr-029-repository-layout.md">ADR-029 (repository layout)</a>.</li>
+          <li><a href="../architecture/12-glossary.md">The glossary</a>.</li>
+          <li><a href="../../README.md">The README</a> and <a href="../../AGENTS.md">AGENTS.md</a>.</li>
+        </ul>
+      </main>
+    </div>
+
+    <script>
+      // The import checker. It mirrors the main rules of .dependency-cruiser.cjs for a few example files.
+      // The real config is the source of truth. This simulation only teaches the shape of the rules.
+      ;(function () {
+        const FEATURES = ['home', 'game', 'settings', 'stats', 'techniques', 'scan']
+        const SHARED_FEATURE_TARGETS = ['home', 'game', 'settings', 'stats', 'techniques', 'scan', 'storage', 'splash', 'account', 'sync', 'scanShare']
+        const ALLOWLIST = [
+          'mobile/src/game/components/Grid/index.ts',
+          'mobile/src/game/components/DisplayGameProvider/index.ts',
+          'mobile/src/game/utils/session.utils.ts',
+          'mobile/src/game/utils/sample.utils.ts',
+          'mobile/src/game/hooks/useAssists/index.ts',
+          'mobile/src/game/constants/assists.constants.ts',
+          'mobile/src/game/hooks/usePuzzleStart/index.ts',
+          'mobile/src/game/utils/newGame.utils.ts',
+          'mobile/src/game/components/ConflictHatch/index.ts',
+          'mobile/src/stats/hooks/useIncludeScanned/index.ts',
+          'mobile/src/stats/components/StatsCard/index.ts',
+        ]
+
+        const FILES = [
+          { path: 'shared/core/src/solver.ts' },
+          { path: 'shared/sync-contract/src/index.ts' },
+          { path: 'react-native', pkg: true },
+          { path: 'zod', pkg: true },
+          { path: 'node:fs', pkg: true },
+          { path: 'mobile/src/game/utils/gameSession.utils.ts' },
+          { path: 'mobile/src/game/hooks/usePuzzleStart/index.ts' },
+          { path: 'mobile/src/scan/correctionStore.ts' },
+          { path: 'mobile/src/scanner/index.ts' },
+          { path: 'mobile/src/scanner/recognise.ts' },
+          { path: 'mobile/src/scanShare/scanShare.ts' },
+          { path: 'mobile/src/storage/HistoryRepository.ts' },
+          { path: 'mobile/src/sync/SyncService.ts' },
+          { path: 'mobile/src/account/accountLifecycle.ts' },
+          { path: 'mobile/src/components/Icon/index.ts' },
+          { path: 'mobile/src/stats/components/StatsCard/index.ts' },
+          { path: 'mobile/src/utils/geometry.utils.ts' },
+          { path: 'backend/api/src/handler.ts' },
+          { path: 'backend/api/src/tableDesign.ts' },
+          { path: 'backend/infra/storage.ts' },
+          { path: 'sst.config.ts' },
+        ]
+
+        const feature = (p) => {
+          const m = /^mobile\/src\/([^/]+)\//.exec(p)
+          return m ? m[1] : null
+        }
+        const isApp = (p) => p.startsWith('mobile/') || p.startsWith('shared/')
+        const isLambda = (p) => /^backend\/(api|kill-switch)\//.test(p)
+        const isInfra = (p) => p.startsWith('backend/infra/') || p === 'sst.config.ts'
+
+        function check(from, to) {
+          const f = from.path
+          const t = to.path
+          if (f === t) return { ok: true, text: 'A file that imports itself is not a real arrow. Pick two different files.' }
+
+          if (f.startsWith('shared/core/src/')) {
+            if (to.pkg) return bad('sud-04-core-has-no-dependencies', 'SUD-04: @sudoku/core must not depend on React Native, Expo, npm packages or Node I/O.')
+            if (!t.startsWith('shared/core/')) return bad('sud-04-core-stays-in-its-package', 'SUD-04: the core must not reach outside its own folder.')
+          }
+          if (f.startsWith('shared/sync-contract/src/')) {
+            if (to.pkg && t !== 'zod') return bad('sync-contract-needs-only-zod', 'ADR-028: the app and the Lambda both import the sync contract. It may use zod only.')
+            if (!to.pkg && !t.startsWith('shared/sync-contract/')) return bad('sync-contract-stays-in-its-package', 'ADR-028: the sync contract must not reach outside its own folder.')
+          }
+          if (f.startsWith('mobile/src/game/') && t.startsWith('mobile/src/scanner/'))
+            return bad('sud-03-game-does-not-use-scanner', 'SUD-03: the game must not depend on the scanner. Scanning is an optional way into a puzzle.')
+          if (!f.startsWith('mobile/src/scanner/') && t.startsWith('mobile/src/scanner/') && t !== 'mobile/src/scanner/index.ts')
+            return bad('sud-05-scanner-has-one-entry-point', 'SUD-05: outside the scanner, import it only through src/scanner/index.ts.')
+          if (isApp(f) && isInfra(t))
+            return bad('adr-027-app-does-not-import-infra', 'ADR-027: the app and the packages never import the SST code. The API is their only link to the backend.')
+          if (isApp(f) && isLambda(t))
+            return bad('adr-027-app-does-not-import-services', 'ADR-027: the app and the packages never import the Lambda code. The API is their only link to the backend.')
+          if (isLambda(f) && t.startsWith('mobile/'))
+            return bad('adr-027-services-do-not-import-the-app', 'ADR-027: the Lambda shares only @sudoku/sync-contract with the app.')
+          if (isLambda(f) && isInfra(t))
+            return bad('adr-027-services-do-not-import-infra', 'ADR-027: the Lambda reads its resources through the SST Resource object, not through the SST code.')
+          if (isInfra(f) && isLambda(t) && t !== 'backend/api/src/tableDesign.ts' && !t.startsWith('backend/kill-switch/src/'))
+            return bad('adr-027-infra-reads-only-shared-lambda-files', 'ADR-027: the SST code reads tableDesign.ts and the kill-switch files, and no other Lambda file.')
+          if (/^mobile\/src\/(game|stats)\//.test(f) && /^mobile\/src\/(account|sync)\//.test(t))
+            return bad('adr-028-game-and-stats-do-not-use-account', 'ADR-028: the game and the stats read the owner from storage, never from the account or the sync.')
+          if (f.startsWith('mobile/src/storage/') && /^mobile\/src\/(account|sync)\//.test(t))
+            return bad('adr-028-storage-does-not-use-sync-or-account', 'ADR-028: storage tells the sync about a change through subscribe. It never imports the sync or the account.')
+          if (f.startsWith('mobile/src/scanShare/') && t.startsWith('mobile/src/scan/'))
+            return bad('adr-030-scanshare-does-not-use-scan', 'ADR-030: the upload does not import the scan UI. They share src/utils/ and src/components/.')
+          const ff = feature(f)
+          const tf = feature(t)
+          if (ff && tf && FEATURES.includes(ff) && FEATURES.includes(tf) && ff !== tf) {
+            if (ALLOWLIST.includes(t))
+              return { ok: true, text: 'Allowed, but only because the file is on CROSS_FEATURE_ALLOWLIST. This is known debt. The comment in the config says who imports it. A new line on that list is not welcome.' }
+            return bad('a-feature-does-not-import-a-sibling-feature', 'ADR-029 (amendment): code that two features use lives in src/components/, src/hooks/, src/preferences/, src/utils/ or src/constants/.')
+          }
+          if (/^mobile\/src\/(components|hooks|preferences)\//.test(f) && tf && SHARED_FEATURE_TARGETS.includes(tf))
+            return bad('shared-folders-do-not-import-a-feature', 'ADR-029 (amendment): the shared folders serve every feature, so they import no feature folder.')
+
+          let note = 'No rule forbids this arrow.'
+          if (t === 'mobile/src/scanner/index.ts') note = 'No rule forbids it. This is the one door of the scanner (SUD-05).'
+          else if (t === 'backend/api/src/tableDesign.ts' && isInfra(f)) note = 'This is the one Lambda file that the SST code may read, so the test table matches the real table.'
+          else if (to.pkg && f.startsWith('mobile/')) note = 'The app may use npm packages. Only the pure packages (core, sync contract) are limited.'
+          else if (t.startsWith('shared/')) note = 'The arrow points down to a shared package. That is the normal direction.'
+          return { ok: true, text: note }
+        }
+        function bad(rule, why) {
+          return { ok: false, rule, text: why }
+        }
+
+        const fromSel = document.getElementById('sim-from')
+        const toSel = document.getElementById('sim-to')
+        const out = document.getElementById('sim-result')
+        const presets = document.getElementById('sim-presets')
+        if (!fromSel || !toSel || !out || !presets) return
+
+        FILES.forEach((file, i) => {
+          for (const sel of [fromSel, toSel]) {
+            const opt = document.createElement('option')
+            opt.value = String(i)
+            opt.textContent = file.pkg ? file.path + '  (package)' : file.path
+            sel.append(opt)
+          }
+        })
+
+        function render() {
+          const from = FILES[Number(fromSel.value)]
+          const to = FILES[Number(toSel.value)]
+          const r = check(from, to)
+          out.className = 'sim-result ' + (r.ok ? 'ok' : 'bad')
+          out.textContent = ''
+          const title = document.createElement('strong')
+          title.textContent = r.ok ? 'Allowed' : 'Blocked by ' + r.rule
+          const p = document.createElement('p')
+          p.textContent = r.text
+          out.append(title, p)
+        }
+
+        const idx = (path) => FILES.findIndex((f) => f.path === path)
+        const PRESETS = [
+          ['Core imports react-native', 'shared/core/src/solver.ts', 'react-native'],
+          ['Game imports the scanner', 'mobile/src/game/utils/gameSession.utils.ts', 'mobile/src/scanner/recognise.ts'],
+          ['Scan UI uses the scanner door', 'mobile/src/scan/correctionStore.ts', 'mobile/src/scanner/index.ts'],
+          ['App imports the Lambda', 'mobile/src/sync/SyncService.ts', 'backend/api/src/handler.ts'],
+          ['Infra reads tableDesign.ts', 'backend/infra/storage.ts', 'backend/api/src/tableDesign.ts'],
+          ['Infra reads the handler', 'backend/infra/storage.ts', 'backend/api/src/handler.ts'],
+          ['Storage imports the sync', 'mobile/src/storage/HistoryRepository.ts', 'mobile/src/sync/SyncService.ts'],
+          ['Scan uses a game helper', 'mobile/src/scan/correctionStore.ts', 'mobile/src/game/utils/gameSession.utils.ts'],
+          ['Scan starts a game (allowlisted)', 'mobile/src/scan/correctionStore.ts', 'mobile/src/game/hooks/usePuzzleStart/index.ts'],
+          ['Icon imports a feature', 'mobile/src/components/Icon/index.ts', 'mobile/src/game/utils/gameSession.utils.ts'],
+          ['Sync contract imports zod', 'shared/sync-contract/src/index.ts', 'zod'],
+          ['Lambda uses the sync contract', 'backend/api/src/handler.ts', 'shared/sync-contract/src/index.ts'],
+        ]
+        for (const [label, a, b] of PRESETS) {
+          const btn = document.createElement('button')
+          btn.type = 'button'
+          btn.textContent = label
+          btn.addEventListener('click', () => {
+            fromSel.value = String(idx(a))
+            toSel.value = String(idx(b))
+            render()
+          })
+          presets.append(btn)
+        }
+        fromSel.addEventListener('change', render)
+        toSel.addEventListener('change', render)
+        fromSel.value = String(idx('shared/core/src/solver.ts'))
+        toSel.value = String(idx('react-native'))
+        render()
+      })()
+    </script>
+  </body>
+</html>

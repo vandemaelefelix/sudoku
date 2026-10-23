@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sudoku, inside out</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="assets/guide.css" />
+    <script src="assets/guide.js" defer></script>
+    <style>
+      .hero-board {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 32px;
+        align-items: center;
+      }
+      @media (max-width: 760px) {
+        .hero-board {
+          grid-template-columns: 1fr;
+        }
+      }
+      .hero-board .board {
+        font-size: 15px;
+        width: 260px;
+      }
+      .hero-board .cell.lit {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .path {
+        counter-reset: path;
+        list-style: none;
+        padding: 0;
+      }
+      .path li {
+        counter-increment: path;
+        position: relative;
+        padding-left: 44px;
+        margin: 12px 0;
+      }
+      .path li::before {
+        content: counter(path);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 99px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font: 600 14px/30px var(--mono);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar"><nav id="guide-nav" aria-label="Guide"></nav></aside>
+      <main class="content">
+        <div class="hero hero-board">
+          <div>
+            <div class="kicker">A guided course</div>
+            <h1>Sudoku, inside out</h1>
+            <p class="lead">
+              This guide explains how the whole sudoku project works. It starts with the big picture. Then it follows
+              each feature behind the screen: the sudoku engine, the app, the camera scan, the digit model and the
+              backend.
+            </p>
+            <p>
+              Each chapter uses drawings first and words second. Click the diagrams, step through the animations and
+              answer the small questions. The guide reads the real code, so the file names are true.
+            </p>
+          </div>
+          <div class="board" id="hero-board" data-board="530070000600195000098000060800060003400803001700020006060000280000419005000080079" aria-hidden="true"></div>
+        </div>
+
+        <h2 id="in-one-minute">The project in one minute</h2>
+        <p>
+          The project is an iOS sudoku game without ads. It has three parts. Each part lives in its own folder and has
+          its own language and tools.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 760 420" role="img" aria-label="The system: a phone with the app, a shared engine, the model training on a laptop, and the backend on AWS">
+            <defs>
+              <marker id="idx-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <!-- The phone -->
+            <rect class="box muted" x="20" y="20" width="400" height="365" rx="28" />
+            <text class="sublabel" x="44" y="370">iPhone · the app in mobile/</text>
+
+            <g data-node="game">
+              <rect class="box blue" x="44" y="66" width="168" height="74" rx="10" />
+              <text class="label" x="128" y="98" text-anchor="middle">Game UI</text>
+              <text class="sublabel" x="128" y="118" text-anchor="middle">board, notes, timer</text>
+            </g>
+            <g data-node="scan">
+              <rect class="box accent" x="228" y="66" width="168" height="74" rx="10" />
+              <text class="label" x="312" y="98" text-anchor="middle">Scan UI</text>
+              <text class="sublabel" x="312" y="118" text-anchor="middle">camera, correction</text>
+            </g>
+            <g data-node="scanner">
+              <rect class="box accent" x="228" y="166" width="168" height="74" rx="10" />
+              <text class="label" x="312" y="198" text-anchor="middle">Scanner</text>
+              <text class="sublabel" x="312" y="218" text-anchor="middle">corners, 81 cells</text>
+            </g>
+            <g data-node="storage">
+              <rect class="box" x="44" y="166" width="168" height="74" rx="10" />
+              <text class="label" x="128" y="198" text-anchor="middle">Local storage</text>
+              <text class="sublabel" x="128" y="218" text-anchor="middle">SQLite on the phone</text>
+            </g>
+            <g data-node="model">
+              <rect class="box violet" x="228" y="276" width="168" height="74" rx="10" />
+              <text class="label" x="312" y="308" text-anchor="middle">Digit model</text>
+              <text class="sublabel" x="312" y="328" text-anchor="middle">.tflite file</text>
+            </g>
+            <g data-node="sync">
+              <rect class="box green" x="44" y="276" width="168" height="74" rx="10" />
+              <text class="label" x="128" y="308" text-anchor="middle">Account + sync</text>
+              <text class="sublabel" x="128" y="328" text-anchor="middle">optional</text>
+            </g>
+
+            <path class="edge" d="M312,140 L312,164" marker-end="url(#idx-arrow)" />
+            <path class="edge" d="M312,240 L312,274" marker-end="url(#idx-arrow)" />
+            <path class="edge" d="M128,140 L128,164" marker-end="url(#idx-arrow)" />
+            <path class="edge" d="M128,240 L128,274" marker-end="url(#idx-arrow)" />
+
+            <!-- The engine -->
+            <g data-node="core">
+              <rect class="box amber" x="470" y="66" width="270" height="74" rx="10" />
+              <text class="label" x="605" y="98" text-anchor="middle">@sudoku/core</text>
+              <text class="sublabel" x="605" y="118" text-anchor="middle">rules, solver, generator, hints</text>
+            </g>
+            <path class="edge" d="M128,66 L128,40 L560,40 L560,64" marker-end="url(#idx-arrow)" />
+            <path class="edge" d="M396,110 L468,110" marker-end="url(#idx-arrow)" />
+
+            <!-- ML -->
+            <g data-node="ml">
+              <rect class="box violet" x="470" y="276" width="270" height="74" rx="10" />
+              <text class="label" x="605" y="308" text-anchor="middle">ml/ (Python)</text>
+              <text class="sublabel" x="605" y="328" text-anchor="middle">train, export, promote</text>
+            </g>
+            <path class="edge dashed" d="M468,313 L398,313" marker-end="url(#idx-arrow)" />
+            <text class="sublabel" x="424" y="305" text-anchor="middle">promote</text>
+
+            <!-- Backend -->
+            <g data-node="backend">
+              <rect class="box green" x="470" y="176" width="270" height="74" rx="10" />
+              <text class="label" x="605" y="208" text-anchor="middle">Backend on AWS</text>
+              <text class="sublabel" x="605" y="228" text-anchor="middle">Lambda, DynamoDB, S3</text>
+            </g>
+            <path class="edge dashed" d="M44,313 L30,313 L30,395 L450,395 L450,213 L468,213" marker-end="url(#idx-arrow)" />
+            <text class="sublabel" x="250" y="412" text-anchor="middle">sync</text>
+          </svg>
+          <p class="hint">Click any box to read what it does and where to learn more.</p>
+          <div class="panel" data-panel="game">
+            <h4>Game UI</h4>
+            <p>
+              The screens where the player plays: the board, the number keys, notes, undo, the timer and the stats.
+              It asks <code>@sudoku/core</code> for every rule and hint. It saves each move to local storage.
+            </p>
+            <p>Read more in <a href="03-the-app.html">Chapter 3</a>.</p>
+          </div>
+          <div class="panel" data-panel="scan">
+            <h4>Scan UI</h4>
+            <p>
+              The camera screen, the live outline of the grid, the lock-on, the transition animation and the
+              correction screen. It uses the scanner, but it never sees the scanner internals.
+            </p>
+            <p>Read more in <a href="04-scan-pipeline.html">Chapter 4</a>.</p>
+          </div>
+          <div class="panel" data-panel="scanner">
+            <h4>Scanner module</h4>
+            <p>
+              Two jobs. On every camera frame, it finds the four corners of the grid. Once, after the capture, it cuts
+              the photo into 81 cells and recognises each cell. Everything runs on the phone.
+            </p>
+            <p>Read more in <a href="04-scan-pipeline.html">Chapter 4</a>.</p>
+          </div>
+          <div class="panel" data-panel="storage">
+            <h4>Local storage</h4>
+            <p>
+              An SQLite database on the phone. It holds the game in progress, the puzzle pool, the history and the
+              settings. The app works fully without a network because of it.
+            </p>
+            <p>Read more in <a href="03-the-app.html">Chapter 3</a>.</p>
+          </div>
+          <div class="panel" data-panel="model">
+            <h4>The digit model</h4>
+            <p>
+              A small neural network in a <code>.tflite</code> file. It looks at one cell image and says two
+              things: the digit (or empty) and the kind (printed, handwritten or notes).
+            </p>
+            <p>Read more in <a href="05-machine-learning.html">Chapter 5</a>.</p>
+          </div>
+          <div class="panel" data-panel="sync">
+            <h4>Account and sync</h4>
+            <p>
+              Optional. When the player signs in, the app copies the history of finished games to the backend. A
+              second phone then sees the same history. The game never waits for it.
+            </p>
+            <p>Read more in <a href="06-backend-and-sync.html">Chapter 6</a>.</p>
+          </div>
+          <div class="panel" data-panel="core">
+            <h4>@sudoku/core</h4>
+            <p>
+              Pure TypeScript with no screen, no files and no network. It knows the rules, solves any puzzle, makes
+              new puzzles at a level and explains the next logical step as a hint. Pure code is easy to test.
+            </p>
+            <p>Read more in <a href="02-sudoku-engine.html">Chapter 2</a>.</p>
+          </div>
+          <div class="panel" data-panel="ml">
+            <h4>ml/ (Python)</h4>
+            <p>
+              The workshop for the digit model. It builds the dataset, trains the network, measures it on whole
+              sudoku photos and exports it. Today <code>just install-model</code> copies a model into the app. A
+              promote gate (ADR-007, planned for M3) will copy it only when it is good enough.
+            </p>
+            <p>Read more in <a href="05-machine-learning.html">Chapter 5</a>.</p>
+          </div>
+          <div class="panel" data-panel="backend">
+            <h4>Backend on AWS</h4>
+            <p>
+              A small Lambda function behind an API, a DynamoDB table for the history, and a bucket for scans that a
+              player chooses to share. A kill switch stops it at the budget.
+            </p>
+            <p>Read more in <a href="06-backend-and-sync.html">Chapter 6</a>.</p>
+          </div>
+        </div>
+
+        <h2 id="one-scan">Follow one scan through the system</h2>
+        <p>
+          The best way to see how the parts fit is to follow one action. Step through what happens when the player
+          scans a sudoku from a newspaper.
+        </p>
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 760 150" role="img" aria-label="Six stages from camera to sync">
+            <defs>
+              <marker id="idx-arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1" class="keep">
+              <rect class="box accent" x="10" y="40" width="108" height="70" rx="10" />
+              <text class="label" x="64" y="72" text-anchor="middle">Camera</text>
+              <text class="sublabel" x="64" y="92" text-anchor="middle">live outline</text>
+            </g>
+            <g data-steps="2" class="keep">
+              <rect class="box accent" x="136" y="40" width="108" height="70" rx="10" />
+              <text class="label" x="190" y="72" text-anchor="middle">Capture</text>
+              <text class="sublabel" x="190" y="92" text-anchor="middle">flatten grid</text>
+            </g>
+            <g data-steps="3" class="keep">
+              <rect class="box violet" x="262" y="40" width="108" height="70" rx="10" />
+              <text class="label" x="316" y="72" text-anchor="middle">Recognise</text>
+              <text class="sublabel" x="316" y="92" text-anchor="middle">81 cells</text>
+            </g>
+            <g data-steps="4" class="keep">
+              <rect class="box amber" x="388" y="40" width="108" height="70" rx="10" />
+              <text class="label" x="442" y="72" text-anchor="middle">Correct</text>
+              <text class="sublabel" x="442" y="92" text-anchor="middle">check + solve</text>
+            </g>
+            <g data-steps="5" class="keep">
+              <rect class="box blue" x="514" y="40" width="108" height="70" rx="10" />
+              <text class="label" x="568" y="72" text-anchor="middle">Play</text>
+              <text class="sublabel" x="568" y="92" text-anchor="middle">save each move</text>
+            </g>
+            <g data-steps="6" class="keep">
+              <rect class="box green" x="640" y="40" width="108" height="70" rx="10" />
+              <text class="label" x="694" y="72" text-anchor="middle">Finish</text>
+              <text class="sublabel" x="694" y="92" text-anchor="middle">history, sync</text>
+            </g>
+            <path class="edge" d="M118,75 L134,75" marker-end="url(#idx-arrow2)" />
+            <path class="edge" d="M244,75 L260,75" marker-end="url(#idx-arrow2)" />
+            <path class="edge" d="M370,75 L386,75" marker-end="url(#idx-arrow2)" />
+            <path class="edge" d="M496,75 L512,75" marker-end="url(#idx-arrow2)" />
+            <path class="edge" d="M622,75 L638,75" marker-end="url(#idx-arrow2)" />
+          </svg>
+          <div class="step">
+            <p class="step-title">1. The camera looks for a grid</p>
+            <p>
+              The camera gives about 30 frames per second. For each frame, the scanner looks for the largest square
+              shape and returns its four corners. The screen draws an outline on top. When the corners stay still
+              long enough, the app locks on. <a href="04-scan-pipeline.html">Chapter 4</a>
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">2. The app takes one photo and flattens the grid</p>
+            <p>
+              The camera takes one full-size photo. The scanner finds the corners again, more exactly. A homography
+              then "unbends" the grid into a flat square, as if the photo came from straight above.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">3. The model reads each cell</p>
+            <p>
+              The flat grid becomes 81 small cell images of 64 × 64 pixels. The digit model reads each one: which
+              digit, and is it printed, handwritten or notes? It also gives a confidence.
+              <a href="05-machine-learning.html">Chapter 5</a>
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">4. The player checks the result</p>
+            <p>
+              The correction screen shows the recognised grid. The player fixes a wrong digit if necessary.
+              <code>@sudoku/core</code> checks the rules and solves the puzzle. A puzzle without exactly one solution
+              cannot start. <a href="02-sudoku-engine.html">Chapter 2</a>
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">5. The player plays</p>
+            <p>
+              The game screen loads the puzzle. Every move goes through one game session and goes into SQLite at
+              once. If the app closes, nothing is lost. <a href="03-the-app.html">Chapter 3</a>
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">6. The game ends up in the history</p>
+            <p>
+              A finished game becomes a history entry. If the player has an account, the sync sends it to the backend
+              later. If the player turned on "Help improve the app", the scan photo can go to the scan collection.
+              <a href="06-backend-and-sync.html">Chapter 6</a>
+            </p>
+          </div>
+        </div>
+
+        <h2 id="chapters">The chapters</h2>
+        <p>Read them in order the first time. Later, use them as a reference.</p>
+        <div class="chapter-cards">
+          <a class="chapter-card" href="01-big-picture.html">
+            <span class="num">CHAPTER 1</span>
+            <h3>The big picture</h3>
+            <p>Goals, the folders of the repository, who may import whom, the binding rules and the ADRs.</p>
+          </a>
+          <a class="chapter-card" href="02-sudoku-engine.html">
+            <span class="num">CHAPTER 2</span>
+            <h3>The sudoku engine</h3>
+            <p>How the code stores a grid, solves it, grades it, makes new puzzles and gives hints that teach.</p>
+          </a>
+          <a class="chapter-card" href="03-the-app.html">
+            <span class="num">CHAPTER 3</span>
+            <h3>The app and the game screen</h3>
+            <p>Expo and React Native, the screens, the game session, saving, themes, animations and stats.</p>
+          </a>
+          <a class="chapter-card" href="04-scan-pipeline.html">
+            <span class="num">CHAPTER 4</span>
+            <h3>Scanning a paper sudoku</h3>
+            <p>From camera frames to corners, from a photo to a flat grid, from 81 cells to a puzzle you can play.</p>
+          </a>
+          <a class="chapter-card" href="05-machine-learning.html">
+            <span class="num">CHAPTER 5</span>
+            <h3>The digit model</h3>
+            <p>Neural networks from zero, the dataset, training, the split by page, export and the promote gate.</p>
+          </a>
+          <a class="chapter-card" href="06-backend-and-sync.html">
+            <span class="num">CHAPTER 6</span>
+            <h3>Backend, accounts and sync</h3>
+            <p>AWS with SST, accounts with Clerk, the history sync between phones and the scan collection.</p>
+          </a>
+          <a class="chapter-card" href="07-how-we-work.html">
+            <span class="num">CHAPTER 7</span>
+            <h3>Quality and how we work</h3>
+            <p>Tests, CI, boundary checks, the commands, the issue-to-merge workflow and the writing rules.</p>
+          </a>
+        </div>
+
+        <h2 id="how-to-read">How to use this guide</h2>
+        <ol class="path">
+          <li>Start with <a href="01-big-picture.html">Chapter 1</a>. It gives you the map for every other chapter.</li>
+          <li>
+            Click everything. A box in a diagram opens an explanation. A <strong>Next →</strong> button steps through a
+            process. A <span class="term" data-def="A word with a dotted underline has a short definition. Hover or focus it.">dotted word</span>
+            shows its meaning.
+          </li>
+          <li>Answer the "Check yourself" questions. They show the idea that matters most in each section.</li>
+          <li>Open a "Deep dive" only when you want the details of the code.</li>
+          <li>Mark a chapter as read at the bottom. The mark stays in this browser only.</li>
+        </ol>
+
+        <div class="callout why">
+          <span class="callout-title">Where the truth lives</span>
+          This guide explains. It does not decide. The binding rules are in
+          <a href="../architecture/00-DECISIONS.md">00-DECISIONS.md</a>, the reasons are in the
+          <a href="../architecture/09-architecture-decisions.md">ADRs</a> and the words are in the
+          <a href="../architecture/12-glossary.md">glossary</a>. If the guide and those files disagree, the files win.
+        </div>
+      </main>
+    </div>
+    <script>
+      // The hero board lights up one row, one column and one box: the three units of a cell.
+      document.addEventListener('DOMContentLoaded', () => {
+        const cells = document.querySelectorAll('#hero-board .cell')
+        if (!cells.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+        let index = 40
+        function light() {
+          const row = Math.floor(index / 9)
+          const col = index % 9
+          const box = Math.floor(row / 3) * 3 + Math.floor(col / 3)
+          cells.forEach((cell, i) => {
+            const r = Math.floor(i / 9)
+            const c = i % 9
+            const b = Math.floor(r / 3) * 3 + Math.floor(c / 3)
+            cell.classList.toggle('hl', r === row || c === col || b === box)
+            cell.classList.toggle('lit', i === index)
+          })
+          index = (index + 29) % 81
+        }
+        light()
+        setInterval(light, 2200)
+      })
+    </script>
+  </body>
+</html>
