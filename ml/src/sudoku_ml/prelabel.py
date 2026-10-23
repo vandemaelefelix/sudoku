@@ -14,7 +14,7 @@ from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
 from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
-from sudoku_ml.model import CellClassifier
+from sudoku_ml.model import load_run
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
 from sudoku_ml.tables import pixel_id, read_derived, stem_of, write_atomic
 
@@ -31,10 +31,7 @@ NO_MODEL = (
 def predict_probs(run: Path, paths: list[Path]) -> tuple[np.ndarray, np.ndarray]:
     """The digit probabilities (N, 10) and kind probabilities (N, 4) of the cell images, in the
     order of DIGIT_CLASSES and KIND_CLASSES. The digit head uses the temperature of the run."""
-    model = CellClassifier()
-    model.load_state_dict(torch.load(run / "model.pt", map_location="cpu"))
-    model.eval()
-    temperature = json.loads((run / "metrics.json").read_text())["temperature"]
+    model, temperature = load_run(run)
     inputs = np.stack(
         [preprocess_cell(to_cell_image(np.asarray(Image.open(p).convert("RGB")))) for p in paths]
     )

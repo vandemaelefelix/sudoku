@@ -194,14 +194,14 @@ def test_the_reset_sets_the_accepted_scans_of_the_first_pull_to_unchecked(tmp_pa
     write_photos(
         paths.photos_csv, [r.__class__(**{**r.__dict__, "status": "accepted"}) for r in rows]
     )
-    assert reset_main(paths) == 0
+    assert reset_main([], paths) == 0
     assert statuses(paths) == [("unchecked", True), ("unchecked", True)]
 
 
 def test_the_reset_refuses_while_outline_checks_are_unfinished(tmp_path: Path):
     store, paths, photos = pulled(tmp_path)
     store.approve_outlines(photos[:1])
-    assert reset_main(paths) == 1
+    assert reset_main([], paths) == 1
 
 
 def test_a_new_start_reads_approved_scans_from_an_unfinished_journal(tmp_path: Path):
