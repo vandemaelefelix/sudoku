@@ -14,7 +14,7 @@ import { IMAGE_MAX_SIDE } from './useCaptureSession.constants'
 
 /**
  * What a run needs from the session. current: true until a newer attempt starts or the screen unmounts. A stale run must not change
- * the state, so every change goes through the guard of the run. keepImage: the session owns the photo image, and disposes it.
+ * the state, so every change checks `current()` first. keepImage: the session owns the photo image, and disposes it.
  */
 export type RunContext = {
   current(): boolean

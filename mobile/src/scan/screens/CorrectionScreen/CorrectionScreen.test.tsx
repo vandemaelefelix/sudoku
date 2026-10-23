@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native'
 import { fireEvent } from '@testing-library/react-native'
-import { type SharedValue } from 'react-native-reanimated'
+import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import { createPicture, Skia } from '@shopify/react-native-skia'
 import { capturing, okResult, review } from '@/scan/scanTestKit'
 import { fullScan } from '@/scan/puzzleTestKit'
@@ -283,6 +283,29 @@ describe('CorrectionScreen with late results', () => {
     expect(style('correction-cell-0').opacity).toBe(1)
     expect(style('correction-ring-0').opacity).toBe(1)
     expect(style('correction-panel').transform).toEqual([{ translateY: 0 }])
+  })
+})
+
+const failing = (t: number) => (
+  <CorrectionScreen
+    session={capturing({ ok: false, reason: 'x' }, { clock: clock(t) })}
+    layout={layout}
+    onRetake={jest.fn()}
+  />
+)
+
+describe('CorrectionScreen with a failed result and a clock', () => {
+  it('passes the failure to the motion: the panel waits for the failure slide, not for the clock ramp', () => {
+    // At the end of the clock ramp a result that is not a failure shows the panel in place. The failure keeps it down.
+    render(failing(1.5))
+    expect(screen.getByTestId('correction-failure')).toBeTruthy()
+    expect(style('correction-panel').transform).toEqual([{ translateY: HIDDEN }])
+  })
+
+  it('opens the failure slide at the results gate', () => {
+    render(failing(GATE_RESULTS))
+    const [prepare] = jest.mocked(useAnimatedReaction).mock.calls.at(-1)! as unknown as [() => boolean]
+    expect(prepare()).toBe(true)
   })
 })
 

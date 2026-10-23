@@ -89,7 +89,7 @@ export type CorrectionDev = {
  * of the player and the checks of the grid. The screen sends intents through `actions`.
  *
  * timing: what the cells, the rings and the panel follow. It keeps its identity while the clock, the results time and the flag stay.
- * waiting: the results gate held longer than SPINNER_DELAY. Both are undefined in the review: every layer shows and nothing waits.
+ * waiting: the results gate held longer than SPINNER_DELAY. In the review, `timing.clock`, `timing.resultsAt` and `waiting` are undefined: every layer shows and nothing waits.
  * editable: the player can edit. It is false during the capture transition, and for a failed or missing result.
  * panel: null until the result arrives. openCell: the cell in the panel. picking: its keypad. hint: the second guess of the scanner
  * for that cell.
