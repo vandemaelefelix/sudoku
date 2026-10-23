@@ -15,7 +15,7 @@ from cells import (
 from scans import pulled, shared_cells
 
 from sudoku_ml.finish import finish
-from sudoku_ml.journal import Line, read_journal
+from sudoku_ml.journal import read_journal
 from sudoku_ml.label_store import CHECK_SIZE, LabelStore
 from sudoku_ml.tables import read_cells, stem_of
 
@@ -352,10 +352,8 @@ def digit_line(store: LabelStore, cell: str, screen: str = "digits") -> str:
     """A digit line of a person, as the Digits step writes it for an unchanged cell."""
     action = store.state.action()
     folder = store.folder[cell]
-    store.state.write(
-        [Line(store.state.t(), store.session, action, cell, "digit", folder, folder, screen)]
-    )
-    return action
+    store.state.write([action.digit(cell, folder, folder, screen)])
+    return action.id
 
 
 def test_a_kind_confirm_is_one_action_and_closes_the_cells(tmp_path: Path):

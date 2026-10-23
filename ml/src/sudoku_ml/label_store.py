@@ -31,15 +31,16 @@ from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright
 from sudoku_ml.journal import (
     KINDS,
     Line,
+    Screen,
     Source,
     current_outlines,
     format_outline,
-    format_source,
     parse_outline,
     undone_actions,
 )
 from sudoku_ml.kind_check import summary
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
+from sudoku_ml.label_lines import Action, check_digit, check_kind
 from sudoku_ml.label_state import LabelState
 from sudoku_ml.manifest import (
     confirmed_cells,
@@ -237,24 +238,24 @@ class LabelStore:
         unchanged one, and a kind line per cell with a kind. The review lines close the items.
         Checks all entries first."""
         self.state.refresh()
-        kinds, t, action = self.state.kinds(), self.state.t(), self.state.action()
+        kinds, action = self.state.kinds(), self.state.action()
         lines = []
         for entry in entries:
             cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
             if self.state.folder.get(cell) not in DIGIT_CLASSES:
                 raise ValueError(f"{stem_of(cell)}: not in a digit folder")
-            if digit not in ASSIGNABLE:
-                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
-            if digit in NO_KIND_FOLDERS:
-                kind = None
-            elif kind not in KINDS:
-                raise ValueError(f"{stem_of(cell)}: the digit {digit} needs a kind")
-            old = self.state.folder[cell]
-            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "review"))
-            if kind is not None or kinds.get(cell) is not None:
-                lines.append(
-                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "review")
-                )
+            check_digit(cell, digit)
+            if digit not in NO_KIND_FOLDERS:
+                check_kind(cell, kind, digit)
+            lines += action.digit_and_kind(
+                cell,
+                self.state.folder[cell],
+                digit,
+                kinds.get(cell),
+                kind,
+                Screen.REVIEW,
+                record_same_kind=True,
+            )
         self.state.apply_digits(lines)
         self.state.write(lines)
         return len(lines)
@@ -388,10 +389,9 @@ class LabelStore:
             raise ValueError(f"{photo}: the outline is already checked ({state.status})")
         return state
 
-    def _outline_line(self, state: ScanState, status: str, corners: str, t: str, action: str):
+    def _outline_line(self, state: ScanState, status: str, corners: str, action: Action) -> Line:
         old = format_outline(state.status, state.corners)
-        new = format_outline(status, corners)
-        return Line(t, self.session, action, state.row.photo_id, "outline", old, new, "outlines")
+        return action.outline(state.row.photo_id, old, format_outline(status, corners))
 
     def _own_cells(self, photo_id: str) -> dict[int, str]:
         """Position 0-80 → the cell of this scan outside discarded/. A cell of another scan
@@ -402,25 +402,17 @@ class LabelStore:
             if source == photo_id and self.state.folder.get(cell, "discarded") != "discarded"
         }
 
-    def _discard(self, cells, kinds, t: str, action: str) -> list[Line]:
+    def _discard(self, cells, kinds, action: Action) -> list[Line]:
         lines = []
         for cell in cells:
-            lines.append(
-                Line(
-                    t,
-                    self.session,
-                    action,
-                    cell,
-                    "digit",
-                    self.state.folder[cell],
-                    "discarded",
-                    "outlines",
-                )
+            lines += action.digit_and_kind(
+                cell,
+                self.state.folder[cell],
+                "discarded",
+                kinds.get(cell),
+                kinds.get(cell),
+                Screen.OUTLINES,
             )
-            if kinds.get(cell) is not None:
-                lines.append(
-                    Line(t, self.session, action, cell, "kind", kinds[cell], None, "outlines")
-                )
         return lines
 
     def _cut_photo(self, state: ScanState, corners) -> dict:
@@ -447,9 +439,9 @@ class LabelStore:
                     self.check.usable(stem, parse_corners(corners[state.row.photo_id]))
                 except ValueError as error:
                     raise ValueError(f"{stem}: {error}. Open it and set its corners") from error
-        t, action = self.state.t(), self.state.action()
+        action = self.state.action()
         lines = [
-            self._outline_line(s, "accepted", s.corners, t, action)
+            self._outline_line(s, "accepted", s.corners, action)
             for s in states
             if s.row.source == APP_SCAN
         ]
@@ -467,10 +459,10 @@ class LabelStore:
         if state.row.source != APP_SCAN:
             self.check.reject(photo)
             return 1
-        t, action = self.state.t(), self.state.action()
+        action = self.state.action()
         own = self._own_cells(state.row.photo_id)
-        lines = [self._outline_line(state, "rejected", "", t, action)]
-        lines += self._discard(own.values(), self.state.kinds(), t, action)
+        lines = [self._outline_line(state, "rejected", "", action)]
+        lines += self._discard(own.values(), self.state.kinds(), action)
         self.state.apply_digits(lines)
         self.state.write(lines)
         return len(lines)
@@ -494,8 +486,8 @@ class LabelStore:
         old_cut = [cell for _, cell in scan_cut(rgb, state.corners)]
         new_cut = scan_cut(rgb, text)
         kinds, label_sources = self.state.kinds(), self.state.label_sources()
-        t, action = self.state.t(), self.state.action()
-        lines = [self._outline_line(state, "accepted", text, t, action)]
+        action = self.state.action()
+        lines = [self._outline_line(state, "accepted", text, action)]
         new_cells, kept = [], 0
         target = self.paths.cells / "discarded"
         sources = self.state.sources()
@@ -518,34 +510,18 @@ class LabelStore:
                 target.mkdir(parents=True, exist_ok=True)
                 tmp.replace(target / f"{stem_of(cell)}.png")
                 self.state.register([cell], "discarded")
-                source = format_source((state.row.photo_id, *divmod(position, GRID_CELLS)))
-                lines.append(
-                    Line(t, self.session, action, cell, "source", None, source, "outlines")
-                )
+                source = (state.row.photo_id, *divmod(position, GRID_CELLS))
+                lines.append(action.source(cell, source, Screen.OUTLINES))
                 provenance = label_sources.get(old_cut[position], "")
                 if provenance:
-                    lines.append(
-                        Line(
-                            t,
-                            self.session,
-                            action,
-                            cell,
-                            "label_source",
-                            None,
-                            provenance,
-                            "outlines",
-                        )
-                    )
-            lines.append(
-                Line(t, self.session, action, cell, "digit", "discarded", label, "outlines")
+                    lines.append(action.label_source(cell, provenance, Screen.OUTLINES))
+            lines += action.digit_and_kind(
+                cell, "discarded", label, None, kinds.get(old_cut[position]), Screen.OUTLINES
             )
-            kind = kinds.get(old_cut[position])
-            if label not in NO_KIND_FOLDERS and kind is not None:
-                lines.append(Line(t, self.session, action, cell, "kind", None, kind, "outlines"))
             new_cells.append(cell)
         wanted = {cell for _, cell in new_cut}
         gone = [c for c in self._own_cells(state.row.photo_id).values() if c not in wanted]
-        lines += self._discard(gone, kinds, t, action)
+        lines += self._discard(gone, kinds, action)
         self.state.apply_digits(lines)
         self.state.write(lines)
         return {"cells": len(new_cells), "kept": kept, "discarded": len(gone)}
@@ -879,25 +855,22 @@ class LabelStore:
 
     def _confirm_digit_lines(self, entries: list[dict]) -> int:
         open_ids = {c["id"] for c in self.open_cells()}
-        kinds, t, action = self.state.kinds(), self.state.t(), self.state.action()
+        kinds, action = self.state.kinds(), self.state.action()
         lines, seen = [], set()
         for entry in entries:
             cell, digit = entry["id"], entry["digit"]
             if cell not in open_ids or cell in seen:
                 raise ValueError(f"{stem_of(cell)}: not an open digit cell")
-            if digit not in ASSIGNABLE:
-                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
+            check_digit(cell, digit)
             seen.add(cell)
-            lines.append(
-                Line(
-                    t, self.session, action, cell, "digit", self.state.folder[cell], digit, "digits"
-                )
+            lines += action.digit_and_kind(
+                cell,
+                self.state.folder[cell],
+                digit,
+                kinds.get(cell),
+                kinds.get(cell),
+                Screen.DIGITS,
             )
-            if digit in NO_KIND_FOLDERS or digit == "discarded":
-                if kinds.get(cell) is not None:
-                    lines.append(
-                        Line(t, self.session, action, cell, "kind", kinds[cell], None, "digits")
-                    )
         self.state.apply_digits(lines)
         self.state.write(lines)
         return len(lines)
@@ -919,18 +892,15 @@ class LabelStore:
 
     def _confirm_kind_lines(self, entries: list[dict]) -> int:
         open_ids = {c["id"] for c in self.open_kind_cells()}
-        kinds, t, action = self.state.kinds(), self.state.t(), self.state.action()
+        kinds, action = self.state.kinds(), self.state.action()
         lines, seen = [], set()
         for entry in entries:
             cell, kind = entry["id"], entry["kind"]
             if cell not in open_ids or cell in seen:
                 raise ValueError(f"{stem_of(cell)}: not an open kind cell")
-            if kind not in KINDS:
-                raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
+            check_kind(cell, kind)
             seen.add(cell)
-            lines.append(
-                Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "kinds")
-            )
+            lines.append(action.kind(cell, kinds.get(cell), kind, Screen.KINDS))
         self.state.write(lines)
         return len(lines)
 

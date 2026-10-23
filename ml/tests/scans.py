@@ -9,7 +9,6 @@ from photos import grid_photo
 from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.journal import Line
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.pull_scans import pull_scans
 from sudoku_ml.tables import read_photos, stem_of
@@ -128,10 +127,9 @@ def shared_cells(store: LabelStore, photo: str) -> list[str]:
 def old_page_confirm(store: LabelStore, photo: str) -> None:
     """The lines of the removed scan page after a confirm: a digit line of the screen "scans" for
     each own cell, also an unchanged one. Old journals hold them (ADR-034, decision 8)."""
-    t, action = store.state.t(), store.state.action()
+    action = store.state.action()
     lines = [
-        Line(t, store.session, action, c, "digit", store.folder[c], store.folder[c], "scans")
-        for c in own_cells(store, photo)
+        action.digit(c, store.folder[c], store.folder[c], "scans") for c in own_cells(store, photo)
     ]
     store.state.apply_digits(lines)
     store.state.write(lines)

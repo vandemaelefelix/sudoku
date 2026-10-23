@@ -20,6 +20,7 @@ from sudoku_ml.journal import (
     undo_lines,
 )
 from sudoku_ml.kind_check import CheckLine
+from sudoku_ml.label_lines import Action
 from sudoku_ml.manifest import (
     base_kinds,
     base_sources,
@@ -77,9 +78,9 @@ class LabelState:
     def t(self) -> str:
         return format_time(self.now())
 
-    def action(self) -> str:
+    def action(self) -> Action:
         self._actions += 1
-        return f"{self.session}-{self._actions}"
+        return Action(self.t(), self.session, f"{self.session}-{self._actions}")
 
     def write(self, lines: list[Line]) -> None:
         if not lines:

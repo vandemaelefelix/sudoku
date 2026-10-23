@@ -21,6 +21,7 @@ from sudoku_ml.journal import (
     read_journal,
     undone_actions,
 )
+from sudoku_ml.label_lines import Action
 from sudoku_ml.tables import (
     CELL_FOLDERS,
     NO_KIND_FOLDERS,
@@ -138,8 +139,9 @@ def repair_lines(
     the file move and the journal line leaves one, and so does `just relabel`. The folder is the
     truth for the digit. The lines carry their own session, so undo and rollback never reverse
     them."""
+    action = Action(t, session, f"{session}-1")
     return [
-        Line(t, session, f"{session}-1", cell, Field.KIND, kinds[cell], None, Screen.REPAIR)
+        action.kind(cell, kinds[cell], None, Screen.REPAIR)
         for cell, where in sorted(folder.items())
         if where in NO_KIND_FOLDERS and kinds.get(cell) is not None
     ]
