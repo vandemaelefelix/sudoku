@@ -11,6 +11,7 @@ The [operations runbook](../../docs/operations/runbook.md) lists every part of t
 | `../sst.config.ts` | The app: the stages, the removal policy, the tags and the AWS provider. It imports one file per area |
 | `config.ts` | The account ID, the region, the stages and the Clerk issuer of each stage |
 | `account.ts` | The account guard checks |
+| `awsCli.ts` | The profile `sudoku` and `runAws()`. Every script that calls the AWS CLI uses it |
 | `check-account.ts` | Layer 1 of the account guard. The `just` recipes and the deploy workflows run it before SST |
 | `github-oidc-policy.ts`, `github-oidc.ts` | The GitHub OIDC provider, the two deploy roles and their trust policy. Only the account stage creates them |
 | `defaults.ts` | The function defaults: Node 24, arm64, 512 MB, 10 s, 1 month of log retention |
@@ -20,7 +21,7 @@ The [operations runbook](../../docs/operations/runbook.md) lists every part of t
 | `api.ts` | The HTTP API `SyncApi` with the routes `POST /v1/sync` and `DELETE /v1/account`, the Clerk JWT authorizer, the throttle and the Lambda `SyncApiFunction` (30 s timeout, linked to the table and `ClerkSecretKey`) |
 | `scans-bucket.ts`, `scans.ts` | The private photo bucket `ScansBucket` (encrypted, 365 days), the Lambda `ScansFunction`, the secret `ScanAppKey` and the route `POST /v1/scans` with no authorizer. The route throttle is in `api.ts` (ADR-030) |
 | `kill-switch.ts` | The SNS topic of the budget, its policy, the `kill-switch` Lambda and the alert email. Only the account stage creates them |
-| `kill-switch-settings.ts` | The flag name, the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
+| `kill-switch-settings.ts` | The flag name (from `backend/kill-switch/src/flag.ts`, with the app name and the names of the API functions), the verdict of the deploy check and the arguments of `api-on`. It has no SST globals |
 | `kill-switch-check.ts` | Refuses a deploy of a stopped stage. `just deploy-api` runs it. The workflows `deploy-api-dev.yml` and `deploy-api-production.yml` call it |
 | `kill-switch-guard.ts` | The same check inside `run()`, for a plain `sst deploy` or `sst dev` |
 | `api-on.ts` | Turns a stopped stage on again. `just api-on` runs it |
@@ -248,7 +249,7 @@ dashboard renames menu items from time to time. If a name differs, use the link.
 6. Leave **Apple** off. It needs the Apple Developer Program (ADR-027).
 7. In [JWT templates](https://dashboard.clerk.com/~/jwt-templates), make the blank template
    `sudoku-api`. Set the token lifetime to 60 seconds. Set the claims to exactly
-   `{ "aud": "sudoku-api" }`. Do not add the email. `CLERK_AUDIENCE` in `config.ts` holds the
+   `{ "aud": "sudoku-api" }`. Do not add the email. `API_AUDIENCE` in `backend-settings.ts` holds the
    same value.
 8. In [API keys](https://dashboard.clerk.com/~/api-keys), copy the publishable key and the
    **Frontend API URL**. The Frontend API URL is the issuer.

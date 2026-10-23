@@ -1,12 +1,12 @@
 // Turns a stopped stage on again (ADR-027). Run it with `just api-on <stage>`, after you check the bill.
 // Usage: node backend/infra/api-on.ts <stage> [--yes]
-import { execFileSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 
 import { createAwsOps } from '../kill-switch/src/aws.ts'
 import { createClients } from '../kill-switch/src/clients.ts'
 import { turnOn } from '../kill-switch/src/turnOn.ts'
 import { SCANS_ROUTE_KEY, SCANS_THROTTLE, STAGE_THROTTLE } from './backend-settings.ts'
+import { runAws } from './awsCli.ts'
 import { AWS_REGION } from './config.ts'
 import { parseApiOnArgs } from './kill-switch-settings.ts'
 
@@ -14,13 +14,10 @@ function monthToDateCost(): string {
   const start = new Date().toISOString().slice(0, 8) + '01'
   const end = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
   try {
-    return execFileSync(
-      'aws',
+    return runAws(
       [
         'ce',
         'get-cost-and-usage',
-        '--profile',
-        'sudoku',
         '--region',
         'us-east-1',
         '--time-period',
@@ -34,8 +31,8 @@ function monthToDateCost(): string {
         '--output',
         'text',
       ],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
-    ).trim()
+      { stderr: 'ignore' },
+    )
   } catch {
     return 'unknown (Cost Explorer did not answer)'
   }
