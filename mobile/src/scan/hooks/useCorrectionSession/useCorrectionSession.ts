@@ -1,22 +1,23 @@
 import type { SkImage } from '@shopify/react-native-skia'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useAnimatedReaction } from 'react-native-reanimated'
-import { scheduleOnRN } from 'react-native-worklets'
+import { useMemo, useState } from 'react'
+import type { SharedValue } from 'react-native-reanimated'
 import type { Digit, Level } from '@sudoku/core'
 import type { Pulse } from '@/hooks/usePulse'
 import { scannedLevel } from '@/game/utils/start.utils'
 import type { SaveState } from '@/scan/components/DevMenu'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
 import type { CaptureSession } from '@/scan/hooks/useCaptureSession'
+import { useCorrectionCues } from '@/scan/hooks/useCorrectionCues'
 import { useCorrectionEdits, type CorrectionEditActions } from '@/scan/hooks/useCorrectionEdits'
+import { useExitReport } from '@/scan/hooks/useExitReport'
+import { useSaveState } from '@/scan/hooks/useSaveState'
 import { useSolvedPulse } from '@/scan/hooks/useSolvedPulse'
 import { useVerify } from '@/scan/hooks/useVerify'
 import type { CaptureOk } from '@/scan/utils/captureResult.utils'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { isFull, markedCells, panelState, type PanelState } from '@/scan/utils/correctionSession.utils'
-import { finalGrid } from '@/scan/utils/finalGrid.utils'
 import { checkPlay, type PlayBlock, type ScannedStart } from '@/scan/utils/play.utils'
-import { resultsGateReached } from '@/scan/utils/transition.utils'
+import type { SweepTiming } from '@/scan/utils/transition.utils'
 import { useHaptics } from '@/preferences/hooks/useHaptics'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 
@@ -58,27 +59,54 @@ export type CorrectionActions = Omit<CorrectionEditActions, 'yes' | 'no' | 'setD
 }
 
 /**
+ * What the play button, the solve button and the panel line of the summary read. block: why Play is off, or null.
+ * canPlay: the gate is open and the parent gave onPlay. canSolve: the gate is open. level: the level of the grade, null while the
+ * gate blocks the grid, because a grade needs one solution. solution: the solution digits while Solve shows them, until the next
+ * edit.
+ */
+export type CorrectionPlay = {
+  level: Level | null
+  block: PlayBlock | null
+  canPlay: boolean
+  canSolve: boolean
+  solution: readonly number[] | null
+}
+
+/**
+ * What only the dev menu reads. scan: the ok result. threshold: the ring threshold, which is not saved. canSave: the parent gave
+ * onSave and the scan kept its photo file.
+ */
+export type CorrectionDev = {
+  scan: CaptureOk | null
+  threshold: number
+  setThreshold(threshold: number): void
+  saveState: SaveState
+  canSave: boolean
+}
+
+/**
  * The view of the correction session: what the screen renders. The session is one state machine over the capture session, the edits
  * of the player and the checks of the grid. The screen sends intents through `actions`.
  *
+ * timing: what the cells, the rings and the panel follow. It keeps its identity while the clock, the results time and the flag stay.
+ * waiting: the results gate held longer than SPINNER_DELAY. In the review, `timing.clock`, `timing.resultsAt` and `waiting` are undefined: every layer shows and nothing waits.
  * editable: the player can edit. It is false during the capture transition, and for a failed or missing result.
  * panel: null until the result arrives. openCell: the cell in the panel. picking: its keypad. hint: the second guess of the scanner
  * for that cell.
- * scan: the ok result, for the dev menu. failure: the reason of a failed scan. image: the flattened grid, for the cell crop.
+ * failure: the reason of a failed scan. image: the flattened grid, for the cell crop.
  * conflictCells: the cells to mark, which are the given conflicts and the cells of the verdict. hints: the solution digit of each
  * wrong entry, after Check.
- * block: why Play is off, or null. canPlay: the gate is open and the parent gave onPlay. canSolve: the gate is open.
- * solution: the solution digits while Solve shows them, until the next edit.
  * fullGrid: set when no cell is empty. phase ready: the player has not tapped Check.
  * celebrated: the solved pulse runs. It starts once the open cell closes, and it stays until the verdict changes.
  */
 export type CorrectionSession = {
+  timing: SweepTiming
+  waiting: SharedValue<boolean> | undefined
   editable: boolean
   panel: PanelState | null
   looks: readonly CellLook[]
   openCell: { cell: number; look: CellLook } | null
   picking: boolean
-  scan: CaptureOk | null
   failure: string | null
   image: SkImage | undefined
   hint: number | null
@@ -87,20 +115,12 @@ export type CorrectionSession = {
   conflictCount: number
   conflictCells: ReadonlySet<number>
   hints: Readonly<Record<number, number>>
-  /** The level of the grade. Null while the play gate blocks the grid, because a grade needs one solution. */
-  level: Level | null
-  block: PlayBlock | null
-  canPlay: boolean
-  canSolve: boolean
-  solution: readonly number[] | null
   fullGrid: { phase: 'ready' | 'wrong' | 'clash' | 'solved'; count: number } | null
   solved: boolean
   celebrated: boolean
   pulse: Pulse
-  threshold: number
-  setThreshold(threshold: number): void
-  saveState: SaveState
-  canSave: boolean
+  play: CorrectionPlay
+  dev: CorrectionDev
   actions: CorrectionActions
 }
 
@@ -112,7 +132,7 @@ const NO_HINTS: Readonly<Record<number, number>> = {}
  * result. The ring threshold of the dev menu is not saved: a new scan starts at REVIEW_CONFIDENCE.
  */
 export function useCorrectionSession(
-  capture: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'resultsAt'>,
+  capture: Pick<CaptureSession, 'phase' | 'result' | 'crossFade' | 'clock' | 'resultsAt' | 'waiting'>,
   exits: CorrectionExits,
 ): CorrectionSession {
   const { result } = capture
@@ -120,7 +140,9 @@ export function useCorrectionSession(
   const transition = capture.phase === 'review' ? null : capture
   const clock = transition?.clock
   const resultsAt = transition?.resultsAt
-  const reduceMotion = transition?.crossFade ?? false
+  const waiting = transition?.waiting
+  const crossFade = transition?.crossFade ?? false
+  const timing = useMemo<SweepTiming>(() => ({ clock, resultsAt, crossFade }), [clock, resultsAt, crossFade])
   const failed = result != null && !result.ok
   const ok = result?.ok === true ? result : null
   const { play } = useHaptics()
@@ -171,59 +193,22 @@ export function useCorrectionSession(
   if (celebrate !== celebrated) setCelebrated(celebrate)
   const pulse = useSolvedPulse(celebrated)
 
-  const solvedBefore = useRef(false)
-  useEffect(() => {
-    if (celebrated && !solvedBefore.current) play('success')
-    solvedBefore.current = celebrated
-  }, [celebrated, play])
-  // Success when the last check makes the puzzle playable. The first summary of a review only sets the state: a scan that needs no
-  // check already had its success haptic. While a cell is open, the summary has no check, so the state waits.
-  const readyBefore = useRef<boolean | null>(null)
-  const ready = start !== null
-  useEffect(() => {
-    if (!editable || selected !== null) return
-    if (readyBefore.current === false && ready) play('success')
-    readyBefore.current = ready
-  }, [editable, selected, ready, play])
-  // A recognised grid gets its success when the results gate opens: the digits start to sweep in at that moment.
-  // A boolean, not ok: a worklet copies what it captures to the UI thread, and the result holds images.
-  const recognised = ok !== null
-  useAnimatedReaction(
-    () => recognised && resultsAt != null && resultsAt.value >= 0,
-    (gateOpen, previous) => {
-      if (gateOpen && previous === false) scheduleOnRN(play, 'success')
-    },
-  )
-  // A failure keeps the results gate closed. Its warning plays when the failure panel starts to slide in.
-  useAnimatedReaction(
-    () => failed && resultsGateReached(clock?.value, reduceMotion),
-    (go, previous) => {
-      if (go && go !== previous) scheduleOnRN(play, 'warning')
-    },
-  )
+  useCorrectionCues({
+    timing,
+    recognised: ok !== null,
+    failed,
+    editable,
+    selected,
+    ready: start !== null,
+    celebrated,
+  })
 
   // The solution shows until the next edit: it belongs to the looks it was shown for.
   const [solutionFor, setSolutionFor] = useState<readonly CellLook[] | null>(null)
   const solution = start !== null && solutionFor === looks ? start.solution : null
 
-  // A new edit makes the saved copy old, so Save works again: the status counts only for the looks that it was made for.
-  const [saving, setSaving] = useState<{ looks: readonly CellLook[]; status: Exclude<SaveState, 'idle'> } | null>(null)
-  const saveState: SaveState = saving !== null && saving.looks === looks ? saving.status : 'idle'
-  const canSave = exits.onSave !== undefined && ok?.photoPath != null
-
-  // The unmount reads the latest values, because the effect that listens for it runs once.
-  const latest = useRef({ ok, looks, editable, onExit: exits.onExit })
-  useEffect(() => {
-    latest.current = { ok, looks, editable, onExit: exits.onExit }
-  })
-  const retaking = useRef(false)
-  useEffect(
-    () => () => {
-      const { ok: last, looks: finalLooks, editable: could, onExit } = latest.current
-      if (could && !retaking.current && last !== null) onExit?.(finalGrid(last.cells, finalLooks))
-    },
-    [],
-  )
+  const { saveState, canSave, save } = useSaveState(ok, looks, exits.onSave)
+  const { skip } = useExitReport({ ok, looks, editable, onExit: exits.onExit })
 
   const actions: CorrectionActions = {
     select: edit.select,
@@ -256,32 +241,28 @@ export function useCorrectionSession(
     },
     // The mark comes before onRetake: the unmount that follows must not report the scan.
     retake: () => {
-      retaking.current = true
+      skip()
       exits.onRetake()
     },
     chooseImage: () => {
       if (exits.onChooseImage === undefined) return
-      retaking.current = true
+      skip()
       exits.onChooseImage()
     },
     // No Retake mark: the player accepted the scan, so the unmount that follows reports it.
     scanAnother: () => (exits.onScanAnother ?? exits.onRetake)(),
-    save: () => {
-      if (exits.onSave === undefined || ok === null || saveState === 'saving') return
-      const final = finalGrid(ok.cells, looks)
-      setSaving({ looks, status: 'saving' })
-      void exits.onSave(final).then((saved) => setSaving({ looks, status: saved ? 'saved' : 'failed' }))
-    },
+    save,
   }
 
   const openLook = open === null ? undefined : looks[open]
   return {
+    timing,
+    waiting,
     editable,
     panel: result == null ? null : panelState(failed, open, picking),
     looks,
     openCell: openLook === undefined || open === null ? null : { cell: open, look: openLook },
     picking,
-    scan: ok,
     failure: result != null && !result.ok ? result.reason : null,
     image: ok?.flatImage,
     hint: open === null ? null : (ok?.cells[open]?.second ?? null),
@@ -290,19 +271,12 @@ export function useCorrectionSession(
     conflictCount: editable ? conflicts.filter(Boolean).length : 0,
     conflictCells,
     hints,
-    level,
-    block,
-    canPlay,
-    canSolve: start !== null,
-    solution,
     fullGrid: full ? { phase: verdict === null ? 'ready' : verdict.status, count: marked.size } : null,
     solved,
     celebrated,
     pulse,
-    threshold,
-    setThreshold,
-    saveState,
-    canSave,
+    play: { level, block, canPlay, canSolve: start !== null, solution },
+    dev: { scan: ok, threshold, setThreshold, saveState, canSave },
     actions,
   }
 }

@@ -1,12 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
-import { type Digit, generate, peersOf } from '@sudoku/core'
-import type { CellResult } from '@/scanner'
-import type { FinalGrid } from '@/utils/finalGrid.utils'
-import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
+import { peersOf } from '@sudoku/core'
 import { scannedLevel } from '@/game/utils/start.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
+import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzleTestKit'
+import { capturing, okResult, printed, review, type ScanSession } from '@/scan/scanTestKit'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
 
 const mockPlay = jest.fn()
@@ -14,75 +13,19 @@ jest.mock('@/preferences/hooks/useHaptics', () => ({
   useHaptics: () => ({ on: true, setOn: jest.fn(), play: mockPlay }),
 }))
 
-const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
-const printed = (digit: number, confidence = 1): Partial<CellResult> => ({ digit, kind: 'printed', confidence })
-
-function okResult(over: { [n: number]: Partial<CellResult> } = {}, extra: Partial<CaptureOk> = {}): CaptureResult {
-  const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
-  return {
-    ok: true,
-    cells,
-    quad: [] as never,
-    corners: 'detected' as never,
-    cornerOffset: null,
-    timings: {} as never,
-    ...extra,
-  }
-}
-
 const shared = <T,>(value: T) => ({ value }) as SharedValue<T>
-const review = (result: CaptureResult | null) => ({
-  phase: 'review' as const,
-  result,
-  crossFade: false,
-  clock: shared(0),
-  resultsAt: shared(0),
-})
-const capturing = (result: CaptureResult | null, clock = 0.4, resultsAt = -1, crossFade = false) => ({
-  phase: 'capturing' as const,
-  result,
-  crossFade,
-  clock: shared(clock),
-  resultsAt: shared(resultsAt),
-})
-type Capture = ReturnType<typeof review> | ReturnType<typeof capturing>
-
-function session(capture: Capture, exits: Partial<CorrectionExits> = {}) {
+function session(capture: ScanSession, exits: Partial<CorrectionExits> = {}) {
   const all: CorrectionExits = { onRetake: jest.fn(), ...exits }
   return {
-    ...renderHook((props: { capture: Capture }) => useCorrectionSession(props.capture, all), {
+    ...renderHook((props: { capture: ScanSession }) => useCorrectionSession(props.capture, all), {
       initialProps: { capture },
     }),
     exits: all,
   }
 }
 
-const puzzle = generate('hard', 5)
-const firstOpen = puzzle.givens.findIndex((digit) => digit === 0)
 // A digit that a given in a peer of the first open cell already holds, so that the digit there is a conflict.
 const clashDigit = puzzle.givens[peersOf(firstOpen).find((n) => puzzle.givens[n] !== 0)!]!
-const wrongDigit = (((puzzle.solution[firstOpen] ?? 0) % 9) + 1) as Digit
-
-/** A recognised result with every given of `givens` printed, and `over` on top. */
-function scanOf(givens: readonly number[], over: { [n: number]: Partial<CellResult> } = {}): CaptureResult {
-  const cells: { [n: number]: Partial<CellResult> } = {}
-  givens.forEach((digit, n) => {
-    if (digit !== 0) cells[n] = printed(digit)
-  })
-  return okResult({ ...cells, ...over })
-}
-
-function fullScan(wrong?: { cell: number; digit: number }): CaptureResult {
-  const over: { [n: number]: Partial<CellResult> } = {}
-  puzzle.solution.forEach((digit, n) => {
-    over[n] = {
-      digit: wrong?.cell === n ? wrong.digit : digit,
-      kind: puzzle.givens[n] === 0 ? 'handwritten' : 'printed',
-      confidence: 1,
-    }
-  })
-  return okResult(over)
-}
 
 // Cells 3, 40 and 70 need a check.
 const flowScan = () =>
@@ -137,7 +80,7 @@ describe('the panel state', () => {
   })
 
   it('keeps the cells inert during the transition', () => {
-    const { result } = session(capturing(flowScan(), 1.5))
+    const { result } = session(capturing(flowScan(), { clock: 1.5 }))
     expect(result.current.editable).toBe(false)
     act(() => result.current.actions.select(0))
     expect(result.current.openCell).toBeNull()
@@ -149,8 +92,31 @@ describe('the panel state', () => {
     const scan = okResult({ 0: printed(5, 0.85), 1: printed(6, 0.85) })
     const { result } = session(review(scan))
     expect(result.current.toCheck).toBe(0)
-    act(() => result.current.setThreshold(0.9))
+    act(() => result.current.dev.setThreshold(0.9))
     expect(result.current.toCheck).toBe(2)
+  })
+})
+
+describe('the sweep timing', () => {
+  it('hands the clock, the results time and the cross-fade flag of a transition', () => {
+    const transition = capturing(okResult(), { clock: 0.6, resultsAt: 0.2, crossFade: true })
+    const { result } = session(transition)
+    expect(result.current.timing).toEqual({ clock: transition.clock, resultsAt: transition.resultsAt, crossFade: true })
+    expect(result.current.waiting).toBe(transition.waiting)
+  })
+
+  it('has no clock in the review, so every layer shows', () => {
+    const { result } = session(review(okResult()))
+    expect(result.current.timing).toEqual({ clock: undefined, resultsAt: undefined, crossFade: false })
+    expect(result.current.waiting).toBeUndefined()
+  })
+
+  it('keeps the same object while the inputs stay, so a memo cell skips its render', () => {
+    const transition = capturing(okResult())
+    const { result, rerender } = session(transition)
+    const first = result.current.timing
+    rerender({ capture: { ...transition } })
+    expect(result.current.timing).toBe(first)
   })
 })
 
@@ -177,10 +143,10 @@ describe('the play gate', () => {
       review(scanOf(puzzle.givens, { [firstOpen]: { digit: wrongDigit, kind: 'handwritten', confidence: 1 } })),
       { onPlay },
     )
-    expect(result.current.block).toBeNull()
-    expect(result.current.canPlay).toBe(true)
-    expect(result.current.canSolve).toBe(true)
-    expect(result.current.level).toBe(scannedLevel(puzzle.givens))
+    expect(result.current.play.block).toBeNull()
+    expect(result.current.play.canPlay).toBe(true)
+    expect(result.current.play.canSolve).toBe(true)
+    expect(result.current.play.level).toBe(scannedLevel(puzzle.givens))
     act(() => result.current.actions.play())
     expect(mockPlay).toHaveBeenCalledWith('thud')
     expect(onPlay).toHaveBeenCalledTimes(1)
@@ -192,12 +158,12 @@ describe('the play gate', () => {
 
   it('stays open with uncertain cells', () => {
     const scan = scanOf(puzzle.givens, { [firstOpen]: { digit: wrongDigit, kind: 'handwritten', confidence: 0.3 } })
-    expect(session(review(scan), { onPlay: jest.fn() }).result.current.canPlay).toBe(true)
+    expect(session(review(scan), { onPlay: jest.fn() }).result.current.play.canPlay).toBe(true)
   })
 
   it('blocks givens in conflict, with no solution and with several solutions', () => {
     const conflict = okResult({ 0: printed(5), 1: printed(5) })
-    expect(session(review(conflict), { onPlay: jest.fn() }).result.current).toMatchObject({
+    expect(session(review(conflict), { onPlay: jest.fn() }).result.current.play).toMatchObject({
       block: 'conflict',
       canPlay: false,
       canSolve: false,
@@ -215,19 +181,19 @@ describe('the play gate', () => {
       7: printed(8),
       17: printed(9),
     })
-    expect(session(review(none)).result.current).toMatchObject({ block: 'none', level: null })
-    expect(session(review(okResult({ 0: printed(1) }))).result.current.block).toBe('several')
+    expect(session(review(none)).result.current.play).toMatchObject({ block: 'none', level: null })
+    expect(session(review(okResult({ 0: printed(1) }))).result.current.play.block).toBe('several')
   })
 
   it('keeps Play off without onPlay, and play() does nothing', () => {
     const { result } = session(review(scanOf(puzzle.givens)))
-    expect(result.current.canPlay).toBe(false)
+    expect(result.current.play.canPlay).toBe(false)
     act(() => result.current.actions.play())
     expect(mockPlay).not.toHaveBeenCalled()
   })
 
   it('does not check the givens during the transition', () => {
-    session(capturing(scanOf(puzzle.givens), 1.5))
+    session(capturing(scanOf(puzzle.givens), { clock: 1.5 }))
     expect(checkSpy).not.toHaveBeenCalled()
   })
 
@@ -236,8 +202,8 @@ describe('the play gate', () => {
     expect(checkSpy).toHaveBeenCalledTimes(1)
     act(() => result.current.actions.select(firstOpen))
     expect(checkSpy).toHaveBeenCalledTimes(1)
-    expect(result.current.block).toBeNull()
-    expect(result.current.canPlay).toBe(false)
+    expect(result.current.play.block).toBeNull()
+    expect(result.current.play.canPlay).toBe(false)
     act(() => result.current.actions.setDigit(wrongDigit))
     expect(checkSpy).toHaveBeenCalledTimes(2)
   })
@@ -247,23 +213,23 @@ describe('the play gate', () => {
     const { result } = session(review(scan), { onPlay: jest.fn() })
     const clash = puzzle.givens.findIndex((digit, n) => n !== firstOpen && digit === clashDigit)
     expect(clash).toBeGreaterThanOrEqual(0)
-    expect(result.current.block).not.toBeNull()
+    expect(result.current.play.block).not.toBeNull()
     act(() => result.current.actions.select(firstOpen))
     act(() => result.current.actions.clear())
-    expect(result.current.canPlay).toBe(true)
+    expect(result.current.play.canPlay).toBe(true)
   })
 
   it('shows the solution with Solve, and hides it with a second call, and at the next edit', () => {
     const { result } = session(review(scanOf(puzzle.givens)), { onPlay: jest.fn() })
-    expect(result.current.solution).toBeNull()
+    expect(result.current.play.solution).toBeNull()
     act(() => result.current.actions.toggleSolution())
-    expect(result.current.solution).toEqual(puzzle.solution)
+    expect(result.current.play.solution).toEqual(puzzle.solution)
     act(() => result.current.actions.toggleSolution())
-    expect(result.current.solution).toBeNull()
+    expect(result.current.play.solution).toBeNull()
     act(() => result.current.actions.toggleSolution())
     act(() => result.current.actions.select(firstOpen))
     act(() => result.current.actions.setDigit(wrongDigit))
-    expect(result.current.solution).toBeNull()
+    expect(result.current.play.solution).toBeNull()
   })
 })
 
@@ -271,8 +237,8 @@ describe('the full grid and the celebration', () => {
   it('offers Check for a full grid and no Play', () => {
     const { result } = session(review(fullScan()), { onPlay: jest.fn() })
     expect(result.current.fullGrid).toEqual({ phase: 'ready', count: 0 })
-    expect(result.current.block).toBe('full')
-    expect(result.current.canPlay).toBe(false)
+    expect(result.current.play.block).toBe('full')
+    expect(result.current.play.canPlay).toBe(false)
     expect(session(review(okResult({ 0: printed(1) }))).result.current.fullGrid).toBeNull()
   })
 
@@ -314,7 +280,7 @@ describe('the full grid and the celebration', () => {
     act(() => result.current.actions.select(firstOpen))
     act(() => result.current.actions.clear())
     expect(result.current.fullGrid).toBeNull()
-    expect(result.current.canPlay).toBe(true)
+    expect(result.current.play.canPlay).toBe(true)
   })
 })
 
@@ -374,7 +340,7 @@ describe('the haptic cues', () => {
   it('plays success when the results gate opens for a recognised grid, once', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
     const resultsAt = shared(-1)
-    const { result } = session({ ...capturing(okResult(), 0.6), resultsAt })
+    const { result } = session({ ...capturing(okResult(), { clock: 0.6 }), resultsAt })
     expect(result.current.panel).toBe('summary')
     const { prepare, react } = await reactionPlaying('success')
     expect(prepare()).toBe(false)
@@ -388,7 +354,7 @@ describe('the haptic cues', () => {
 
   it('plays a warning when the failure panel starts to slide, from the results gate', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
-    const { result } = session(capturing({ ok: false, reason: 'x' }, 0.5))
+    const { result } = session(capturing({ ok: false, reason: 'x' }, { clock: 0.5 }))
     expect(result.current.panel).toBe('failure')
     const { prepare, react } = await reactionPlaying('warning')
     expect(prepare()).toBe(false)
@@ -402,10 +368,10 @@ describe('the haptic cues', () => {
 
   it('opens the failure gate with Reduce Motion at any clock value, and at the results gate without it', async () => {
     jest.mocked(useAnimatedReaction).mockClear()
-    session(capturing({ ok: false, reason: 'x' }, 0, -1, true))
+    session(capturing({ ok: false, reason: 'x' }, { crossFade: true, resultsAt: -1 }))
     expect((await reactionPlaying('warning')).prepare()).toBe(true)
     jest.mocked(useAnimatedReaction).mockClear()
-    session(capturing({ ok: false, reason: 'x' }, GATE_RESULTS))
+    session(capturing({ ok: false, reason: 'x' }, { clock: GATE_RESULTS, resultsAt: -1 }))
     expect((await reactionPlaying('warning')).prepare()).toBe(true)
   })
 })
@@ -449,7 +415,7 @@ describe('leaving the screen', () => {
 
   it('does not report a screen that was never editable, such as a transition that ends early', () => {
     const onExit = jest.fn()
-    session(capturing(okResult(), 1.5), { onExit }).unmount()
+    session(capturing(okResult(), { clock: 1.5 }), { onExit }).unmount()
     session(review({ ok: false, reason: 'x' }), { onExit }).unmount()
     expect(onExit).not.toHaveBeenCalled()
   })
@@ -457,7 +423,7 @@ describe('leaving the screen', () => {
   it('reports an exit after the transition ended', () => {
     const onExit = jest.fn()
     const result = okResult()
-    const { rerender, unmount } = session(capturing(result, 1.5), { onExit })
+    const { rerender, unmount } = session(capturing(result, { clock: 1.5 }), { onExit })
     rerender({ capture: review(result) })
     unmount()
     expect(onExit).toHaveBeenCalledTimes(1)
@@ -470,30 +436,13 @@ describe('leaving the screen', () => {
 
 const withPhoto = () => okResult({ 0: printed(5) }, { photoPath: '/tmp/photo.jpg' })
 
-describe('Save', () => {
-  it('is offered with the photo file and onSave only', () => {
-    expect(session(review(withPhoto()), { onSave: jest.fn() }).result.current.canSave).toBe(true)
-    expect(session(review(withPhoto())).result.current.canSave).toBe(false)
-    expect(session(review(okResult()), { onSave: jest.fn() }).result.current.canSave).toBe(false)
-  })
-
-  it('hands the final grid to onSave and shows the status', async () => {
-    const onSave = jest.fn(async (_grid: FinalGrid) => true)
-    const { result } = session(review(withPhoto()), { onSave })
-    expect(result.current.saveState).toBe('idle')
-    act(() => result.current.actions.save())
-    expect(result.current.saveState).toBe('saving')
-    await waitFor(() => expect(result.current.saveState).toBe('saved'))
-    expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]![0]).toHaveLength(81)
-  })
-
+describe('Save through the session', () => {
   it('says when the save failed, and a new edit makes the saved copy old', async () => {
     const { result } = session(review(withPhoto()), { onSave: jest.fn(async () => false) })
     act(() => result.current.actions.save())
-    await waitFor(() => expect(result.current.saveState).toBe('failed'))
+    await waitFor(() => expect(result.current.dev.saveState).toBe('failed'))
     act(() => result.current.actions.select(1))
     act(() => result.current.actions.setDigit(2))
-    expect(result.current.saveState).toBe('idle')
+    expect(result.current.dev.saveState).toBe('idle')
   })
 })
