@@ -64,7 +64,7 @@ def test_training_and_the_check_screen_have_the_same_test_split(tmp_path: Path):
     config = smoke_config(tmp_path, real_cells=True, split=SPLIT)
     paths = scan_dataset(tmp_path, config)
     store = LabelStore(paths, Clock())
-    _, check_screen_test = store._near_duplicates()
+    _, check_screen_test = store.review.near_duplicates()
     run = train(load_config(config), paths, artifacts_dir=tmp_path / "out")
     trained = split_cells(read_real_cells(paths), tuple(SPLIT), load_config(config).seed)[2]
     assert {c.path.stem for c in trained} == {cell[:16] for cell in check_screen_test}

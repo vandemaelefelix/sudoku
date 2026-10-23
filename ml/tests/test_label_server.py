@@ -183,7 +183,7 @@ def test_the_doubtful_step_lists_and_settles_the_suspects(tmp_path: Path):
             f"field,file,label,predicted,p_label,p_predicted\ndigit,{cell[:16]},7,1,0.02,0.97\n"
         )
 
-    store._dups = ([], set())  # no cell reads: the test has no near-duplicates
+    store.review._dups = ([], set())  # no cell reads: the test has no near-duplicates
     one = Served(store, suspects=rank)
     try:
         assert one.post("/api/suspects", {}) == {"open": 1}

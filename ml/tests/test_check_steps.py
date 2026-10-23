@@ -14,9 +14,10 @@ from cells import (
 )
 from scans import pulled, shared_cells
 
+from sudoku_ml.check_steps import CHECK_SIZE
 from sudoku_ml.finish import finish
 from sudoku_ml.journal import read_journal
-from sudoku_ml.label_store import CHECK_SIZE, LabelStore
+from sudoku_ml.label_store import LabelStore
 from sudoku_ml.tables import read_cells, stem_of
 
 
