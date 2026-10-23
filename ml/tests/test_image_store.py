@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from test_label_store import Clock, build, save_kinds, settle_kinds
+from cells import Clock, build, save_kinds, settle_kinds
 
 from sudoku_ml import manifest
 from sudoku_ml.data_paths import DataPaths
@@ -60,12 +60,14 @@ def test_the_flag_drops_the_rows_of_vanished_cells(populated, capsys):
     assert len(paths.cells_csv.read_text().splitlines()) == 3
 
 
-def test_the_store_finish_and_the_server_refuse_a_wrong_store(populated, tmp_path, capsys):
+def test_the_store_finish_and_the_server_refuse_a_wrong_store(
+    populated, tmp_path, capsys, make_store
+):
     paths, table = populated
     wrong = wrong_store(paths, tmp_path)
     with pytest.raises(ValueError, match=HINT):
-        LabelStore(wrong, Clock())
-    store = LabelStore(paths, Clock())
+        make_store(wrong)
+    store = make_store(paths)
     settle_kinds(store)
     one_cell_gone(paths)
     paths.journal.write_text("")
@@ -88,11 +90,11 @@ def test_relabel_against_a_wrong_store_moves_nothing(populated, tmp_path: Path):
     assert paths.cells_csv.read_bytes() == table
 
 
-def test_a_fresh_empty_dataset_starts(tmp_path: Path):
+def test_a_fresh_empty_dataset_starts(tmp_path: Path, make_store):
     paths = DataPaths.under(tmp_path / "data")
     paths.cells.mkdir(parents=True)
     assert write_cells_manifest(paths) == 0
-    assert LabelStore(paths, Clock()).folder == {}
+    assert make_store(paths).folder == {}
 
 
 def test_no_table_and_no_image_store_is_refused(tmp_path: Path):

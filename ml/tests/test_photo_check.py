@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from photos import grid_photo, save_photo
+from photos import FULL, grid_photo, save_photo
 from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
@@ -11,8 +11,6 @@ from sudoku_ml.journal import current_sources, read_journal
 from sudoku_ml.photo_check import MIN_CELLS, PhotoCheck, clear_temp
 from sudoku_ml.photo_import import import_folder
 from sudoku_ml.tables import read_photos
-
-FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 
 
 def clock() -> datetime:

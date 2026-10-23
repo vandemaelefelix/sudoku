@@ -6,10 +6,9 @@ from pathlib import Path
 import api_schemas as schema
 import jsonschema
 import pytest
-from photos import grid_photo, save_photo
-from test_check_steps import prelabel
-from test_label_store import Clock, build, save_kinds
-from test_label_store_scans import entries, pulled
+from cells import Clock, build, prelabel, save_kinds
+from photos import FULL, grid_photo, save_photo
+from scans import old_page_confirm, pulled
 
 from sudoku_ml.fetch_scans import SignInNeeded
 from sudoku_ml.journal import read_journal
@@ -199,9 +198,6 @@ def test_the_doubtful_step_lists_and_settles_the_suspects(tmp_path: Path):
         one.close()
 
 
-FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
-
-
 @pytest.fixture
 def served_photos(tmp_path: Path):
     """Two loose cells with guesses and one imported photo that waits for its outline."""
@@ -330,7 +326,7 @@ def test_a_journal_of_the_old_page_loads_with_no_finish(tmp_path: Path):
     Groups screen. The app reads them as they are."""
     store, paths, photos = pulled(tmp_path)
     store.approve_outlines(photos)
-    store.confirm_scan(photos[0], entries(store.scan_screen(photos[0])))
+    old_page_confirm(store, photos[0])
     cell = next(c for c in store.folder if store.folder[c] not in ("empty", "discarded"))
     old_line = {
         "t": "2026-10-21T18:00:00Z",

@@ -82,7 +82,8 @@ SCREEN_SIZE = 50
 CHECK_SIZE = 240  # a full screen of 64 px cells
 ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
 DIGIT_TABS = (*DIGIT_CLASSES, "unknown")
-# The screens whose digit line a person made, and whose kind line a person made.
+# The screens whose digit line a person made, and whose kind line a person made. "scans" and
+# "groups" stay: old journals still hold lines from those screens (ADR-034, decision 8).
 DIGIT_SCREENS = ("digits", "scans")
 KIND_SCREENS = ("kinds", "scans", "groups", "review")
 NEAR_DUPLICATE_BITS = 4  # the same limit as group_ids, which keeps the split leak-free
@@ -204,21 +205,6 @@ class LabelStore:
     def cell_file(self, stem: str) -> Path:
         self._refresh()
         return self.paths.cells / self.folder[self._stem_ids[stem]] / f"{stem}.png"
-
-    def move(self, cell: str, digit: str, screen: str) -> None:
-        self._refresh()
-        if digit not in DIGIT_CLASSES:
-            raise ValueError(f"unknown digit folder {digit!r}")
-        old = self.folder[cell]
-        if old == digit:
-            return
-        t, action = self._t(), self._action()
-        lines = [Line(t, self.session, action, cell, "digit", old, digit, screen)]
-        kind = self.kinds().get(cell)
-        if digit == "empty" and kind is not None:
-            lines.append(Line(t, self.session, action, cell, "kind", kind, None, screen))
-        self._apply_digits(lines)
-        self._write(lines)
 
     def undo_target(self) -> str | None:
         """The screen of the action that undo would reverse, or None when there is none. An
@@ -723,53 +709,6 @@ class LabelStore:
             return "empty", None
         return guess["digit"], guess["kind"] if guess["kind"] in KINDS else None
 
-    def scan_screen(self, photo: str) -> dict:
-        """The scan view: the 81 places of the scan. A place shows the cell there and its label.
-        A cell in unlabeled/ shows the model's pre-label with `suggested`. A cell of another scan
-        is marked `shared`, and so is a second place with the same pixels as an earlier place."""
-        state = self._scan_state(photo)
-        rgb = self._upright(state.row)
-        sources, kinds, label_sources = self.sources(), self.kinds(), self.label_sources()
-        labelled = confirmed_cells(self.lines)
-        pre = self._prelabels()
-        cells, seen = [], set()
-        for position, cell in enumerate(self._places(state)):
-            place = {"row": position // GRID_CELLS, "col": position % GRID_CELLS}
-            if cell is None:
-                cells.append({**place, "missing": True})
-                continue
-            owner = sources.get(cell, (state.row.photo_id,))[0]
-            shared = owner != state.row.photo_id or cell in seen
-            seen.add(cell)
-            folder = self.folder[cell]
-            digit, kind = folder, kinds.get(cell)
-            if folder == "unlabeled":
-                digit, kind = self._suggestion(cell, pre)
-            cells.append(
-                {
-                    **place,
-                    "id": cell,
-                    "stem": stem_of(cell),
-                    "digit": digit,
-                    "kind": kind,
-                    "suggested": folder == "unlabeled",
-                    "edited": label_sources.get(cell) == "app-edited",
-                    "reviewed": label_sources.get(cell) == "verified" or cell in labelled,
-                    "shared": stem_of(owner) if shared else None,
-                    "locked": folder == "discarded",
-                }
-            )
-        height, width = rgb.shape[:2]
-        return {
-            "photo": photo,
-            "source": _source(state.row),
-            "status": state.status,
-            "width": width,
-            "height": height,
-            "corners": parse_corners(state.corners) if state.corners else None,
-            "cells": cells,
-        }
-
     def _unconfirmed(self, states: list[ScanState] | None = None) -> dict[str, list[str]]:
         """Photo id → the open cells of each scan with an accepted outline, in pull order. A cell
         is open in unlabeled/, or as an `app-*` cell in a digit folder that no person labelled.
@@ -789,61 +728,6 @@ class LabelStore:
             ):
                 found[photo].append(cell)
         return {photo: cells for photo, cells in found.items() if cells}
-
-    def scan_list(self) -> dict:
-        """`open`: the cells to confirm. `edited`: those that the player changed. Pull order."""
-        label_sources = self.label_sources()
-        sources = {s.row.photo_id: _source(s.row) for s in self._scan_states()}
-        return {
-            "scans": [
-                {
-                    "photo": stem_of(photo),
-                    "source": sources[photo],
-                    "open": len(cells),
-                    "edited": sum(label_sources.get(c) == "app-edited" for c in cells),
-                }
-                for photo, cells in self._unconfirmed().items()
-            ],
-        }
-
-    def confirm_scan(self, photo: str, cells: list[dict]) -> int:
-        """Label every own cell of a scan with an approved outline as one action: a digit line
-        per cell, also an unchanged one, and a kind line per changed kind. A shared cell belongs
-        to its own scan. Checks all entries before it writes."""
-        state = self._scan_state(photo)
-        if state.status != "accepted":
-            raise ValueError(f"{photo}: approve the outline first")
-        members = sorted(
-            c["id"]
-            for c in self.scan_screen(photo)["cells"]
-            if "id" in c and not c["shared"] and not c["locked"]
-        )
-        if sorted(e["id"] for e in cells) != members:
-            stray = next((e["id"] for e in cells if e["id"] not in members), None)
-            if stray is not None:
-                raise ValueError(f"{stem_of(stray)}: not a cell of {photo}")
-            raise ValueError(f"{photo}: send each of its {len(members)} cells once")
-        kinds, t, action = self.kinds(), self._t(), self._action()
-        lines = []
-        for entry in cells:
-            cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
-            if digit not in DIGIT_CLASSES:
-                raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
-            if digit == "empty":
-                kind = None
-            elif kind is None:
-                raise ValueError(f"{stem_of(cell)}: the digit {digit} has no kind")
-            elif kind not in KINDS:
-                raise ValueError(f"{stem_of(cell)}: unknown kind {kind!r}")
-            old = self.folder[cell]
-            lines.append(Line(t, self.session, action, cell, "digit", old, digit, "scans"))
-            if kinds.get(cell) != kind:
-                lines.append(
-                    Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "scans")
-                )
-        self._apply_digits(lines)
-        self._write(lines)
-        return len(lines)
 
     # Digits and Kind steps (ADR-034)
 

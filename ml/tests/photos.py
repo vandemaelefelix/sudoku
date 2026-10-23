@@ -3,7 +3,16 @@
 from pathlib import Path
 
 import numpy as np
+from cells import Clock
 from PIL import Image, ImageDraw, ImageFont
+
+from sudoku_ml.data_paths import DataPaths
+from sudoku_ml.manifest import write_cells_manifest
+from sudoku_ml.photo_check import PhotoCheck
+from sudoku_ml.photo_import import import_folder
+from sudoku_ml.tables import pixel_id
+
+FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]  # the grid of grid_photo()
 
 
 def grid_photo(
@@ -46,3 +55,28 @@ def save_photo(rgb: np.ndarray, path: Path, orientation: int | None = None) -> P
         exif[274] = orientation
         image.save(path, exif=exif)
     return path
+
+
+def add_plain_cell(folder: Path, grey: int) -> str:
+    folder.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (64, 64), (grey,) * 3).save(folder / "tmp.png")
+    cell_id = pixel_id(folder / "tmp.png")
+    (folder / "tmp.png").rename(folder / f"{cell_id[:16]}.png")
+    return cell_id
+
+
+def valid_root(tmp_path: Path) -> DataPaths:
+    """3 sudoku photos: one accepted (cells cut and linked), one rejected, one pending. One
+    older cell in empty/ and one in discarded/ have no source."""
+    paths = DataPaths.under(tmp_path / "data")
+    for n in range(3):
+        save_photo(grid_photo(seed=n), tmp_path / "in" / f"p{n}.png")
+    import_folder(tmp_path / "in", paths, source="phone", licence="own")
+    check = PhotoCheck(paths, "s1", Clock())
+    first, second, _ = check.pending()
+    check.accept(first, FULL)
+    check.reject(second)
+    add_plain_cell(paths.cells / "empty", 9)
+    add_plain_cell(paths.cells / "discarded", 7)
+    write_cells_manifest(paths)
+    return paths
