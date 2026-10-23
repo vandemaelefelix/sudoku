@@ -123,7 +123,6 @@ beforeEach(() => {
   mockCreated.length = 0
   mockContours = []
   mockFailure = null
-  jest.clearAllMocks()
 })
 
 describe('findGrid', () => {

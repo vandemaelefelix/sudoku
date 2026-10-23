@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   key: {
@@ -10,11 +10,10 @@ export const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
   },
   raised: { backgroundColor: theme.components.key.fill, boxShadow: theme.elevation.key },
-  digit: { ...roleFont(theme.type.key), fontSize: theme.type.key.scale, color: theme.components.key.digit },
+  digit: { ...roleSized(theme.type.key), color: theme.components.key.digit },
   noteLayer: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' },
   noteDigit: {
-    ...roleFont(theme.type.keyNote),
-    fontSize: theme.type.keyNote.scale,
+    ...roleSized(theme.type.keyNote),
     color: theme.components.key.noteDigit,
   },
 }))

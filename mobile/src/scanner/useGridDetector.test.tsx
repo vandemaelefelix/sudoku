@@ -62,8 +62,6 @@ function givenResizer() {
   return { resizer, resized }
 }
 
-beforeEach(() => jest.clearAllMocks())
-
 describe('useGridDetector', () => {
   it('asks for an upright 360 × 640 RGB image of the whole frame', () => {
     givenState('loading')

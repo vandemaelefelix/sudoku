@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { kvSettings } from '@/settings/SettingsRepository'
 import { createSettingStore } from '@/settings/settingStore'
-import { HAPTICS_SETTING } from '@/settings/utils/haptics.utils'
+import { HAPTICS_SETTING } from '@/settings/utils/hapticsSetting.utils'
 import { playHaptic, type HapticName } from '@/utils/haptics.utils'
 
 // One store for the app: the switch in Settings must reach every screen that plays a haptic.

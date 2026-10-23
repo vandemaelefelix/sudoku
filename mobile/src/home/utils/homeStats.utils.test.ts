@@ -2,8 +2,6 @@ import { createMemoryStorage } from '@/storage'
 import { newGame, wonGame } from '@/storage/repositories.contract'
 import { loadHomeStats } from './homeStats.utils'
 
-jest.mock('@/utils/timeZone.utils', () => ({ deviceTimeZone: () => 'UTC' }))
-
 it('gives no win rate and no streak on a device without games', async () => {
   const { stats } = createMemoryStorage()
   await expect(loadHomeStats(stats, { includeScanned: false, owner: null })).resolves.toEqual({

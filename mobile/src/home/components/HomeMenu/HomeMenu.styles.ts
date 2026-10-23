@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 import { contentInset } from '@/theme/content'
 
 // Unistyles reads the safe-area insets natively, so the menu needs no insets hook.
@@ -14,15 +14,13 @@ export const styles = StyleSheet.create((theme, rt) => ({
   },
   menu: { flex: 1, gap: theme.space.md },
   title: {
-    ...roleFont(theme.type.title),
-    fontSize: theme.type.title.scale,
+    ...roleSized(theme.type.title),
     color: theme.colors.text,
     marginBottom: theme.space.lg,
   },
-  noStats: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
+  noStats: { ...roleSized(theme.type.caption), color: theme.colors.textMuted },
   section: {
-    ...roleFont(theme.type.label),
-    fontSize: theme.type.label.scale,
+    ...roleSized(theme.type.label),
     color: theme.colors.textMuted,
     marginTop: theme.space.md,
   },
@@ -37,11 +35,10 @@ export const styles = StyleSheet.create((theme, rt) => ({
     backgroundColor: theme.colors.surface,
   },
   continue: { backgroundColor: theme.colors.accent, borderWidth: 0 },
-  label: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.text },
-  continueLabel: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.onAccent },
+  label: { ...roleSized(theme.type.button), color: theme.colors.text },
+  continueLabel: { ...roleSized(theme.type.button), color: theme.colors.onAccent },
   continueCaption: {
-    ...roleFont(theme.type.caption),
-    fontSize: theme.type.caption.scale,
+    ...roleSized(theme.type.caption),
     color: theme.colors.onAccent,
   },
   links: { flexDirection: 'row', gap: theme.space.md, marginTop: 'auto' },

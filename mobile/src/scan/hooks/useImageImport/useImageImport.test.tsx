@@ -22,7 +22,6 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   jest.spyOn(console, 'warn').mockImplementation(() => undefined)
 })
 

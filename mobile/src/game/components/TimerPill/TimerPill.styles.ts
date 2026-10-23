@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   area: { minHeight: theme.size.touch, justifyContent: 'center' },
@@ -30,14 +30,12 @@ export const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
   },
   time: {
-    ...roleFont(theme.type.timer),
-    fontSize: theme.type.timer.scale,
+    ...roleSized(theme.type.timer),
     color: theme.colors.text,
     fontVariant: ['tabular-nums'],
   },
   endedTime: {
-    ...roleFont(theme.type.timer),
-    fontSize: theme.type.timer.scale,
+    ...roleSized(theme.type.timer),
     color: theme.colors.textMuted,
     fontVariant: ['tabular-nums'],
   },

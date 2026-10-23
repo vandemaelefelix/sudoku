@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 // A row of sudoku-like cells (ADR-026): square corners, cells divided by the box-line weight inside the frame of the grid.
 // No filled track. The selected cell has the fill and the ring of the selected cell of the grid.
@@ -31,6 +31,6 @@ export const styles = StyleSheet.create((theme) => ({
     borderWidth: theme.shape.stroke.ring,
     borderColor: theme.components.cell.ring,
   },
-  label: { ...roleFont(theme.type.label), fontSize: theme.type.label.scale, color: theme.colors.textMuted },
+  label: { ...roleSized(theme.type.label), color: theme.colors.textMuted },
   labelSelected: { color: theme.colors.accent },
 }))

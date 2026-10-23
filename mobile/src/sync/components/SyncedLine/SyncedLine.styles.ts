@@ -1,10 +1,9 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   note: {
-    ...roleFont(theme.type.caption),
-    fontSize: theme.type.caption.scale,
+    ...roleSized(theme.type.caption),
     color: theme.colors.textMuted,
     marginTop: theme.space.xl,
   },

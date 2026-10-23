@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 import { contentInset } from '@/theme/content'
 
 // The Settings page in the Op-art language (ADR-026): square corners, one framed block per group with rows divided by the
@@ -22,18 +22,17 @@ export const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
+  title: { ...roleSized(theme.type.title), color: theme.colors.text },
   section: { gap: theme.space.sm },
   // The heading and its rule sit together, so the rule reads as part of the heading.
   heading: { gap: theme.space.xs },
   sectionTitle: {
-    ...roleFont(theme.type.section),
-    fontSize: theme.type.section.scale,
+    ...roleSized(theme.type.section),
     letterSpacing: theme.type.section.scale * theme.type.section.tracking,
     textTransform: 'uppercase',
     color: theme.colors.text,
   },
-  hint: { ...roleFont(theme.type.caption), fontSize: theme.type.caption.scale, color: theme.colors.textMuted },
+  hint: { ...roleSized(theme.type.caption), color: theme.colors.textMuted },
   card: {
     overflow: 'hidden',
     borderRadius: theme.components.summary.radius,

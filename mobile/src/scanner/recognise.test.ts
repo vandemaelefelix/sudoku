@@ -106,7 +106,6 @@ function expectQuad(actual: Quad, expected: Quad) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   photoHas([LOCKED])
   warp.mockImplementation((_raw, _corners, side) => ({
     buffer: new ArrayBuffer(side * side * 4),

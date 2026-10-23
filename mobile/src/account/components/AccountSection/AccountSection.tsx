@@ -12,7 +12,6 @@ import { styles } from './AccountSection.styles'
 
 type AccountSectionProps = { onSignIn(): void }
 
-/** The Account section of Settings. A build without a Clerk key has no account, so the section is not there. */
 /** A token or a call can fail with the network up. Only a network that is down gets the words about the internet. */
 async function offlineMessage(): Promise<MessageId> {
   try {
@@ -24,6 +23,7 @@ async function offlineMessage(): Promise<MessageId> {
   }
 }
 
+/** The Account section of Settings. A build without a Clerk key has no account, so the section is not there. */
 export function AccountSection({ onSignIn }: AccountSectionProps) {
   const { status, email, signOut } = useAccount()
   const intl = useIntl()

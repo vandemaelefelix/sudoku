@@ -20,7 +20,6 @@ function play(...moves: Move[]) {
   for (const last of moves) rerender({ last })
 }
 
-beforeEach(() => jest.clearAllMocks())
 afterEach(() => jest.mocked(useReducedMotion).mockReturnValue(false))
 
 describe('hapticOf', () => {

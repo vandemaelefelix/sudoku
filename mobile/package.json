@@ -72,6 +72,7 @@
     "typescript": "~6.0.3"
   },
   "jest": {
+    "clearMocks": true,
     "moduleNameMapper": {
       "\\.tflite$": "<rootDir>/test/tfliteStub.js",
       "^@/(.*)$": "<rootDir>/src/$1",

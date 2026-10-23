@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleFont, roleSized } from '@/theme/typography'
 
 // Unistyles reads the safe-area insets natively. The sheet sits on the home indicator area, as on the canvas.
 export const styles = StyleSheet.create((theme, rt) => ({
@@ -24,10 +24,9 @@ export const styles = StyleSheet.create((theme, rt) => ({
     backgroundColor: theme.colors.surface,
     boxShadow: theme.elevation.sheet,
   },
-  title: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
+  title: { ...roleSized(theme.type.title), color: theme.colors.text },
   body: {
-    ...roleFont(theme.type.body),
-    fontSize: theme.type.body.scale,
+    ...roleSized(theme.type.body),
     lineHeight: Math.round(theme.type.body.scale * 1.4),
     color: theme.colors.textMuted,
   },
@@ -39,7 +38,7 @@ export const styles = StyleSheet.create((theme, rt) => ({
     borderRadius: theme.shape.radius.pill,
     backgroundColor: theme.colors.accent,
   },
-  retryText: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.onAccent },
+  retryText: { ...roleSized(theme.type.button), color: theme.colors.onAccent },
   newPuzzle: {
     minHeight: theme.size.touch + theme.space.xs,
     alignItems: 'center',
@@ -50,5 +49,5 @@ export const styles = StyleSheet.create((theme, rt) => ({
   },
   newPuzzleText: { ...roleFont(theme.type.button), fontSize: theme.type.body.scale, color: theme.colors.text },
   home: { minHeight: theme.size.touch, alignItems: 'center', justifyContent: 'center' },
-  homeText: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
+  homeText: { ...roleSized(theme.type.body), color: theme.colors.textMuted },
 }))

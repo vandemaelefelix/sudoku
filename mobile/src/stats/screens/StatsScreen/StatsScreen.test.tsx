@@ -12,7 +12,6 @@ import { IntlProvider } from 'react-intl'
 import { CATALOGUES } from '@/i18n/messages'
 import { StatsScreen } from './StatsScreen'
 
-jest.mock('@/utils/timeZone.utils', () => ({ deviceTimeZone: () => 'UTC' }))
 jest.mock('@/utils/appVariant.utils', () => ({ isDevelopmentVariant: jest.fn(() => false) }))
 
 function inTheme(theme: Theme) {

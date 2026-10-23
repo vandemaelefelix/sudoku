@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   header: { minHeight: theme.size.header, flexDirection: 'row', alignItems: 'center' },
@@ -11,5 +11,5 @@ export const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text, flex: 1 },
+  title: { ...roleSized(theme.type.title), color: theme.colors.text, flex: 1 },
 }))

@@ -134,7 +134,6 @@ function renderCanvas(view: ViewSize, effect = DEFAULT_INDEX, outline: Quad | nu
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   reducedMotion.mockReturnValue(false)
 })
 

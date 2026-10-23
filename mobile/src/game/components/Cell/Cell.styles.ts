@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleFont, roleSized } from '@/theme/typography'
 
 // One key per cell state, not Unistyles variants: the Jest mock of Unistyles drops variants.
 export const styles = StyleSheet.create((theme) => ({
@@ -21,9 +21,9 @@ export const styles = StyleSheet.create((theme) => ({
   fillLayer: { position: 'absolute', inset: 0 },
   flashHint: { backgroundColor: theme.colors.accent },
   flashUndo: { backgroundColor: theme.colors.textMuted },
-  given: { ...roleFont(theme.type.given), fontSize: theme.type.given.scale, color: theme.components.cell.given },
-  entry: { ...roleFont(theme.type.entry), fontSize: theme.type.entry.scale, color: theme.components.cell.entry },
-  wrong: { ...roleFont(theme.type.entry), fontSize: theme.type.entry.scale, color: theme.components.cell.conflict },
+  given: { ...roleSized(theme.type.given), color: theme.components.cell.given },
+  entry: { ...roleSized(theme.type.entry), color: theme.components.cell.entry },
+  wrong: { ...roleSized(theme.type.entry), color: theme.components.cell.conflict },
   // A small cell uses the note size for its digits, as in the canvas preview.
   givenSmall: { ...roleFont(theme.type.given), fontSize: theme.type.note.scale, color: theme.components.cell.given },
   entrySmall: { ...roleFont(theme.type.entry), fontSize: theme.type.note.scale, color: theme.components.cell.entry },
@@ -44,8 +44,7 @@ export const styles = StyleSheet.create((theme) => ({
   hintTargetFill: { backgroundColor: theme.components.cell.hintTargetFill },
   hintSupport: { color: theme.components.cell.hintSupport },
   ghost: {
-    ...roleFont(theme.type.entry),
-    fontSize: theme.type.entry.scale,
+    ...roleSized(theme.type.entry),
     color: theme.components.cell.hintGhost,
     opacity: theme.components.cell.hintGhostOpacity,
   },
@@ -58,7 +57,7 @@ export const styles = StyleSheet.create((theme) => ({
     transform: [{ rotate: '-35deg' }],
   },
   noteSlot: { width: '33.33%', height: '33.33%', alignItems: 'center', justifyContent: 'center' },
-  note: { ...roleFont(theme.type.note), fontSize: theme.type.note.scale, color: theme.components.cell.note },
+  note: { ...roleSized(theme.type.note), color: theme.components.cell.note },
   noteSelected: { color: theme.components.cell.selectedNote },
   tileClip: { position: 'absolute', inset: 0, overflow: 'hidden' },
   tile: { position: 'absolute', inset: 0, backgroundColor: theme.components.cell.selectedTile },

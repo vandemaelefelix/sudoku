@@ -1,8 +1,6 @@
 import * as Haptics from 'expo-haptics'
 import { playHaptic } from './haptics.utils'
 
-beforeEach(() => jest.clearAllMocks())
-
 describe('playHaptic', () => {
   it.each([
     ['tap', Haptics.ImpactFeedbackStyle.Light],

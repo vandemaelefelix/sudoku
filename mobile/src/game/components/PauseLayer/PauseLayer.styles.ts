@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 // The layer is transparent: the cells under it already show empty while the game is paused.
 export const styles = StyleSheet.create((theme) => ({
@@ -13,6 +13,6 @@ export const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
     gap: theme.space.xs,
   },
-  title: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
-  hint: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.textMuted },
+  title: { ...roleSized(theme.type.title), color: theme.colors.text },
+  hint: { ...roleSized(theme.type.body), color: theme.colors.textMuted },
 }))

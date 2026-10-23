@@ -49,7 +49,6 @@ function camera() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
   jest.mocked(useScannedStart).mockReturnValue(mockPlay)
   mockMounts.length = 0
 })

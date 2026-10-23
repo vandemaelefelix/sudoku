@@ -20,8 +20,6 @@ function fakeEffect(id: string, sksl?: string): AnyEffect {
   }
 }
 
-beforeEach(() => jest.clearAllMocks())
-
 describe('makeDrawKit', () => {
   it('compiles the shader of each effect once, by id', () => {
     const kit = makeDrawKit([fakeEffect('a', 'half4 main(float2 p) { return half4(1); }'), fakeEffect('b')], INK)

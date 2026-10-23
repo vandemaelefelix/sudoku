@@ -24,7 +24,6 @@ const OK: RecogniseResult = {
 const FLAT = new Uint8Array(3)
 
 beforeEach(() => {
-  jest.clearAllMocks()
   jest.spyOn(console, 'warn').mockImplementation(() => undefined)
 })
 
