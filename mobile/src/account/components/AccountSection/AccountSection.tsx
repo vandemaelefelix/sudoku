@@ -2,11 +2,11 @@ import { getNetworkStateAsync } from 'expo-network'
 import { useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { useAccount } from '@/account/hooks/useAccount'
+import { SectionHeading } from '@/components/SectionHeading'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { MessageId } from '@/i18n/messages'
 import { useAccountLifecycle } from '@/account/hooks/useAccountLifecycle'
 import { useDeleteAccount } from '@/account/hooks/useDeleteAccount'
-import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './AccountSection.styles'
 
@@ -35,6 +35,14 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
   // A state update is too late for a second tap in the same frame.
   const busy = useRef(false)
   if (status === 'unconfigured') return null
+  const hint =
+    status === 'loading'
+      ? t('account.section.checking')
+      : status === 'signedIn' && deleting
+        ? t('account.delete.pending')
+        : status === 'signedOut'
+          ? t('account.section.pitch')
+          : undefined
   const trySignOut = async () => {
     if (!(await signOut())) Alert.alert(t('account.signOut.failedTitle'), t('account.signOut.failedMessage'))
   }
@@ -63,17 +71,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
     ])
   return (
     <>
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {t('account.section.title')}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
-        {status === 'loading' ? <Text style={styles.hint}>{t('account.section.checking')}</Text> : null}
-        {status === 'signedIn' && deleting ? <Text style={styles.hint}>{t('account.delete.pending')}</Text> : null}
-        {status === 'signedOut' ? <Text style={styles.hint}>{t('account.section.pitch')}</Text> : null}
-      </View>
+      <SectionHeading title={t('account.section.title')} hint={hint} />
       {status === 'signedOut' ? (
         <View style={styles.card}>
           <Pressable

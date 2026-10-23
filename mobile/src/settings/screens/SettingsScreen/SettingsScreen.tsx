@@ -1,8 +1,9 @@
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
 import { AccountSection } from '@/account/components/AccountSection'
 import { LinkRow } from '@/components/LinkRow'
 import { Screen } from '@/components/Screen'
 import { ScreenHeader } from '@/components/ScreenHeader'
+import { SectionHeading } from '@/components/SectionHeading'
 import { useAssists } from '@/game/hooks/useAssists'
 import { AssistPreview } from '@/settings/components/AssistPreview'
 import { AppearancePicker } from '@/settings/components/AppearancePicker'
@@ -15,7 +16,6 @@ import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { useThemePreference } from '@/settings/hooks/useThemePreference'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { useLanguage } from '@/i18n/hooks/useLanguage'
-import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
 import { ASSIST_ROWS } from './SettingsScreen.constants'
 import { styles } from './SettingsScreen.styles'
 
@@ -39,15 +39,10 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
   return (
     <Screen>
       <ScreenHeader title={intl.formatMessage({ id: 'settings.title' })} onBack={onBack} />
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {intl.formatMessage({ id: 'settings.assists.title' })}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
-        <Text style={styles.hint}>{intl.formatMessage({ id: 'settings.assists.hint' })}</Text>
-      </View>
+      <SectionHeading
+        title={intl.formatMessage({ id: 'settings.assists.title' })}
+        hint={intl.formatMessage({ id: 'settings.assists.hint' })}
+      />
       <View testID="assist-card" style={styles.card}>
         <AssistPreview />
         {ASSIST_ROWS.map(({ name, label, description }, index) => (
@@ -64,13 +59,7 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
           />
         ))}
       </View>
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {intl.formatMessage({ id: 'settings.theme.title' })}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
+      <SectionHeading title={intl.formatMessage({ id: 'settings.theme.title' })}>
         <ThemePicker
           value={preference}
           onChange={(next) => {
@@ -78,14 +67,8 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
             choose(next)
           }}
         />
-      </View>
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {intl.formatMessage({ id: 'settings.appearance.title' })}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
+      </SectionHeading>
+      <SectionHeading title={intl.formatMessage({ id: 'settings.appearance.title' })}>
         <AppearancePicker
           value={appearance}
           onChange={(next) => {
@@ -93,14 +76,8 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
             chooseAppearance(next)
           }}
         />
-      </View>
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {intl.formatMessage({ id: 'settings.language.title' })}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
+      </SectionHeading>
+      <SectionHeading title={intl.formatMessage({ id: 'settings.language.title' })}>
         <LanguagePicker
           value={language.choice}
           onChange={(next) => {
@@ -108,15 +85,8 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
             language.choose(next)
           }}
         />
-      </View>
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {intl.formatMessage({ id: 'settings.feedback.title' })}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
-      </View>
+      </SectionHeading>
+      <SectionHeading title={intl.formatMessage({ id: 'settings.feedback.title' })} />
       <View style={styles.card}>
         <AssistRow
           label={intl.formatMessage({ id: 'settings.haptics.label' })}
@@ -126,14 +96,7 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
           onChange={switchHaptics}
         />
       </View>
-      <View style={styles.section}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            {intl.formatMessage({ id: 'settings.learn.title' })}
-          </Text>
-          <ThemeDecoration slot="sectionRule" />
-        </View>
-      </View>
+      <SectionHeading title={intl.formatMessage({ id: 'settings.learn.title' })} />
       <View style={styles.card}>
         <LinkRow
           label={intl.formatMessage({ id: 'techniques.title' })}
