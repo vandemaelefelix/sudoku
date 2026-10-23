@@ -2,9 +2,7 @@ import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import type { ScanRecord } from '@sudoku/scan-contract'
 import type { SyncDeps } from '../deps'
-import { contribPk, scanSk, userPk } from '../tableDesign'
-
-const RETENTION_SECONDS = 365 * 86_400
+import { SCAN_RETENTION_DAYS, contribPk, scanSk, ttlFrom, userPk } from '../tableDesign'
 
 type StoreDeps = Pick<SyncDeps, 'db' | 'tableName' | 'now'>
 
@@ -25,7 +23,7 @@ export async function putScan(deps: StoreDeps, record: ScanRecord, userId: strin
           ...(userId ? { userId } : {}),
           gsiPending: 'PENDING',
           createdAt: now.toISOString(),
-          expiresAt: Math.floor(now.getTime() / 1000) + RETENTION_SECONDS,
+          expiresAt: ttlFrom(now, SCAN_RETENTION_DAYS),
         },
         ConditionExpression: 'attribute_not_exists(pk)',
       }),

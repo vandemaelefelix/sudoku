@@ -2,13 +2,6 @@ import { StyleSheet } from 'react-native-unistyles'
 import { roleFont, roleSized } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
-  card: {
-    overflow: 'hidden',
-    borderWidth: theme.components.summary.borderWidth,
-    borderColor: theme.components.summary.border,
-    borderRadius: theme.components.summary.radius,
-    backgroundColor: theme.colors.surface,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

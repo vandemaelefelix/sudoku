@@ -12,7 +12,7 @@ import { claimLock, createLockLatch, type LockSource } from '@/scan/utils/lockOn
 import { deletePickedImage } from '@/scan/utils/photoFile'
 import { toPreview } from '@/scan/utils/preview.utils'
 import type { CaptureFrame } from '@/scan/utils/transition.utils'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
 import { devLog } from '@/utils/log.utils'
 import { type CapturePhase, crossFadeOf, gatesOf, LIVE, reduceAttempt } from './captureAttempt'

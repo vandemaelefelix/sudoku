@@ -5,7 +5,7 @@ import type { SweepTiming } from '@/scan/utils/transition.utils'
 import { useCorrectionCues } from './useCorrectionCues'
 
 const mockPlay = jest.fn()
-jest.mock('@/settings/hooks/useHaptics', () => ({
+jest.mock('@/preferences/hooks/useHaptics', () => ({
   useHaptics: () => ({ on: true, setOn: jest.fn(), play: mockPlay }),
 }))
 

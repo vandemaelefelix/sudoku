@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion } from 'react-native-reanimated'
-import { Icon } from '@/game/components/Icon'
+import { Icon } from '@/components/Icon'
 import { PanelButton } from '@/components/PanelButton'
 import { swapInButtons } from '@/scan/utils/swap.utils'
 import { pressedStyles } from '@/theme/pressed.styles'

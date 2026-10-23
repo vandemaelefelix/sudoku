@@ -1,10 +1,14 @@
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import type { SyncDeps } from './deps'
+import { Refusal } from './http'
 import { identityKey } from './tableDesign'
 
-export class AccountDeleted extends Error {
+export class AccountDeleted extends Refusal {
   override name = 'AccountDeleted'
+  constructor() {
+    super('account_deleted')
+  }
 }
 
 type IdentityDeps = Pick<SyncDeps, 'db' | 'tableName' | 'now' | 'newUserId'>

@@ -1,3 +1,25 @@
+// The cross-feature imports that exist today, as the files that a sibling feature imports. The comment names the importer.
+// Remove a line when the code moves to src/components/, src/hooks/, src/preferences/, src/utils/ or src/constants/.
+const CROSS_FEATURE_ALLOWLIST = [
+  // techniques/TechniqueExample and settings/AssistPreview draw the real grid.
+  '^mobile/src/game/components/Grid/index\\.ts$',
+  '^mobile/src/game/components/DisplayGameProvider/index\\.ts$',
+  // settings/assistPreview.utils builds the preview board from a session.
+  '^mobile/src/game/utils/session\\.utils\\.ts$',
+  '^mobile/src/game/utils/sample\\.utils\\.ts$',
+  // settings/SettingsScreen reads and shows the assists.
+  '^mobile/src/game/hooks/useAssists/index\\.ts$',
+  '^mobile/src/game/constants/assists\\.constants\\.ts$',
+  // scan/useScannedStart and home/HomeScreen start a game. scan/useCorrectionSession reads start.utils.
+  '^mobile/src/game/hooks/usePuzzleStart/index\\.ts$',
+  '^mobile/src/game/utils/start\\.utils\\.ts$',
+  // scan/CorrectionCell draws the conflict hatch.
+  '^mobile/src/game/components/ConflictHatch/index\\.ts$',
+  // home/HomeScreen and home/HomeMenu show the stats.
+  '^mobile/src/stats/hooks/useIncludeScanned/index\\.ts$',
+  '^mobile/src/stats/components/StatsCard/index\\.ts$',
+]
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -118,6 +140,25 @@ module.exports = {
       to: { path: '^mobile/src/scan/' },
     },
     {
+      name: 'a-feature-does-not-import-a-sibling-feature',
+      comment:
+        'ADR-029 (amendment): code that two features use lives in src/components/, src/hooks/, src/preferences/, src/utils/ or src/constants/. The allowlist names the imports that remain. Remove a line when the code moves.',
+      severity: 'error',
+      from: { path: '^mobile/src/(home|game|settings|stats|techniques|scan)/', pathNot: '\\.test\\.tsx?$' },
+      to: {
+        path: '^mobile/src/(home|game|settings|stats|techniques|scan)/',
+        pathNot: ['^mobile/src/$1/', ...CROSS_FEATURE_ALLOWLIST],
+      },
+    },
+    {
+      name: 'shared-folders-do-not-import-a-feature',
+      comment:
+        'ADR-029 (amendment): src/components/, src/hooks/ and src/preferences/ serve every feature, so they import no feature folder. A test may use a feature fixture.',
+      severity: 'error',
+      from: { path: '^mobile/src/(components|hooks|preferences)/', pathNot: '\\.test\\.tsx?$' },
+      to: { path: '^mobile/src/(home|game|settings|stats|techniques|scan|storage|splash|account|sync|scanShare)/' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',
@@ -137,7 +178,13 @@ module.exports = {
         'A utils or constants file holds plain logic and values. It does not import React, React Native or UI modules.',
       severity: 'error',
       from: { path: '^mobile/src/.+\\.(utils|constants)\\.ts$' },
-      to: { path: ['/node_modules/(react|react-native)/', '^mobile/src/.*/(components|screens|hooks)/'] },
+      to: {
+        path: [
+          '/node_modules/(react|react-native)/',
+          '^mobile/src/(components|hooks)/',
+          '^mobile/src/.*/(components|screens|hooks)/',
+        ],
+      },
     },
     {
       name: 'constants-import-only-constants-and-types',
@@ -183,7 +230,7 @@ module.exports = {
       name: 'components-and-hooks-do-not-import-screens',
       comment: 'A screen composes components and hooks, not the other way round.',
       severity: 'error',
-      from: { path: '^mobile/src/.*/(components|hooks)/' },
+      from: { path: ['^mobile/src/(components|hooks)/', '^mobile/src/.*/(components|hooks)/'] },
       to: { path: '^mobile/src/.*/screens/' },
     },
     {

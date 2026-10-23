@@ -10,9 +10,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { ConflictHatch } from '@/game/components/ConflictHatch'
-import { NO_PULSE } from '@/game/constants/pulse.constants'
-import type { Pulse } from '@/game/hooks/usePulse'
-import { popScale, waveOpacity } from '@/game/utils/pulse.utils'
+import { NO_PULSE } from '@/constants/pulse.constants'
+import type { Pulse } from '@/hooks/usePulse'
+import { popScale, waveOpacity } from '@/utils/pulse.utils'
 import { CorrectionRing } from '@/scan/components/CorrectionRing'
 import type { CellLook } from '@/scan/utils/correction.utils'
 import { useIntl } from '@/i18n/hooks/useIntl'

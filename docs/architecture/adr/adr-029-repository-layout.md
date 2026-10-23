@@ -58,3 +58,16 @@ parts. The backend sits in two folders. The dataset sits next to the code that o
 
 [ADR-034](adr-034-labelling-app.md) adds the workspace glob `tools/label-app`. Decision 7 now lists seven globs. The
 root does not change, so SUD-12 holds.
+
+## Amendment 2026-10-23: shared folders in the app
+
+The folder layout of `mobile/src/` changes. Decisions 1 to 8 stay.
+
+- Context: the game and the settings held code that other features used. For example, 12 files outside `game/` imported its `Icon`. The settings store lived in `settings/`, and `theme/` and `i18n/` imported it.
+- Decision: `src/components/` holds the UI that more than one feature uses. It now includes `Icon`, `ThemeStatusBar`, `Toggle`, `SegmentedControl`, `Screen`, `ScreenHeader`, `SectionHeading`, `FramedCard` and `CardRow`.
+- Decision: the new `src/hooks/` holds the hooks that more than one feature uses: `useEased`, `useSystemReduceMotion` and `usePulse`. Their plain code lives in `src/utils/` and `src/constants/`.
+- Decision: the new `src/preferences/` holds the saved settings: `SettingsRepository`, the setting store, `memorySettings`, `useSettingValue` and `useHaptics`. `src/settings/` keeps only the Settings UI.
+- Decision: `just lint` refuses a feature that imports a sibling feature. A named allowlist in `.dependency-cruiser.cjs` holds the imports that remain. Nothing in `src/components/`, `src/hooks/` or `src/preferences/` imports a feature folder. A test may use a fixture of a feature.
+- The features are `home`, `game`, `settings`, `stats`, `techniques` and `scan`.
+- Consequence: ADR-012 names `src/settings/SettingsRepository.ts`. The file is now `src/preferences/SettingsRepository.ts`.
+- Reassessment: remove a line of the allowlist when the code moves to a shared folder. Delete the allowlist when it is empty.

@@ -36,8 +36,8 @@ Run lint, typecheck and tests before you say a task is done.
 - Native modules need a development build, not Expo Go. Build locally with
   `pnpm exec expo run:ios`. Cloud builds (EAS) are not used yet (ADR-010).
 - Keep the folders: `src/app/` (routes), `src/home/` (home UI), `src/game/` (game UI),
-  `src/settings/` (settings UI and `SettingsRepository`: screens, components, hooks, utils,
-  constants), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/techniques/` (the techniques screen and the technique pages: screens, components, utils, constants), `src/scan/` (scan UI), `src/i18n/` (the translations, ADR-033: the provider, the language setting, the polyfills and the catalogues in `messages/`), `src/components/` (UI that more than one feature uses, for example `PanelButton`), `src/scanner/` (scanner, entered only through
+  `src/settings/` (the Settings UI: screens, components, hooks, utils, constants),
+  `src/preferences/` (the saved settings: `SettingsRepository`, the setting store, `useSettingValue` and `useHaptics`), `src/stats/` (stats UI: screens, components, hooks, utils, constants), `src/techniques/` (the techniques screen and the technique pages: screens, components, utils, constants), `src/scan/` (scan UI), `src/i18n/` (the translations, ADR-033: the provider, the language setting, the polyfills and the catalogues in `messages/`), `src/components/` (UI that more than one feature uses, for example `Icon`, `Screen`, `FramedCard` and `PanelButton`), `src/hooks/` (hooks that more than one feature uses, for example `useEased`), `src/scanner/` (scanner, entered only through
   `src/scanner/index.ts`), `src/storage/` (game storage), `src/splash/` (the animated splash) and `src/account/` (the
   Clerk account: the provider, the sign-in screens and the Settings section) and `src/sync/` (the history sync:
   the service, the API client and the provider) and `src/scanShare/` (the scan upload, ADR-030: the record, the crop, the queue, the uploader
@@ -130,6 +130,10 @@ effect: `<name>.effect.ts`, `<name>.constants.ts` and an `index.ts`. The effect 
 6. A styles file imports only `react-native`, `react-native-unistyles` and `src/theme/`.
 7. A component or hook does not import a screen.
 8. A test mocks the path that the code imports, which is the folder path.
+9. A feature folder (`home`, `game`, `settings`, `stats`, `techniques`, `scan`) does not import a sibling feature.
+   The allowlist in `.dependency-cruiser.cjs` names the imports that remain. Move shared code to `src/components/`,
+   `src/hooks/`, `src/preferences/`, `src/utils/` or `src/constants/`.
+10. Nothing in `src/components/`, `src/hooks/` or `src/preferences/` imports a feature folder.
 
 ### Theme
 

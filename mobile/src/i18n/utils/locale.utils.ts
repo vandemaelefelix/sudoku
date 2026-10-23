@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALES, LANGUAGE_KEY, LANGUAGES } from '@/i18n/constants/locale.constants'
-import type { SettingDefinition } from '@/settings/settingStore'
+import type { SettingDefinition } from '@/preferences/settingStore'
 
 export type Language = (typeof LANGUAGES)[number]
 

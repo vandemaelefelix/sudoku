@@ -1,6 +1,6 @@
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { MessageId } from '@/i18n/messages'
-import { SegmentedControl } from '@/settings/components/SegmentedControl'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import type { ThemeName } from '@/theme/theme.types'
 import type { ThemePreference } from '@/theme/preference'
 import { THEME_NAMES } from '@/theme/themes/registry'

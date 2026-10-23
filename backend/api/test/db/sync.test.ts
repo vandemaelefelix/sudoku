@@ -1,7 +1,7 @@
 import { TransactionCanceledException } from '@aws-sdk/client-dynamodb'
-import { GetCommand, PutCommand, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
+import { PutCommand, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { errorBodySchema, syncResponseSchema, type HistoryEntry } from '@sudoku/sync-contract'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { encodeCursor } from '../../src/cursor'
 import { findOrCreateUserId } from '../../src/identity'
 import type { SyncDeps } from '../../src/deps'
@@ -12,25 +12,16 @@ import { countSk, identityKey, userPk } from '../../src/tableDesign'
 import { dayKey } from '../../src/dailyCount'
 import { entryWithId, validEntry } from '../fixtures'
 import { syncEvent } from './event'
-import { createTestTable, type TestTable } from './table'
+import { NOW, getItem, makeDeps, suiteTable } from './harness'
 
-const NOW = new Date('2026-10-15T09:00:00.000Z')
-
-let table: TestTable
+const table = suiteTable()
 let subs = 0
 let lines: LogFields[] = []
 const newSub = () => `user_sync_${++subs}`
 
 function deps(): SyncDeps {
   let ids = 0
-  return {
-    db: table.db,
-    tableName: table.tableName,
-    now: () => NOW,
-    newUserId: () => `id-${subs}-${++ids}`,
-    log: (fields) => lines.push(fields),
-    clerk: { deleteUser: async () => undefined },
-  }
+  return makeDeps(table, { newUserId: () => `id-${subs}-${++ids}`, log: (fields) => lines.push(fields) })
 }
 
 async function call(body: unknown, options: Parameters<typeof syncEvent>[1] = {}) {
@@ -48,13 +39,6 @@ async function gameRowCount(): Promise<number> {
   )
   return Items.length
 }
-
-beforeAll(async () => {
-  table = await createTestTable()
-})
-afterAll(async () => {
-  await table.drop()
-})
 
 describe('POST /v1/sync', () => {
   it('pushes, then pulls: the response holds the own changes and a cursor string', async () => {
@@ -98,7 +82,7 @@ describe('the daily count at the route', () => {
   it('stores what fits, answers 200 and still pulls', async () => {
     const sub = newSub()
     await call({ entries: [entryWithId(0)], cursor: null }, { sub })
-    const { Item } = await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey(sub) }))
+    const Item = await getItem(table, identityKey(sub))
     await table.db.send(
       new PutCommand({
         TableName: table.tableName,
@@ -186,8 +170,7 @@ describe('refusals', () => {
     expect(response.status).toBe(410)
     expect(errorBodySchema.parse(response.body).code).toBe('account_deleted')
     expect(await gameRowCount()).toBe(before)
-    const { Item } = await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey(sub) }))
-    expect(Item).toEqual(tombstone)
+    expect(await getItem(table, identityKey(sub))).toEqual(tombstone)
   })
 
   it('answers 404 for an unknown route', async () => {

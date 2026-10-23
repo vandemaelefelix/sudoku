@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useAnimatedReaction } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { resultsGateReached, type SweepTiming } from '@/scan/utils/transition.utils'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 
 type Cues = {
   timing: SweepTiming

@@ -9,7 +9,7 @@ import { capturing, okResult, printed, review, type ScanSession } from '@/scan/s
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
 
 const mockPlay = jest.fn()
-jest.mock('@/settings/hooks/useHaptics', () => ({
+jest.mock('@/preferences/hooks/useHaptics', () => ({
   useHaptics: () => ({ on: true, setOn: jest.fn(), play: mockPlay }),
 }))
 

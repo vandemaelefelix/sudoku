@@ -6,6 +6,7 @@ import {
   STAGE_THROTTLE,
   clerkIssuerOf,
 } from './backend-settings.ts'
+import { API_FUNCTION_NAMES } from '../kill-switch/src/flag.ts'
 import { clerkSecretKey } from './clerk.ts'
 import { CLERK_ISSUER } from './config.ts'
 import { scansBucket } from './scans-bucket.ts'
@@ -15,7 +16,7 @@ import { table } from './storage.ts'
 const issuer = clerkIssuerOf($app.stage, CLERK_ISSUER)
 
 // One Lambda for every route (ADR-027 decision 5). The kill switch sets the concurrency of this function.
-export const syncFunction = new sst.aws.Function('SyncApiFunction', {
+export const syncFunction = new sst.aws.Function(API_FUNCTION_NAMES.sync, {
   handler: 'backend/api/src/handler.handler',
   // The bucket lets the account delete remove the scan photos (ADR-030).
   link: [table, scansBucket, ...(clerkSecretKey ? [clerkSecretKey] : [])],

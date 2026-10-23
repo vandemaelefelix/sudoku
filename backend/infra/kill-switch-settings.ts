@@ -1,6 +1,5 @@
 // No SST globals: `node --test` runs the tests, and kill-switch-check.ts and api-on.ts run this file in Node.
-import { isStage } from './account.ts'
-import { STAGES } from './config.ts'
+import { assertKnownStage } from './account.ts'
 import { killSwitchFlagName } from '../kill-switch/src/flag.ts'
 
 export { killSwitchFlagName }
@@ -64,7 +63,5 @@ export function parseApiOnArgs(argv: readonly string[]): { stage: string; yes: b
     else if (arg.startsWith('--')) throw new Error(`Unknown option ${arg}. The only option is --yes.`)
     else names.push(arg)
   }
-  const stage = names[0] ?? ''
-  if (!isStage(stage)) throw new Error(`Unknown stage "${stage}". Use one of: ${STAGES.join(', ')}.`)
-  return { stage, yes }
+  return { stage: assertKnownStage(names[0] ?? ''), yes }
 }

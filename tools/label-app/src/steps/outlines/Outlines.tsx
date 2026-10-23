@@ -1,0 +1,120 @@
+import { useState } from 'react'
+
+import { get, outlineImage, post } from '../../api/client'
+import type { OutlinePage } from '../../api/types'
+import { Frame } from '../../components/Frame'
+import { StepState } from '../../components/StepState'
+import { plural } from '../../format'
+import { useAction } from '../../hooks/useAction'
+import { useKeys } from '../../hooks/useKeys'
+import { useLoad } from '../../hooks/useLoad'
+import { go } from '../../hooks/useRoute'
+import { fixQueue, nextToFix } from './fixQueue'
+
+export function Outlines() {
+  const page = useLoad(() => get<OutlinePage>('/api/outlines'), 'outlines')
+  const action = useAction(page.reload)
+  const [arrived] = useState(fixQueue.takeNote)
+  const [marks, setMarks] = useState<Set<string>>(new Set())
+  const scans = page.data?.scans ?? []
+  // A photo without a detected outline cannot be approved: it always opens large.
+  const blind = new Set(scans.filter((s) => s.corners === null).map((s) => s.photo))
+  const marked = scans.filter((s) => marks.has(s.photo) || blind.has(s.photo)).map((s) => s.photo)
+  const good = scans.filter((s) => !marked.includes(s.photo)).map((s) => s.photo)
+
+  const toggle = (photo: string): void => {
+    if (blind.has(photo)) return
+    setMarks((all) => {
+      const next = new Set(all)
+      if (next.has(photo)) next.delete(photo)
+      else next.add(photo)
+      return next
+    })
+  }
+
+  const approve = async (): Promise<void> => {
+    if (!scans.length || action.busy) return
+    if (good.length) {
+      const photos = scans.some((s) => good.includes(s.photo) && s.source === 'photo')
+      const done = await action.run(
+        () => post<number>('/api/outlines/approve', { photos: good }),
+        (n) =>
+          `Approved ${plural(n, 'outline')}.` +
+          (photos ? ' Undo cannot reverse an imported photo.' : '') +
+          (marked.length ? ` Next: fix the ${plural(marked.length, 'marked one')}.` : ''),
+      )
+      if (done === undefined) return
+    }
+    setMarks(new Set())
+    if (marked.length) {
+      fixQueue.replace(marked)
+      nextToFix()
+    }
+  }
+
+  useKeys({ Enter: approve, z: action.undo, Escape: () => go('') })
+
+  const open = page.data?.open ?? 0
+  return (
+    <Frame
+      step="outlines"
+      task="Click each outline that does not follow the grid. Enter approves the rest, then opens each marked one."
+      keys={[
+        { keys: 'Click', does: 'Mark a bad outline, or unmark it' },
+        { keys: 'Enter', does: 'Approve the unmarked outlines, then fix the marked ones' },
+      ]}
+      note={action.note ?? arrived}
+      action={
+        scans.length ? (
+          <>
+            <span className="summary">
+              {open > scans.length
+                ? `${scans.length} of ${open} shown, the most doubtful first`
+                : `${open} to check, the most doubtful first`}
+            </span>
+            <button type="button" className="primary" onClick={approve} disabled={action.busy}>
+              {good.length ? `Approve ${plural(good.length, 'outline')}` : 'Fix the marked ones'}
+              {good.length && marked.length ? `, then fix ${marked.length}` : ''} <kbd>Enter</kbd>
+            </button>
+          </>
+        ) : undefined
+      }
+    >
+      <StepState
+        load={page}
+        working="Scoring the outlines. A new photo takes a moment…"
+        empty={
+          scans.length
+            ? undefined
+            : {
+                why: 'Every outline is checked.',
+                next: (
+                  <button type="button" className="primary" onClick={() => go('digits')}>
+                    Next: Digits
+                  </button>
+                ),
+              }
+        }
+      >
+        <div className="outline-grid">
+          {scans.map((s) => (
+            <button
+              key={s.photo}
+              type="button"
+              className={`outline-tile${marked.includes(s.photo) ? ' marked' : ''}`}
+              aria-pressed={marked.includes(s.photo)}
+              onClick={() => toggle(s.photo)}
+              title={s.corners ? `Grid fit ${s.fit.toFixed(2)}` : 'No outline found: set the corners in the large view'}
+            >
+              <img src={outlineImage(s.photo, page.round)} alt={`Scan ${s.photo}`} loading="lazy" />
+              <span className="tile-tags">
+                <span className="tag">{s.source === 'app' ? 'Scan' : 'Photo'}</span>
+                {s.corners ? null : <span className="tag warn">No outline</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      </StepState>
+    </Frame>
+  )
+}

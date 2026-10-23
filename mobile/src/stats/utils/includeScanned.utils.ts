@@ -1,4 +1,4 @@
-import type { SettingDefinition } from '@/settings/settingStore'
+import type { SettingDefinition } from '@/preferences/settingStore'
 import { INCLUDE_SCANNED_KEY } from '@/stats/constants/scanned.constants'
 
 /** Scanned puzzles stay out of the stats unless the player turned them on. */

@@ -32,15 +32,5 @@ export async function assertPersonalAccount(): Promise<void> {
   if (problem) throw new Error(problem)
 }
 
-// In GitHub Actions the role credentials come from the environment, and no profile sudoku exists.
-export function callerAccountArgs(inCi: boolean): string[] {
-  return [
-    'sts',
-    'get-caller-identity',
-    ...(inCi ? [] : ['--profile', 'sudoku']),
-    '--query',
-    'Account',
-    '--output',
-    'text',
-  ]
-}
+// The account ID of the credentials, for the layer 1 guard. runAws adds the profile.
+export const CALLER_ACCOUNT_ARGS = ['sts', 'get-caller-identity', '--query', 'Account', '--output', 'text']

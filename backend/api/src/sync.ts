@@ -1,70 +1,39 @@
-import { syncRequestSchema, type SyncRequest, type SyncResponse } from '@sudoku/sync-contract'
+import { syncRequestSchema, type SyncResponse } from '@sudoku/sync-contract'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
-import { InvalidCursor, assertCursorOwner, assertCursorRange, decodeCursor, encodeCursor, type Cursor } from './cursor'
+import { assertCursorOwner, assertCursorRange, decodeCursor, encodeCursor } from './cursor'
 import type { SyncDeps } from './deps'
-import { errorResponse, json, unauthorized, type Response } from './http'
-import { AccountDeleted, findOrCreateUserId } from './identity'
+import { json, parseJsonBody, refuse, subOf, unauthorized, type Response } from './http'
+import { findOrCreateUserId } from './identity'
 import type { LogFields } from './log'
 import { pull } from './pull'
 import { push } from './push'
 
-// POST /v1/sync (ADR-028 decision 5). A step that refuses stops the call before any write.
+// POST /v1/sync (ADR-028 decision 5). A step that refuses throws a Refusal, so the call stops before any write.
 // Writes the counts for the log line into `fields`.
 export async function sync(
   deps: SyncDeps,
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
   fields: LogFields,
 ): Promise<Response> {
-  // ADR-027 decision 4: the player comes only from the token, never from the path or the body.
-  const sub = event.requestContext.authorizer?.jwt?.claims?.sub
-  if (typeof sub !== 'string' || sub === '') return unauthorized()
+  const sub = subOf(event)
+  if (!sub) return unauthorized()
 
-  const request = parseRequest(event)
-  if (!request) return refuse(fields, 'invalid_request')
+  const parsed = syncRequestSchema.safeParse(parseJsonBody(event))
+  if (!parsed.success) return refuse('invalid_request')
+  const request = parsed.data
   fields.received = request.entries.length
 
-  let cursor: Cursor
-  try {
-    cursor = decodeCursor(request.cursor)
-  } catch (error) {
-    if (error instanceof InvalidCursor) return refuse(fields, 'invalid_cursor')
-    throw error
-  }
-
-  let userId: string
-  try {
-    userId = await findOrCreateUserId(deps, sub)
-  } catch (error) {
-    if (error instanceof AccountDeleted) return refuse(fields, 'account_deleted')
-    throw error
-  }
+  const cursor = decodeCursor(request.cursor)
+  const userId = await findOrCreateUserId(deps, sub)
   fields.userId = userId
-
-  try {
-    assertCursorOwner(cursor, userId)
-    assertCursorRange(cursor)
-  } catch (error) {
-    if (error instanceof InvalidCursor) return refuse(fields, 'invalid_cursor')
-    throw error
-  }
+  assertCursorOwner(cursor, userId)
+  assertCursorRange(cursor)
 
   // Push before pull, so the response holds the own changes. One server time for the whole request.
-  let pushed: Awaited<ReturnType<typeof push>>
-  try {
-    pushed = await push(deps, { sub, userId }, request.entries, deps.now())
-  } catch (error) {
-    // The delete tombstoned the player after the identity read.
-    if (error instanceof AccountDeleted) return refuse(fields, 'account_deleted')
-    throw error
-  }
-  let pulled: Awaited<ReturnType<typeof pull>>
-  try {
-    pulled = await pull(deps, userId, cursor)
-  } catch (error) {
-    // The push is idempotent, so the phone sends its entries again with a valid cursor.
-    if (error instanceof InvalidCursor) return refuse(fields, 'invalid_cursor')
-    throw error
-  }
+  // A delete that tombstones the player after the identity read makes push refuse with account_deleted.
+  const pushed = await push(deps, { sub, userId }, request.entries, deps.now())
+  // The push is idempotent, so after an invalid_cursor refusal the phone sends its entries again with a valid cursor.
+  const pulled = await pull(deps, userId, cursor)
   Object.assign(fields, {
     stored: pushed.stored,
     noop: pushed.noop,
@@ -80,21 +49,4 @@ export async function sync(
     more: pulled.more,
   }
   return json(200, body)
-}
-
-function parseRequest(event: APIGatewayProxyEventV2WithJWTAuthorizer): SyncRequest | null {
-  const text = event.isBase64Encoded ? Buffer.from(event.body ?? '', 'base64').toString('utf8') : (event.body ?? '')
-  let value: unknown
-  try {
-    value = JSON.parse(text)
-  } catch {
-    return null
-  }
-  const parsed = syncRequestSchema.safeParse(value)
-  return parsed.success ? parsed.data : null
-}
-
-function refuse(fields: LogFields, code: Parameters<typeof errorResponse>[0]): Response {
-  fields.code = code
-  return errorResponse(code)
 }

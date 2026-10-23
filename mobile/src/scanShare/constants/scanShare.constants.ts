@@ -10,10 +10,6 @@ export const MAX_PHOTO_SIDE = 1600
 /** The first JPEG quality, from 0 to 1. A photo over MAX_JPEG_BYTES is encoded again with the next one. */
 export const JPEG_QUALITIES: readonly number[] = [0.85, 0.7, 0.55, 0.4]
 
-/** The header that carries the shared app key. The key is not a secret (SUD-11). */
-export const APP_KEY_HEADER = 'x-app-key'
-/** The header that carries the photo length in bytes. The route signs it into the upload URL. */
-export const JPEG_BYTES_HEADER = 'x-jpeg-bytes'
 export const REQUEST_TIMEOUT_MS = 30_000
 export const UPLOAD_TIMEOUT_MS = 60_000
 

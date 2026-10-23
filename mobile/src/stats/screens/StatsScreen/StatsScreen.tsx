@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
-import { Icon } from '@/game/components/Icon'
-import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
-import { AssistRow } from '@/settings/components/AssistRow'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { CardRow } from '@/components/CardRow'
+import { Screen } from '@/components/Screen'
+import { ScreenHeader } from '@/components/ScreenHeader'
+import { Toggle } from '@/components/Toggle'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { DayStrip } from '@/stats/components/DayStrip'
 import { LevelDetail } from '@/stats/components/LevelDetail'
 import { LevelTable } from '@/stats/components/LevelTable'
@@ -17,7 +18,6 @@ import type { StatsTab } from '@/stats/constants/stats.constants'
 import { useIncludeScanned } from '@/stats/hooks/useIncludeScanned'
 import { useStats, type StatsData } from '@/stats/hooks/useStats'
 import { useIntl } from '@/i18n/hooks/useIntl'
-import { pressedStyles } from '@/theme/pressed.styles'
 import { isDevelopmentVariant } from '@/utils/appVariant.utils'
 import { styles } from './StatsScreen.styles'
 
@@ -61,6 +61,8 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
   const haptics = useHaptics()
   const intl = useIntl()
   const title = intl.formatMessage({ id: 'stats.title' })
+  const scannedLabel = intl.formatMessage({ id: 'stats.includeScanned.label' })
+  const scannedDescription = intl.formatMessage({ id: 'stats.includeScanned.description' })
   // A reset changes the key, so the numbers load again.
   const [reloadKey, setReloadKey] = useState(0)
   const state = useStats(includeScanned, reloadKey + refreshKey)
@@ -68,73 +70,57 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
   const hasTitleBlock = theme.size.titleBlock > 0
 
   return (
-    <>
-      <ThemeStatusBar />
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        // The scroll bar follows the iOS appearance. The page follows the theme, so the two can differ (ADR-026).
-        indicatorStyle={theme.scrollIndicator}
-      >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={intl.formatMessage({ id: 'common.back' })}
-            onPress={onBack}
-            style={({ pressed }) => [styles.back, pressed && pressedStyles.pressed]}
-          >
-            <Icon name="back" tone="text" />
-          </Pressable>
-          {!hasTitleBlock && (
-            <Text accessibilityRole="header" style={styles.barTitle}>
-              {title}
-            </Text>
-          )}
+    <Screen layout="flow">
+      <ScreenHeader title={hasTitleBlock ? undefined : title} onBack={onBack} />
+      {hasTitleBlock && (
+        <View testID="title-block" style={styles.titleBlock}>
+          <Text accessibilityRole="header" style={styles.display}>
+            {title}
+          </Text>
         </View>
-        {hasTitleBlock && (
-          <View testID="title-block" style={styles.titleBlock}>
-            <Text accessibilityRole="header" style={styles.display}>
-              {title}
-            </Text>
+      )}
+      {state.status === 'failed' && (
+        <Text style={styles.message}>{intl.formatMessage({ id: 'stats.loadFailed' })}</Text>
+      )}
+      {state.status === 'ready' && (
+        <>
+          <View style={styles.card}>
+            <StatsCard winRate={state.data.overall.winRate} streak={state.data.streak.current} />
           </View>
-        )}
-        {state.status === 'failed' && (
-          <Text style={styles.message}>{intl.formatMessage({ id: 'stats.loadFailed' })}</Text>
-        )}
-        {state.status === 'ready' && (
-          <>
-            <View style={styles.card}>
-              <StatsCard winRate={state.data.overall.winRate} streak={state.data.streak.current} />
-            </View>
-            <LevelTabs
-              value={tab}
-              onChange={(next) => {
-                haptics.play('tick')
-                setTab(next)
-              }}
+          <LevelTabs
+            value={tab}
+            onChange={(next) => {
+              haptics.play('tick')
+              setTab(next)
+            }}
+          />
+          {tab === 'all' ? (
+            <Overview data={state.data} />
+          ) : (
+            <LevelDetail level={tab} summary={state.data.levels[tab]} times={state.data.times[tab]} />
+          )}
+          <View style={styles.settings}>
+            <CardRow
+              testID={`assist-row-${scannedLabel}`}
+              label={scannedLabel}
+              description={scannedDescription}
+              trailing={
+                <Toggle
+                  label={scannedLabel}
+                  hint={scannedDescription}
+                  value={includeScanned}
+                  onChange={(on) => {
+                    haptics.play('tick')
+                    setIncludeScanned(on)
+                  }}
+                />
+              }
             />
-            {tab === 'all' ? (
-              <Overview data={state.data} />
-            ) : (
-              <LevelDetail level={tab} summary={state.data.levels[tab]} times={state.data.times[tab]} />
-            )}
-            <View style={styles.settings}>
-              <AssistRow
-                label={intl.formatMessage({ id: 'stats.includeScanned.label' })}
-                description={intl.formatMessage({ id: 'stats.includeScanned.description' })}
-                value={includeScanned}
-                divider={false}
-                onChange={(on) => {
-                  haptics.play('tick')
-                  setIncludeScanned(on)
-                }}
-              />
-            </View>
-            {isDevelopmentVariant() && <ResetStats onReset={() => setReloadKey((key) => key + 1)} />}
-          </>
-        )}
-        {footer}
-      </ScrollView>
-    </>
+          </View>
+          {isDevelopmentVariant() && <ResetStats onReset={() => setReloadKey((key) => key + 1)} />}
+        </>
+      )}
+      {footer}
+    </Screen>
   )
 }
