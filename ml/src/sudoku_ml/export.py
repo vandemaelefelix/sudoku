@@ -1,5 +1,6 @@
 """Export a run to TFLite. Check it against PyTorch and against the TFLite 2.17 runtime."""
 
+import argparse
 import base64
 import json
 import sys
@@ -12,14 +13,16 @@ from ai_edge_litert import schema_py_generated as schema
 from ai_edge_litert.interpreter import Interpreter
 
 from sudoku_ml.contract import CONTRACT_VERSION, DIGIT_CLASSES, KIND_CLASSES
+from sudoku_ml.data_paths import REPO_ROOT
 from sudoku_ml.fixtures import load_reference_inputs
-from sudoku_ml.model import CellClassifier, ExportModel
+from sudoku_ml.model import ExportModel, load_run
 
 _OP_NAMES = {v: k for k, v in vars(schema.BuiltinOperator).items() if not k.startswith("_")}
 _TENSOR_NAMES = {v: k for k, v in vars(schema.TensorType).items() if not k.startswith("_")}
 _ALLOWED_CONSTANTS = {schema.TensorType.FLOAT32, schema.TensorType.INT32, schema.TensorType.INT64}
 TABLE_PATH = Path(__file__).with_name("tflite_2_17_ops.json")
 MAX_BYTES = 1_000_000
+PREPROCESS_FIXTURES = REPO_ROOT / "shared" / "fixtures" / "preprocess"
 
 
 def op_versions(path: Path) -> dict[str, int]:
@@ -99,10 +102,8 @@ def write_reference_outputs(run: Path, inputs: np.ndarray, expected: dict[str, n
 
 
 def export(run: Path, fixture_dir: Path) -> Path:
-    model = CellClassifier()
-    model.load_state_dict(torch.load(run / "model.pt"))
-    temperature = json.loads((run / "metrics.json").read_text())["temperature"]
-    wrapped = ExportModel(model.eval(), temperature).eval()
+    model, temperature = load_run(run)
+    wrapped = ExportModel(model, temperature).eval()
     inputs = load_reference_inputs(fixture_dir)
     target = run / "cell-classifier.tflite"
     litert_torch.convert(wrapped, (torch.from_numpy(inputs),)).export(str(target))
@@ -134,6 +135,17 @@ def export(run: Path, fixture_dir: Path) -> Path:
     return target
 
 
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="just export")
+    parser.add_argument("run", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        print(export(args.run, PREPROCESS_FIXTURES))
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    fixtures = Path(__file__).parents[3] / "shared" / "fixtures" / "preprocess"
-    print(export(Path(sys.argv[1]), fixtures))
+    sys.exit(main())

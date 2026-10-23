@@ -1,5 +1,6 @@
 """Copy an exported run into the app without the promote gate. M0 only (ADR-007)."""
 
+import argparse
 import datetime
 import json
 import shutil
@@ -7,6 +8,7 @@ import sys
 from pathlib import Path
 
 from sudoku_ml.contract import CONTRACT_VERSION
+from sudoku_ml.model import read_metrics
 
 FILES = ("cell-classifier.tflite", "reference-outputs.json")
 
@@ -26,7 +28,7 @@ def install(run: Path, target: Path, version: str, today: str) -> Path:
     for name in FILES:
         if not (run / name).exists():
             raise FileNotFoundError(f"{run / name} is missing. Run `just export` on the run first")
-    metrics = json.loads((run / "metrics.json").read_text())
+    metrics = read_metrics(run)
     target.mkdir(parents=True, exist_ok=True)
     for name in FILES:
         shutil.copyfile(run / name, target / name)
@@ -45,9 +47,20 @@ def install(run: Path, target: Path, version: str, today: str) -> Path:
     return path
 
 
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="just install")
+    parser.add_argument("run", type=Path)
+    parser.add_argument("target", type=Path)
+    parser.add_argument("version")
+    args = parser.parse_args(argv)
+    try:
+        path = install(args.run, args.target, args.version, datetime.date.today().isoformat())
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
+    print(path)
+    return 0
+
+
 if __name__ == "__main__":
-    print(
-        install(
-            Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], datetime.date.today().isoformat()
-        )
-    )
+    sys.exit(main())

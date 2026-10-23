@@ -34,9 +34,9 @@ def test_the_kinds_count_the_digit_cells(tmp_path: Path):
 
 def test_main_exits_with_1_on_a_problem(tmp_path: Path, capsys: pytest.CaptureFixture):
     paths = valid_root(tmp_path)
-    assert main(paths) == 0
+    assert main([], paths) == 0
     next(paths.photos.iterdir()).unlink()
-    assert main(paths) == 1
+    assert main([], paths) == 1
     assert "does not exist" in capsys.readouterr().out
 
 

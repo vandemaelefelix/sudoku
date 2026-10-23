@@ -2,6 +2,7 @@
 outline, its cache in `ml/dataset/work/outline-scores.json`, the cut of a scan, and the one-time
 reset of the scans that a pull stored as `accepted`."""
 
+import argparse
 import json
 import sys
 from dataclasses import replace
@@ -69,7 +70,8 @@ def reset_outlines(paths: DataPaths) -> int:
     return sum(changed)
 
 
-def main(paths: DataPaths | None = None) -> int:
+def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
+    argparse.ArgumentParser(prog="just reset-scan-outlines").parse_args(argv)
     try:
         count = reset_outlines(paths or DataPaths.under())
     except ValueError as error:
