@@ -6,10 +6,13 @@ format never change here without an ADR."""
 import csv
 import hashlib
 import io
+import json
 import re
+import sys
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, fields
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -124,6 +127,34 @@ def write_atomic(path: Path, text: str) -> None:
     with part.open("w", encoding="utf-8", newline="") as handle:
         handle.write(text)
     part.replace(path)
+
+
+def write_cell_image(image: np.ndarray, folder: Path, stem: str, tmp_dir: Path) -> None:
+    """Save the cell as `folder/<stem>.png`. The picture lands in `tmp_dir` first and a rename
+    moves it in: a stop never leaves a misnamed cell in a cell folder (ADR-009)."""
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp = tmp_dir / f"{stem}.png"
+    Image.fromarray(image).save(tmp, "PNG")
+    folder.mkdir(parents=True, exist_ok=True)
+    tmp.replace(folder / f"{stem}.png")
+
+
+def warn_unreadable(path: Path, error: Exception) -> None:
+    print(f"{path.name} cannot be read ({error}). Treated as missing.", file=sys.stderr)
+
+
+def read_derived(path: Path, warn: bool = False) -> Any | None:
+    """The JSON of a derived file, or None when the file is missing or does not parse. A derived
+    file is safe to delete: a broken one only costs a new computation. With `warn`, a broken
+    file prints a note. A missing file is silent."""
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        if warn:
+            warn_unreadable(path, error)
+        return None
 
 
 def _csv_text(header: list[str], rows: Iterable[list[str]]) -> str:

@@ -11,13 +11,13 @@ from pathlib import Path
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.flatten import load_upright
 from sudoku_ml.grid_detect import find_grid
-from sudoku_ml.manifest import warn_unreadable
 from sudoku_ml.tables import (
     LICENCES,
     PHOTO_SOURCES,
     PHOTO_SUFFIXES,
     PhotoRow,
     pixel_id,
+    read_derived,
     read_photos,
     stem_of,
     write_atomic,
@@ -26,13 +26,7 @@ from sudoku_ml.tables import (
 
 
 def read_detections(path: Path) -> dict[str, dict]:
-    if not path.exists():
-        return {}
-    try:
-        found = json.loads(path.read_text())
-    except (OSError, ValueError) as error:
-        warn_unreadable(path, error)
-        return {}
+    found = read_derived(path, warn=True)
     return found if isinstance(found, dict) else {}
 
 
