@@ -62,7 +62,6 @@ function givenResizer() {
   return { resizer, resized }
 }
 
-
 describe('useGridDetector', () => {
   it('asks for an upright 360 × 640 RGB image of the whole frame', () => {
     givenState('loading')

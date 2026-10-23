@@ -40,7 +40,6 @@ function drawnUniforms(scene: Scene) {
   return { canvas, kit, uniforms: effect.makeShader.mock.calls[0][0] as number[] }
 }
 
-
 describe('rippleUniforms', () => {
   it('gives the 15 floats in the order of the shader uniforms', () => {
     const scene = { ...found(), lockProgress: 0.6 }

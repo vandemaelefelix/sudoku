@@ -1,7 +1,6 @@
 import * as Haptics from 'expo-haptics'
 import { playHaptic } from './haptics.utils'
 
-
 describe('playHaptic', () => {
   it.each([
     ['tap', Haptics.ImpactFeedbackStyle.Light],

@@ -7,7 +7,6 @@ jest.mock('expo-file-system', () => ({ File: jest.fn(() => ({ delete: mockDelete
 
 const PICKED = 'file:///cache/ImagePicker/picked.png'
 
-
 it('loads the picked file again on each call, so each caller owns its image', async () => {
   const first = { width: 1206 }
   const second = { width: 1206 }

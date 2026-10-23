@@ -12,7 +12,6 @@ function setup(pixelFormat: string, size = { width: 2376, height: 4224 }, rowByt
   return { photo: photo as never, full, small }
 }
 
-
 it('resizes to the long side before it reads the pixels, and builds a Skia image', async () => {
   const { photo, full } = setup('BGRA')
   const image = await photoToSkImage(photo, 1600)

@@ -6,7 +6,6 @@ import { GameStorageContext } from '@/storage/hooks/useGameStorage'
 import { OwnerContext } from '@/storage/hooks/useOwner'
 import { useStats } from './useStats'
 
-
 function wrapperFor(storage: ReturnType<typeof createMemoryStorage>, owner: string | null = null) {
   return ({ children }: { children: ReactNode }) => (
     <GameStorageContext value={storage}>

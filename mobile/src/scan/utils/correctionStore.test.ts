@@ -39,7 +39,6 @@ const looks = cells.map((cell) => cellLook(cell))
 const unchanged = finalGrid(cells, looks)
 const { photoPath: _photoPath, ...withoutPhoto } = result
 
-
 describe('saveScanCorrection', () => {
   it('saves nothing without the photo file', async () => {
     expect(await saveScanCorrection(withoutPhoto, unchanged)).toBe(false)
