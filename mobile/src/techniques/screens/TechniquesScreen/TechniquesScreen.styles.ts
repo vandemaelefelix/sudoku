@@ -1,16 +1,7 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { contentInset } from '@/theme/content'
 import { roleSized } from '@/theme/typography'
 
-// The page of the Settings screen: the same margins, and one framed card for the list.
-export const styles = StyleSheet.create((theme, rt) => ({
-  screen: { flex: 1, backgroundColor: theme.colors.background },
-  content: {
-    gap: theme.space.lg,
-    paddingTop: rt.insets.top,
-    paddingBottom: rt.insets.bottom + theme.space.lg,
-    paddingHorizontal: contentInset(theme, rt.screen.width),
-  },
+export const styles = StyleSheet.create((theme) => ({
   intro: { ...roleSized(theme.type.caption), color: theme.colors.textMuted },
   card: {
     overflow: 'hidden',
