@@ -1,13 +1,11 @@
 import type { Game } from '@sudoku/core'
 import { MAX_ELAPSED_MS } from '@/game/constants/game.constants'
 import { createGameSession, type GameSession } from './gameSession.utils'
+import { OPEN } from '@/game/sample.testkit'
 import { sampleStart } from './sample.utils'
 
 beforeEach(() => jest.useFakeTimers())
 afterEach(() => jest.useRealTimers())
-
-// Cell 2 is empty in the canvas puzzle. Its solution is 4.
-const OPEN = 2
 
 const playedMs = (session: GameSession) => session.getSnapshot().game.playedMs
 const status = (session: GameSession) => session.getSnapshot().game.status

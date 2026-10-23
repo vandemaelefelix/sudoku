@@ -10,9 +10,9 @@ const CROSS_FEATURE_ALLOWLIST = [
   // settings/SettingsScreen reads and shows the assists.
   '^mobile/src/game/hooks/useAssists/index\\.ts$',
   '^mobile/src/game/constants/assists\\.constants\\.ts$',
-  // scan/useScannedStart and home/HomeScreen start a game. scan/useCorrectionSession reads start.utils.
+  // scan/useScannedStart and home/HomeScreen start a game. scan/useCorrectionSession reads newGame.utils.
   '^mobile/src/game/hooks/usePuzzleStart/index\\.ts$',
-  '^mobile/src/game/utils/start\\.utils\\.ts$',
+  '^mobile/src/game/utils/newGame\\.utils\\.ts$',
   // scan/CorrectionCell draws the conflict hatch.
   '^mobile/src/game/components/ConflictHatch/index\\.ts$',
   // home/HomeScreen and home/HomeMenu show the stats.
