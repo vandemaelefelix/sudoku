@@ -10,7 +10,7 @@ import torch
 from sudoku_ml.augment import augment
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, kind_index
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.dataset import cell_paths, group_ids, load_cells, stack
+from sudoku_ml.dataset import group_ids, read_real_cells, stack, training_cells
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.tables import write_atomic
@@ -85,11 +85,11 @@ def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:
 
 
 def find_suspects(data: DataPaths, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
-    """Rank digit and kind suspects with cross-validation. Writes ml/dataset/work/suspects.csv."""
-    paths = cell_paths(data.cells)
-    samples = load_cells(data)
-    if len(paths) != len(samples):
-        raise ValueError(f"{len(paths)} files but {len(samples)} cells")
+    """Rank digit and kind suspects with cross-validation. Writes ml/dataset/work/suspects.csv.
+    Ranks only the cells that may train (ADR-030)."""
+    cells = training_cells(read_real_cells(data))
+    paths = [c.path for c in cells]
+    samples = [c.sample for c in cells]
     images, digit, kind = stack(samples)
     groups = group_ids(samples)
     unique = np.random.default_rng(0).permutation(np.unique(groups))
