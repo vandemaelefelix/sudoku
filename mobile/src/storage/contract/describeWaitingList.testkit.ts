@@ -16,13 +16,13 @@ import {
 } from './fixtures.testkit'
 
 export function describeWaitingList(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('waiting list', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('holds a finished game of the owner with its timestamps', async () => {
       const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
       const entry = single(await storage.history.list(ALICE))

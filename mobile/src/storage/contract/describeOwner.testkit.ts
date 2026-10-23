@@ -13,13 +13,13 @@ import {
 } from './fixtures.testkit'
 
 export function describeOwner(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('owner', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('writes the owner of the finish to the history entry', async () => {
       const id = await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
       await expect(storage.history.list(ALICE)).resolves.toMatchObject([{ id, result: 'won' }])

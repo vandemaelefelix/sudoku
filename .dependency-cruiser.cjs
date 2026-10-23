@@ -159,6 +159,14 @@ module.exports = {
       to: { path: '^mobile/src/(home|game|settings|stats|techniques|scan|storage|splash|account|sync|scanShare)/' },
     },
     {
+      name: 'no-production-import-of-a-testkit',
+      comment:
+        'A test kit holds fixtures and fakes that use Jest globals. Only a test or another test kit imports it, so no kit reaches the app bundle.',
+      severity: 'error',
+      from: { pathNot: ['\\.test\\.[jt]sx?$', '\\.testkit\\.[jt]sx?$'] },
+      to: { path: '\\.testkit\\.[jt]sx?$' },
+    },
+    {
       name: 'no-circular',
       comment: 'A cycle can give an undefined import at start-up, and it hides which module depends on which.',
       severity: 'error',

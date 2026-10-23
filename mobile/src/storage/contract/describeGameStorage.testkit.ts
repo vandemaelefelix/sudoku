@@ -12,6 +12,8 @@ import type { StorageOpener } from './fixtures.testkit'
 
 /** The rules every GameStorage keeps: the SQLite one and the in-memory fake. One file holds each area. */
 export function describeGameStorage(name: string, open: StorageOpener): void {
+  // Each area opens its own storage in a beforeEach. The puzzles area has no describe of its own, because that would
+  // change the test names. Its beforeEach therefore also runs for the other areas: one extra open for each test.
   describe(name, () => {
     describePuzzles(open)
     describeClear(open)

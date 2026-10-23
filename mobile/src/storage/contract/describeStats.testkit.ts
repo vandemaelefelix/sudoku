@@ -15,13 +15,13 @@ import {
 } from './fixtures.testkit'
 
 export function describeStats(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('stats', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     const NOTHING = {
       played: 0,
       won: 0,

@@ -12,13 +12,13 @@ import {
 } from './fixtures.testkit'
 
 export function describeClear(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('clear', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('removes every history entry from the list, the best times and the stats', async () => {
       await finishGame(storage, 'easy', wonGame(60_000))
       await finishGame(storage, 'hard', lostGame(20_000))

@@ -2,13 +2,13 @@ import type { GameStorage } from '@/storage/gameStorage.types'
 import { ALICE, BOB, type StorageOpener, seedCursor, testDeps } from './fixtures.testkit'
 
 export function describeSyncState(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('sync state', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('has no cursor or time at first', async () => {
       await expect(storage.sync.cursor(ALICE)).resolves.toBeNull()
       await expect(storage.sync.syncedAt(ALICE)).resolves.toBeNull()

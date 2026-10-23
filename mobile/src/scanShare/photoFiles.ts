@@ -1,6 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import { QUEUE_FOLDER } from '@/scanShare/constants/scanShare.constants'
+import { QUEUE_FOLDER } from './constants/scanShare.constants'
 
 export function fileUri(path: string): string {
   return path.startsWith('file:') ? path : `file://${path}`

@@ -2,13 +2,13 @@ import type { GameStorage } from '@/storage/gameStorage.types'
 import { ALICE, BOB, type StorageOpener, batchIds, finishGame, lostGame, testDeps, wonGame } from './fixtures.testkit'
 
 export function describeAdopt(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('adopt', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('counts the live entries without an owner', async () => {
       await finishGame(storage, 'easy', wonGame(60_000), 'generated', null)
       await finishGame(storage, 'hard', lostGame(20_000), 'generated', null)

@@ -16,13 +16,13 @@ import {
 } from './fixtures.testkit'
 
 export function describeApplySyncPage(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('applySyncPage', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     describe('the pushed entries', () => {
       it('takes the accepted entries off the waiting list', async () => {
         await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)

@@ -2,13 +2,13 @@ import type { GameStorage } from '@/storage/gameStorage.types'
 import { ALICE, BOB, type StorageOpener, accepting, finishGame, lostGame, testDeps, wonGame } from './fixtures.testkit'
 
 export function describeDeleteOwner(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('deleteOwner', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('removes every entry of the owner, live and deleted, for good', async () => {
       await finishGame(storage, 'easy', wonGame(60_000), 'generated', ALICE)
       await storage.history.clear(ALICE)

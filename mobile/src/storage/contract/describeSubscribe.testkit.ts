@@ -2,13 +2,13 @@ import type { GameStorage } from '@/storage/gameStorage.types'
 import { ALICE, type StorageOpener, lostGame, movedGame, newGame, testDeps, wonGame } from './fixtures.testkit'
 
 export function describeSubscribe(open: StorageOpener): void {
-  let storage: GameStorage
-
-  beforeEach(async () => {
-    storage = await open(testDeps())
-  })
-
   describe('subscribe', () => {
+    let storage: GameStorage
+
+    beforeEach(async () => {
+      storage = await open(testDeps())
+    })
+
     it('fires after a won game and after a lost game', async () => {
       const listener = jest.fn()
       storage.subscribe(listener)

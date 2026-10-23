@@ -1,5 +1,5 @@
 import { ImageFormat, Skia } from '@shopify/react-native-skia'
-import type { ImageCodec } from '@/scanShare/utils/cropPhoto.utils'
+import type { ImageCodec } from './utils/cropPhoto.utils'
 
 /** Skia draws the crop and encodes a new JPEG. The encoder writes no EXIF. Skia quality runs from 0 to 100. */
 export const skiaCodec: ImageCodec = {

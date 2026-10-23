@@ -1,5 +1,5 @@
 import { openDatabaseAsync } from 'expo-sqlite'
-import { QUEUE_DATABASE_NAME } from '@/scanShare/constants/scanShare.constants'
+import { QUEUE_DATABASE_NAME } from './constants/scanShare.constants'
 import { createScanQueue, type ScanQueue } from './queue'
 
 let opening: Promise<ScanQueue> | null = null
