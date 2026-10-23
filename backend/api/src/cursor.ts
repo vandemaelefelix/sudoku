@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { Refusal } from './http'
 import { GAME_PREFIX, userPk } from './tableDesign'
 
 // The form that the server stamps with Date.toISOString(), so a string compare orders it.
@@ -17,8 +18,11 @@ export const cursorSchema = z.strictObject({
 export type Cursor = z.infer<typeof cursorSchema>
 export type After = z.infer<typeof afterSchema>
 
-export class InvalidCursor extends Error {
+export class InvalidCursor extends Refusal {
   override name = 'InvalidCursor'
+  constructor() {
+    super('invalid_cursor')
+  }
 }
 
 // A slow write from another device can land with a syncedAt just below the watermark (ADR-028 decision 6).
