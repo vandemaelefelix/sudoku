@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleFont, roleSized } from '@/theme/typography'
 
 const CARD_PADDING = 22
 const FRAME_INSET = 7
@@ -116,8 +116,8 @@ export const styles = StyleSheet.create((theme, rt) => {
       borderRadius: card.buttonRadius,
       backgroundColor: theme.colors.accent,
     },
-    newPuzzleText: { ...roleFont(theme.type.button), fontSize: theme.type.button.scale, color: theme.colors.onAccent },
+    newPuzzleText: { ...roleSized(theme.type.button), color: theme.colors.onAccent },
     home: { minHeight: theme.size.touch, alignItems: 'center', justifyContent: 'center' },
-    homeText: { ...roleFont(theme.type.body), fontSize: theme.type.body.scale, color: theme.colors.text },
+    homeText: { ...roleSized(theme.type.body), color: theme.colors.text },
   }
 })

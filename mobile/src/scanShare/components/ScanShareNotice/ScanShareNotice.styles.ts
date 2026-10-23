@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont, roleText } from '@/theme/typography'
+import { roleSized, roleText } from '@/theme/typography'
 
 export const styles = StyleSheet.create((theme) => ({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.scrim },
@@ -15,8 +15,7 @@ export const styles = StyleSheet.create((theme) => ({
   title: { ...roleText(theme.type.question), color: theme.colors.text },
   body: { ...roleText(theme.type.body), color: theme.colors.textMuted },
   link: {
-    ...roleFont(theme.type.caption),
-    fontSize: theme.type.caption.scale,
+    ...roleSized(theme.type.caption),
     color: theme.colors.textMuted,
     textDecorationLine: 'underline',
   },

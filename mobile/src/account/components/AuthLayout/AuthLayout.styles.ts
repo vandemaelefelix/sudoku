@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 import { contentInset } from '@/theme/content'
 
 // The page of the Settings screen: the same header, margins and title (ADR-026).
@@ -20,6 +20,6 @@ export const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...roleFont(theme.type.title), fontSize: theme.type.title.scale, color: theme.colors.text },
+  title: { ...roleSized(theme.type.title), color: theme.colors.text },
   heading: { gap: theme.space.xs },
 }))

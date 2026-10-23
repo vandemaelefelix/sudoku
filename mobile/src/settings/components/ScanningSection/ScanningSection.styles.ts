@@ -1,13 +1,12 @@
 import { StyleSheet } from 'react-native-unistyles'
-import { roleFont } from '@/theme/typography'
+import { roleSized } from '@/theme/typography'
 
 // The heading and the framed card of the other Settings sections (ADR-026).
 export const styles = StyleSheet.create((theme) => ({
   section: { gap: theme.space.sm },
   heading: { gap: theme.space.xs },
   sectionTitle: {
-    ...roleFont(theme.type.section),
-    fontSize: theme.type.section.scale,
+    ...roleSized(theme.type.section),
     letterSpacing: theme.type.section.scale * theme.type.section.tracking,
     textTransform: 'uppercase',
     color: theme.colors.text,
@@ -27,8 +26,7 @@ export const styles = StyleSheet.create((theme) => ({
     borderTopColor: theme.components.summary.rule,
   },
   link: {
-    ...roleFont(theme.type.caption),
-    fontSize: theme.type.caption.scale,
+    ...roleSized(theme.type.caption),
     color: theme.colors.textMuted,
     textDecorationLine: 'underline',
   },
