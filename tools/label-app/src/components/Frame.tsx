@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
-import { useKeys } from '../hooks'
 import { FLOW, STEPS } from '../flows'
+import { useKeys } from '../hooks/useKeys'
 
 export interface KeyHelp {
   keys: string
