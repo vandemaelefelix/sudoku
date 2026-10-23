@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
 import { UnistylesRuntime } from 'react-native-unistyles'
-import { columnOf, rowOf } from '@/game/utils/grid.utils'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { LINE_CELLS, TILE_SLIDE_MS } from './useSelectionTile.constants'
 

@@ -18,6 +18,7 @@ import type { CellLook } from '@/scan/utils/correction.utils'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { correctionCellLabel } from '@/scan/utils/correctionEdit.utils'
 import { easeOut } from '@/utils/motion.utils'
+import { columnOf, rowOf } from '@/utils/grid.utils'
 import { digitAlpha, shiftOf, type SweepTiming } from '@/scan/utils/transition.utils'
 import {
   CONFIDENCE_INSET,
@@ -75,8 +76,8 @@ export const CorrectionCell = memo(function CorrectionCell({
   reduceMotion,
 }: CorrectionCellProps) {
   const intl = useIntl()
-  const row = Math.floor(n / 9)
-  const col = n % 9
+  const row = rowOf(n)
+  const col = columnOf(n)
   // A digit that the player picks fades in and rises like the sweep. The first render and the transition do not play it.
   const systemReduceMotion = useReducedMotion()
   const pick = useSharedValue(1)
