@@ -10,7 +10,7 @@ import { useGameTime } from '@/game/hooks/useGameTime'
 import { rightCells } from '@/game/utils/result.utils'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
-import { LOST_HOLD_MS } from './GameOverSheet.constants'
+import { GAME_OVER_RISE_OFFSET, LOST_HOLD_MS } from './GameOverSheet.constants'
 import { styles } from './GameOverSheet.styles'
 
 type GameOverSheetProps = {
@@ -39,7 +39,7 @@ function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { b
   const focusTitle = useCallback(() => {
     if (title.current) AccessibilityInfo.sendAccessibilityEvent(title.current, 'focus')
   }, [])
-  const { rise, fadeStyle, riseStyle } = useSheetRise(focusTitle)
+  const { rise, fadeStyle, riseStyle } = useSheetRise(focusTitle, GAME_OVER_RISE_OFFSET)
   // The sheet sinks before the new game shows. The game-screen route takes Back to home away.
   const { leaveThen, guard } = useLeave(rise)
   return (

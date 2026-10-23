@@ -14,7 +14,7 @@ import { finishView, type FinishInfo } from '@/game/utils/finish.utils'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { riseIn } from '@/utils/motion.utils'
 import { pressedStyles } from '@/theme/pressed.styles'
-import { FACE_DELAY_MS, FACE_RISE, FACE_STAGGER_MS } from './FinishCard.constants'
+import { FACE_DELAY_MS, FACE_RISE, FACE_STAGGER_MS, FINISH_RISE_OFFSET } from './FinishCard.constants'
 import { Face } from './Face'
 import { styles } from './FinishCard.styles'
 import { TiltingCard } from './TiltingCard'
@@ -61,7 +61,7 @@ function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishC
     if (card.current) AccessibilityInfo.sendAccessibilityEvent(card.current, 'focus')
     if (newBest) play('thud')
   }, [newBest, play])
-  const { rise, fadeStyle, riseStyle } = useSheetRise(landed)
+  const { rise, fadeStyle, riseStyle } = useSheetRise(landed, FINISH_RISE_OFFSET)
   // The sheet sinks before the new game shows. The game-screen route takes Back to home away.
   const { leaveThen, guard } = useLeave(rise)
   // With Reduce Motion the parts only fade.
