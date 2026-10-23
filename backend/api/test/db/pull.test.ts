@@ -1,22 +1,15 @@
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { FULL_PULL, InvalidCursor, type Cursor } from '../../src/cursor'
 import { pull } from '../../src/pull'
 import { countSk, identityKey, userPk } from '../../src/tableDesign'
-import { createTestTable, type TestTable } from './table'
+import { makeDeps, suiteTable } from './harness'
 import { seedGames, times } from './seed'
 
-let table: TestTable
+const table = suiteTable()
 let users = 0
 const newUser = () => `pull-user-${++users}`
-const deps = (pageSize = 500) => ({ db: table.db, tableName: table.tableName, pageSize })
-
-beforeAll(async () => {
-  table = await createTestTable()
-})
-afterAll(async () => {
-  await table.drop()
-})
+const deps = (pageSize = 500) => makeDeps(table, { pageSize })
 
 describe('pull', () => {
   it('returns every game row for a null cursor, and no identity or count row', async () => {
