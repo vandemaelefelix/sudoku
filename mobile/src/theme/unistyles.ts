@@ -1,6 +1,6 @@
 import { Appearance } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
-import { kvSettings } from '@/settings/SettingsRepository'
+import { kvSettings } from '@/preferences/SettingsRepository'
 import { readAppearancePreference, readThemePreference, startupSettings, type UnistylesName } from '@/theme/preference'
 import type { Theme } from '@/theme/theme.types'
 import { COLOUR_THEMES, THEMES } from '@/theme/themes/registry'

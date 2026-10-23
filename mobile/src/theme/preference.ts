@@ -1,6 +1,6 @@
 import type { ColorSchemeName } from 'react-native'
 import { UnistylesRuntime } from 'react-native-unistyles'
-import type { SettingsRepository } from '@/settings/SettingsRepository'
+import type { SettingsRepository } from '@/preferences/SettingsRepository'
 import type { Appearance, ThemeName } from '@/theme/theme.types'
 import { THEMES } from '@/theme/themes/registry'
 import { devLog, errorMessage } from '@/utils/log.utils'

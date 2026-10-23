@@ -1,4 +1,4 @@
-import type { SettingsRepository } from '@/settings/SettingsRepository'
+import type { SettingsRepository } from '@/preferences/SettingsRepository'
 import { devLog, errorMessage } from '@/utils/log.utils'
 
 /** What one setting declares. The store does the rest. */

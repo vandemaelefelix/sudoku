@@ -10,7 +10,7 @@ import Animated, {
 import { useAnimatedTheme } from 'react-native-unistyles/reanimated'
 import type { Digit } from '@sudoku/core'
 import { KEY_DONE, NOTE_SWAP_SCALE } from '@/game/constants/keypad.constants'
-import { useEased } from '@/game/hooks/useEased'
+import { useEased } from '@/hooks/useEased'
 import { keyDoneLook } from '@/game/utils/keypad.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { styles } from './NumberKey.styles'

@@ -1,5 +1,5 @@
-import { createMemorySettings } from '@/settings/memorySettings'
-import { createSettingStore } from '@/settings/settingStore'
+import { createMemorySettings } from '@/preferences/memorySettings'
+import { createSettingStore } from '@/preferences/settingStore'
 import { INCLUDE_SCANNED_KEY } from '@/stats/constants/scanned.constants'
 import { INCLUDE_SCANNED_SETTING, parseIncludeScanned } from './includeScanned.utils'
 

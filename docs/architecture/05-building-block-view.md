@@ -12,14 +12,16 @@ sudoku/
 │   ├── src/app/             # routes (Expo Router, ADR-016): each file renders one screen
 │   ├── src/home/            # home UI: the levels, Continue, Scan and Settings
 │   ├── src/game/            # game UI: screens/, components/, hooks/, utils/, constants/
-│   ├── src/settings/        # settings UI, SettingsRepository and the setting store: assists, theme
+│   ├── src/settings/        # settings UI: assists, theme, language
+│   ├── src/preferences/     # the saved settings: SettingsRepository, the setting store, useSettingValue, useHaptics
 │   ├── src/scan/            # scan UI: screens/, components/, hooks/, utils/, constants/, effects/
 │   ├── src/scanner/         # scanner module, entered only through src/scanner/index.ts
 │   ├── src/storage/         # game storage: PuzzleRepository, HistoryRepository (ADR-012)
 │   ├── src/account/         # sign-in, sign-out and delete account with Clerk (ADR-027)
 │   ├── src/sync/            # SyncService: pushes and pulls the history (ADR-028)
 │   ├── src/scanShare/       # the scan upload: record, crop, queue, uploader, sharing switch (ADR-030)
-│   ├── src/components/      # UI that more than one feature uses: PanelButton
+│   ├── src/components/      # UI that more than one feature uses: Icon, Toggle, Screen, FramedCard, CardRow, PanelButton
+│   ├── src/hooks/           # hooks that more than one feature uses: useEased, usePulse
 │   ├── src/utils/           # code that more than one feature uses: geometry, homography, logs, the final grid type
 │   └── assets/models/       # promoted model files + manifest.json (committed)
 ├── ml/                      # Python (uv): training, evaluation, export, promote
@@ -82,7 +84,9 @@ flowchart TB
 | **Scan UI** | Camera screen, live outline, lock-on, capture, transition animation, correction screen. The capture session holds the state from lock-on to the review. The correction session holds the state of the review | scanner module, @sudoku/core (to validate and solve the corrected grid) | scanner internals |
 | **scanner module** | Frame → corners (live). Photo + corners → 81 recognised cells (on capture). Loads the promoted model | VisionCamera, fast-opencv, fast-tflite (ADR-002), the promoted model | the game UI, local storage |
 | **Shared utils** (`src/utils/`) | Geometry types, the one homography implementation, development logs, the `FinalGrid` type. Code that more than one feature uses | nothing in the app | React, React Native, any feature folder |
-| **Shared components** (`src/components/`) | UI that more than one feature uses, for example `PanelButton` | the theme, `src/utils/`, the `useEased` hook of the game UI | any other feature folder |
+| **Shared components** (`src/components/`) | UI that more than one feature uses, for example `Icon`, `Screen`, `FramedCard` and `PanelButton` | the theme, `src/utils/`, `src/hooks/`, `src/preferences/` | any feature folder |
+| **Shared hooks** (`src/hooks/`) | Hooks that more than one feature uses: `useEased`, `useSystemReduceMotion` and `usePulse` | the theme, `src/utils/`, `src/constants/` | any feature folder |
+| **Preferences** (`src/preferences/`) | The saved settings: `SettingsRepository`, the setting store, `useSettingValue` and `useHaptics` ([ADR-012](adr/adr-012-local-persistence.md)) | expo-sqlite, `src/utils/` | any feature folder |
 | **Scan share** (`src/scanShare/`) | Builds the upload record from the scan result and the `FinalGrid`, crops the photo, queues and uploads it ([ADR-030](adr/adr-030-scan-collection.md)) | scanner module, `src/utils/`, `src/components/`, scan contract | the scan UI (`src/scan/`) |
 | **Local storage** | Puzzles, progress, puzzle pool, history, settings in expo-sqlite, behind repository interfaces so a sync layer can be added later ([ADR-012](adr/adr-012-local-persistence.md)). Holds the sync state. Applies each sync page, the adopt and the owner delete in one transaction each. Tells the sync about a finished game | expo-sqlite, sync contract (the check of each history entry) | — |
 | **Account** (`src/account/`) | Sign-in, sign-out and delete account with Clerk. Gives a fresh token for each request ([ADR-027](adr/adr-027-backend-platform.md)). The account lifecycle owns the delete order, the 410 reaction and the owner cache behind a Clerk adapter ([ADR-028](adr/adr-028-history-sync.md)). It imports only types of `src/sync/` for this | `@clerk/expo` | the game UI |

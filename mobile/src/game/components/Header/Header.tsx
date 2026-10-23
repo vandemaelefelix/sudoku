@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native'
-import { Icon } from '@/game/components/Icon'
+import { Icon } from '@/components/Icon'
 import { MistakeDots } from '@/game/components/MistakeDots'
 import { TimerPill } from '@/game/components/TimerPill'
 import { pressedStyles } from '@/theme/pressed.styles'

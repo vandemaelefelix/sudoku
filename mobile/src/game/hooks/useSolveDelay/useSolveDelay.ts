@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useReducedMotion } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
-import { pulseLook, solvePulseDuration } from '@/game/utils/pulse.utils'
+import { pulseLook, solvePulseDuration } from '@/utils/pulse.utils'
 
 /** True when the game is won and its solve pulse is over. With Reduce Motion on, no pulse plays, so it is true at once. */
 export function useSolveDelay(won: boolean): boolean {

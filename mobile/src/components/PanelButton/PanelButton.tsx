@@ -1,7 +1,7 @@
 import { Pressable } from 'react-native'
 import Animated, { FadeIn, ReduceMotion, useAnimatedStyle } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
-import { useEased } from '@/game/hooks/useEased'
+import { useEased } from '@/hooks/useEased'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { easeOut } from '@/utils/motion.utils'
 import { COMPACT_MAX_SCALE, LABEL_FADE_MS } from './PanelButton.constants'

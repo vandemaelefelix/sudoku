@@ -1,6 +1,6 @@
-import { createMemorySettings } from '@/settings/memorySettings'
+import { createMemorySettings } from '@/preferences/memorySettings'
 import { CONTRIBUTOR_ID_KEY, NOTICE_SEEN_KEY, SHARE_SCANS_KEY } from './constants/scanShare.constants'
-import { createSettingStore } from '@/settings/settingStore'
+import { createSettingStore } from '@/preferences/settingStore'
 import { createContributorId, createNoticeStore, SHARE_SCANS_SETTING } from './scanShareSettings'
 
 describe('share setting', () => {

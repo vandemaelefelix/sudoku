@@ -6,7 +6,7 @@ import { HintCard } from '@/game/components/HintCard'
 import { Keypad } from '@/game/components/Keypad'
 import { Tools } from '@/game/components/Tools'
 import { HINT_SLIDE } from '@/game/constants/hint.constants'
-import { useEased } from '@/game/hooks/useEased'
+import { useEased } from '@/hooks/useEased'
 import { useGameState } from '@/game/hooks/useGameState'
 
 type DockProps = {
