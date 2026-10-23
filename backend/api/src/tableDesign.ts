@@ -14,6 +14,19 @@ export const TABLE = {
   ttl: 'expiresAt',
 } as const
 
+export const DAY_SECONDS = 86_400
+
+// How long a row lives before DynamoDB removes it (the TTL attribute above).
+export const TOMBSTONE_DAYS = 30 // ADR-027 decision 10
+export const COUNT_DAYS = 2 // ADR-028 decision 9
+// ADR-030. backend/infra/scans-bucket.ts expires the photo after the same days.
+export const SCAN_RETENTION_DAYS = 365
+
+// The TTL value, in epoch seconds, of a row that lives `days` days from `from`.
+export function ttlFrom(from: Date, days: number): number {
+  return Math.floor(from.getTime() / 1000) + days * DAY_SECONDS
+}
+
 export const GAME_PREFIX = 'GAME#'
 export const USER_PREFIX = 'USER#'
 export const CONTRIB_PREFIX = 'CONTRIB#'
