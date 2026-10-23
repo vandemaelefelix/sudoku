@@ -12,6 +12,9 @@ import { CornerEditor } from './CornerEditor'
 import { fixQueue, nextToFix, useWaiting } from './fixQueue'
 import { inset, roundCorners, turn } from './geometry'
 
+// Save and Reject move to the next photo: a reload would ask the server for the photo that the step leaves.
+const LEAVE = { reload: false }
+
 export function OutlineLarge({ photo }: { photo: string }) {
   const one = useLoad(() => get<Outline>(`/api/outline?photo=${photo}`), photo)
   const [corners, setCorners] = useState<Corners | null>(null)
@@ -30,6 +33,7 @@ export function OutlineLarge({ photo }: { photo: string }) {
     const result = await action.run(
       () => post<FixResult>('/api/outlines/fix', { photo, corners: roundCorners(corners) }),
       (r) => `Saved the corners of ${photo} and cut ${r.cells} new cells.`,
+      LEAVE,
     )
     if (result) nextToFix(`Saved the corners of ${photo}. Next: Cells per digit.`)
   }
@@ -38,6 +42,7 @@ export function OutlineLarge({ photo }: { photo: string }) {
     const result = await action.run(
       () => post<number>('/api/outlines/reject', { photo }),
       () => 'Rejected the scan. Its cells never train.',
+      LEAVE,
     )
     if (result !== undefined) nextToFix(`Rejected ${photo}. Its cells never train.`)
   }

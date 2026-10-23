@@ -27,6 +27,13 @@ describe('fixQueue', () => {
     expect(queue.size()).toBe(0)
   })
 
+  it('drops the carried note when it clears', () => {
+    const queue = createFixQueue()
+    queue.carry('Saved.')
+    queue.clear()
+    expect(queue.takeNote()).toBeUndefined()
+  })
+
   it('returns a carried note once', () => {
     const queue = createFixQueue()
     queue.carry('Saved.')

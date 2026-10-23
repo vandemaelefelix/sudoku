@@ -7,6 +7,7 @@ export interface FixQueue {
   replace: (photos: string[]) => void
   /** Take the next photo, or undefined when none is left. */
   take: () => string | undefined
+  /** Empty the queue and drop the carried note. */
   clear: () => void
   size: () => number
   /** Keep a note for the gallery. The next `takeNote` returns it once. */
@@ -15,7 +16,7 @@ export interface FixQueue {
   subscribe: (listener: () => void) => () => void
 }
 
-/** The marked outlines that wait for the large view. A new queue per test keeps the tests apart. */
+/** The marked outlines that wait for the large view, and the note that the gallery shows next. */
 export function createFixQueue(): FixQueue {
   let photos: string[] = []
   let note: string | undefined
@@ -31,7 +32,10 @@ export function createFixQueue(): FixQueue {
       if (first !== undefined) change(rest)
       return first
     },
-    clear: () => change([]),
+    clear: () => {
+      note = undefined
+      change([])
+    },
     size: () => photos.length,
     carry: (text) => {
       note = text

@@ -9,7 +9,11 @@ export interface Action {
   note: string | undefined
   setNote: (note: string | undefined) => void
   /** Run one server call, then reload the step. `done` turns its result into the note. A failure becomes the note. */
-  run: <T>(call: () => Promise<T>, done: (result: T) => string | undefined) => Promise<T | undefined>
+  run: <T>(
+    call: () => Promise<T>,
+    done: (result: T) => string | undefined,
+    options?: { reload?: boolean },
+  ) => Promise<T | undefined>
   undo: () => Promise<void>
 }
 
@@ -30,7 +34,11 @@ const UNDONE: Record<string, string> = {
 export function useAction(reload: () => void): Action {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | undefined>()
-  const run = async <T>(call: () => Promise<T>, done: (result: T) => string | undefined) => {
+  const run = async <T>(
+    call: () => Promise<T>,
+    done: (result: T) => string | undefined,
+    options: { reload?: boolean } = {},
+  ) => {
     if (busy) return undefined
     setBusy(true)
     try {
@@ -42,7 +50,7 @@ export function useAction(reload: () => void): Action {
       return undefined
     } finally {
       setBusy(false)
-      reload()
+      if (options.reload !== false) reload()
     }
   }
   const undo = async (): Promise<void> => {
