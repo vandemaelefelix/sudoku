@@ -1,11 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
-import { type Digit, generate, peersOf } from '@sudoku/core'
-import type { CellResult } from '@/scanner'
-import type { CaptureResult } from '@/scan/utils/captureResult.utils'
+import { peersOf } from '@sudoku/core'
 import { scannedLevel } from '@/game/utils/start.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
+import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzleTestKit'
 import { capturing, okResult, printed, review, type ScanSession } from '@/scan/scanTestKit'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
 
@@ -25,32 +24,8 @@ function session(capture: ScanSession, exits: Partial<CorrectionExits> = {}) {
   }
 }
 
-const puzzle = generate('hard', 5)
-const firstOpen = puzzle.givens.findIndex((digit) => digit === 0)
 // A digit that a given in a peer of the first open cell already holds, so that the digit there is a conflict.
 const clashDigit = puzzle.givens[peersOf(firstOpen).find((n) => puzzle.givens[n] !== 0)!]!
-const wrongDigit = (((puzzle.solution[firstOpen] ?? 0) % 9) + 1) as Digit
-
-/** A recognised result with every given of `givens` printed, and `over` on top. */
-function scanOf(givens: readonly number[], over: { [n: number]: Partial<CellResult> } = {}): CaptureResult {
-  const cells: { [n: number]: Partial<CellResult> } = {}
-  givens.forEach((digit, n) => {
-    if (digit !== 0) cells[n] = printed(digit)
-  })
-  return okResult({ ...cells, ...over })
-}
-
-function fullScan(wrong?: { cell: number; digit: number }): CaptureResult {
-  const over: { [n: number]: Partial<CellResult> } = {}
-  puzzle.solution.forEach((digit, n) => {
-    over[n] = {
-      digit: wrong?.cell === n ? wrong.digit : digit,
-      kind: puzzle.givens[n] === 0 ? 'handwritten' : 'printed',
-      confidence: 1,
-    }
-  })
-  return okResult(over)
-}
 
 // Cells 3, 40 and 70 need a check.
 const flowScan = () =>
