@@ -244,28 +244,31 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
         </Animated.View>
       )}
       <CorrectionTile rect={tile} />
-      {looks.map((look, n) => (
-        <CorrectionCell
-          // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
-          key={n}
-          n={n}
-          look={look}
-          size={cellSize}
-          digitSizes={digitSizes}
-          left={cellRect(grid, cellSize, n).left}
-          top={cellRect(grid, cellSize, n).top}
-          selected={open === n}
-          conflict={correction.conflictCells.has(n)}
-          hint={String(correction.hints[n] ?? '')}
-          pulse={correction.celebrated ? correction.pulse : undefined}
-          solution={solution === null || look.digit !== '' ? '' : String(solution[n] ?? '')}
-          confidence={confidences?.[n] ?? null}
-          onSelect={editable ? actions.select : undefined}
-          clock={clock}
-          resultsAt={resultsAt}
-          reduceMotion={reduceMotion}
-        />
-      ))}
+      {looks.map((look, n) => {
+        const { left, top } = cellRect(grid, cellSize, n)
+        return (
+          <CorrectionCell
+            // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
+            key={n}
+            n={n}
+            look={look}
+            size={cellSize}
+            digitSizes={digitSizes}
+            left={left}
+            top={top}
+            selected={open === n}
+            conflict={correction.conflictCells.has(n)}
+            hint={String(correction.hints[n] ?? '')}
+            pulse={correction.celebrated ? correction.pulse : undefined}
+            solution={solution === null || look.digit !== '' ? '' : String(solution[n] ?? '')}
+            confidence={confidences?.[n] ?? null}
+            onSelect={editable ? actions.select : undefined}
+            clock={clock}
+            resultsAt={resultsAt}
+            reduceMotion={reduceMotion}
+          />
+        )
+      })}
       <Canvas testID="correction-lines" pointerEvents="none" style={boardBox}>
         <Picture picture={lines} />
       </Canvas>

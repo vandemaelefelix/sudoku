@@ -18,6 +18,9 @@ const BOX_PLACES = [
   'hint.part.box.bottomRight',
 ] as const satisfies readonly MessageId[]
 
+const rowNumber = (cell: number): number => cellPlace(cell).row
+const columnNumber = (cell: number): number => cellPlace(cell).column
+
 /** "row 4, column 9". ADR-032 point 10: never "r4c9". */
 export function cellName(intl: Formatter, cell: number): string {
   return intl.formatMessage({ id: 'hint.part.cell' }, cellPlace(cell))
@@ -50,8 +53,8 @@ export function listOf(
  */
 export function cellsName(intl: Formatter, cells: readonly number[]): string {
   if (cells.length === 1) return cellName(intl, cells[0]!)
-  const rows = cells.map((cell) => cellPlace(cell).row)
-  const columns = cells.map((cell) => cellPlace(cell).column)
+  const rows = cells.map(rowNumber)
+  const columns = cells.map(columnNumber)
   if (rows.every((row) => row === rows[0])) {
     return intl.formatMessage({ id: 'hint.part.rowCells' }, { row: rows[0], columns: listOf(intl, columns) })
   }
@@ -73,10 +76,7 @@ function cellsIn(intl: Formatter, unit: number, cells: readonly number[]): strin
       { id: 'hint.part.columnsIn' },
       {
         count: cells.length,
-        list: listOf(
-          intl,
-          cells.map((cell) => cellPlace(cell).column),
-        ),
+        list: listOf(intl, cells.map(columnNumber)),
       },
     )
   }
@@ -85,10 +85,7 @@ function cellsIn(intl: Formatter, unit: number, cells: readonly number[]): strin
       { id: 'hint.part.rowsIn' },
       {
         count: cells.length,
-        list: listOf(
-          intl,
-          cells.map((cell) => cellPlace(cell).row),
-        ),
+        list: listOf(intl, cells.map(rowNumber)),
       },
     )
   }

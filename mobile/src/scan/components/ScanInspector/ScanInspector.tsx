@@ -33,17 +33,20 @@ export function ScanInspector({ view, result, region, threshold }: Props) {
     return (
       <Canvas testID="inspector-cells" style={canvasStyle}>
         {flat && <SkiaImage image={flat} x={box.x} y={box.y} width={box.width} height={box.height} fit="fill" />}
-        {result.cells.map((read, n) => (
-          <SkiaRect
-            // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
-            key={n}
-            x={cellRect(box, cell, n).left}
-            y={cellRect(box, cell, n).top + cell - BAR_HEIGHT}
-            width={cell * read.confidence}
-            height={BAR_HEIGHT}
-            color={read.confidence < threshold ? theme.colors.warning : theme.colors.accent}
-          />
-        ))}
+        {result.cells.map((read, n) => {
+          const { left, top } = cellRect(box, cell, n)
+          return (
+            <SkiaRect
+              // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
+              key={n}
+              x={left}
+              y={top + cell - BAR_HEIGHT}
+              width={cell * read.confidence}
+              height={BAR_HEIGHT}
+              color={read.confidence < threshold ? theme.colors.warning : theme.colors.accent}
+            />
+          )
+        })}
       </Canvas>
     )
   }
@@ -56,19 +59,22 @@ export function ScanInspector({ view, result, region, threshold }: Props) {
     return (
       <Canvas testID="inspector-cutout" style={canvasStyle}>
         {flat && <SkiaImage image={flat} x={box.x} y={box.y} width={box.width} height={box.height} fit="fill" />}
-        {Array.from({ length: 81 }, (_, n) => (
-          <SkiaRect
-            // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
-            key={n}
-            x={cellRect(box, cell, n).left + margin}
-            y={cellRect(box, cell, n).top + margin}
-            width={inner}
-            height={inner}
-            style="stroke"
-            strokeWidth={1}
-            color={theme.colors.warningText}
-          />
-        ))}
+        {Array.from({ length: 81 }, (_, n) => {
+          const { left, top } = cellRect(box, cell, n)
+          return (
+            <SkiaRect
+              // oxlint-disable-next-line react/no-array-index-key -- the index is the cell position, a fixed identity of 81 cells
+              key={n}
+              x={left + margin}
+              y={top + margin}
+              width={inner}
+              height={inner}
+              style="stroke"
+              strokeWidth={1}
+              color={theme.colors.warningText}
+            />
+          )
+        })}
         {Array.from({ length: 10 }, (_, i) => (
           <Line
             key={`v${i}`}
