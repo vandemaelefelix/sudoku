@@ -1,12 +1,6 @@
+import { APP_KEY_HEADER, JPEG_BYTES_HEADER, scanAnswerSchema } from '@sudoku/scan-contract'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import {
-  APP_KEY_HEADER,
-  BACKOFF_BASE_MS,
-  BACKOFF_MAX_MS,
-  JPEG_BYTES_HEADER,
-  REQUEST_TIMEOUT_MS,
-  UPLOAD_TIMEOUT_MS,
-} from './constants/scanShare.constants'
+import { BACKOFF_BASE_MS, BACKOFF_MAX_MS, REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from './constants/scanShare.constants'
 import type { QueuedScan, ScanQueue } from './queue'
 
 type Response = { status: number; json(): Promise<unknown> }
@@ -87,9 +81,9 @@ export function createUploader({
           devWarn('scanShare', `the scans route answered ${response.status}`)
           return 'retry'
         }
-        const body = (await response.json().catch(() => null)) as { uploadUrl?: unknown } | null
-        const url = body?.uploadUrl
-        if (typeof url !== 'string' || !url.startsWith('https://')) return 'retry'
+        const answer = scanAnswerSchema.safeParse(await response.json().catch(() => null))
+        if (!answer.success || !answer.data.uploadUrl.startsWith('https://')) return 'retry'
+        const { uploadUrl: url } = answer.data
         const put = await timed(UPLOAD_TIMEOUT_MS, (signal) =>
           fetch(url, {
             method: 'PUT',

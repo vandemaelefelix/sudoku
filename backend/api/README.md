@@ -11,7 +11,7 @@ the other devices of that player. The decisions are in
 | File | Holds |
 | --- | --- |
 | `src/handler.ts` | The Lambda entry. It builds the dependencies and calls `route()`. The only file that imports `sst` |
-| `src/route.ts` | The dispatch on the route key. One log line per request. A 500 on an unexpected error |
+| `src/route.ts` | The dispatch on the route key. It runs inside `observe()` |
 | `src/sync.ts` | The steps of one sync, in the order of the table below |
 | `src/account.ts` | `DELETE /v1/account`: the tombstone, the rows in pages, then the Clerk user |
 | `src/clerk.ts` | The Clerk Backend API call that deletes a user. 200, or 404 with `resource_not_found`, means deleted |
@@ -20,10 +20,12 @@ the other devices of that player. The decisions are in
 | `src/pull.ts` | The query on `bySynced` and the next cursor |
 | `src/cursor.ts` | Encode and decode the cursor. `nextCursor()`, the end-of-read rule |
 | `src/scans/` | `POST /v1/scans` (ADR-030): `handler.ts` is the entry and the only file that imports `sst`. `scan.ts` holds the steps. `store.ts` writes the row. `presign.ts` signs the photo URL. The request carries the photo length in the header `x-jpeg-bytes` (1 to `MAX_JPEG_BYTES`). The URL signs `Content-Length`, so S3 refuses a photo of another size. `token.ts` verifies the optional JWT. `appKey.ts` checks the app key |
-| `src/tableDesign.ts` | The key names, the index, the TTL attribute and the key builders. No imports. `backend/infra/storage.ts` reads it |
+| `src/tableDesign.ts` | The key names, the index, the TTL attribute and the key builders. No imports. `backend/infra/storage.ts` and `backend/infra/scans-bucket.ts` read it |
 | `src/items.ts` | A history entry to a game row and back |
 | `src/dailyCount.ts` | The day key and the TTL of a daily count row |
-| `src/http.ts` | The response bodies of the sync contract |
+| `src/http.ts` | The response bodies of the sync contract. `Refusal` and `refuse()`. `subOf()` and `parseJsonBody()`. `observe()`: one log line per request, a refusal to its error body, any other error to a 500. Both Lambdas use it |
+| `src/deps.ts` | The `SyncDeps` type, `docClient()` and the default `sleep` |
+| `src/deleteRows.ts` | The row delete of the account delete: the pages, the batches with retry, and the photos |
 | `src/log.ts` | The logger with an allow-list of fields |
 | `test/unit/` | Tests without DynamoDB |
 | `test/db/` | Tests against DynamoDB Local. Each file creates its own table from `tableDesign.ts` |

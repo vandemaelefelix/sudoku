@@ -1,44 +1,28 @@
-import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { PutCommand } from '@aws-sdk/lib-dynamodb'
+import { describe, expect, it } from 'vitest'
 import { countExpiresAt } from '../../src/dailyCount'
+import { sleep } from '../../src/deps'
 import { push } from '../../src/push'
 import { countSk, gameSk, userPk } from '../../src/tableDesign'
 import { entryWithId } from '../fixtures'
-import { createTestTable, type TestTable } from './table'
+import { NOW, getItem, makeDeps, suiteTable } from './harness'
 
-const NOW = new Date('2026-10-15T09:00:00.000Z')
 const LATER = new Date('2026-10-15T09:30:00.000Z')
 const OLD = '2026-10-15T08:00:00.000Z'
 const MID = '2026-10-15T08:30:00.000Z'
 const NEW = '2026-10-15T08:45:00.000Z'
 
-let table: TestTable
+const table = suiteTable()
 let users = 0
 const newUser = () => `push-user-${++users}`
 const owner = (userId: string) => ({ sub: `sub-of-${userId}`, userId })
-const deps = () => ({ db: table.db, tableName: table.tableName })
+// The real sleep: the parallel test needs a delay between two conflicting attempts.
+const deps = () => makeDeps(table, { sleep })
 
-beforeAll(async () => {
-  table = await createTestTable()
-})
-afterAll(async () => {
-  await table.drop()
-})
-
-async function gameRow(userId: string, id: string) {
-  const { Item } = await table.db.send(
-    new GetCommand({ TableName: table.tableName, Key: { pk: userPk(userId), sk: gameSk(id) } }),
-  )
-  return Item
-}
+const gameRow = (userId: string, id: string) => getItem(table, { pk: userPk(userId), sk: gameSk(id) })
 
 async function writes(userId: string, now = NOW): Promise<number | undefined> {
-  const { Item } = await table.db.send(
-    new GetCommand({
-      TableName: table.tableName,
-      Key: { pk: userPk(userId), sk: countSk(now.toISOString().slice(0, 10)) },
-    }),
-  )
+  const Item = await getItem(table, { pk: userPk(userId), sk: countSk(now.toISOString().slice(0, 10)) })
   return Item?.writes as number | undefined
 }
 
@@ -141,9 +125,7 @@ describe('the daily count (ADR-027 decision 9)', () => {
     const nextDay = new Date('2026-10-16T00:00:01.000Z')
     const result = await push(deps(), owner(userId), [entryWithId(1)], nextDay)
     expect(result.stored).toBe(1)
-    const { Item } = await table.db.send(
-      new GetCommand({ TableName: table.tableName, Key: { pk: userPk(userId), sk: countSk('2026-10-16') } }),
-    )
+    const Item = await getItem(table, { pk: userPk(userId), sk: countSk('2026-10-16') })
     expect(Item).toMatchObject({ writes: 1, expiresAt: countExpiresAt(nextDay) })
     expect(Item).not.toHaveProperty('syncedAt')
   })

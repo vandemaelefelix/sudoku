@@ -1,31 +1,17 @@
-import { GetCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { describe, expect, it } from 'vitest'
 import { AccountDeleted, findOrCreateUserId } from '../../src/identity'
 import { identityKey } from '../../src/tableDesign'
-import { createTestTable, type TestTable } from './table'
-
-const NOW = new Date('2026-10-15T09:00:00.000Z')
+import { NOW, getItem, makeDeps, suiteTable } from './harness'
 
 describe('findOrCreateUserId', () => {
-  let table: TestTable
+  const table = suiteTable()
   let ids = 0
-  const deps = () => ({
-    db: table.db,
-    tableName: table.tableName,
-    now: () => NOW,
-    newUserId: () => `user-${++ids}`,
-  })
-
-  beforeAll(async () => {
-    table = await createTestTable()
-  })
-  afterAll(async () => {
-    await table.drop()
-  })
+  const deps = () => makeDeps(table, { newUserId: () => `user-${++ids}` })
 
   it('creates one identity row for a new sub', async () => {
     const userId = await findOrCreateUserId(deps(), 'sub_new')
-    const { Item } = await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey('sub_new') }))
+    const Item = await getItem(table, identityKey('sub_new'))
     expect(Item).toEqual({ ...identityKey('sub_new'), userId, createdAt: NOW.toISOString() })
   })
 
@@ -59,7 +45,7 @@ describe('findOrCreateUserId', () => {
     const before = ids
     await expect(findOrCreateUserId(deps(), 'sub_gone')).rejects.toThrow(AccountDeleted)
     expect(ids).toBe(before)
-    const { Item } = await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey('sub_gone') }))
+    const Item = await getItem(table, identityKey('sub_gone'))
     expect(Item).toEqual(tombstone)
   })
 })

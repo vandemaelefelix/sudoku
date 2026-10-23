@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { S3Client } from '@aws-sdk/client-s3'
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { createRemoteJWKSet } from 'jose'
 import { Resource } from 'sst'
+import { docClient } from '../deps'
 import type { Response } from '../http'
 import { consoleLogger } from '../log'
 import { createPhotoStore } from './presign'
@@ -19,7 +18,7 @@ const resource = Resource as unknown as {
 }
 
 // Module scope: a warm Lambda reuses the clients and the cached signing keys.
-const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } })
+const db = docClient()
 const photos = createPhotoStore(new S3Client({}), resource.ScansBucket.name)
 const issuer = process.env.CLERK_ISSUER ?? ''
 const verifyToken = createTokenVerifier({

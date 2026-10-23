@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { S3Client } from '@aws-sdk/client-s3'
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
 import { Resource } from 'sst'
 import { lazyClerkClient } from './clerk'
-import type { SyncDeps } from './deps'
+import { docClient, type SyncDeps } from './deps'
 import type { Response } from './http'
 import { consoleLogger } from './log'
 import { route } from './route'
@@ -20,7 +18,7 @@ const bucketName = () => (Resource as unknown as { ScansBucket: { name: string }
 
 // Module scope: a warm Lambda reuses the client and its connections.
 const s3 = new S3Client({})
-const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } })
+const db = docClient()
 
 export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<Response> {
   const deps: SyncDeps = {

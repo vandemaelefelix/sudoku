@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { accountProblem, callerAccountArgs, isStage } from './account.ts'
+import { accountProblem, assertKnownStage, isStage } from './account.ts'
 
 describe('accountProblem', () => {
   it('accepts the expected account', () => {
@@ -33,12 +33,9 @@ describe('isStage', () => {
   })
 })
 
-describe('callerAccountArgs', () => {
-  it('uses the profile sudoku on the laptop', () => {
-    assert.deepEqual(callerAccountArgs(false).slice(0, 4), ['sts', 'get-caller-identity', '--profile', 'sudoku'])
-  })
-
-  it('uses the ambient role credentials in CI', () => {
-    assert.ok(!callerAccountArgs(true).includes('--profile'))
+describe('assertKnownStage', () => {
+  it('returns a known stage and throws for another name', () => {
+    assert.equal(assertKnownStage('dev'), 'dev')
+    assert.throws(() => assertKnownStage('prod'), /Unknown stage "prod"/)
   })
 })
