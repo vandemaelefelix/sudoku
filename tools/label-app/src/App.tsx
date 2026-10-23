@@ -1,5 +1,5 @@
 import { useRoute } from './hooks/useRoute'
-import { Check } from './steps/Check'
+import { Check } from './steps/check/Check'
 import { Doubtful } from './steps/Doubtful'
 import { Fetch } from './steps/Fetch'
 import { Finish } from './steps/Finish'

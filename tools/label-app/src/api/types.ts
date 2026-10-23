@@ -92,8 +92,8 @@ export interface CheckCell {
   reasons: Signal[]
 }
 
-/** A tab is `empty`, `1` to `9`, or `unknown` (Digits only). */
-export interface CheckPage {
+/** The answer of `/api/check/digits` and `/api/check/kinds`. A tab is `empty`, `1` to `9`, or `unknown` (Digits only). */
+interface CheckPageBase {
   digit: string
   /** At most 240, the highest doubt first. */
   cells: CheckCell[]
@@ -104,9 +104,18 @@ export interface CheckPage {
   /** The cells of this tab that the sure button confirms at this threshold. */
   sure: number
   threshold: number
-  /** The Kind step only: the open cells of the digit per kind label, whatever kind is shown. */
-  kind_counts?: Record<KindTab, number>
 }
+
+export type DigitPage = CheckPageBase
+
+export interface KindPage extends CheckPageBase {
+  /** The open cells of the digit per kind label, whatever kind is shown. */
+  kind_counts: Record<KindTab, number>
+}
+
+export type CheckPage = DigitPage | KindPage
+
+export const isKindPage = (page: CheckPage): page is KindPage => 'kind_counts' in page
 
 /** A kind tab of the Kind step. `all` shows every kind. */
 export type KindTab = 'all' | Kind
