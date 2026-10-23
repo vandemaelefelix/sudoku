@@ -1,34 +1,8 @@
-import { useSignIn } from '@clerk/expo'
-import { useSignInWithGoogle } from '@clerk/expo/google'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
+import { fakeSignIn, googleAnswers as googleGives } from '@/account/account.testkit'
 import { AccountContext, UNCONFIGURED_ACCOUNT } from '@/account/hooks/useAccount'
 import { SignInScreen } from './SignInScreen'
-
-type Result = { error: unknown }
-const ok = async (): Promise<Result> => ({ error: null })
-
-function fakeSignIn(statusAfterPassword: string) {
-  const signIn = {
-    status: 'needs_identifier',
-    password: jest.fn(async (): Promise<Result> => {
-      signIn.status = statusAfterPassword
-      return { error: null }
-    }),
-    mfa: {
-      sendEmailCode: jest.fn(ok),
-      verifyEmailCode: jest.fn(async (): Promise<Result> => {
-        signIn.status = 'complete'
-        return { error: null }
-      }),
-    },
-    finalize: jest.fn(ok),
-  }
-  jest
-    .mocked(useSignIn)
-    .mockReturnValue({ signIn, fetchStatus: 'idle', errors: {} } as unknown as ReturnType<typeof useSignIn>)
-  return signIn
-}
 
 function SignedOut({ children }: { children: ReactNode }) {
   return <AccountContext value={{ ...UNCONFIGURED_ACCOUNT, status: 'signedOut' }}>{children}</AccountContext>
@@ -109,12 +83,6 @@ it('disables the button while the request runs', async () => {
   expect(screen.getByRole('button', { name: 'Sign in' }).props.accessibilityState).toMatchObject({ disabled: true })
   await act(async () => release?.())
 })
-
-function googleGives(flow: () => Promise<unknown>) {
-  jest.mocked(useSignInWithGoogle).mockReturnValue({
-    startGoogleAuthenticationFlow: jest.fn(flow),
-  } as unknown as ReturnType<typeof useSignInWithGoogle>)
-}
 
 describe('Google', () => {
   it('finishes after the Google sheet gives a session', async () => {

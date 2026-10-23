@@ -1,19 +1,10 @@
 import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, stepScene } from '@/scan/effects/scene'
 import { gatheringDots } from './gathering-dots.effect'
-import type { Quad } from '@/utils/geometry.utils'
 import { cobalt } from '@/theme/themes/cobalt'
+import { GRID, VIEW } from '@/scan/effects/effect.testkit'
 
 const INK = cobalt.components.grid.boxLine
-
-const VIEW = { width: 402, height: 874 }
-
-const grid: Quad = [
-  { x: 50, y: 300 },
-  { x: 350, y: 300 },
-  { x: 350, y: 600 },
-  { x: 50, y: 600 },
-]
 
 describe('gatheringDots', () => {
   it('is the simulation effect with a stable id', () => {
@@ -28,7 +19,7 @@ describe('gatheringDots', () => {
   })
 
   it('gathers 100 dots when the scene has a grid', () => {
-    const scene = stepScene(createScene(VIEW), grid, 0, false)
+    const scene = stepScene(createScene(VIEW), GRID, 0, false)
     const state = gatheringDots.step(gatheringDots.create(scene), scene)
     expect(state.dots.filter((d) => d.target >= 0)).toHaveLength(100)
   })
