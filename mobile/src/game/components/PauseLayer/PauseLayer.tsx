@@ -3,7 +3,7 @@ import { createAnimatedComponent, FadeIn, FadeOut, ReduceMotion } from 'react-na
 import { useUnistyles } from 'react-native-unistyles'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import { easeOut } from '@/utils/motion.utils'
 import { styles } from './PauseLayer.styles'
 import { useIntl } from '@/i18n/hooks/useIntl'

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { Appearance } from 'react-native'
 import { INDICATOR_MS } from '@/components/SegmentedControl'
-import { kvSettings } from '@/settings/SettingsRepository'
+import { kvSettings } from '@/preferences/SettingsRepository'
 import {
   resolveAppearance,
   saveAppearancePreference,

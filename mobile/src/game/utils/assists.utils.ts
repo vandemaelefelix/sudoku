@@ -1,5 +1,5 @@
 import { ASSISTS_KEY, DEFAULT_ASSISTS, type AssistName, type Assists } from '@/game/constants/assists.constants'
-import type { SettingDefinition } from '@/settings/settingStore'
+import type { SettingDefinition } from '@/preferences/settingStore'
 
 /** A missing or broken assist is on: an assist added in a later version starts on. */
 export function parseAssists(value: string | null): Assists {

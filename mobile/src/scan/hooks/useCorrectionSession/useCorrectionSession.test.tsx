@@ -10,7 +10,7 @@ import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { type CorrectionExits, useCorrectionSession } from './useCorrectionSession'
 
 const mockPlay = jest.fn()
-jest.mock('@/settings/hooks/useHaptics', () => ({
+jest.mock('@/preferences/hooks/useHaptics', () => ({
   useHaptics: () => ({ on: true, setOn: jest.fn(), play: mockPlay }),
 }))
 

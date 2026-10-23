@@ -1,7 +1,7 @@
-import { useSyncExternalStore } from 'react'
-import { kvSettings } from '@/settings/SettingsRepository'
-import { createSettingStore } from '@/settings/settingStore'
-import { HAPTICS_SETTING } from '@/settings/utils/hapticsSetting.utils'
+import { kvSettings } from '@/preferences/SettingsRepository'
+import { useSettingValue } from '@/preferences/hooks/useSettingValue'
+import { createSettingStore } from '@/preferences/settingStore'
+import { HAPTICS_SETTING } from '@/preferences/utils/hapticsSetting.utils'
 import { playHaptic, type HapticName } from '@/utils/haptics.utils'
 
 // One store for the app: the switch in Settings must reach every screen that plays a haptic.
@@ -18,6 +18,6 @@ function play(name: HapticName): void {
 
 /** The haptics switch of the player and play, which plays a haptic only when the switch is on. setOn and play keep their identity. */
 export function useHaptics(): { on: boolean; setOn(on: boolean): void; play(name: HapticName): void } {
-  const on = useSyncExternalStore(hapticsStore.subscribe, hapticsStore.get)
+  const on = useSettingValue(hapticsStore)
   return { on, setOn, play }
 }

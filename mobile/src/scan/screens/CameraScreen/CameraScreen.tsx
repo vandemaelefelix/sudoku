@@ -17,7 +17,7 @@ import {
 } from 'react-native-vision-camera'
 import { useUnistyles } from 'react-native-unistyles'
 import { scheduleOnRN } from 'react-native-worklets'
-import { kvSettings } from '@/settings/SettingsRepository'
+import { kvSettings } from '@/preferences/SettingsRepository'
 import { type CameraBlock, CameraPermission } from '@/scan/components/CameraPermission'
 import { CloseButton } from '@/scan/components/CloseButton'
 import { LibraryButton } from '@/scan/components/LibraryButton'

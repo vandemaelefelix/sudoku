@@ -1,4 +1,4 @@
-import { kvSettings } from '@/settings/SettingsRepository'
+import { kvSettings } from '@/preferences/SettingsRepository'
 import {
   readAppearancePreference,
   readThemePreference,

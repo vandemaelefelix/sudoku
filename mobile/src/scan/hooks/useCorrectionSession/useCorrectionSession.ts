@@ -17,7 +17,7 @@ import { isFull, markedCells, panelState, type PanelState } from '@/scan/utils/c
 import { finalGrid } from '@/scan/utils/finalGrid.utils'
 import { checkPlay, type PlayBlock, type ScannedStart } from '@/scan/utils/play.utils'
 import { resultsGateReached } from '@/scan/utils/transition.utils'
-import { useHaptics } from '@/settings/hooks/useHaptics'
+import { useHaptics } from '@/preferences/hooks/useHaptics'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 
 /**

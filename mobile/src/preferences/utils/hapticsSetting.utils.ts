@@ -1,5 +1,5 @@
-import { HAPTICS_KEY } from '@/settings/constants/haptics.constants'
-import type { SettingDefinition } from '@/settings/settingStore'
+import { HAPTICS_KEY } from '@/preferences/constants/haptics.constants'
+import type { SettingDefinition } from '@/preferences/settingStore'
 
 /** Haptics are on unless the player turned them off. */
 export function parseHapticsOn(value: string | null): boolean {
