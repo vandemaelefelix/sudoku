@@ -1,5 +1,6 @@
 """Move cells to the label a person chose. Validates everything before it moves anything."""
 
+import argparse
 import csv
 import sys
 from pathlib import Path
@@ -54,5 +55,18 @@ def apply_relabels(cells_dir: Path, relabels: Path) -> int:
     return move_cells(cells_dir, wanted)
 
 
+def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="just relabel")
+    parser.add_argument("file", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        count = apply_relabels((paths or DataPaths.under()).cells, args.file)
+    except (ValueError, OSError) as error:
+        print(error, file=sys.stderr)
+        return 1
+    print(count)
+    return 0
+
+
 if __name__ == "__main__":
-    print(apply_relabels(DataPaths.under().cells, Path(sys.argv[1])))
+    sys.exit(main())

@@ -1,6 +1,7 @@
 """The data check: the images agree with the two tables, and the tables follow their rules
 (ADR-018). It prints a short report. It reads files only. It never changes a file."""
 
+import argparse
 import sys
 from collections import Counter
 from pathlib import Path
@@ -218,8 +219,13 @@ def format_report(report: dict) -> str:
     return "\n".join(lines)
 
 
-def main(paths: DataPaths | None = None) -> int:
-    report = check_data(paths or DataPaths.under())
+def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
+    argparse.ArgumentParser(prog="just check-data").parse_args(argv)
+    try:
+        report = check_data(paths or DataPaths.under())
+    except (ValueError, OSError) as error:
+        print(error, file=sys.stderr)
+        return 1
     print(format_report(report))
     return 1 if report["problems"] else 0
 

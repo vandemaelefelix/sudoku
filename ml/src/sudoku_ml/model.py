@@ -1,5 +1,8 @@
 """The cell classifier: a global-average-pooling CNN with a digit head and a kind head (ADR-006)."""
 
+import json
+from pathlib import Path
+
 import torch
 from torch import nn
 
@@ -47,3 +50,15 @@ class ExportModel(nn.Module):
     def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
         digit, kind = self.model(x.permute(0, 3, 1, 2))
         return {"digit": (digit / self.temperature).softmax(dim=1), "kind": kind.softmax(dim=1)}
+
+
+def read_metrics(run: Path) -> dict:
+    return json.loads((run / "metrics.json").read_text())
+
+
+def load_run(run: Path) -> tuple[CellClassifier, float]:
+    """The trained model of a run folder, in eval mode on the CPU, and the temperature that
+    calibrates its digit head."""
+    model = CellClassifier()
+    model.load_state_dict(torch.load(run / "model.pt", map_location="cpu"))
+    return model.eval(), read_metrics(run)["temperature"]

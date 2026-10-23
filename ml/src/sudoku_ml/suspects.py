@@ -1,23 +1,24 @@
 """Find cells whose digit or kind label is probably wrong (cross-validated ranking, R-13)."""
 
+import argparse
 import csv
 import io
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
 
-from sudoku_ml.augment import augment
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, kind_index
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import group_ids, read_real_cells, stack, training_cells
 from sudoku_ml.model import CellClassifier
-from sudoku_ml.preprocess import preprocess_batch
 from sudoku_ml.tables import write_atomic
-from sudoku_ml.train import _device, _logits, loss
+from sudoku_ml.train import Pool, default_device, fit, predict_logits
 
 FIELDS = ["field", "file", "label", "predicted", "p_label", "p_predicted"]
 KIND_THRESHOLD = 0.10
+BATCH_SIZE = 256
 _LABELLED_KINDS = (kind_index("printed"), kind_index("handwritten"))
 
 
@@ -65,25 +66,6 @@ def write_suspects(rows: list[dict], path: Path) -> None:
     write_atomic(path, buffer.getvalue())
 
 
-def _fit(images, digit, kind, epochs: int, device, generator) -> CellClassifier:
-    model = CellClassifier().to(device)
-    steps = max(1, len(images) // 256)
-    optimiser = torch.optim.AdamW(model.parameters(), lr=0.003, weight_decay=1e-4)
-    schedule = torch.optim.lr_scheduler.OneCycleLR(optimiser, 0.003, total_steps=steps * epochs)
-    for _ in range(epochs):
-        model.train()
-        for _ in range(steps):
-            i = torch.randint(len(images), (256,), generator=generator)
-            x = augment(images[i].to(device).permute(0, 3, 1, 2).float(), generator)
-            d, k = model(preprocess_batch(x))
-            value = loss(d, k, digit[i].to(device), kind[i].to(device), 0.4, 0.05)
-            optimiser.zero_grad()
-            value.backward()
-            optimiser.step()
-            schedule.step()
-    return model
-
-
 def find_suspects(data: DataPaths, folds: int = 5, epochs: int = 12, top: int = 150) -> Path:
     """Rank digit and kind suspects with cross-validation. Writes ml/dataset/work/suspects.csv.
     Ranks only the cells that may train (ADR-030)."""
@@ -95,16 +77,16 @@ def find_suspects(data: DataPaths, folds: int = 5, epochs: int = 12, top: int = 
     unique = np.random.default_rng(0).permutation(np.unique(groups))
     fold_of = {g: i % folds for i, g in enumerate(unique)}
     fold = np.array([fold_of[g] for g in groups])
-    device, generator = _device(), torch.Generator().manual_seed(0)
+    device, generator = default_device(), torch.Generator().manual_seed(0)
     digit_probs = np.zeros((len(samples), len(DIGIT_CLASSES)), dtype=np.float32)
     kind_probs = np.zeros((len(samples), len(KIND_CLASSES)), dtype=np.float32)
     for f in range(folds):
         train_idx = torch.from_numpy(np.nonzero(fold != f)[0])
         held = torch.from_numpy(np.nonzero(fold == f)[0])
-        model = _fit(
-            images[train_idx], digit[train_idx], kind[train_idx], epochs, device, generator
-        )
-        digit_logits, kind_logits = _logits(model, images[held], device)
+        model = CellClassifier().to(device)
+        pool = Pool(images[train_idx], digit[train_idx], kind[train_idx], BATCH_SIZE)
+        fit(model, [pool], epochs, device, generator)
+        digit_logits, kind_logits = predict_logits(model, images[held], device)
         digit_probs[held.numpy()] = digit_logits.softmax(1).numpy()
         kind_probs[held.numpy()] = kind_logits.softmax(1).numpy()
     names = [p.stem for p in paths]
@@ -114,5 +96,15 @@ def find_suspects(data: DataPaths, folds: int = 5, epochs: int = 12, top: int = 
     return data.suspects
 
 
+def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
+    argparse.ArgumentParser(prog="just suspects").parse_args(argv)
+    try:
+        print(find_suspects(paths or DataPaths.under()))
+    except (ValueError, OSError) as error:
+        print(error, file=sys.stderr)
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    print(find_suspects(DataPaths.under()))
+    sys.exit(main())
