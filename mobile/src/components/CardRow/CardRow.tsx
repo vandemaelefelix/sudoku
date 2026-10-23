@@ -43,9 +43,7 @@ export function CardRow({
         accessibilityElementsHidden={controlled ? true : undefined}
         importantForAccessibility={controlled ? 'no-hide-descendants' : undefined}
       >
-        <Text style={[styles.label, tone === 'danger' && styles.danger, tone === 'quiet' && styles.quiet]}>
-          {label}
-        </Text>
+        <Text style={styles[tone]}>{label}</Text>
         {description !== undefined && <Text style={styles.description}>{description}</Text>}
       </View>
       {trailing}

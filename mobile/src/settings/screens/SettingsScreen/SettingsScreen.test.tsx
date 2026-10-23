@@ -92,6 +92,10 @@ it('shows a switch in the preview at once', async () => {
   expect(StyleSheet.flatten(cell31.props.style).backgroundColor).toBe(cobalt.components.cell.fill)
 })
 
+// FramedCard draws the line between rows as an overlay: a host View that ignores touches.
+const isRule = (node: { type: unknown; props: { pointerEvents?: string } }) =>
+  typeof node.type === 'string' && node.props.pointerEvents === 'none'
+
 describe('the haptics switch', () => {
   afterEach(async () => {
     const { result, unmount } = renderHook(() => useHaptics())
@@ -150,15 +154,14 @@ describe('the Op-art look of the page (ADR-026)', () => {
 
   it('divides the rows by the strong rule of the box-line weight', () => {
     render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} onTechniques={jest.fn()} />)
-    // FramedCard wraps each row and draws the line on the wrapper.
-    let line: Record<string, unknown> | undefined
+    // FramedCard wraps each row and draws the line as an overlay in that wrapper.
+    let line
     for (let node = screen.getByTestId('assist-row-Box').parent; node && !line; node = node.parent) {
-      const style = StyleSheet.flatten(node.props.style)
-      if (style?.borderTopWidth !== undefined) line = style
+      line = node.findAll(isRule)[0]
     }
-    expect(line).toMatchObject({
-      borderTopWidth: cobalt.components.summary.ruleWidth,
-      borderTopColor: cobalt.components.summary.rule,
+    expect(StyleSheet.flatten(line?.props.style)).toMatchObject({
+      height: cobalt.components.summary.ruleWidth,
+      backgroundColor: cobalt.components.summary.rule,
     })
   })
 })

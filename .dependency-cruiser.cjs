@@ -178,7 +178,13 @@ module.exports = {
         'A utils or constants file holds plain logic and values. It does not import React, React Native or UI modules.',
       severity: 'error',
       from: { path: '^mobile/src/.+\\.(utils|constants)\\.ts$' },
-      to: { path: ['/node_modules/(react|react-native)/', '^mobile/src/.*/(components|screens|hooks)/'] },
+      to: {
+        path: [
+          '/node_modules/(react|react-native)/',
+          '^mobile/src/(components|hooks)/',
+          '^mobile/src/.*/(components|screens|hooks)/',
+        ],
+      },
     },
     {
       name: 'constants-import-only-constants-and-types',
@@ -224,7 +230,7 @@ module.exports = {
       name: 'components-and-hooks-do-not-import-screens',
       comment: 'A screen composes components and hooks, not the other way round.',
       severity: 'error',
-      from: { path: '^mobile/src/.*/(components|hooks)/' },
+      from: { path: ['^mobile/src/(components|hooks)/', '^mobile/src/.*/(components|hooks)/'] },
       to: { path: '^mobile/src/.*/screens/' },
     },
     {

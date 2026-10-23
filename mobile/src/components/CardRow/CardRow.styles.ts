@@ -11,8 +11,8 @@ export const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.space.lg,
   },
   text: { flex: 1, minWidth: 0 },
-  label: { ...roleSized(theme.type.button), color: theme.colors.text },
-  danger: { color: theme.colors.danger },
+  default: { ...roleSized(theme.type.button), color: theme.colors.text },
+  danger: { ...roleSized(theme.type.button), color: theme.colors.danger },
   quiet: { ...roleSized(theme.type.body), color: theme.colors.textMuted },
   description: {
     ...roleSized(theme.type.caption),

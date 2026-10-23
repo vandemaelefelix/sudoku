@@ -8,5 +8,12 @@ export const styles = StyleSheet.create((theme) => ({
     borderColor: theme.components.summary.border,
   },
   filled: { backgroundColor: theme.colors.surface },
-  divider: { borderTopWidth: theme.components.summary.ruleWidth, borderTopColor: theme.components.summary.rule },
+  rule: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: theme.components.summary.ruleWidth,
+    backgroundColor: theme.components.summary.rule,
+  },
 }))

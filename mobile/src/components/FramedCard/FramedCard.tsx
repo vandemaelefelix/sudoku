@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { styles } from './FramedCard.styles'
 
 type FramedCardProps = {
+  /** A Fragment counts as one child, so a Fragment gets no line inside. */
   children: ReactNode
   /** A line between two children, in the weight of the box lines of the grid. A card with one body turns it off. Default true. */
   divided?: boolean
@@ -17,8 +18,10 @@ export function FramedCard({ children, divided = true, filled = true, testID }: 
     <View testID={testID} style={[styles.card, filled && styles.filled]}>
       {divided
         ? Children.toArray(children).map((child, index) => (
-            <View key={isValidElement(child) ? child.key : index} style={index > 0 && styles.divider}>
+            <View key={isValidElement(child) ? child.key : index}>
               {child}
+              {/* An overlay, so the line takes no height from the row. */}
+              {index > 0 && <View pointerEvents="none" style={styles.rule} />}
             </View>
           ))
         : children}

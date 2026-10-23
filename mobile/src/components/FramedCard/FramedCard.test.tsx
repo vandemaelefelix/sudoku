@@ -3,28 +3,22 @@ import { StyleSheet, Text, View } from 'react-native'
 import { cobalt } from '@/theme/themes/cobalt'
 import { FramedCard } from './FramedCard'
 
-const { ruleWidth } = cobalt.components.summary
+const { ruleWidth, rule } = cobalt.components.summary
 
-// Each child sits in its own wrapper. The wrapper carries the line above the child, so look for it on the way up.
-function lineAbove(text: string) {
-  for (let node = screen.getByText(text).parent; node; node = node.parent) {
-    const style = StyleSheet.flatten(node.props.style)
-    if (style?.borderTopWidth !== undefined) return style
-  }
-  return undefined
-}
+// The line is an overlay: a host View that ignores touches and sits at the top of the wrapper of a child.
+const rules = () =>
+  screen.UNSAFE_getAllByProps({ pointerEvents: 'none' }).filter((node) => typeof node.type === 'string')
 
-it('draws no line above the first child', () => {
+it('draws no line for one child', () => {
   render(
     <FramedCard>
       <Text>One</Text>
-      <Text>Two</Text>
     </FramedCard>,
   )
-  expect(lineAbove('One')).toBeUndefined()
+  expect(screen.UNSAFE_queryAllByProps({ pointerEvents: 'none' })).toHaveLength(0)
 })
 
-it('draws a line between two children', () => {
+it('draws one line between each two children', () => {
   render(
     <FramedCard>
       <Text>One</Text>
@@ -32,8 +26,29 @@ it('draws a line between two children', () => {
       <Text>Three</Text>
     </FramedCard>,
   )
-  expect(lineAbove('Two')).toMatchObject({ borderTopWidth: ruleWidth })
-  expect(lineAbove('Three')).toMatchObject({ borderTopWidth: ruleWidth })
+  expect(rules()).toHaveLength(2)
+})
+
+it('draws the line over the top of the child, so it takes no height', () => {
+  render(
+    <FramedCard>
+      <Text>One</Text>
+      <Text>Two</Text>
+    </FramedCard>,
+  )
+  const [line] = rules()
+  expect(StyleSheet.flatten(line?.props.style)).toMatchObject({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: ruleWidth,
+    backgroundColor: rule,
+  })
+  const borders = screen
+    .UNSAFE_getAllByType(View)
+    .filter((node) => StyleSheet.flatten(node.props.style)?.borderTopWidth !== undefined)
+  expect(borders).toHaveLength(0)
 })
 
 it('draws no line for a child that renders nothing', () => {
@@ -45,18 +60,29 @@ it('draws no line for a child that renders nothing', () => {
       <Text>Two</Text>
     </FramedCard>,
   )
-  expect(lineAbove('Two')).toMatchObject({ borderTopWidth: ruleWidth })
+  expect(rules()).toHaveLength(1)
+})
+
+it('counts a Fragment as one child', () => {
+  render(
+    <FramedCard>
+      <>
+        <Text>One</Text>
+        <Text>Two</Text>
+      </>
+    </FramedCard>,
+  )
+  expect(screen.UNSAFE_queryAllByProps({ pointerEvents: 'none' })).toHaveLength(0)
 })
 
 it('draws no line when it is not divided', () => {
   render(
-    <FramedCard divided={false} testID="card">
+    <FramedCard divided={false}>
       <Text>One</Text>
       <Text>Two</Text>
     </FramedCard>,
   )
-  expect(lineAbove('One')).toBeUndefined()
-  expect(lineAbove('Two')).toBeUndefined()
+  expect(screen.UNSAFE_queryAllByProps({ pointerEvents: 'none' })).toHaveLength(0)
 })
 
 it('frames the children with the summary tokens and the surface colour', () => {
