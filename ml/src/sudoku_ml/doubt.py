@@ -5,6 +5,7 @@ model. SUD-07 forbids an import of the TypeScript core, so the solution counter 
 
 import hashlib
 import json
+from typing import TypedDict
 
 from sudoku_ml.contract import DIGIT_CLASSES
 
@@ -24,7 +25,10 @@ PRINTED, HANDWRITTEN = 1, 2  # indices in KIND_CLASSES: none, printed, handwritt
 W_DIFFERS, W_EDITED, W_RULE, W_UNIQUE = 0.5, 0.3, 0.2, 0.1
 KIND_W_DIFFERS = 0.5
 
-Probs = dict[str, list[float]]  # {"digit": 10 floats, "kind": 4 floats}
+
+class Probs(TypedDict):
+    digit: list[float]  # 10 probabilities, in DIGIT_CLASSES order
+    kind: list[float]  # 4 probabilities, in KIND_CLASSES order
 
 
 def _units() -> list[tuple[str, int, list[int]]]:

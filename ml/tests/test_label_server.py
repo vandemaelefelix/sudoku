@@ -12,7 +12,8 @@ from scans import old_page_confirm, pulled
 
 from sudoku_ml.fetch_scans import SignInNeeded
 from sudoku_ml.journal import read_journal
-from sudoku_ml.label_server import main, make_server, prelabel_new_cells
+from sudoku_ml.label_jobs import prelabel_new_cells
+from sudoku_ml.label_server import Fields, corners_of, main, make_server, threshold_of
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_import import import_folder
 from sudoku_ml.prelabel import NO_MODEL
@@ -183,7 +184,7 @@ def test_the_doubtful_step_lists_and_settles_the_suspects(tmp_path: Path):
             f"field,file,label,predicted,p_label,p_predicted\ndigit,{cell[:16]},7,1,0.02,0.97\n"
         )
 
-    store._dups = ([], set())  # no cell reads: the test has no near-duplicates
+    store.review._dups = ([], set())  # no cell reads: the test has no near-duplicates
     one = Served(store, suspects=rank)
     try:
         assert one.post("/api/suspects", {}) == {"open": 1}
@@ -240,6 +241,67 @@ def test_the_sure_routes_confirm_the_sure_cells_of_one_tab(served_photos):
     assert one.get("/api/check/kinds?digit=2")["cells"] == []
     error = one.post("/api/check/digits/sure", {"digit": "7", "threshold": 0}, schema.ERROR, 400)
     assert "threshold" in error["error"]
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "field"),
+    [
+        ("GET", "/api/check/digits", "digit"),
+        ("GET", "/api/check/kinds?threshold=0.5", "digit"),
+        ("GET", "/api/outline", "photo"),
+        ("POST", "/api/check/digits/sure", "digit"),
+        ("POST", "/api/check/digits/confirm", "cells"),
+        ("POST", "/api/outlines/reject", "photo"),
+        ("POST", "/api/doubtful/save", "cells"),
+    ],
+)
+def test_a_missing_field_is_named_in_the_error(served, method, path, field):
+    one, _, _ = served
+    status, data = request(one.port, method, path, {} if method == "POST" else None)
+    assert status == 400
+    assert json.loads(data) == {"error": f"missing field '{field}'"}
+
+
+def test_a_body_that_is_not_an_object_gets_a_400(served):
+    one, _, _ = served
+    status, data = request(one.port, "POST", "/api/undo", [1, 2])
+    assert status == 400 and "JSON object" in json.loads(data)["error"]
+
+
+@pytest.mark.parametrize("corners", ["1,2,3", "a,b,c,d,e,f,g,h", "1,2,3,4,5,6,7,8,9"])
+def test_corners_of_the_flat_preview_are_checked(served, corners):
+    one, _, _ = served
+    status, data = request(one.port, "GET", f"/flat/abc.png?c={corners}")
+    assert status == 400 and "error" in json.loads(data)
+
+
+def test_the_threshold_forms_and_the_corners_parse():
+    assert threshold_of(Fields({"threshold": "0.9"})) == threshold_of(Fields({"threshold": 0.9}))
+    assert threshold_of(Fields()) == ()
+    assert corners_of(Fields({"c": "1,2,3,4,5,6,7,8"})) == [[1, 2], [3, 4], [5, 6], [7, 8]]
+    assert corners_of(Fields()) is None
+
+
+@pytest.mark.parametrize("corners", ["1,,2,3,4,5,6,7,8", "1+2+3+4+5+6+7+8", "1 2 3 4 5 6 7 8"])
+def test_the_corners_query_takes_commas_only(corners):
+    with pytest.raises(ValueError):
+        corners_of(Fields({"c": corners}))
+    with pytest.raises(ValueError, match="c needs 8 numbers"):
+        corners_of(Fields({"c": "1,2,3"}))
+
+
+def test_a_type_error_in_a_read_is_a_500_and_in_a_write_a_400(served, monkeypatch):
+    one, _, _ = served
+
+    def broken(self, *args):
+        raise TypeError("bug")
+
+    monkeypatch.setattr(LabelStore, "status", broken)
+    monkeypatch.setattr(LabelStore, "reject_outline", broken)
+    status, data = request(one.port, "GET", "/api/start")
+    assert status == 500 and "The server failed" in json.loads(data)["error"]
+    status, _ = request(one.port, "POST", "/api/outlines/reject", {"photo": "x"})
+    assert status == 400
 
 
 @pytest.mark.parametrize(

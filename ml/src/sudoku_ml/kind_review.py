@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sudoku_ml.journal import Line, format_time, undone_actions
+from sudoku_ml.journal import Field, Line, Screen, format_time, undone_actions
 from sudoku_ml.kind_check import CheckLine
 
 Current = Callable[[str, str], str | None]
@@ -16,7 +16,7 @@ _LABELLED = {"printed", "handwritten"}
 @dataclass(frozen=True)
 class ReviewItem:
     cell: str
-    field: str  # "kind" or "digit"
+    field: Field
     reason: str  # "near-duplicate", "kind-model", "digit-model" or "check"
     evidence: dict
     since: str  # time of the evidence. A review line at or after it closes the item
@@ -28,7 +28,7 @@ def near_duplicate_items(
     """Only direct pairs count: chains of near-duplicates join cells that do not look alike.
     The evidence time is the newest kind change in the journal. A pair of finished kinds has
     none, so it stays closed until one of its kinds changes."""
-    changed = {x.cell: x.t for x in lines if x.field == "kind" and x.screen != "review"}
+    changed = {x.cell: x.t for x in lines if x.field == Field.KIND and x.screen != Screen.REVIEW}
     items = []
     for pair in pairs:
         cells = sorted(pair)
@@ -36,7 +36,7 @@ def near_duplicate_items(
             continue
         since = max(changed.get(c, "") for c in cells)
         evidence = {"group": cells, "kinds": {c: kinds.get(c) for c in cells}}
-        items += [ReviewItem(c, "kind", "near-duplicate", evidence, since) for c in cells]
+        items += [ReviewItem(c, Field.KIND, "near-duplicate", evidence, since) for c in cells]
     return items
 
 
@@ -68,9 +68,9 @@ def model_items(
 
 def check_items(checks: list[CheckLine], current: Current) -> list[ReviewItem]:
     return [
-        ReviewItem(c.cell, "kind", "check", {"label": c.label, "answer": c.answer}, c.t)
+        ReviewItem(c.cell, Field.KIND, "check", {"label": c.label, "answer": c.answer}, c.t)
         for c in checks
-        if c.answer != c.label and current(c.cell, "kind") == c.label
+        if c.answer != c.label and current(c.cell, Field.KIND) == c.label
     ]
 
 
@@ -82,7 +82,7 @@ def open_items(
     undone = undone_actions(lines)
     reviewed: dict[tuple[str, str], str] = {}
     for x in lines:
-        if x.screen == "review" and x.action not in undone:
+        if x.screen == Screen.REVIEW and x.action not in undone:
             reviewed[(x.cell, x.field)] = max(reviewed.get((x.cell, x.field), ""), x.t)
     return [
         i for i in items if i.since > last_finish and reviewed.get((i.cell, i.field), "") < i.since

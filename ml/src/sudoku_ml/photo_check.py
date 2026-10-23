@@ -4,14 +4,12 @@ store. The decision is the `status` column of sudoku-photos.csv. The cut adds a 
 the journal per new cell."""
 
 import sys
-import uuid
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 
 import cv2
 import numpy as np
-from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.flatten import (
@@ -23,18 +21,19 @@ from sudoku_ml.flatten import (
     warp_grid,
 )
 from sudoku_ml.journal import (
-    Line,
+    Screen,
     append_records,
-    format_source,
     format_time,
 )
+from sudoku_ml.label_lines import Action
 from sudoku_ml.photo_import import read_detections, write_detections
 from sudoku_ml.tables import (
     PhotoRow,
     format_corners,
-    pixel_id,
+    pixel_id_of,
     read_photos,
     stem_of,
+    write_cell_image,
     write_photos,
 )
 
@@ -117,29 +116,23 @@ class PhotoCheck:
             return {"decision": "too-few-cells", "cells": 0, "duplicates": 0, "new_cells": []}
         target = self.paths.cells / "unlabeled"
         target.mkdir(parents=True, exist_ok=True)
-        # A cut outside cells/ that is renamed in: a stop never leaves a misnamed cell in a
-        # cell folder (ADR-009).
-        self.paths.tmp.mkdir(parents=True, exist_ok=True)
         existing = {p.stem for p in self.paths.cells.glob("*/*.png")}
         new_cells, links, duplicates = [], [], 0
         self._cuts += 1
-        t, action = format_time(self._now()), f"{self.session}-cut-{self._cuts}"
+        action = Action(format_time(self._now()), self.session, f"{self.session}-cut-{self._cuts}")
         cells = slice_cells(warp_grid(self._image(stem), checked))
         for n, (cell, ok) in enumerate(zip(cells, usable, strict=True)):
             if not ok:
                 continue
-            tmp = self.paths.tmp / f"{uuid.uuid4().hex}.png"
-            Image.fromarray(cell).save(tmp)
-            cell_id = pixel_id(tmp)
+            cell_id = pixel_id_of(cell)
             if stem_of(cell_id) in existing:
-                tmp.unlink()
                 duplicates += 1
                 continue
-            tmp.replace(target / f"{stem_of(cell_id)}.png")
+            write_cell_image(cell, target, stem_of(cell_id), self.paths.tmp)
             existing.add(stem_of(cell_id))
             new_cells.append(cell_id)
-            source = format_source((row.photo_id, *divmod(n, GRID_CELLS)))
-            links.append(Line(t, self.session, action, cell_id, "source", None, source, "photos"))
+            source = (row.photo_id, *divmod(n, GRID_CELLS))
+            links.append(action.source(cell_id, source, Screen.PHOTOS))
         # The links before the status: a stop between the two leaves the sudoku photo pending,
         # and its next cut skips the cells that exist.
         if links:
