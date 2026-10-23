@@ -2,14 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import * as Haptics from 'expo-haptics'
 import { useReducedMotion } from 'react-native-reanimated'
 import type { CaptureResult } from '@/scan/utils/captureResult.utils'
-import { okResult, review } from '@/scan/scanTestKit'
-import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzleTestKit'
+import { okResult, review } from '@/scan/scan.testkit'
+import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzle.testkit'
 import * as playUtils from '@/scan/utils/play.utils'
 import type { ScannedStart } from '@/scan/utils/play.utils'
 import { cobalt } from '@/theme/themes/cobalt'
 import { CorrectionScreen } from './CorrectionScreen'
-import { capturing } from '@/scan/scanTestKit'
-import { clock, entering, flowScan, given, layout, press, style, ui } from './CorrectionScreen.testKit'
+import { capturing } from '@/scan/scan.testkit'
+import { clock, entering, flowScan, given, layout, press, style, ui } from './CorrectionScreen.testkit'
 
 describe('CorrectionScreen check flow', () => {
   it('opens the first cell to check from the summary, with the progress and the question', () => {

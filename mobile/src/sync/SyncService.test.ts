@@ -2,7 +2,7 @@ import type { GameStorage } from '@/storage'
 import { MAX_FOLLOW_UP_RUNS, MAX_ROUNDS } from './constants/sync.constants'
 import { createSyncService } from './SyncService'
 import type { SyncApi } from './syncApi'
-import { ALICE, BOB, createTestStorage, fakeServer, finishGame, noSleep, scriptedApi } from './syncTestKit'
+import { ALICE, BOB, createTestStorage, fakeServer, finishGame, noSleep, scriptedApi } from './sync.testkit'
 import type { SyncApiResult, SyncSession } from './sync.types'
 
 let storage: GameStorage

@@ -1,7 +1,7 @@
 import { addNetworkStateListener } from 'expo-network'
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
-import { useScanShare } from '@/scanShare/useScanShare'
+import { useScanShare } from '@/scanShare/hooks/useScanShare'
 
 /** Sends the waiting scans at app start, when the app comes back to the front and when the phone gets a connection. Renders nothing. */
 export function ScanShareDrainer() {

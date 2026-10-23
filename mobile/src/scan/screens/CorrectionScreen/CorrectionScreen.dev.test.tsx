@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import type { CaptureOk, CaptureResult } from '@/scan/utils/captureResult.utils'
-import { capturing, okResult, review } from '@/scan/scanTestKit'
+import { capturing, okResult, review } from '@/scan/scan.testkit'
 import { cobalt } from '@/theme/themes/cobalt'
 import { CorrectionScreen } from './CorrectionScreen'
-import { clock, given, layout, press, shaky, style } from './CorrectionScreen.testKit'
+import { clock, given, layout, press, shaky, style } from './CorrectionScreen.testkit'
 
 jest.mock('@/scan/components/ScanInspector', () => {
   const { View } = jest.requireActual('react-native')

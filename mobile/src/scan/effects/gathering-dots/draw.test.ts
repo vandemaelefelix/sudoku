@@ -3,15 +3,13 @@ import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, stepScene } from '@/scan/effects/scene'
 import { drawField } from './draw'
 import { createField, stepField } from './field'
-import type { Quad } from '@/utils/geometry.utils'
 import { TRANSITION_END } from '@/scan/constants/transition.constants'
 import { DIM, STAR_SCALE } from './gathering-dots.constants'
 import { SPRITE_SIZE } from '@/scan/effects/common/common.constants'
 import { cobalt } from '@/theme/themes/cobalt'
+import { fakeCanvas, GRID, VIEW } from '@/scan/effects/effect.testkit'
 
 const INK = cobalt.components.grid.boxLine
-
-const VIEW = { width: 402, height: 874 }
 
 function itemAt<T>(items: readonly T[], index: number): T {
   const item = items[index]
@@ -19,22 +17,11 @@ function itemAt<T>(items: readonly T[], index: number): T {
   return item
 }
 
-function fakeCanvas() {
-  return { drawAtlas: jest.fn(), drawPath: jest.fn() }
-}
-
 function world() {
   return { scene: createScene(VIEW), field: createField(VIEW), kit: makeDrawKit([], INK) }
 }
 
 const fillOf = (kit: ReturnType<typeof makeDrawKit>) => kit.fill as unknown as { setAlphaf: jest.Mock }
-
-const grid: Quad = [
-  { x: 50, y: 300 },
-  { x: 350, y: 300 },
-  { x: 350, y: 600 },
-  { x: 50, y: 600 },
-]
 
 describe('drawField', () => {
   it('draws every dot with one atlas call, with the sprite and the paint of the kit', () => {
@@ -92,7 +79,7 @@ describe('drawField', () => {
   it('keeps the same even dim over the grid once the grid is found', () => {
     const w = world()
     for (let t = 0; t <= 1; t += 1 / 60) {
-      stepScene(w.scene, grid, t, false)
+      stepScene(w.scene, GRID, t, false)
       stepField(w.field, w.scene)
     }
     const canvas = fakeCanvas()
@@ -107,7 +94,7 @@ describe('drawField', () => {
 function captured(channels: Channels) {
   const w = world()
   for (let t = 0; t <= 2.5; t += 1 / 60) {
-    stepScene(w.scene, grid, t, false)
+    stepScene(w.scene, GRID, t, false)
     stepField(w.field, w.scene)
   }
   w.scene.presence = 0.5

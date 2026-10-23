@@ -1,8 +1,8 @@
 import { Directory, File } from 'expo-file-system'
 import type { Quad } from '@/utils/geometry.utils'
-import type { CaptureOk } from './captureResult.utils'
-import { cellLook } from './correction.utils'
-import { finalGrid } from './finalGrid.utils'
+import type { CaptureOk } from '@/scan/utils/captureResult.utils'
+import { cellLook } from '@/scan/utils/correction.utils'
+import { finalGrid } from '@/scan/utils/finalGrid.utils'
 import { saveScanCorrection } from './correctionStore'
 
 jest.mock('expo-file-system', () => ({

@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native'
 import { useIntl } from '@/i18n/hooks/useIntl'
-import { shortId, versionLabel } from '@/scanShare/scanConfig'
-import { useContributorId } from '@/scanShare/useScanShare'
+import { shortId, versionLabel } from '@/utils/appInfo.utils'
+import { useContributorId } from '@/scanShare/hooks/useContributorId'
 import { styles } from './SettingsFooter.styles'
 
 /** The app version and the short contributor ID. A player who wants the scans deleted sends the ID (ADR-030). */

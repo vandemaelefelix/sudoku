@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react-native'
-import { okResult, printed } from '@/scan/scanTestKit'
+import { okResult, printed } from '@/scan/scan.testkit'
 import { cellLook } from '@/scan/utils/correction.utils'
 import { useExitReport } from './useExitReport'
 

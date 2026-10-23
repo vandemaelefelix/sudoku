@@ -1,32 +1,6 @@
-import { useSignIn } from '@clerk/expo'
+import { fakeSignIn } from '@/account/account.testkit'
 import { act, renderHook } from '@testing-library/react-native'
 import { useEmailSignIn } from './useEmailSignIn'
-
-type Result = { error: unknown }
-const ok = async (): Promise<Result> => ({ error: null })
-
-function fakeSignIn(statusAfterPassword: string, supportedFirstFactors: { strategy: string }[] = []) {
-  const signIn = {
-    status: 'needs_identifier',
-    supportedFirstFactors,
-    password: jest.fn(async (): Promise<Result> => {
-      signIn.status = statusAfterPassword
-      return { error: null }
-    }),
-    mfa: {
-      sendEmailCode: jest.fn(ok),
-      verifyEmailCode: jest.fn(async () => {
-        signIn.status = 'complete'
-        return { error: null }
-      }),
-    },
-    finalize: jest.fn(ok),
-  }
-  jest
-    .mocked(useSignIn)
-    .mockReturnValue({ signIn, fetchStatus: 'idle', errors: {} } as unknown as ReturnType<typeof useSignIn>)
-  return signIn
-}
 
 it('finishes at once when Clerk says complete', async () => {
   const signIn = fakeSignIn('complete')

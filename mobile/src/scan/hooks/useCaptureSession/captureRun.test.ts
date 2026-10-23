@@ -1,7 +1,7 @@
 import type { SkImage } from '@shopify/react-native-skia'
 import type { Photo } from 'react-native-vision-camera'
 import { createScanner, type RecogniseResult } from '@/scanner'
-import { deletePickedImage, saveUprightPhoto } from '@/scan/utils/photoFile'
+import { deletePickedImage, saveUprightPhoto } from '@/scan/photoFile'
 import { photoToSkImage } from '@/scan/utils/photoImage.utils'
 import type { Quad } from '@/utils/geometry.utils'
 import type { Change } from './captureAttempt'
@@ -9,7 +9,7 @@ import { type RunContext, runCapture, runImport } from './captureRun'
 
 const mockStillImage = { dispose: jest.fn() }
 const mockStill = { toImageAsync: jest.fn(async () => mockStillImage) }
-jest.mock('@/scan/utils/photoFile', () => ({
+jest.mock('@/scan/photoFile', () => ({
   saveUprightPhoto: jest.fn(async () => '/tmp/photo.jpg'),
   stillPhoto: jest.fn(() => mockStill),
   deletePickedImage: jest.fn(),

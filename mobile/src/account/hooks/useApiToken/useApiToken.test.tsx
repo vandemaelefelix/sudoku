@@ -1,38 +1,20 @@
-import { useAuth } from '@clerk/expo'
 import { renderHook } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
+import { clerkSignedIn, clerkSignedOut } from '@/account/account.testkit'
 import { AccountProvider } from '@/account/components/AccountProvider'
 import { useApiToken } from './useApiToken'
-
-type AuthResult = ReturnType<typeof useAuth>
 
 function Configured({ children }: { children: ReactNode }) {
   return <AccountProvider publishableKey="pk_test_abc">{children}</AccountProvider>
 }
 
-function signedInWith(getToken: jest.Mock) {
-  jest.mocked(useAuth).mockReturnValue({
-    isLoaded: true,
-    isSignedIn: true,
-    userId: 'user_alice',
-    getToken,
-    signOut: jest.fn(),
-  } as unknown as AuthResult)
-}
-
 beforeEach(() => {
-  jest.mocked(useAuth).mockReturnValue({
-    isLoaded: true,
-    isSignedIn: false,
-    userId: null,
-    getToken: jest.fn(),
-    signOut: jest.fn(),
-  } as unknown as AuthResult)
+  clerkSignedOut()
 })
 
 it('asks Clerk for a sudoku-api token on every call', async () => {
   const getToken = jest.fn(async () => 'token-1')
-  signedInWith(getToken)
+  clerkSignedIn('user_alice', { getToken })
   const { result } = renderHook(() => useApiToken(), { wrapper: Configured })
   await expect(result.current()).resolves.toBe('token-1')
   await expect(result.current()).resolves.toBe('token-1')
@@ -51,11 +33,10 @@ it('gives null without a publishable key', async () => {
 })
 
 it('gives null when Clerk cannot give a token, for example offline', async () => {
-  signedInWith(
-    jest.fn(async () => {
-      throw new Error('offline')
-    }),
-  )
+  const getToken = jest.fn(async () => {
+    throw new Error('offline')
+  })
+  clerkSignedIn('user_alice', { getToken })
   const { result } = renderHook(() => useApiToken(), { wrapper: Configured })
   await expect(result.current()).resolves.toBeNull()
 })

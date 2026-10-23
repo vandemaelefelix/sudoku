@@ -4,30 +4,10 @@ import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import { ripples } from './ripples.effect'
 import { RIPPLES_SKSL } from './shader'
 import { rippleUniforms } from './uniforms'
-import type { Quad } from '@/utils/geometry.utils'
 import { cobalt } from '@/theme/themes/cobalt'
+import { fakeCanvas, foundScene, VIEW } from '@/scan/effects/effect.testkit'
 
 const INK = cobalt.components.grid.boxLine
-
-const VIEW = { width: 402, height: 874 }
-
-const grid: Quad = [
-  { x: 50, y: 300 },
-  { x: 350, y: 300 },
-  { x: 350, y: 600 },
-  { x: 50, y: 600 },
-]
-
-/** A scene one second after the grid was found, so presence is 1. */
-function found(): Scene {
-  const scene = createScene(VIEW)
-  for (let t = 0; t <= 1; t += 1 / 60) stepScene(scene, grid, t, false)
-  return scene
-}
-
-function fakeCanvas() {
-  return { drawRect: jest.fn() }
-}
 
 type MockShaderEffect = { makeShader: jest.Mock }
 
@@ -42,7 +22,7 @@ function drawnUniforms(scene: Scene) {
 
 describe('rippleUniforms', () => {
   it('gives the 15 floats in the order of the shader uniforms', () => {
-    const scene = { ...found(), lockProgress: 0.6 }
+    const scene = { ...foundScene(), lockProgress: 0.6 }
     const u = rippleUniforms(scene, scene.inverse!, 2.5)
     expect(u).toHaveLength(15)
     expect(u.slice(0, 9)).toEqual(toColumnMajor(scene.inverse!))
@@ -55,7 +35,7 @@ describe('rippleUniforms', () => {
   })
 
   it('stops the burst ring under Reduce Motion', () => {
-    const scene = { ...found(), reduceMotion: true, lockedAt: 0.25 }
+    const scene = { ...foundScene(), reduceMotion: true, lockedAt: 0.25 }
     expect(rippleUniforms(scene, IDENTITY, 0)[13]).toBe(-1)
   })
 })
@@ -66,7 +46,7 @@ describe('ripples', () => {
     expect(ripples.name).toBe('Ripples')
     expect(ripples.family).toBe('screen')
     expect(ripples.sksl).toBe(RIPPLES_SKSL)
-    const scene = found()
+    const scene = foundScene()
     const clock = ripples.create(scene)
     expect(clock.start).toBe(scene.t)
     expect(ripples.step(clock, scene)).toBe(clock)
@@ -81,14 +61,14 @@ describe('ripples', () => {
   })
 
   it('sends the waves out from the grid once it is found', () => {
-    const scene = found()
+    const scene = foundScene()
     const { uniforms } = drawnUniforms(scene)
     expect(uniforms.slice(0, 9)).toEqual(toColumnMajor(scene.inverse!))
     expect(uniforms[11]).toBe(1)
   })
 
   it('stops its time under Reduce Motion', () => {
-    const scene = found()
+    const scene = foundScene()
     const kit = makeDrawKit([ripples], INK)
     ripples.draw(fakeCanvas() as never, ripples.create(scene), { ...scene, t: scene.t + 2, reduceMotion: true }, kit)
     const effect = kit.shaders.ripples as unknown as MockShaderEffect
@@ -96,7 +76,7 @@ describe('ripples', () => {
   })
 
   it('draws nothing when its shader did not compile', () => {
-    const scene = found()
+    const scene = foundScene()
     const canvas = fakeCanvas()
     ripples.draw(canvas as never, ripples.create(scene), scene, makeDrawKit([], INK))
     expect(canvas.drawRect).not.toHaveBeenCalled()

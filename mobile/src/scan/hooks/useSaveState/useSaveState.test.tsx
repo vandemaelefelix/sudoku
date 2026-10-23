@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
-import { okResult, printed } from '@/scan/scanTestKit'
+import { okResult, printed } from '@/scan/scan.testkit'
 import { cellLook } from '@/scan/utils/correction.utils'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import { useSaveState } from './useSaveState'

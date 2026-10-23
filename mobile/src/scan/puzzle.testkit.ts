@@ -1,7 +1,7 @@
 import { type Digit, generate } from '@sudoku/core'
 import type { CellResult } from '@/scanner'
 import type { CaptureOk } from '@/scan/utils/captureResult.utils'
-import { okResult } from '@/scan/scanTestKit'
+import { okResult } from '@/scan/scan.testkit'
 
 /** A hard puzzle with a fixed seed. */
 export const puzzle = generate('hard', 5)

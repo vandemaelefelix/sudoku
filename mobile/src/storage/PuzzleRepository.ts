@@ -1,6 +1,6 @@
 import { fromSavedGame, hasMoves, toSavedGame, type Game } from '@sudoku/core'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import { insertHistoryEntry } from './HistoryRepository'
+import { insertHistoryEntry } from './historySql'
 import type { SqlDatabase, SqlExecutor } from './sql.types'
 import type { GameResult, Level, PuzzleSource, SavedProgress, StorageDeps } from './storage.types'
 import type { WriteQueue } from './writeQueue'

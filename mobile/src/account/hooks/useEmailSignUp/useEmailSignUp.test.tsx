@@ -1,27 +1,6 @@
-import { useSignUp } from '@clerk/expo'
+import { fakeSignUp } from '@/account/account.testkit'
 import { act, renderHook } from '@testing-library/react-native'
 import { useEmailSignUp } from './useEmailSignUp'
-
-type Result = { error: unknown }
-const ok = async (): Promise<Result> => ({ error: null })
-
-function fakeSignUp(overrides: Record<string, unknown> = {}) {
-  const signUp = {
-    status: 'missing_requirements',
-    password: jest.fn(ok),
-    verifications: { sendEmailCode: jest.fn(ok), verifyEmailCode: jest.fn(ok) },
-    finalize: jest.fn(ok),
-    ...overrides,
-  }
-  signUp.verifications.verifyEmailCode.mockImplementation(async () => {
-    signUp.status = 'complete'
-    return { error: null }
-  })
-  jest
-    .mocked(useSignUp)
-    .mockReturnValue({ signUp, fetchStatus: 'idle', errors: {} } as unknown as ReturnType<typeof useSignUp>)
-  return signUp
-}
 
 function fieldError(code: string, paramName: string) {
   return { error: { code: 'api_response_error', errors: [{ code, message: 'raw', meta: { paramName } }] } }

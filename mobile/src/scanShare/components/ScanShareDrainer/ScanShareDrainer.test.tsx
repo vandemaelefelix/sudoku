@@ -3,7 +3,7 @@ import { AppState } from 'react-native'
 import { ScanShareDrainer } from './ScanShareDrainer'
 
 const mockDrain = jest.fn(async () => undefined)
-jest.mock('@/scanShare/useScanShare', () => ({ useScanShare: () => ({ drainQueue: mockDrain }) }))
+jest.mock('@/scanShare/hooks/useScanShare', () => ({ useScanShare: () => ({ drainQueue: mockDrain }) }))
 
 let appListener: (state: string) => void = () => undefined
 let networkListener: (state: { isConnected?: boolean }) => void = () => undefined

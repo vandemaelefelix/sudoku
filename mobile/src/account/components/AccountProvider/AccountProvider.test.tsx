@@ -8,20 +8,14 @@ import { Text } from 'react-native'
 import { useAccount } from '@/account/hooks/useAccount'
 import { useOwner } from '@/storage/hooks/useOwner'
 import { OWNER_CACHE_KEY, PENDING_SIGN_OUT_KEY } from '@/account/constants/account.constants'
+import { clerkSignedIn, clerkSignedOut } from '@/account/account.testkit'
 import { AccountProvider } from './AccountProvider'
 
 type AuthResult = ReturnType<typeof useAuth>
 type UserResult = ReturnType<typeof useUser>
 
 function signedIn(userId: string, email: string) {
-  const signOut = jest.fn(async () => undefined)
-  jest.mocked(useAuth).mockReturnValue({
-    isLoaded: true,
-    isSignedIn: true,
-    userId,
-    getToken: jest.fn(),
-    signOut,
-  } as unknown as AuthResult)
+  const signOut = clerkSignedIn(userId)
   jest.mocked(useUser).mockReturnValue({
     isLoaded: true,
     isSignedIn: true,
@@ -31,13 +25,7 @@ function signedIn(userId: string, email: string) {
 }
 
 function signedOut() {
-  jest.mocked(useAuth).mockReturnValue({
-    isLoaded: true,
-    isSignedIn: false,
-    userId: null,
-    getToken: jest.fn(),
-    signOut: jest.fn(),
-  } as unknown as AuthResult)
+  clerkSignedOut()
   jest.mocked(useUser).mockReturnValue({ isLoaded: true, isSignedIn: false, user: null } as UserResult)
 }
 
@@ -208,13 +196,7 @@ describe('the owner before Clerk has loaded (ADR-028)', () => {
 
   it('asks Clerk to skip its token cache when the caller wants a fresh token', async () => {
     const getToken = jest.fn(async () => 'jwt')
-    jest.mocked(useAuth).mockReturnValue({
-      isLoaded: true,
-      isSignedIn: true,
-      userId: 'user_alice',
-      getToken,
-      signOut: jest.fn(),
-    } as unknown as AuthResult)
+    clerkSignedIn('user_alice', { getToken })
     jest.mocked(useUser).mockReturnValue({
       isLoaded: true,
       isSignedIn: true,

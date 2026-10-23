@@ -1,8 +1,8 @@
 import type { RecogniseResult } from '@/scanner'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import { buildRecord } from './buildRecord'
-import type { CroppedPhoto } from './cropPhoto'
+import { buildRecord } from './utils/buildRecord.utils'
+import type { CroppedPhoto } from './utils/cropPhoto.utils'
 import type { ScanQueue } from './queue'
 
 export type ScanShareDeps = {

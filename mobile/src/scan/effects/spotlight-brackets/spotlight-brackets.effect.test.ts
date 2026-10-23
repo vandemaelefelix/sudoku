@@ -1,28 +1,15 @@
 import { makeDrawKit } from '@/scan/effects/kit'
 import { createScene, type Scene, stepScene } from '@/scan/effects/scene'
 import { bracketPath, spotlightBrackets } from './spotlight-brackets.effect'
-import type { Quad } from '@/utils/geometry.utils'
 import { BRACKET_BASE, BRACKET_STEADY, BRACKET_WIDTH, DIM_BASE, DIM_STEADY } from './spotlight-brackets.constants'
 import { cobalt } from '@/theme/themes/cobalt'
+import { fakeCanvas, GRID, VIEW } from '@/scan/effects/effect.testkit'
 
 const INK = cobalt.components.grid.boxLine
 
-const VIEW = { width: 402, height: 874 }
-
-const grid: Quad = [
-  { x: 50, y: 300 },
-  { x: 350, y: 300 },
-  { x: 350, y: 600 },
-  { x: 50, y: 600 },
-]
-
 /** A scene with the grid found, at the given presence and lock-on progress. */
 function sceneWith(presence: number, lockProgress: number): Scene {
-  return { ...stepScene(createScene(VIEW), grid, 0, false), presence, lockProgress }
-}
-
-function fakeCanvas() {
-  return { drawPath: jest.fn() }
+  return { ...stepScene(createScene(VIEW), GRID, 0, false), presence, lockProgress }
 }
 
 const mocked = (paint: unknown) => paint as { setAlphaf: jest.Mock; setStrokeWidth: jest.Mock }
@@ -84,7 +71,7 @@ describe('spotlightBrackets', () => {
 
 describe('bracketPath', () => {
   it('draws an L on each corner, along both edges', () => {
-    const path = bracketPath(grid, 0.5) as unknown as { calls: unknown[][] }
+    const path = bracketPath(GRID, 0.5) as unknown as { calls: unknown[][] }
     expect(path.calls.slice(0, 3)).toEqual([
       ['moveTo', 50, 450],
       ['lineTo', 50, 300],

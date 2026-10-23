@@ -10,6 +10,7 @@ import { cobalt } from '@/theme/themes/cobalt'
 import { forest } from '@/theme/themes/forest'
 import { DEFAULT_INDEX, effectIndex } from '@/scan/effects/registry'
 import type { Quad, ViewSize } from '@/utils/geometry.utils'
+import { GRID, VIEW } from '@/scan/effects/effect.testkit'
 
 // Test effects stand in for the registry, so removing a real effect cannot break these tests.
 jest.mock('@/scan/effects/registry', () => {
@@ -75,15 +76,6 @@ jest.mock('@/scan/effects/registry', () => {
 const frameCallback = jest.mocked(useFrameCallback)
 const picture = jest.mocked(createPicture)
 const reducedMotion = jest.mocked(useReducedMotion)
-
-const VIEW = { width: 402, height: 874 }
-
-const grid: Quad = [
-  { x: 50, y: 300 },
-  { x: 350, y: 300 },
-  { x: 350, y: 600 },
-  { x: 50, y: 600 },
-]
 
 /** A shared value stand-in. get() reads value, so a test can change value between frames with Object.assign. */
 function shared<T>(value: T) {
@@ -221,7 +213,7 @@ describe('EffectCanvas', () => {
   })
 
   it('switches to another effect on the next frame and draws nothing of the old one', () => {
-    const props = renderCanvas(VIEW, DEFAULT_INDEX, grid)
+    const props = renderCanvas(VIEW, DEFAULT_INDEX, GRID)
     tick(1)
     expect(lastFrame().drawAtlas).toHaveBeenCalledTimes(1)
     Object.assign(props.effect, { value: effectIndex('beta') })
@@ -232,7 +224,7 @@ describe('EffectCanvas', () => {
   })
 
   it('gives an effect with a runtime shader its compiled shader', () => {
-    renderCanvas(VIEW, effectIndex('gamma'), grid)
+    renderCanvas(VIEW, effectIndex('gamma'), GRID)
     tick(1)
     expect(lastFrame().drawRect).toHaveBeenCalledTimes(1)
   })
@@ -242,7 +234,7 @@ describe('EffectCanvas', () => {
     jest.mocked(Skia.RuntimeEffect.Make).mockImplementationOnce(() => {
       throw new Error('Error in sksl: bad')
     })
-    renderCanvas(VIEW, effectIndex('gamma'), grid)
+    renderCanvas(VIEW, effectIndex('gamma'), GRID)
     tick(1)
     tick(1 + 1 / 60)
     expect(lastFrame().drawRect).not.toHaveBeenCalled()
@@ -284,7 +276,7 @@ describe('lock-on', () => {
     const startCapture = jest.fn()
     render(
       <EffectCanvas
-        outline={fresh(grid)}
+        outline={fresh(GRID)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(NORMALISED)}
@@ -309,7 +301,7 @@ describe('the lock log', () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {})
     render(
       <EffectCanvas
-        outline={fresh(grid)}
+        outline={fresh(GRID)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
@@ -333,7 +325,7 @@ describe('the lock log', () => {
     const startCapture = jest.fn()
     render(
       <EffectCanvas
-        outline={fresh(grid)}
+        outline={fresh(GRID)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
@@ -353,7 +345,7 @@ describe('the lock log', () => {
     const value = shared<CaptureFrame | null>(null)
     render(
       <EffectCanvas
-        outline={fresh(grid)}
+        outline={fresh(GRID)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}
@@ -362,7 +354,7 @@ describe('the lock log', () => {
     )
     const callback = frameCallback.mock.calls.at(-1)![0]
     callback({ timestamp: 0 } as never)
-    Object.assign(value, { value: { quad: grid, grid, channels: transitionAt(0.2, false) } })
+    Object.assign(value, { value: { quad: GRID, grid: GRID, channels: transitionAt(0.2, false) } })
     // The first frame logs in the live phase. The worklets mock delivers it in a microtask, so wait before the clear.
     await new Promise((resolve) => setImmediate(resolve))
     log.mockClear()
@@ -390,7 +382,7 @@ describe('the clock step', () => {
     const stepClock = jest.fn(() => order.push('clock'))
     render(
       <EffectCanvas
-        outline={shared<Quad | null>(grid)}
+        outline={shared<Quad | null>(GRID)}
         view={shared(VIEW)}
         effect={shared(DEFAULT_INDEX)}
         frameQuad={shared<Quad | null>(null)}
@@ -434,10 +426,10 @@ describe('the capture phase', () => {
     const value = shared<CaptureFrame | null>(null)
     render(
       <EffectCanvas
-        outline={fresh(grid)}
+        outline={fresh(GRID)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
-        frameQuad={constant<Quad | null>(grid)}
+        frameQuad={constant<Quad | null>(GRID)}
         session={sessionOf({ startCapture, captureFrame: value })}
       />,
     )
@@ -459,7 +451,7 @@ describe('the capture phase', () => {
     const capture = advanceCaptureSpy()
     render(
       <EffectCanvas
-        outline={constant<Quad | null>(grid)}
+        outline={constant<Quad | null>(GRID)}
         view={constant(VIEW)}
         effect={constant(DEFAULT_INDEX)}
         frameQuad={constant<Quad | null>(null)}

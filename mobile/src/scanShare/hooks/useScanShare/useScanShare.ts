@@ -1,10 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { useAccount } from '@/account/hooks/useAccount'
 import { useSettingValue } from '@/preferences/hooks/useSettingValue'
-import { versionLabel } from './scanConfig'
-import { contributorId, drainQueue, scanShare, setTokenSource } from './scanShareRuntime'
-import { noticeStore } from './noticeStore'
-import { shareStore } from './shareStore'
+import { noticeStore } from '@/scanShare/noticeStore'
+import { drainQueue, scanShare } from '@/scanShare/scanShareRuntime'
+import { setTokenSource } from '@/scanShare/tokenSource'
+import { shareStore } from '@/scanShare/shareStore'
+import { versionLabel } from '@/utils/appInfo.utils'
 
 /**
  * The scan sharing of the player (ADR-030). `on` is the "Help improve the app" switch. Turning it off clears the queue.
@@ -27,19 +28,4 @@ export function useScanShare() {
     drainQueue,
     version: versionLabel(),
   }
-}
-
-/** The contributor ID of this device, or null until it is read. */
-export function useContributorId(): string | null {
-  const [id, setId] = useState<string | null>(null)
-  useEffect(() => {
-    let live = true
-    contributorId()
-      .then((value) => live && setId(value))
-      .catch(() => undefined)
-    return () => {
-      live = false
-    }
-  }, [])
-  return id
 }
