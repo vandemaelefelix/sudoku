@@ -108,6 +108,12 @@ there.
 | `<Name>.test.tsx` | The tests |
 | `index.ts` | Named re-exports of the folder's public items. Nothing else |
 
+A service module has no UI: a repository, a store, a queue or an API client. It may sit at the feature
+root. Every hook goes in `hooks/<name>/`, also when only one module uses it. Pure code goes in `utils/`.
+
+Test code that is not a test sits in a test kit: a file named `<name>.testkit.ts`. A test kit holds fixtures and
+fakes that more than one test file uses. Jest does not collect it as a test. No production file imports it.
+
 Code that more than one feature uses lives in `src/utils/` and `src/constants/`. The scanner keeps
 its own files behind `src/scanner/index.ts` (SUD-05). `src/scan/effects/` keeps one folder per
 effect: `<name>.effect.ts`, `<name>.constants.ts` and an `index.ts`. The effect list is
