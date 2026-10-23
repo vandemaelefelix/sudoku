@@ -13,7 +13,7 @@ import {
 } from '@aws-sdk/client-lambda'
 import { PublishCommand, type SNSClient } from '@aws-sdk/client-sns'
 import { DeleteParameterCommand, PutParameterCommand, type SSMClient } from '@aws-sdk/client-ssm'
-import { killSwitchFlagName, type FlagValue } from './flag.ts'
+import { API_FUNCTION_NAMES, APP_NAME, killSwitchFlagName, type FlagValue } from './flag.ts'
 import type { KillSwitchDeps } from './killSwitch.ts'
 import type { Throttle, TurnOnDeps } from './turnOn.ts'
 
@@ -24,12 +24,10 @@ export interface AwsClients {
   sns: Pick<SNSClient, 'send'>
 }
 
-// SST names a function `<app>-<stage>-<logical name><hash>`. The kill-switch Lambda has the tags of
-// the production stage too, so the name picks the API functions and never the kill switch itself (ADR-030: two functions).
-const apiFunctionPrefixes = (stage: string): string[] => [
-  `sudoku-${stage}-SyncApiFunction`,
-  `sudoku-${stage}-ScansFunction`,
-]
+// The kill-switch Lambda has the tags of the production stage too, so the name picks the API functions
+// and never the kill switch itself.
+const apiFunctionPrefixes = (stage: string): string[] =>
+  Object.values(API_FUNCTION_NAMES).map((name) => `${APP_NAME}-${stage}-${name}`)
 
 // The log and the summary name the failing call and the AWS error. A message alone can be empty.
 async function named<T>(call: string, step: () => Promise<T>): Promise<T> {
@@ -86,7 +84,7 @@ export function createAwsOps(clients: AwsClients, options: { alertTopicArn?: str
         // oxlint-disable-next-line eslint/no-await-in-loop -- Each page needs the token of the page before it.
         const page = await named('GetApis', () => apigw.send(new GetApisCommand({ NextToken: token })))
         for (const api of page.Items ?? []) {
-          if (api.ApiId && api.Tags?.project === 'sudoku' && api.Tags.stage === stage) ids.push(api.ApiId)
+          if (api.ApiId && api.Tags?.project === APP_NAME && api.Tags.stage === stage) ids.push(api.ApiId)
         }
         token = page.NextToken
       } while (token)

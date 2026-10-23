@@ -1,8 +1,14 @@
-import { MAX_JPEG_BYTES, validateScanRecord } from '@sudoku/scan-contract'
+import {
+  APP_KEY_HEADER,
+  JPEG_BYTES_HEADER,
+  MAX_JPEG_BYTES,
+  validateScanRecord,
+  type ScanAnswer,
+} from '@sudoku/scan-contract'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 import type { SyncDeps } from '../deps'
-import { errorResponse, json, serverError, unauthorized, type Response } from '../http'
-import { AccountDeleted, findOrCreateUserId } from '../identity'
+import { json, observe, parseJsonBody, refuse, unauthorized, type Response } from '../http'
+import { findOrCreateUserId } from '../identity'
 import type { LogFields, Logger } from '../log'
 import { photoKey } from '../tableDesign'
 import { hasAppKey } from './appKey'
@@ -18,36 +24,20 @@ export interface ScanDeps extends Pick<SyncDeps, 'db' | 'tableName' | 'now' | 'n
 
 // POST /v1/scans (ADR-030). No JWT authorizer: the app key gates the call, and a token only adds the owner.
 // A bad token answers 401, never a silent downgrade: the app retries once without the header.
-export async function handleScan(deps: ScanDeps, event: APIGatewayProxyEventV2): Promise<Response> {
-  const started = performance.now()
-  const fields: LogFields = { requestId: event.requestContext.requestId, routeKey: event.requestContext.routeKey }
-  let response: Response
-  try {
-    response = await scan(deps, event, fields)
-  } catch (error) {
-    // Only the name: a DynamoDB message can hold a key.
-    fields.errorName = error instanceof Error ? error.name : 'Unknown'
-    response = serverError()
-  }
-  deps.log({ ...fields, status: response.statusCode, durationMs: Math.round(performance.now() - started) })
-  return response
+export function handleScan(deps: ScanDeps, event: APIGatewayProxyEventV2): Promise<Response> {
+  return observe(deps.log, event, (fields) => scan(deps, event, fields))
 }
 
 async function scan(deps: ScanDeps, event: APIGatewayProxyEventV2, fields: LogFields): Promise<Response> {
-  if (!hasAppKey(event.headers['x-app-key'], deps.appKey)) return unauthorized()
+  if (!hasAppKey(event.headers[APP_KEY_HEADER], deps.appKey)) return unauthorized()
 
-  const record = parse(event)
-  if (!record) {
-    fields.code = 'invalid_request'
-    return errorResponse('invalid_request')
-  }
+  const validated = validateScanRecord(parseJsonBody(event))
+  if (!validated.ok) return refuse('invalid_request')
+  const { record } = validated
 
   // S3 enforces the size: the signed Content-Length must match the PUT.
-  const bytes = parseJpegBytes(event.headers['x-jpeg-bytes'])
-  if (bytes === undefined) {
-    fields.code = 'invalid_request'
-    return errorResponse('invalid_request')
-  }
+  const bytes = parseJpegBytes(event.headers[JPEG_BYTES_HEADER])
+  if (bytes === undefined) return refuse('invalid_request')
 
   let userId: string | undefined
   const authorization = event.headers.authorization
@@ -60,33 +50,14 @@ async function scan(deps: ScanDeps, event: APIGatewayProxyEventV2, fields: LogFi
     } catch {
       return unauthorized()
     }
-    try {
-      userId = await findOrCreateUserId(deps, sub)
-    } catch (error) {
-      if (error instanceof AccountDeleted) {
-        fields.code = 'account_deleted'
-        return errorResponse('account_deleted')
-      }
-      throw error
-    }
+    // A deleted account refuses with account_deleted: the app then sends the scan again without the token.
+    userId = await findOrCreateUserId(deps, sub)
     fields.userId = userId
   }
 
   await putScan(deps, record, userId)
-  return json(200, { uploadUrl: await deps.presignPut(photoKey(record.scanId), bytes) })
-}
-
-function parse(event: APIGatewayProxyEventV2) {
-  if (!event.body) return undefined
-  let input: unknown
-  try {
-    const text = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body
-    input = JSON.parse(text)
-  } catch {
-    return undefined
-  }
-  const result = validateScanRecord(input)
-  return result.ok ? result.record : undefined
+  const answer: ScanAnswer = { uploadUrl: await deps.presignPut(photoKey(record.scanId), bytes) }
+  return json(200, answer)
 }
 
 function parseJpegBytes(header: string | undefined): number | undefined {

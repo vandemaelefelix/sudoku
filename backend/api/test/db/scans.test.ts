@@ -1,10 +1,9 @@
-import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { readFileSync } from 'node:fs'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { LogFields } from '../../src/log'
 import { handleScan, type ScanDeps } from '../../src/scans/scan'
 import { identityKey } from '../../src/tableDesign'
-import { createTestTable, type TestTable } from './table'
+import { getItem, makeDeps, queryPartition, suiteTable } from './harness'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 
 const NOW = new Date('2026-10-16T09:00:00.000Z')
@@ -28,16 +27,12 @@ function event(body: unknown, headers: Record<string, string> = { 'x-app-key': K
 }
 
 describe('POST /v1/scans', () => {
-  let table: TestTable
+  const table = suiteTable()
   let logged: LogFields[]
   let n = 0
   let presigned: string[]
   const deps = (): ScanDeps => ({
-    db: table.db,
-    tableName: table.tableName,
-    now: () => NOW,
-    newUserId: () => `user-${++n}`,
-    log: (fields) => logged.push(fields),
+    ...makeDeps(table, { now: () => NOW, newUserId: () => `user-${++n}`, log: (fields) => logged.push(fields) }),
     appKey: KEY,
     verifyToken: async (token) => {
       if (token === 'good') return 'user_clerk_1'
@@ -48,28 +43,10 @@ describe('POST /v1/scans', () => {
       return `https://bucket.test/${key}?sig=${presigned.length}`
     },
   })
-  const row = async (pk: string, sk: string) =>
-    (await table.db.send(new GetCommand({ TableName: table.tableName, Key: { pk, sk }, ConsistentRead: true }))).Item
+  const row = (pk: string, sk: string) => getItem(table, { pk, sk })
 
   // The fixtures share one contributorId, so a query on the pk alone also counts the rows of the other tests.
-  const scanRows = async (pk: string, sk: string) =>
-    (
-      await table.db.send(
-        new QueryCommand({
-          TableName: table.tableName,
-          KeyConditionExpression: 'pk = :pk AND sk = :sk',
-          ExpressionAttributeValues: { ':pk': pk, ':sk': sk },
-          ConsistentRead: true,
-        }),
-      )
-    ).Items ?? []
-
-  beforeAll(async () => {
-    table = await createTestTable()
-  })
-  afterAll(async () => {
-    await table.drop()
-  })
+  const scanRows = (pk: string, sk: string) => queryPartition(table, pk, { sk })
 
   const reset = () => {
     logged = []
@@ -157,9 +134,7 @@ describe('POST /v1/scans', () => {
       event(record, { 'x-app-key': KEY, ...JPEG, authorization: 'Bearer good' }),
     )
     expect(response.statusCode).toBe(200)
-    const identity = (
-      await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey('user_clerk_1') }))
-    ).Item
+    const identity = await getItem(table, identityKey('user_clerk_1'))
     const userId = String(identity?.userId)
     const item = await row(`USER#${userId}`, `SCAN#${record.scanId}`)
     expect(item).toMatchObject({ contributorId: record.contributorId, userId, gsiPending: 'PENDING' })
@@ -176,9 +151,7 @@ describe('POST /v1/scans', () => {
     expect(presigned).toHaveLength(2)
     const Items = await scanRows(`CONTRIB#${record.contributorId}`, `SCAN#${record.scanId}`)
     expect(Items).toHaveLength(1)
-    const identity = (
-      await table.db.send(new GetCommand({ TableName: table.tableName, Key: identityKey('user_clerk_1') }))
-    ).Item
+    const identity = await getItem(table, identityKey('user_clerk_1'))
     expect(await row(`USER#${String(identity?.userId)}`, `SCAN#${record.scanId}`)).toBeUndefined()
   })
 

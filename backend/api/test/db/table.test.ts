@@ -1,16 +1,10 @@
 import { DescribeTableCommand, DescribeTimeToLiveCommand } from '@aws-sdk/client-dynamodb'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { BY_SYNCED, TABLE } from '../../src/tableDesign'
-import { createTestTable, type TestTable } from './table'
+import { suiteTable } from './harness'
 
 describe('the test table', () => {
-  let table: TestTable
-  beforeAll(async () => {
-    table = await createTestTable()
-  })
-  afterAll(async () => {
-    await table.drop()
-  })
+  const table = suiteTable()
 
   it('matches the table design of backend/infra/storage.ts', async () => {
     const { Table } = await table.client.send(new DescribeTableCommand({ TableName: table.tableName }))

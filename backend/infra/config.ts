@@ -34,9 +34,6 @@ export const CLERK_ISSUER: Record<Stage, string | null> = {
 
 export const hasClerk = (stage: Stage): boolean => CLERK_ISSUER[stage] !== null
 
-// The `aud` that the Clerk JWT template `sudoku-api` adds. The JWT authorizer requires it (ADR-027, decision 1).
-export const CLERK_AUDIENCE = 'sudoku-api'
-
 // What a stage deploys. Only the account stage may skip the app while it has no Clerk issuer, so it can create the
 // account-wide resources before its Clerk instance exists (ADR-027). Any other stage throws: skipping the app would
 // delete its table, because only production protects its resources.

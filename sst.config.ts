@@ -5,6 +5,7 @@
 export default $config({
   async app(input) {
     const { AWS_REGION, STAGES } = await import('./backend/infra/config.ts')
+    const { APP_NAME } = await import('./backend/kill-switch/src/flag.ts')
     const { isStage } = await import('./backend/infra/account.ts')
     const stage = input?.stage
     if (!stage || !isStage(stage)) {
@@ -22,7 +23,7 @@ export default $config({
       }
     }
     return {
-      name: 'sudoku',
+      name: APP_NAME,
       home: 'aws',
       version: '4.17.2',
       removal: stage === 'production' ? 'retain' : 'remove',
@@ -31,7 +32,7 @@ export default $config({
         aws: {
           region: AWS_REGION,
           ...(inCi ? {} : { profile: 'sudoku' }),
-          defaultTags: { tags: { project: 'sudoku', stage } },
+          defaultTags: { tags: { project: APP_NAME, stage } },
         },
       },
     }
