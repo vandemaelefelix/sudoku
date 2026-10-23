@@ -129,6 +129,16 @@ def write_atomic(path: Path, text: str) -> None:
     part.replace(path)
 
 
+def write_cell_image(image: np.ndarray, folder: Path, stem: str, tmp_dir: Path) -> None:
+    """Save the cell as `folder/<stem>.png`. The picture lands in `tmp_dir` first and a rename
+    moves it in: a stop never leaves a misnamed cell in a cell folder (ADR-009)."""
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp = tmp_dir / f"{stem}.png"
+    Image.fromarray(image).save(tmp, "PNG")
+    folder.mkdir(parents=True, exist_ok=True)
+    tmp.replace(folder / f"{stem}.png")
+
+
 def warn_unreadable(path: Path, error: Exception) -> None:
     print(f"{path.name} cannot be read ({error}). Treated as missing.", file=sys.stderr)
 

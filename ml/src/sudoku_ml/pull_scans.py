@@ -12,7 +12,6 @@ from typing import Protocol
 
 import jsonschema
 import numpy as np
-from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES, is_valid_pair
 from sudoku_ml.data_paths import REPO_ROOT, DataPaths
@@ -28,6 +27,7 @@ from sudoku_ml.tables import (
     read_cells,
     read_photos,
     stem_of,
+    write_cell_image,
     write_cells,
     write_photos,
 )
@@ -90,14 +90,6 @@ def fixture_scan_ids() -> set[str]:
     return ids
 
 
-def _write_image(image: np.ndarray, path: Path, tmp: Path) -> None:
-    """Cut outside cells/, then rename: a stop never leaves a misnamed cell (ADR-009)."""
-    tmp.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(image).save(tmp, "PNG")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp.replace(path)
-
-
 def _store_photo(jpeg: bytes, paths: DataPaths, scan_id: str) -> tuple[str, Path]:
     paths.tmp.mkdir(parents=True, exist_ok=True)
     part = paths.tmp / f"{scan_id}.jpg"
@@ -144,8 +136,7 @@ def _add_cells(paths: DataPaths, rows: list[tuple[CellRow, np.ndarray]]) -> int:
             continue
         name = stem_of(row.cell_id)
         if name not in on_disk:
-            target = paths.cells / row.digit / f"{name}.png"
-            _write_image(image, target, paths.tmp / f"{name}.png")
+            write_cell_image(image, paths.cells / row.digit, name, paths.tmp)
         table[row.cell_id] = row
         added += 1
     write_cells(paths.cells_csv, table.values())

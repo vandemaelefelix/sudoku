@@ -13,7 +13,10 @@ from sudoku_ml.tables import (
     pixel_id,
     pixel_id_of,
     read_cells,
+    read_derived,
     read_photos,
+    stem_of,
+    write_cell_image,
     write_cells,
     write_photos,
 )
@@ -145,3 +148,34 @@ def test_a_table_with_an_id_twice_is_refused_by_the_reader_and_the_writer(tmp_pa
     with pytest.raises(ValueError, match="is twice"):
         write_cells(tmp_path / "out.csv", [CellRow(A, "7", None, None)] * 2)
     assert not (tmp_path / "out.csv").exists()
+
+
+def test_a_derived_file_reads_as_none_when_it_is_missing_or_broken(tmp_path: Path, capsys):
+    path = tmp_path / "derived.json"
+    assert read_derived(path, warn=True) is None
+    assert capsys.readouterr().err == ""
+    path.write_text('{"a": [1, 2]}')
+    assert read_derived(path) == {"a": [1, 2]}
+    path.write_text("{broken")
+    assert read_derived(path) is None
+    assert capsys.readouterr().err == ""
+    assert read_derived(path, warn=True) is None
+    assert "derived.json cannot be read" in capsys.readouterr().err
+
+
+def test_a_cell_image_lands_under_its_stem_with_nothing_left_in_the_temporary_folder(tmp_path):
+    image = np.arange(64 * 64 * 3, dtype=np.uint8).reshape(64, 64, 3)
+    stem = stem_of(pixel_id_of(image))
+    write_cell_image(image, tmp_path / "7", stem, tmp_path / "tmp")
+    assert stem_of(pixel_id(tmp_path / "7" / f"{stem}.png")) == stem
+    assert list((tmp_path / "tmp").iterdir()) == []
+
+
+def test_a_stop_before_the_rename_leaves_no_file_in_the_cell_folder(tmp_path, monkeypatch):
+    def stopped(self, target):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(Path, "replace", stopped)
+    with pytest.raises(KeyboardInterrupt):
+        write_cell_image(np.zeros((8, 8, 3), dtype=np.uint8), tmp_path / "7", "abc", tmp_path / "t")
+    assert list((tmp_path / "7").iterdir()) == []

@@ -5,7 +5,6 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 import numpy as np
-from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright
@@ -24,6 +23,7 @@ from sudoku_ml.tables import (
     parse_corners,
     read_photos,
     stem_of,
+    write_cell_image,
 )
 
 OUTLINE_SCREEN_SIZE = 48
@@ -322,12 +322,7 @@ class ScanBook:
             if label not in DIGIT_CLASSES:
                 continue
             if where is None:
-                # Cut outside cells/, then rename: a stop never leaves a misnamed cell (ADR-009).
-                paths.tmp.mkdir(parents=True, exist_ok=True)
-                tmp = paths.tmp / f"{stem_of(cell)}.png"
-                Image.fromarray(image).save(tmp, "PNG")
-                target.mkdir(parents=True, exist_ok=True)
-                tmp.replace(target / f"{stem_of(cell)}.png")
+                write_cell_image(image, target, stem_of(cell), paths.tmp)
                 self._state.register([cell], "discarded")
                 source = (state.row.photo_id, *divmod(position, GRID_CELLS))
                 lines.append(action.source(cell, source, Screen.OUTLINES))
