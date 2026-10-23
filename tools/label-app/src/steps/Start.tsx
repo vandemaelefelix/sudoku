@@ -1,9 +1,11 @@
 import { get, post } from '../api/client'
 import type { StartCounts } from '../api/types'
-import { Failure, Working } from '../components/Frame'
+import { StepState } from '../components/StepState'
 import { FLOW, STEPS, nextStep } from '../flows'
-import { go, useKeys, useLoad } from '../hooks'
-import { useAction } from '../useAction'
+import { useAction } from '../hooks/useAction'
+import { useKeys } from '../hooks/useKeys'
+import { useLoad } from '../hooks/useLoad'
+import { go } from '../hooks/useRoute'
 
 export function Start() {
   const counts = useLoad(() => get<StartCounts>('/api/start'), 'start')
@@ -15,12 +17,24 @@ export function Start() {
       () => post<number>('/api/prelabel'),
       (n) => `The model guessed ${n} cells. Next: ${data ? nextStep(data).name : 'the next step'}.`,
     )
-    counts.reload()
   }
 
   useKeys({ Enter: () => data && go(nextStep(data).route) })
-  if (counts.error) return <Failure message={counts.error} retry={counts.reload} />
-  if (!data) return <Working what="Counting the open work…" />
+  return (
+    <StepState load={counts} working="Counting the open work…">
+      {(loaded) => <Overview data={loaded} note={action.note} busy={action.busy} guess={guess} />}
+    </StepState>
+  )
+}
+
+interface OverviewProps {
+  data: StartCounts
+  note: string | undefined
+  busy: boolean
+  guess: () => Promise<void>
+}
+
+function Overview({ data, note, busy, guess }: OverviewProps) {
   const next = nextStep(data)
   return (
     <div className="start">
@@ -28,9 +42,9 @@ export function Start() {
         <h1>Cell labels</h1>
         <p>Each step shows what waits. The highlighted step is next.</p>
       </header>
-      {action.note ? (
+      {note ? (
         <p className="note" role="status">
-          {action.note}
+          {note}
         </p>
       ) : null}
       {data.model === null || data.not_prelabelled > 0 ? (
@@ -42,7 +56,7 @@ export function Start() {
             {data.not_prelabelled > 0 ? ' They come last in the check steps until the model guesses them.' : null}
           </p>
           {data.not_prelabelled > 0 ? (
-            <button type="button" onClick={guess} disabled={action.busy}>
+            <button type="button" onClick={guess} disabled={busy}>
               Guess them now
             </button>
           ) : null}

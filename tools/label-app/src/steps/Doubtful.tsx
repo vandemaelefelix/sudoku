@@ -3,19 +3,23 @@ import { useState } from 'react'
 import { get, post } from '../api/client'
 import type { DoubtReason, DoubtfulItem, DoubtfulPage, Kind, Label } from '../api/types'
 import { CellTile, labelText } from '../components/CellTile'
-import { Empty, Failure, Frame, Working } from '../components/Frame'
-import { go, useKeys, useLoad } from '../hooks'
-import { useAction } from '../useAction'
+import { Frame } from '../components/Frame'
+import { StepState } from '../components/StepState'
+import { percent } from '../format'
+import { useAction } from '../hooks/useAction'
+import { useKeys } from '../hooks/useKeys'
+import { useLoad } from '../hooks/useLoad'
+import { go } from '../hooks/useRoute'
 
 interface Entry {
   digit: Label
   kind: Kind | null
 }
 
-const percent = (p: number | undefined): string => (p === undefined ? '' : ` (${Math.round(p * 100)} %)`)
+const chance = (p: number | undefined): string => (p === undefined ? '' : ` (${percent(p)})`)
 
 export function reasonText(r: DoubtReason): string {
-  if (r.reason === 'digit-model') return `The model reads ${r.predicted}${percent(r.p_predicted)}`
+  if (r.reason === 'digit-model') return `The model reads ${r.predicted}${chance(r.p_predicted)}`
   if (r.reason === 'kind-model') return `The model reads ${r.predicted}`
   if (r.reason === 'near-duplicate') return 'A near copy has the other kind'
   return 'A blind check gave another kind'
@@ -25,9 +29,8 @@ const start = (item: DoubtfulItem): Entry => ({ digit: item.folder as Label, kin
 
 /** A tool outside the flow: the labels that `just suspects` and the near copies doubt. */
 export function Doubtful() {
-  const [round, setRound] = useState(0)
-  const page = useLoad(() => get<DoubtfulPage>('/api/doubtful'), `doubtful:${round}`)
-  const action = useAction(() => setRound((n) => n + 1))
+  const page = useLoad(() => get<DoubtfulPage>('/api/doubtful'), 'doubtful')
+  const action = useAction(page.reload)
   const data = page.data
   const [entries, setEntries] = useState<Record<string, Entry>>({})
   const [selected, setSelected] = useState<string | null>(null)
@@ -55,7 +58,6 @@ export function Doubtful() {
       () => post<{ open: number }>('/api/suspects'),
       (r) => (r.open ? `Found ${r.open} doubtful labels.` : 'Found no doubtful label.'),
     )
-    setRound((n) => n + 1)
   }
 
   const save = async (): Promise<void> => {
@@ -70,7 +72,6 @@ export function Doubtful() {
       () => post<number>('/api/doubtful/save', { cells }),
       () => `Settled ${cells.length} labels.`,
     )
-    setRound((n) => n + 1)
   }
 
   useKeys({
@@ -109,48 +110,53 @@ export function Doubtful() {
         ) : undefined
       }
     >
-      {page.error ? <Failure message={page.error} retry={page.reload} /> : null}
-      {action.busy ? (
-        <Working what="Working. Finding doubtful labels trains 5 small models and takes some minutes…" />
-      ) : null}
-      {page.loading && !data && !action.busy ? (
-        <Working what="Comparing the cells. The first time takes about 30 seconds…" />
-      ) : null}
-      {data && !items.length && !action.busy ? (
-        <Empty
-          why={data.suspects ? 'No doubtful label is left.' : 'The model has not looked for doubtful labels yet.'}
-          next={
-            <>
-              <button type="button" onClick={find}>
-                {data.suspects ? 'Look again' : 'Find doubtful labels'}
-              </button>{' '}
-              <button type="button" className="primary" onClick={() => go('finish')}>
-                Next: Finish
-              </button>
-            </>
-          }
-        />
-      ) : null}
-      {items.length ? (
-        <div className="doubt-list">
-          {items.map((item) => {
-            const entry = entryOf(item)
-            const changed = entries[item.id] !== undefined
-            return (
-              <div key={item.id} className="doubt">
-                <CellTile
-                  stem={item.stem}
-                  label={labelText(entry.digit, entry.kind)}
-                  marked={selected === item.id}
-                  changed={changed}
-                  onClick={() => setSelected(selected === item.id ? null : item.id)}
-                />
-                <p>{item.reasons.map(reasonText).join('. ')}</p>
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
+      <StepState
+        load={page}
+        working="Comparing the cells. The first time takes about 30 seconds…"
+        busy={
+          action.busy ? 'Working. Finding doubtful labels trains 5 small models and takes some minutes…' : undefined
+        }
+        empty={
+          items.length
+            ? undefined
+            : {
+                why: data?.suspects
+                  ? 'No doubtful label is left.'
+                  : 'The model has not looked for doubtful labels yet.',
+                next: (
+                  <>
+                    <button type="button" onClick={find}>
+                      {data?.suspects ? 'Look again' : 'Find doubtful labels'}
+                    </button>{' '}
+                    <button type="button" className="primary" onClick={() => go('finish')}>
+                      Next: Finish
+                    </button>
+                  </>
+                ),
+              }
+        }
+      >
+        {items.length ? (
+          <div className="doubt-list">
+            {items.map((item) => {
+              const entry = entryOf(item)
+              const changed = entries[item.id] !== undefined
+              return (
+                <div key={item.id} className="doubt">
+                  <CellTile
+                    stem={item.stem}
+                    label={labelText(entry.digit, entry.kind)}
+                    marked={selected === item.id}
+                    changed={changed}
+                    onClick={() => setSelected(selected === item.id ? null : item.id)}
+                  />
+                  <p>{item.reasons.map(reasonText).join('. ')}</p>
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+      </StepState>
     </Frame>
   )
 }
