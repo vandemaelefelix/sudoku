@@ -5,11 +5,12 @@ table itself with the journal applied on top."""
 import argparse
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import (
+    Field,
     Line,
+    Screen,
     Source,
     append_records,
     current_kinds,
@@ -19,6 +20,7 @@ from sudoku_ml.journal import (
     read_journal,
     undone_actions,
 )
+from sudoku_ml.label_lines import Action
 from sudoku_ml.tables import (
     CELL_FOLDERS,
     NO_KIND_FOLDERS,
@@ -30,10 +32,6 @@ from sudoku_ml.tables import (
 )
 
 UNCHANGED = "Check SUDOKU_IMAGES or restore the images. The table was not changed."
-
-
-def warn_unreadable(path: Path, error: Exception) -> None:
-    print(f"{path.name} cannot be read ({error}). Treated as missing.", file=sys.stderr)
 
 
 def base_kinds(table: dict[str, CellRow]) -> dict[str, str | None]:
@@ -53,8 +51,8 @@ def confirmed_cells(lines: list[Line]) -> set[str]:
     return {
         x.cell
         for x in lines
-        if x.field in ("digit", "kind")
-        and x.screen not in ("undo", "repair", "outlines")
+        if x.field in (Field.DIGIT, Field.KIND)
+        and x.screen not in (Screen.UNDO, Screen.REPAIR, Screen.OUTLINES)
         and x.action not in undone
     }
 
@@ -136,8 +134,9 @@ def repair_lines(
     the file move and the journal line leaves one, and so does `just relabel`. The folder is the
     truth for the digit. The lines carry their own session, so undo and rollback never reverse
     them."""
+    action = Action(t, session, f"{session}-1")
     return [
-        Line(t, session, f"{session}-1", cell, "kind", kinds[cell], None, "repair")
+        action.kind(cell, kinds[cell], None, Screen.REPAIR)
         for cell, where in sorted(folder.items())
         if where in NO_KIND_FOLDERS and kinds.get(cell) is not None
     ]

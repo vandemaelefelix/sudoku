@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.journal import read_journal
+from sudoku_ml.journal import Field, read_journal
 from sudoku_ml.tables import (
     CELL_FOLDERS,
     DIGIT_FOLDERS,
@@ -164,9 +164,11 @@ def _journal(
     except (ValueError, KeyError, TypeError) as error:
         problems.append(f"{paths.journal.name} cannot be read: {error}")
         return
-    outlines = sorted({x.cell for x in everything if x.field == "outline" and x.cell not in photos})
+    outlines = sorted(
+        {x.cell for x in everything if x.field == Field.OUTLINE and x.cell not in photos}
+    )
     _report_ids(problems, f"outline lines in {paths.journal.name} match no sudoku photo", outlines)
-    lines = [x for x in everything if x.field != "outline"]
+    lines = [x for x in everything if x.field != Field.OUTLINE]
     bad = sorted({x.cell for x in lines if not FULL_ID.fullmatch(x.cell)})
     gone = sorted({x.cell for x in lines if FULL_ID.fullmatch(x.cell) and x.cell not in cells})
     if bad:

@@ -1,15 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
-import type { CellResult, RecogniseResult } from '@/scanner'
+import type { RecogniseResult } from '@/scanner'
+import { okResult, printed } from '@/scan/scan.testkit'
 import { useCorrectionEdits } from './useCorrectionEdits'
-
-const empty = (): CellResult => ({ digit: 0, kind: 'none', confidence: 1, validPair: true, second: 1 })
-
-function okResult(over: { [n: number]: Partial<CellResult> } = {}): RecogniseResult {
-  const cells = Array.from({ length: 81 }, (_, n) => ({ ...empty(), ...over[n] }))
-  return { ok: true, cells, quad: [] as never, corners: 'detected' as never, cornerOffset: null, timings: {} as never }
-}
-
-const printed = (digit: number, confidence = 1) => ({ digit, kind: 'printed', confidence }) as const
 
 it('starts from the scanner result, with no cell selected', () => {
   const { result } = renderHook(() => useCorrectionEdits(okResult({ 0: printed(5) })))

@@ -7,10 +7,35 @@ import json
 import os
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 
 KINDS: tuple[str, ...] = ("printed", "handwritten", "unsure")
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+class Field(StrEnum):
+    DIGIT = "digit"
+    KIND = "kind"
+    SOURCE = "source"
+    LABEL_SOURCE = "label_source"
+    OUTLINE = "outline"
+
+
+class Screen(StrEnum):
+    """The screen that wrote a line. GROUPS and SCANS are screens of older journals: they stay,
+    because the journals still hold their lines (ADR-034, decision 8). A member equals the plain
+    string of a line that a journal file holds."""
+
+    DIGITS = "digits"
+    KINDS = "kinds"
+    GROUPS = "groups"
+    SCANS = "scans"
+    REVIEW = "review"
+    UNDO = "undo"
+    REPAIR = "repair"
+    PHOTOS = "photos"
+    OUTLINES = "outlines"
 
 
 @dataclass(frozen=True)
@@ -19,20 +44,18 @@ class Line:
     session: str
     action: str  # the lines of one save or one move share it. An undo line: "undo:<action>"
     cell: str  # full SHA-256 cell id. For an outline line: the full photo id
-    field: str  # "kind", "digit", "source", "label_source" or "outline"
+    field: Field  # a line that a file holds has the plain string
     old: str | None
     new: (
         str | None
     )  # a source: "<photo_id> <row> <col>", row and col 0-8. An outline: see format_outline
-    # "digits" and "kinds": the Digits and Kind steps. "groups" and "scans": screens of older
-    # journals, still read. Also "review", "undo", "repair", "photos" and "outlines".
-    screen: str
+    screen: Screen  # as for `field`
 
 
 Source = tuple[str, int, int]  # full photo id, row, col (0-8)
 # A source line records a cut, and a label_source line the label provenance of a new cell. They are
 # facts, not labels: undo and rollback skip them.
-FACT_FIELDS = ("source", "label_source")
+FACT_FIELDS = (Field.SOURCE, Field.LABEL_SOURCE)
 FINISHED = "This session is finished. Use git to go back."
 
 
@@ -89,7 +112,7 @@ def current_outlines(lines: list[Line], base: dict[str, str]) -> dict[str, str]:
     """`base` (photo id → format_outline of sudoku-photos.csv) with the outline lines on top."""
     outlines = dict(base)
     for line in lines:
-        if line.field == "outline" and line.new is not None:
+        if line.field == Field.OUTLINE and line.new is not None:
             outlines[line.cell] = line.new
     return outlines
 
@@ -108,7 +131,7 @@ def current_kinds(
     """`base` (the kinds of cells.csv) with the kind lines applied on top."""
     kinds: dict[str, str | None] = dict(base or {})
     for line in lines:
-        if line.field == "kind":
+        if line.field == Field.KIND:
             kinds[line.cell] = line.new
     return kinds
 
@@ -117,7 +140,7 @@ def current_sources(lines: list[Line], base: dict[str, Source] | None = None) ->
     """`base` (the sources of cells.csv) with the source lines applied on top."""
     sources = dict(base or {})
     for line in lines:
-        if line.field == "source":
+        if line.field == Field.SOURCE:
             if line.new is None:
                 sources.pop(line.cell, None)
             else:
@@ -129,21 +152,21 @@ def current_label_sources(lines: list[Line], base: dict[str, str]) -> dict[str, 
     """`base` (the label_source column of cells.csv) with the label_source lines applied on top."""
     found = dict(base)
     for line in lines:
-        if line.field == "label_source" and line.new is not None:
+        if line.field == Field.LABEL_SOURCE and line.new is not None:
             found[line.cell] = line.new
     return found
 
 
 def last_kind_times(lines: list[Line]) -> dict[str, str]:
-    return {line.cell: line.t for line in lines if line.field == "kind"}
+    return {line.cell: line.t for line in lines if line.field == Field.KIND}
 
 
 def _label(line: Line) -> bool:
-    return line.field not in FACT_FIELDS and line.screen != "undo"
+    return line.field not in FACT_FIELDS and line.screen != Screen.UNDO
 
 
 def undone_actions(lines: list[Line]) -> set[str]:
-    return {line.action.removeprefix("undo:") for line in lines if line.screen == "undo"}
+    return {line.action.removeprefix("undo:") for line in lines if line.screen == Screen.UNDO}
 
 
 def _reverse(action_lines: list[Line], t: str, session: str) -> list[Line]:
@@ -155,7 +178,7 @@ def _reverse(action_lines: list[Line], t: str, session: str) -> list[Line]:
             action=f"undo:{line.action}",
             old=line.new,
             new=line.old,
-            screen="undo",
+            screen=Screen.UNDO,
         )
         for line in reversed(action_lines)
     ]

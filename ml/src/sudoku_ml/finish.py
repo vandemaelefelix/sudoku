@@ -3,7 +3,6 @@ check, write STATUS.md, then delete the journal and the derived files in ml/data
 touches the images. Of the tracked files it writes only cells.csv, sudoku-photos.csv (the outline
 lines) and STATUS.md."""
 
-import json
 from dataclasses import replace
 
 from sudoku_ml.data_check import check_data, format_report
@@ -13,15 +12,15 @@ from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_import import read_detections, write_detections
 from sudoku_ml.status import write_status
-from sudoku_ml.tables import read_photos, write_photos
+from sudoku_ml.tables import read_derived, read_photos, write_photos
 
 PROBLEMS_SHOWN = 5
 
 
 def _prelabel_run(store: LabelStore) -> str | None:
     try:
-        return json.loads(store.paths.prelabels.read_text())["run"]
-    except (OSError, ValueError, KeyError, TypeError):
+        return read_derived(store.paths.prelabels)["run"]
+    except (KeyError, TypeError):
         return None
 
 
