@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native'
-import { Toggle } from '@/settings/components/Toggle'
+import { Toggle } from '@/components/Toggle'
 import { styles } from './AssistRow.styles'
 
 type AssistRowProps = {

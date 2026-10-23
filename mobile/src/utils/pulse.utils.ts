@@ -1,8 +1,13 @@
 import { BOXES, COLUMNS, ROWS, type Completion, type Game } from '@sudoku/core'
-import { LONGEST_PULSE_STEPS, NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/game/constants/pulse.constants'
+import { LONGEST_PULSE_STEPS, NO_PULSE, POP_PEAK_AT, WAVE_PEAK_AT } from '@/constants/pulse.constants'
 import type { Theme } from '@/theme/theme.types'
-import { columnOf, rowOf } from './grid.utils'
-import type { Move } from './session.utils'
+
+/** The part of a game move that a pulse reads. A game `Move` fits it. */
+export type PulseMove = { id: number; cell: number | null; completed: Completion }
+
+const SIDE = ROWS.length
+const rowOf = (cell: number): number => Math.floor(cell / SIDE)
+const columnOf = (cell: number): number => cell % SIDE
 
 /** The theme tokens of one pulse. Times in milliseconds. */
 export type PulseLook = { stepMs: number; waveMs: number; popMs: number; waveOpacity: number; popScale: number }
@@ -35,7 +40,7 @@ function pulsedCells(board: Game, completed: Completion): number[] {
 }
 
 /** One delay per cell, row by row, in ms after the move: stepMs per step from the cell of the move. null when the move completed nothing. */
-export function pulseDelays(board: Game, move: Move | null, stepMs: number): number[] | null {
+export function pulseDelays(board: Game, move: PulseMove | null, stepMs: number): number[] | null {
   if (move === null || move.cell === null) return null
   const cells = pulsedCells(board, move.completed)
   if (cells.length === 0) return null

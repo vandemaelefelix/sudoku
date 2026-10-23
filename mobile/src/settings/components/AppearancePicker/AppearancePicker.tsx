@@ -1,5 +1,5 @@
 import { useIntl } from '@/i18n/hooks/useIntl'
-import { SegmentedControl } from '@/settings/components/SegmentedControl'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import type { AppearancePreference } from '@/theme/preference'
 import { APPEARANCE_OPTIONS } from './AppearancePicker.constants'
 

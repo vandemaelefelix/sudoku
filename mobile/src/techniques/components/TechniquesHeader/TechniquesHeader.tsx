@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native'
-import { Icon } from '@/game/components/Icon'
+import { Icon } from '@/components/Icon'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
 import { styles } from './TechniquesHeader.styles'

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native'
 import { useReducedMotion } from 'react-native-reanimated'
-import { pulseLook, solvePulseDuration } from '@/game/utils/pulse.utils'
+import { pulseLook, solvePulseDuration } from '@/utils/pulse.utils'
 import { cobalt } from '@/theme/themes/cobalt'
 import { useSolveDelay } from './useSolveDelay'
 

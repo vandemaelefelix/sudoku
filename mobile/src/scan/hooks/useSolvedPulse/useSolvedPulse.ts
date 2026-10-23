@@ -10,9 +10,9 @@ import {
 } from 'react-native-reanimated'
 import { UnistylesRuntime } from 'react-native-unistyles'
 import { GRID_CELLS } from '@sudoku/core'
-import { NO_PULSE } from '@/game/constants/pulse.constants'
-import type { Pulse } from '@/game/hooks/usePulse'
-import { pulseDuration, pulseLook, type PulseLook } from '@/game/utils/pulse.utils'
+import { NO_PULSE } from '@/constants/pulse.constants'
+import type { Pulse } from '@/hooks/usePulse'
+import { pulseDuration, pulseLook, type PulseLook } from '@/utils/pulse.utils'
 import { solvedDelays } from '@/scan/utils/solvedPulse.utils'
 
 const STILL: readonly number[] = Array.from({ length: GRID_CELLS }, () => NO_PULSE)

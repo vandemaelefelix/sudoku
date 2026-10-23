@@ -8,7 +8,7 @@ import {
   type HintTechniqueId,
   type TechniqueId,
 } from '@sudoku/core'
-import { ThemeStatusBar } from '@/game/components/ThemeStatusBar'
+import { ThemeStatusBar } from '@/components/ThemeStatusBar'
 import { TechniqueExample } from '@/techniques/components/TechniqueExample'
 import { TechniquesHeader } from '@/techniques/components/TechniquesHeader'
 import { exampleSpeech, levelLine } from '@/techniques/utils/techniques.utils'

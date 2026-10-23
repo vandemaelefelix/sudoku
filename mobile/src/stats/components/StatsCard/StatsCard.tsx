@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Icon } from '@/game/components/Icon'
+import { Icon } from '@/components/Icon'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { formatPercent } from '@/stats/utils/format.utils'
 import { ThemeDecoration } from '@/theme/decorations/ThemeDecoration'
