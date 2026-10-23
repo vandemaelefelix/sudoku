@@ -19,12 +19,12 @@ export type SyncServiceDeps = {
 export type SyncService = {
   /** Null means signed out. A new owner stops a run that is going on. */
   setSession(session: SyncSession | null): void
-  /** Never throws. 'partial' means the run reached the most rounds and the follow-up runs did not finish: the next trigger goes on. 'ignored' means no run: no session, a wait after a failure, or nothing waits after a game end. */
   /** Ends the session like `setSession(null)`, then waits until the run that goes on has stopped writing. Never rejects. */
   stop(): Promise<void>
   /** Aborts the run that goes on and waits until it has stopped. The session stays, but no trigger starts a run until `resume`. Never rejects. */
   pause(): Promise<void>
   resume(): void
+  /** Never throws. 'partial' means the run reached the most rounds and the follow-up runs did not finish: the next trigger goes on. 'ignored' means no run: no session, a wait after a failure, or nothing waits after a game end. */
   trigger(reason: SyncTrigger): Promise<RunResult | 'ignored'>
   subscribe(listener: () => void): () => void
   status(): SyncStatus
