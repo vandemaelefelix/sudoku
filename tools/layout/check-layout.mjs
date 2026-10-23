@@ -13,6 +13,7 @@ const FILES = new Set([
   '.oxlintrc.json',
   'AGENTS.md',
   'CLAUDE.md',
+  'LICENSE',
   'README.md',
   'justfile',
   'package.json',
