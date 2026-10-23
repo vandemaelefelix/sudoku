@@ -2,7 +2,7 @@ import { createGame, hintMessage, planHint, type HintPlan, type HintRung } from 
 import { createAppIntl } from '@/i18n/utils/intl.utils'
 import { hintText } from '@/utils/hintText.utils'
 import { pointingStart, sampleStart, stuckStart } from './sample.utils'
-import type { OpenHint } from './session.utils'
+import type { OpenHint } from './hintSession.utils'
 import { hintCardView, hintHighlight } from './hint.utils'
 
 const en = createAppIntl('en')

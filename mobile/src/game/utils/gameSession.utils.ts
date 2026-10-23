@@ -1,13 +1,7 @@
 import { needsSave, type Digit, type Game } from '@sudoku/core'
 import { CLOCK_INTERVAL_MS, MAX_ELAPSED_MS } from '@/game/constants/game.constants'
-import {
-  reduceSession,
-  startSession,
-  type GameStart,
-  type HintCardAction,
-  type Session,
-  type SessionAction,
-} from './session.utils'
+import type { HintCardAction } from './hintSession.utils'
+import { reduceSession, startSession, type GameStart, type Session, type SessionAction } from './session.utils'
 
 /** The moves of the player. The object keeps its identity for the whole game. */
 export type GameActions = {

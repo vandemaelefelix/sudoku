@@ -3,7 +3,7 @@ import { hintText, techniqueName } from '@/utils/hintText.utils'
 import type { MessageId } from '@/i18n/messages'
 import type { Formatter } from '@/i18n/utils/intl.utils'
 import type { HintHighlight } from './cell.utils'
-import type { HintCardAction, OpenHint } from './session.utils'
+import type { HintCardAction, OpenHint } from './hintSession.utils'
 
 const NOTHING: HintHighlight = { units: [], pattern: [], support: [], eliminations: [], placements: [] }
 
