@@ -7,6 +7,9 @@ files with the app: `shared/model-contract/`, `shared/fixtures/` and the promote
 
 The labelling app has its own short guide: [LABELLING.md](LABELLING.md).
 
+To learn how the pipeline works, read the notebooks in [notebooks/](notebooks/README.md). Run
+`just notebooks` to open them.
+
 ## Commands
 
 Run these from the repository root. Run `just --list` for all commands.
