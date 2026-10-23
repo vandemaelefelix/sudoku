@@ -9,7 +9,6 @@ from photos import grid_photo
 from PIL import Image
 
 from sudoku_ml.data_paths import DataPaths
-from sudoku_ml.journal import Line
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.pull_scans import pull_scans
 from sudoku_ml.tables import read_photos, stem_of
@@ -107,12 +106,12 @@ def pulled(tmp_path: Path, corners=(CORNERS, CORNERS)) -> tuple[LabelStore, Data
 
 def places(store: LabelStore, photo: str) -> list[str | None]:
     """The cell at each of the 81 places of a scan, or None."""
-    return store._places(store._scan_state(photo))
+    return store.book.places(store.book.state(photo))
 
 
 def own_cells(store: LabelStore, photo: str) -> list[str]:
     """The cells of the places of a scan that its own photo owns, each once."""
-    owner = store._scan_state(photo).row.photo_id
+    owner = store.book.state(photo).row.photo_id
     sources = store.sources()
     found = [c for c in places(store, photo) if c and sources[c][0] == owner]
     return list(dict.fromkeys(found))
@@ -120,7 +119,7 @@ def own_cells(store: LabelStore, photo: str) -> list[str]:
 
 def shared_cells(store: LabelStore, photo: str) -> list[str]:
     """The cells at the places of a scan that another scan owns."""
-    owner = store._scan_state(photo).row.photo_id
+    owner = store.book.state(photo).row.photo_id
     sources = store.sources()
     return [c for c in places(store, photo) if c and sources[c][0] != owner]
 
@@ -128,10 +127,9 @@ def shared_cells(store: LabelStore, photo: str) -> list[str]:
 def old_page_confirm(store: LabelStore, photo: str) -> None:
     """The lines of the removed scan page after a confirm: a digit line of the screen "scans" for
     each own cell, also an unchanged one. Old journals hold them (ADR-034, decision 8)."""
-    t, action = store._t(), store._action()
+    action = store.state.action()
     lines = [
-        Line(t, store.session, action, c, "digit", store.folder[c], store.folder[c], "scans")
-        for c in own_cells(store, photo)
+        action.digit(c, store.folder[c], store.folder[c], "scans") for c in own_cells(store, photo)
     ]
-    store._apply_digits(lines)
-    store._write(lines)
+    store.state.apply_digits(lines)
+    store.state.write(lines)

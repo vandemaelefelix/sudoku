@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -5,7 +6,9 @@ import pytest
 
 from sudoku_ml.journal import (
     FINISHED,
+    Field,
     Line,
+    Screen,
     append_records,
     current_kinds,
     current_sources,
@@ -151,3 +154,34 @@ def test_rollback_of_a_finished_session_points_to_git():
     with pytest.raises(ValueError, match="This session is finished. Use git to go back."):
         rollback_lines([], "s1", LATER, "s2")
     assert FINISHED == "This session is finished. Use git to go back."
+
+
+def test_a_line_with_enum_members_is_written_as_plain_strings(tmp_path: Path):
+    path = tmp_path / "log.jsonl"
+    append_records(path, [line(1, "s1", "s1-1", A, Field.DIGIT, "7", "1", Screen.DIGITS)])
+    written = json.loads(path.read_text())
+    assert (written["field"], written["screen"]) == ("digit", "digits")
+    assert type(written["field"]) is str
+
+
+def test_a_line_of_an_old_journal_equals_the_line_with_enum_members(tmp_path: Path):
+    path = tmp_path / "log.jsonl"
+    for screen in ("digits", "kinds", "groups", "scans", "review", "undo", "repair", "photos"):
+        path.write_text(
+            json.dumps(
+                {
+                    "t": LATER,
+                    "session": "s",
+                    "action": "s-1",
+                    "cell": A,
+                    "field": "kind",
+                    "old": None,
+                    "new": "printed",
+                    "screen": screen,
+                }
+            )
+            + "\n"
+        )
+        (read,) = read_journal(path)
+        assert read.screen == Screen(screen) and read.field == Field.KIND
+        assert current_kinds([read]) == {A: "printed"}

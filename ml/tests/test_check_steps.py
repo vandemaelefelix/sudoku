@@ -14,9 +14,10 @@ from cells import (
 )
 from scans import pulled, shared_cells
 
+from sudoku_ml.check_steps import CHECK_SIZE
 from sudoku_ml.finish import finish
-from sudoku_ml.journal import Line, read_journal
-from sudoku_ml.label_store import CHECK_SIZE, LabelStore
+from sudoku_ml.journal import read_journal
+from sudoku_ml.label_store import LabelStore
 from sudoku_ml.tables import read_cells, stem_of
 
 
@@ -274,7 +275,7 @@ def test_the_sudoku_signals_name_the_unit_and_come_with_the_scan_cells(tmp_path:
 def test_a_scan_that_is_not_unique_marks_its_empty_cells_only(tmp_path: Path, monkeypatch):
     store, _, _ = approved(tmp_path)
     monkeypatch.setattr(
-        "sudoku_ml.label_store.scan_signals",
+        "sudoku_ml.sudoku_signals.scan_signals",
         lambda digits, givens: {"rule": {}, "not_unique": True},
     )
     marked = {c for c, found in store.sudoku_reasons().items() if {"signal": "not-unique"} in found}
@@ -285,11 +286,13 @@ def test_a_scan_that_is_not_unique_marks_its_empty_cells_only(tmp_path: Path, mo
 def test_the_cut_and_the_signals_are_cached_by_corners_and_labels(tmp_path: Path, monkeypatch):
     store, paths, photos = approved(tmp_path)
     cuts, solves = [], []
-    from sudoku_ml.label_store import scan_cut, scan_signals
+    from sudoku_ml.sudoku_signals import scan_cut, scan_signals
 
-    monkeypatch.setattr("sudoku_ml.label_store.scan_cut", lambda *a: cuts.append(1) or scan_cut(*a))
     monkeypatch.setattr(
-        "sudoku_ml.label_store.scan_signals", lambda *a: solves.append(1) or scan_signals(*a)
+        "sudoku_ml.sudoku_signals.scan_cut", lambda *a: cuts.append(1) or scan_cut(*a)
+    )
+    monkeypatch.setattr(
+        "sudoku_ml.sudoku_signals.scan_signals", lambda *a: solves.append(1) or scan_signals(*a)
     )
     store.sudoku_reasons()
     store.sudoku_reasons()
@@ -350,10 +353,10 @@ def test_a_kind_the_model_reads_differently_adds_a_half(tmp_path: Path):
 
 def digit_line(store: LabelStore, cell: str, screen: str = "digits") -> str:
     """A digit line of a person, as the Digits step writes it for an unchanged cell."""
-    action = store._action()
+    action = store.state.action()
     folder = store.folder[cell]
-    store._write([Line(store._t(), store.session, action, cell, "digit", folder, folder, screen)])
-    return action
+    store.state.write([action.digit(cell, folder, folder, screen)])
+    return action.id
 
 
 def test_a_kind_confirm_is_one_action_and_closes_the_cells(tmp_path: Path):
