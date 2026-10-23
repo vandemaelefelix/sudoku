@@ -275,14 +275,33 @@ def test_corners_of_the_flat_preview_are_checked(served, corners):
     assert status == 400 and "error" in json.loads(data)
 
 
-def test_the_two_threshold_forms_and_the_corners_parse_alike():
+def test_the_threshold_forms_and_the_corners_parse():
     assert threshold_of(Fields({"threshold": "0.9"})) == threshold_of(Fields({"threshold": 0.9}))
     assert threshold_of(Fields()) == ()
     assert corners_of(Fields({"c": "1,2,3,4,5,6,7,8"})) == [[1, 2], [3, 4], [5, 6], [7, 8]]
-    assert corners_of(Fields({"c": "1 2 3 4 5 6 7 8"})) == corners_of(
-        Fields({"c": "1,2,3,4,5,6,7,8"})
-    )
     assert corners_of(Fields()) is None
+
+
+@pytest.mark.parametrize("corners", ["1,,2,3,4,5,6,7,8", "1+2+3+4+5+6+7+8", "1 2 3 4 5 6 7 8"])
+def test_the_corners_query_takes_commas_only(corners):
+    with pytest.raises(ValueError):
+        corners_of(Fields({"c": corners}))
+    with pytest.raises(ValueError, match="c needs 8 numbers"):
+        corners_of(Fields({"c": "1,2,3"}))
+
+
+def test_a_type_error_in_a_read_is_a_500_and_in_a_write_a_400(served, monkeypatch):
+    one, _, _ = served
+
+    def broken(self, *args):
+        raise TypeError("bug")
+
+    monkeypatch.setattr(LabelStore, "status", broken)
+    monkeypatch.setattr(LabelStore, "reject_outline", broken)
+    status, data = request(one.port, "GET", "/api/start")
+    assert status == 500 and "The server failed" in json.loads(data)["error"]
+    status, _ = request(one.port, "POST", "/api/outlines/reject", {"photo": "x"})
+    assert status == 400
 
 
 @pytest.mark.parametrize(

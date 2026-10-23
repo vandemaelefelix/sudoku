@@ -7,6 +7,7 @@ from pathlib import Path
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import (
+    Field,
     Line,
     Source,
     append_records,
@@ -94,7 +95,7 @@ class LabelState:
         wanted = {
             stem_of(line.cell): line.new
             for line in lines
-            if line.field == "digit" and line.old != line.new
+            if line.field == Field.DIGIT and line.old != line.new
         }
         if wanted:
             move_cells(self.paths.cells, wanted)

@@ -19,7 +19,6 @@ from sudoku_ml.label_jobs import find_suspects, prelabel_new_cells
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.manifest import write_cells_manifest
 from sudoku_ml.photo_check import clear_temp
-from sudoku_ml.tables import parse_corners
 
 APP_DIR = REPO_ROOT / "tools" / "label-app" / "dist"
 NO_APP = b"The labelling app is not built. Run just label-cells: it builds the app first."
@@ -52,7 +51,12 @@ def threshold_of(fields: Fields) -> tuple[float, ...]:
 
 def corners_of(fields: Fields) -> list[list[float]] | None:
     """The optional `c` of a request: `x,y,x,y,x,y,x,y`. Raises ValueError."""
-    return parse_corners(fields["c"].replace(",", " ")) if "c" in fields else None
+    if "c" not in fields:
+        return None
+    values = [float(v) for v in fields["c"].split(",")]
+    if len(values) != 8:
+        raise ValueError("c needs 8 numbers: x,y of the 4 corners")
+    return [values[i : i + 2] for i in range(0, 8, 2)]
 
 
 def make_server(
@@ -225,8 +229,14 @@ def make_server(
                 )
             except NotFound as error:
                 self._json({"error": str(error)}, 404)
-            except (KeyError, ValueError, IndexError, TypeError) as error:
+            except (KeyError, ValueError, IndexError) as error:
                 self._json({"error": str(error)}, 400)
+            except TypeError as error:
+                # A TypeError in a read handler is a bug: it must reach the log as a 500.
+                if method == "POST":
+                    self._json({"error": str(error)}, 400)
+                else:
+                    self._failed(error)
             except Exception as error:
                 self._failed(error)
 
