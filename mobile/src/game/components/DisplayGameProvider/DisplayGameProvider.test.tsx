@@ -2,11 +2,10 @@ import { act, renderHook } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
-import { reduceSession, startSession } from '@/game/utils/session.utils'
-import { sampleStart } from '@/game/utils/sample.utils'
+import { sampleGameAfter } from '@/game/testing/sample.testing'
 import { DisplayGameProvider } from './DisplayGameProvider'
 
-const board = reduceSession(startSession(sampleStart()), { type: 'select', cell: 40 }).game
+const board = sampleGameAfter({ type: 'select', cell: 40 })
 const wrapper = ({ children }: { children: ReactNode }) => (
   <DisplayGameProvider board={board}>{children}</DisplayGameProvider>
 )

@@ -4,7 +4,7 @@ import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
-import { reduceSession, startSession } from '@/game/utils/session.utils'
+import { sampleGameAfter } from '@/game/testing/sample.testing'
 import { cobalt } from '@/theme/themes/cobalt'
 import { Grid } from './Grid'
 
@@ -40,7 +40,7 @@ it('selects a cell on a tap', () => {
 })
 
 it('shows a board that cannot be tapped and that VoiceOver skips', () => {
-  const board = reduceSession(startSession(sampleStart()), { type: 'select', cell: 40 }).game
+  const board = sampleGameAfter({ type: 'select', cell: 40 })
   render(
     <DisplayGameProvider board={board}>
       <Grid interactive={false} digitSize="small" />

@@ -1,11 +1,7 @@
 import { planHint, type CellDigit, type Digit, type Game } from '@sudoku/core'
 import { pointingStart, sampleStart, stuckStart } from './sample.utils'
-import { reduceSession, startSession, type Session, type SessionAction } from './session.utils'
-
-// Cell 2 is empty in the canvas puzzle. Its solution is 4.
-const OPEN = 2
-const start = () => startSession(sampleStart())
-const run = (session: Session, ...actions: SessionAction[]) => actions.reduce(reduceSession, session)
+import { OPEN, runSession as run, sampleSession as start } from '@/game/testing/sample.testing'
+import { startSession, type Session, type SessionAction } from './session.utils'
 
 const answerOf = (game: Game): CellDigit => {
   const plan = planHint(game)

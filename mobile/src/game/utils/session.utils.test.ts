@@ -1,10 +1,6 @@
-import { canErase, canUndo, reduceSession, startSession, type Session, type SessionAction } from './session.utils'
+import { OPEN, runSession as run, sampleSession as start } from '@/game/testing/sample.testing'
+import { canErase, canUndo, reduceSession, startSession } from './session.utils'
 import { sampleStart } from './sample.utils'
-
-// Cell 2 is empty in the canvas puzzle. Its solution is 4.
-const OPEN = 2
-const start = () => startSession(sampleStart())
-const run = (session: Session, ...actions: SessionAction[]) => actions.reduce(reduceSession, session)
 
 it('places a number in the selected cell and records the move', () => {
   const session = run(start(), { type: 'select', cell: OPEN }, { type: 'digit', digit: 4 })
