@@ -1,4 +1,10 @@
-import { MAX_JPEG_BYTES, validateScanRecord } from '@sudoku/scan-contract'
+import {
+  APP_KEY_HEADER,
+  JPEG_BYTES_HEADER,
+  MAX_JPEG_BYTES,
+  validateScanRecord,
+  type ScanAnswer,
+} from '@sudoku/scan-contract'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 import type { SyncDeps } from '../deps'
 import { json, observe, parseJsonBody, refuse, unauthorized, type Response } from '../http'
@@ -23,14 +29,14 @@ export function handleScan(deps: ScanDeps, event: APIGatewayProxyEventV2): Promi
 }
 
 async function scan(deps: ScanDeps, event: APIGatewayProxyEventV2, fields: LogFields): Promise<Response> {
-  if (!hasAppKey(event.headers['x-app-key'], deps.appKey)) return unauthorized()
+  if (!hasAppKey(event.headers[APP_KEY_HEADER], deps.appKey)) return unauthorized()
 
   const validated = validateScanRecord(parseJsonBody(event))
   if (!validated.ok) return refuse('invalid_request')
   const { record } = validated
 
   // S3 enforces the size: the signed Content-Length must match the PUT.
-  const bytes = parseJpegBytes(event.headers['x-jpeg-bytes'])
+  const bytes = parseJpegBytes(event.headers[JPEG_BYTES_HEADER])
   if (bytes === undefined) return refuse('invalid_request')
 
   let userId: string | undefined
@@ -50,7 +56,8 @@ async function scan(deps: ScanDeps, event: APIGatewayProxyEventV2, fields: LogFi
   }
 
   await putScan(deps, record, userId)
-  return json(200, { uploadUrl: await deps.presignPut(photoKey(record.scanId), bytes) })
+  const answer: ScanAnswer = { uploadUrl: await deps.presignPut(photoKey(record.scanId), bytes) }
+  return json(200, answer)
 }
 
 function parseJpegBytes(header: string | undefined): number | undefined {

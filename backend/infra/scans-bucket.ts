@@ -1,7 +1,9 @@
+import { SCAN_RETENTION_DAYS } from '../api/src/tableDesign.ts'
+
 // ADR-030. The photos of the scan collection: private, encrypted, and gone after 12 months.
-// A row expires after 365 days (backend/api/src/scans/store.ts), so the photo expires on the same schedule.
+// A scan row expires after the same days (SCAN_RETENTION_DAYS), so the photo and the row expire on the same schedule.
 export const scansBucket = new sst.aws.Bucket('ScansBucket', {
-  lifecycle: [{ id: 'expire-scan-photos', expiresIn: '365 days' }],
+  lifecycle: [{ id: 'expire-scan-photos', expiresIn: `${SCAN_RETENTION_DAYS} days` }],
 })
 
 // SSE-S3 is the S3 default. This resource states it, so a reader sees that the bucket is encrypted.
