@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         write_preprocess_fixtures(args.out_dir, font_files(ML_ROOT / "fonts"))
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

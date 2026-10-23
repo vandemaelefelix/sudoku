@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
     argparse.ArgumentParser(prog="just reset-scan-outlines").parse_args(argv)
     try:
         count = reset_outlines(paths or DataPaths.under())
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(error, file=sys.stderr)
         return 1
     print(

@@ -208,3 +208,40 @@ def test_fit_draws_from_every_pool_and_trains_in_place():
     pools = [train_module.Pool(images, digit, kind, 2), train_module.Pool(images, digit, kind, 2)]
     train_module.fit(model, pools, 1, torch.device("cpu"), torch.Generator().manual_seed(0))
     assert any(not torch.equal(a, b) for a, b in zip(before, model.parameters(), strict=True))
+
+
+def test_fit_draws_the_pools_in_order_for_every_step(monkeypatch):
+    # The draw order fixes the random stream, so a reorder would change every trained model.
+    calls = []
+    real_randint = torch.randint
+
+    def spy(high, size, generator):
+        calls.append((high, size[0]))
+        return real_randint(high, size, generator=generator)
+
+    monkeypatch.setattr(train_module.torch, "randint", spy)
+    pools = [
+        train_module.Pool(
+            torch.zeros(n, 64, 64, 3, dtype=torch.uint8),
+            torch.zeros(n, dtype=torch.long),
+            torch.zeros(n, dtype=torch.long),
+            per_batch,
+        )
+        for n, per_batch in ((6, 3), (4, 1))
+    ]
+    model = CellClassifier()
+    train_module.fit(model, pools, 2, torch.device("cpu"), torch.Generator().manual_seed(0))
+    assert calls == [(6, 3), (4, 1)] * 4
+
+
+def test_fit_with_the_same_seed_gives_the_same_model():
+    def trained() -> list[torch.Tensor]:
+        torch.manual_seed(0)
+        model = CellClassifier()
+        rng = torch.Generator().manual_seed(0)
+        images = torch.randint(0, 256, (8, 64, 64, 3), dtype=torch.uint8, generator=rng)
+        pool = train_module.Pool(images, torch.arange(8) % 10, torch.zeros(8, dtype=torch.long), 4)
+        train_module.fit(model, [pool], 1, torch.device("cpu"), torch.Generator().manual_seed(1))
+        return [p.detach().clone() for p in model.parameters()]
+
+    assert all(torch.equal(a, b) for a, b in zip(trained(), trained(), strict=True))

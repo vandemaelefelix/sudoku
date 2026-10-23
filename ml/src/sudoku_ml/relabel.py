@@ -61,7 +61,7 @@ def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         count = apply_relabels((paths or DataPaths.under()).cells, args.file)
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(error, file=sys.stderr)
         return 1
     print(count)
