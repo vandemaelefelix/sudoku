@@ -23,7 +23,9 @@ from sudoku_ml.flatten import (
     warp_grid,
 )
 from sudoku_ml.journal import (
+    Field,
     Line,
+    Screen,
     append_records,
     format_source,
     format_time,
@@ -139,7 +141,9 @@ class PhotoCheck:
             existing.add(stem_of(cell_id))
             new_cells.append(cell_id)
             source = format_source((row.photo_id, *divmod(n, GRID_CELLS)))
-            links.append(Line(t, self.session, action, cell_id, "source", None, source, "photos"))
+            links.append(
+                Line(t, self.session, action, cell_id, Field.SOURCE, None, source, Screen.PHOTOS)
+            )
         # The links before the status: a stop between the two leaves the sudoku photo pending,
         # and its next cut skips the cells that exist.
         if links:

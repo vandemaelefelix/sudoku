@@ -13,7 +13,7 @@ import numpy as np
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.flatten import check_corners, slice_cells, warp_grid
 from sudoku_ml.grid_detect import line_fit
-from sudoku_ml.journal import read_journal
+from sudoku_ml.journal import Field, read_journal
 from sudoku_ml.tables import (
     APP_SCAN,
     parse_corners,
@@ -53,7 +53,7 @@ def reset_outlines(paths: DataPaths) -> int:
     """Set each `app-scan` photo with the status `accepted` back to `unchecked`. Returns the number
     of rows changed. Raises ValueError while the journal holds an outline line: the reset would
     undo that unfinished check."""
-    if any(line.field == "outline" for line in read_journal(paths.journal)):
+    if any(line.field == Field.OUTLINE for line in read_journal(paths.journal)):
         raise ValueError("The journal holds unfinished outline checks. Press Finish first.")
     rows = read_photos(paths.photos_csv)
     changed = [r.source == APP_SCAN and r.status == "accepted" for r in rows]

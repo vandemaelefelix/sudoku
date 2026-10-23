@@ -9,7 +9,9 @@ from pathlib import Path
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import (
+    Field,
     Line,
+    Screen,
     Source,
     append_records,
     current_kinds,
@@ -53,8 +55,8 @@ def confirmed_cells(lines: list[Line]) -> set[str]:
     return {
         x.cell
         for x in lines
-        if x.field in ("digit", "kind")
-        and x.screen not in ("undo", "repair", "outlines")
+        if x.field in (Field.DIGIT, Field.KIND)
+        and x.screen not in (Screen.UNDO, Screen.REPAIR, Screen.OUTLINES)
         and x.action not in undone
     }
 
@@ -137,7 +139,7 @@ def repair_lines(
     truth for the digit. The lines carry their own session, so undo and rollback never reverse
     them."""
     return [
-        Line(t, session, f"{session}-1", cell, "kind", kinds[cell], None, "repair")
+        Line(t, session, f"{session}-1", cell, Field.KIND, kinds[cell], None, Screen.REPAIR)
         for cell, where in sorted(folder.items())
         if where in NO_KIND_FOLDERS and kinds.get(cell) is not None
     ]
