@@ -88,13 +88,15 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
     [cellSize, givenRole.scale, entryRole.scale, baseScale],
   )
 
-  const { actions, editable, looks, openCell, picking, scan, solution, solved, threshold } = correction
+  const { actions, dev, editable, looks, openCell, picking, solved } = correction
+  const { scan, threshold } = dev
+  const { solution } = correction.play
   const open = openCell?.cell ?? null
   const failed = correction.panel === 'failure'
   // A failed import offers another image, not the camera. Without a grid, the panel says what to pick.
   const importFailed = failed && capture.origin === 'library' && exits.onChooseImage !== undefined
   const importNoGrid = importFailed && correction.failure === NO_GRID
-  const blockId = correction.block === null ? null : PLAY_BLOCK_TEXT[correction.block]
+  const blockId = correction.play.block === null ? null : PLAY_BLOCK_TEXT[correction.play.block]
   const blockText = blockId === null ? null : intl.formatMessage({ id: blockId })
   const heading = intl.formatMessage({ id: solved ? 'scan.correction.solved' : 'scan.correction.title' })
   let failureText = ''
@@ -345,15 +347,19 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
                 <CorrectionSummary
                   toCheck={correction.toCheck}
                   conflictCount={correction.conflictCount}
-                  level={correction.level === null ? '' : intl.formatMessage({ id: LEVEL_LABELS[correction.level] })}
+                  level={
+                    correction.play.level === null
+                      ? ''
+                      : intl.formatMessage({ id: LEVEL_LABELS[correction.play.level] })
+                  }
                   blockText={blockText}
-                  canPlay={correction.canPlay}
+                  canPlay={correction.play.canPlay}
                   animate={!clock && motion}
-                  canSolve={correction.canSolve}
+                  canSolve={correction.play.canSolve}
                   solutionShown={solution !== null}
                   full={full}
                   onStartCheck={actions.startCheck}
-                  onPlay={correction.canPlay ? actions.play : undefined}
+                  onPlay={correction.play.canPlay ? actions.play : undefined}
                   onToggleSolve={actions.toggleSolution}
                 />
               )}
@@ -373,9 +379,9 @@ export function CorrectionScreen({ session: capture, layout, ...exits }: Correct
           showConfidence={showConfidence}
           onShowConfidence={setShowConfidence}
           threshold={threshold}
-          onThreshold={correction.setThreshold}
-          saveState={correction.saveState}
-          onSave={correction.canSave ? actions.save : undefined}
+          onThreshold={dev.setThreshold}
+          saveState={dev.saveState}
+          onSave={dev.canSave ? actions.save : undefined}
         />
       )}
     </View>
