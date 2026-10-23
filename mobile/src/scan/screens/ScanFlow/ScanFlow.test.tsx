@@ -9,7 +9,7 @@ const mockDismissTo = jest.fn()
 jest.mock('expo-router', () => ({ useRouter: () => ({ dismissTo: mockDismissTo }) }))
 jest.mock('@/scan/hooks/useScannedStart', () => ({ useScannedStart: jest.fn() }))
 const mockSave = jest.fn()
-jest.mock('@/scan/utils/correctionStore', () => ({ saveScanCorrection: (...args: unknown[]) => mockSave(...args) }))
+jest.mock('@/scan/correctionStore', () => ({ saveScanCorrection: (...args: unknown[]) => mockSave(...args) }))
 
 const mockDiscard = jest.fn()
 const mockEnqueue = jest.fn()

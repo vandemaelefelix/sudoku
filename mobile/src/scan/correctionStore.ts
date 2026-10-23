@@ -1,8 +1,8 @@
 import { Directory, File, Paths } from 'expo-file-system'
 import type { FinalGrid } from '@/utils/finalGrid.utils'
 import { devWarn, errorMessage } from '@/utils/log.utils'
-import type { CaptureResult } from './captureResult.utils'
-import { buildScanRecord } from './correctionLog.utils'
+import type { CaptureResult } from '@/scan/utils/captureResult.utils'
+import { buildScanRecord } from '@/scan/utils/correctionLog.utils'
 
 const FOLDER = 'scan-corrections'
 

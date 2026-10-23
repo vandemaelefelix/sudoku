@@ -10,7 +10,7 @@ import type { FrameDetection } from '@/scan/hooks/useFrameTracking'
 import { type CaptureResult, formatScanLog, type ScanOrigin, toCaptureResult } from '@/scan/utils/captureResult.utils'
 import type { CorrectionLayout } from '@/scan/utils/correction.utils'
 import { claimLock, createLockLatch, type LockSource } from '@/scan/utils/lockOn.utils'
-import { deletePickedImage, saveUprightPhoto, stillPhoto } from '@/scan/utils/photoFile'
+import { deletePickedImage, saveUprightPhoto, stillPhoto } from '@/scan/photoFile'
 import { photoToSkImage } from '@/scan/utils/photoImage.utils'
 import { sameAspect, toPreview, uprightAspect } from '@/scan/utils/preview.utils'
 import {
