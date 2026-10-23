@@ -9,6 +9,10 @@ import {
   transitionEnd,
   photoMatrix,
   resultsGateReached,
+  frameAt,
+  frameStep,
+  stepClockState,
+  type TransitionPlan,
 } from './transition.utils'
 import { easeOut } from '@/utils/motion.utils'
 import { toPreview } from './preview.utils'
@@ -16,6 +20,7 @@ import type { Point, Quad } from '@/utils/geometry.utils'
 import {
   GATE_PHOTO,
   GATE_RESULTS,
+  MAX_CLOCK_STEP,
   REDUCED_END,
   SPINNER_DELAY,
   TRANSITION_END,
@@ -197,11 +202,11 @@ describe('digitAlpha', () => {
 
 describe('ringsAt and panelAt', () => {
   it('match the channels of transitionAt', () => {
-    for (const reduceMotion of [false, true]) {
+    for (const crossFade of [false, true]) {
       for (let t = 0; t <= 1.7; t += 0.05) {
-        const c = transitionAt(t, reduceMotion, 0.1)
-        expect(ringsAt(t, reduceMotion, 0.1)).toBe(c.rings)
-        expect(panelAt(t, reduceMotion, 0.1)).toBe(c.panel)
+        const c = transitionAt(t, crossFade, 0.1)
+        expect(ringsAt(t, crossFade, 0.1)).toBe(c.rings)
+        expect(panelAt(t, crossFade, 0.1)).toBe(c.panel)
       }
     }
   })
@@ -393,5 +398,130 @@ describe('photoMatrix', () => {
   it('returns null for a degenerate locked quad', () => {
     const point = { x: 0.5, y: 0.5 }
     expect(photoMatrix(3000, 4000, [point, point, point, point], square)).toBeNull()
+  })
+})
+
+describe('frameStep', () => {
+  it('is 0 before the first frame, and the time between frames after it', () => {
+    expect(frameStep(5, -1)).toBe(0)
+    expect(frameStep(1 + 1 / 60, 1)).toBeCloseTo(1 / 60, 12)
+  })
+
+  it('stops a stall of the UI thread at MAX_CLOCK_STEP', () => {
+    expect(frameStep(10, 1)).toBe(MAX_CLOCK_STEP)
+  })
+
+  it('never goes back in time', () => {
+    expect(frameStep(1, 2)).toBe(0)
+  })
+})
+
+describe('stepClockState', () => {
+  const start = { clock: 0, resultsAt: -1, held: 0 }
+  const photoOnly = { photo: true, results: false }
+
+  it('moves the clock by dt', () => {
+    const step = stepClockState(start, 0.02, open, false)
+    expect(step.clock).toBeCloseTo(0.02, 12)
+    expect(step.held).toBe(0)
+    expect(step.late).toBe(false)
+    expect(step.done).toBe(false)
+  })
+
+  it('fixes resultsAt at the clock value of the first step with an open results gate, and keeps it', () => {
+    const first = stepClockState({ clock: 0.4, resultsAt: -1, held: 0 }, 0.02, open, false)
+    expect(first.resultsAt).toBe(0.4)
+    const later = stepClockState({ ...first, clock: 0.9 }, 0.02, open, false)
+    expect(later.resultsAt).toBe(0.4)
+  })
+
+  it('leaves resultsAt open while the results gate is closed', () => {
+    expect(stepClockState({ clock: 0.4, resultsAt: -1, held: 0 }, 0.02, photoOnly, false).resultsAt).toBe(-1)
+  })
+
+  it('shifts the sweep by the arrival of the results', () => {
+    const step = stepClockState({ clock: 0.8, resultsAt: -1, held: 0 }, 0, open, false)
+    expect(step.shift).toBe(sweepShift(0.8, 0.8, false))
+    expect(step.shift).toBeGreaterThan(0)
+    expect(stepClockState({ clock: 0.8, resultsAt: -1, held: 0 }, 0, open, true).shift).toBe(0)
+  })
+
+  it('counts the time that the closed results gate holds the clock, and says late after SPINNER_DELAY', () => {
+    const held = { clock: GATE_RESULTS, resultsAt: -1, held: 0 }
+    const first = stepClockState(held, 0.5, photoOnly, false)
+    expect(first.clock).toBe(GATE_RESULTS)
+    expect(first.held).toBe(0.5)
+    expect(first.late).toBe(false)
+    const second = stepClockState(first, SPINNER_DELAY, photoOnly, false)
+    expect(second.held).toBe(0.5 + SPINNER_DELAY)
+    expect(second.late).toBe(true)
+  })
+
+  it('does not count before the clock reaches the results gate', () => {
+    expect(stepClockState({ clock: 0.2, resultsAt: -1, held: 0.3 }, 0.02, photoOnly, false).held).toBe(0)
+  })
+
+  it('counts from the start in the cross-fade, where the gate is at 0', () => {
+    expect(stepClockState({ clock: 0, resultsAt: -1, held: 0 }, 0.05, { photo: true, results: false }, true).held).toBe(
+      0.05,
+    )
+  })
+
+  it('is done at the end with an open results gate, and not with a closed one', () => {
+    const atEnd = { clock: TRANSITION_END, resultsAt: 0, held: 0 }
+    expect(stepClockState(atEnd, 0.02, open, false).done).toBe(true)
+    expect(stepClockState(atEnd, 0.02, photoOnly, false).done).toBe(false)
+  })
+
+  it('moves the end later by the shift', () => {
+    const state = { clock: TRANSITION_END, resultsAt: 1, held: 0 }
+    expect(stepClockState(state, 0, open, false).done).toBe(false)
+  })
+
+  it('does not change the state that it gets', () => {
+    const state = { clock: 0.4, resultsAt: -1, held: 0 }
+    stepClockState(state, 0.02, open, false)
+    expect(state).toEqual({ clock: 0.4, resultsAt: -1, held: 0 })
+  })
+})
+
+const quad = (x: number): Quad => [
+  { x, y: 0 },
+  { x: x + 1, y: 0 },
+  { x: x + 1, y: 1 },
+  { x, y: 1 },
+]
+
+describe('frameAt', () => {
+  const warp: TransitionPlan = { from: quad(10), to: quad(0), crossFade: false, version: 1 }
+  const fade: TransitionPlan = { ...warp, crossFade: true }
+
+  it('starts on the locked grid and ends on the square, with the grid and the dots on the same quad', () => {
+    const start = frameAt(0, 0, warp)
+    expect(start.grid).toEqual(warp.from)
+    expect(start.quad).toEqual(start.grid)
+    const end = frameAt(TRANSITION_END, 0, warp)
+    expect(end.grid).toEqual(warp.to)
+    expect(end.quad).toEqual(end.grid)
+  })
+
+  it('moves the grid with the flatten channel', () => {
+    const frame = frameAt(0.3, 0, warp)
+    const flatten = transitionAt(0.3, false, 0).flatten
+    expect(frame.grid[0].x).toBeCloseTo(10 - 10 * flatten, 12)
+    expect(frame.channels).toEqual(transitionAt(0.3, false, 0))
+    expect(frame.crossFade).toBe(false)
+  })
+
+  it('keeps the dots on the locked grid and the cells on the square in the cross-fade', () => {
+    const frame = frameAt(0.1, 0, fade)
+    expect(frame.quad).toEqual(fade.from)
+    expect(frame.grid).toEqual(fade.to)
+    expect(frame.crossFade).toBe(true)
+    expect(frame.channels).toEqual(transitionAt(0.1, true, 0))
+  })
+
+  it('passes the shift on to the channels', () => {
+    expect(frameAt(1.4, 0.2, warp).channels).toEqual(transitionAt(1.4, false, 0.2))
   })
 })

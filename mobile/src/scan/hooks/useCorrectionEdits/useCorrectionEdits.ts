@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Digit } from '@sudoku/core'
 import type { RecogniseResult } from '@/scanner'
 import { REVIEW_CONFIDENCE } from '@/scan/constants/correction.constants'
-import { cellLook, type CellLook, type CellStyle } from '@/scan/utils/correction.utils'
+import { cellLook, cellsToCheck, type CellLook, type CellStyle } from '@/scan/utils/correction.utils'
 import {
   answerNo,
   answerYes,
@@ -90,7 +90,7 @@ export function useCorrectionEdits(
     selected: edits.selected,
     picking: edits.picking,
     conflicts,
-    toCheck: looks.filter((look) => look.uncertain).length,
+    toCheck: cellsToCheck(looks),
     flow,
     grid,
     actions,
