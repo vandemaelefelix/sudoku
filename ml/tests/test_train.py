@@ -1,5 +1,4 @@
 import json
-import tomllib
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +7,7 @@ import torch
 from PIL import Image
 
 import sudoku_ml.train as train_module
+from configs import ML, smoke_config
 from sudoku_ml.contract import DIGIT_CLASSES, UNKNOWN_KIND, kind_index
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.dataset import load_cells
@@ -24,8 +24,6 @@ from sudoku_ml.train import (
     review_accuracy,
     train,
 )
-
-ML = Path(__file__).parents[1]
 
 
 def test_unknown_kind_adds_no_kind_loss():
@@ -95,13 +93,6 @@ def test_unknown_config_key_is_rejected(tmp_path: Path):
     bad.write_text((ML / "configs" / "smoke.toml").read_text() + "\nunknown = 1\n")
     with pytest.raises(TypeError):
         load_config(bad)
-
-
-def smoke_config(tmp_path: Path, **changes) -> Path:
-    values = tomllib.loads((ML / "configs" / "smoke.toml").read_text()) | changes
-    path = tmp_path / "config.toml"
-    path.write_text("\n".join(f"{k} = {json.dumps(v)}" for k, v in values.items()))
-    return path
 
 
 def test_real_cells_without_data_raise(tmp_path: Path):

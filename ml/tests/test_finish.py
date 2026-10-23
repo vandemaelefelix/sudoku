@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 
 import pytest
-from test_data_check import valid_root
-from test_label_store import Clock, save_kinds, settle_kinds
+from cells import Clock, save_kinds, settle_kinds
+from photos import valid_root
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.finish import finish

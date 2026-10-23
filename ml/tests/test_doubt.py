@@ -1,4 +1,5 @@
 import pytest
+from cells import probs
 
 from sudoku_ml.contract import DIGIT_CLASSES
 from sudoku_ml.doubt import (
@@ -22,13 +23,6 @@ PUZZLE = "".join(
 
 def grid(text: str) -> list[int]:
     return [int(c) for c in text]
-
-
-def probs(label: str, p: float, kind: str = "printed", kp: float = 0.9) -> dict:
-    digit = [(1 - p) / 9] * 10
-    digit[DIGIT_CLASSES.index(label)] = p
-    printed, handwritten = (kp, 1 - kp) if kind == "printed" else (1 - kp, kp)
-    return {"digit": digit, "kind": [0.0, printed, handwritten, 0.0]}
 
 
 def test_a_digit_twice_in_a_row_a_column_or_a_box_is_a_rule_break():

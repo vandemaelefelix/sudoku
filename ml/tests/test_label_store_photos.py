@@ -4,14 +4,12 @@ import json
 from pathlib import Path
 
 import pytest
-from photos import grid_photo, save_photo
-from test_label_store import Clock, build, save_kinds
+from cells import Clock, build, save_kinds
+from photos import FULL, grid_photo, save_photo
 
 from sudoku_ml.label_store import LabelStore
 from sudoku_ml.photo_import import import_folder
 from sudoku_ml.tables import read_photos
-
-FULL = [[200, 100], [740, 100], [740, 640], [200, 640]]
 
 
 def imported(tmp_path: Path, photos: int = 1) -> tuple[LabelStore, list[str]]:
@@ -38,25 +36,22 @@ def test_an_approved_photo_cuts_its_cells_into_flow_a_not_flow_b(tmp_path: Path)
     assert store.approve_outlines([photo]) == 1
     assert read_photos(store.paths.photos_csv)[0].status == "accepted"
     assert store.loose_cells() == loose
-    [waiting] = store.scan_list()["scans"]
-    assert (waiting["photo"], waiting["source"]) == (photo, "photo")
-    screen = store.scan_screen(photo)
-    own = [c for c in screen["cells"] if "id" in c and not c["shared"]]
-    assert own and all(c["suggested"] and c["digit"] is None for c in own)
-    assert waiting["open"] == len(own)
+    own = [c for c in store.open_cells() if c["photo"] == photo]
+    assert own and all(c["source"] == "photo" and c["digit"] is None for c in own)
 
 
 def test_a_cell_of_a_photo_starts_with_the_pre_label(tmp_path: Path):
     store, [photo] = imported(tmp_path)
     store.fix_outline(photo, FULL)
-    cells = [c for c in store.scan_screen(photo)["cells"] if "id" in c]
+    cells = [c["id"] for c in store.open_cells() if c["photo"] == photo]
     guesses = {
-        cells[0]["id"]: {"digit": "4", "p": 0.9, "kind": "handwritten", "kp": 0.8},
-        cells[1]["id"]: {"digit": "empty", "p": 0.9, "kind": "none", "kp": 0.8},
-        cells[2]["id"]: {"digit": "5", "p": 0.9, "kind": "notes", "kp": 0.8},
+        cells[0]: {"digit": "4", "p": 0.9, "kind": "handwritten", "kp": 0.8},
+        cells[1]: {"digit": "empty", "p": 0.9, "kind": "none", "kp": 0.8},
+        cells[2]: {"digit": "5", "p": 0.9, "kind": "notes", "kp": 0.8},
     }
     store.paths.prelabels.write_text(json.dumps({"run": "r", "cells": guesses}))
-    first, second, third = store.scan_screen(photo)["cells"][:3]
+    open_cells = {c["id"]: c for c in store.open_cells()}
+    first, second, third = (open_cells[c] for c in cells[:3])
     assert (first["digit"], first["kind"]) == ("4", "handwritten")
     assert (second["digit"], second["kind"]) == ("empty", None)
     assert (third["digit"], third["kind"]) == ("5", None)
@@ -87,7 +82,8 @@ def test_a_photo_without_a_detected_outline_cannot_be_approved_blind(tmp_path: P
 def test_a_rejected_photo_leaves_the_gallery_without_cells(tmp_path: Path):
     store, [photo] = imported(tmp_path)
     store.reject_outline(photo)
-    assert store.outline_screen()["open"] == 0 and store.scan_list()["scans"] == []
+    assert store.outline_screen()["open"] == 0
+    assert [c for c in store.open_cells() if c["photo"]] == []
     assert read_photos(store.paths.photos_csv)[0].status == "rejected"
 
 

@@ -1,27 +1,23 @@
-import json
 from pathlib import Path
 
 import pytest
-from test_doubt import probs
-from test_label_store import Clock, add_cell, build, pattern, save_kinds, settle_kinds
-from test_label_store_scans import pulled
+from cells import (
+    Clock,
+    Guess,
+    add_cell,
+    build,
+    move_digit,
+    pattern,
+    prelabel,
+    save_kinds,
+    settle_kinds,
+)
+from scans import pulled, shared_cells
 
-from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.finish import finish
 from sudoku_ml.journal import Line, read_journal
 from sudoku_ml.label_store import CHECK_SIZE, LabelStore
 from sudoku_ml.tables import read_cells, stem_of
-
-Guess = tuple[str, float, str, float]  # digit, p of the digit, kind, p of the kind
-
-
-def prelabel(paths: DataPaths, guesses: dict[str, Guess]) -> None:
-    """Write prelabels.json as the model run `test` would."""
-    cells = {
-        cell: {"digit": d, "p": p, "kind": k, "kp": kp, "probs": probs(d, p, k, kp)}
-        for cell, (d, p, k, kp) in guesses.items()
-    }
-    paths.prelabels.write_text(json.dumps({"run": "test", "cells": cells}))
 
 
 def loose(tmp_path: Path, guesses: dict[int, Guess | None]):
@@ -89,7 +85,7 @@ def test_a_scan_that_is_not_approved_holds_no_open_cell(tmp_path: Path):
 
 def test_a_pixel_identical_cell_is_shown_once(tmp_path: Path):
     store, _, photos = approved(tmp_path, scans=2)
-    shared = {c["id"] for c in store.scan_screen(photos[1])["cells"] if c["shared"]}
+    shared = set(shared_cells(store, photos[1]))
     assert shared
     seen = []
     for tab in ("empty", *map(str, range(1, 10)), "unknown"):
@@ -503,7 +499,7 @@ def test_cells_that_the_model_reads_differently_come_in_the_order_of_the_raw_sum
     cells = ids["7"]
     save_kinds(store, [{"id": c, "kind": "printed"} for c in cells])
     for cell in cells:
-        store.move(cell, "6", "digits")
+        move_digit(store, cell, "6", "digits")
     p_label = {cells[0]: 0.4, cells[1]: 0.2, cells[2]: 0.01}
     prelabel(paths, {c: ("6", 0.99, "handwritten", 1 - p) for c, p in p_label.items()})
     screen = LabelStore(paths, Clock()).check_kinds("6")
