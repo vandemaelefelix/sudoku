@@ -170,6 +170,10 @@ preprocess-fixtures:
 train config="cell-classifier":
     uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml
 
+# Open the explainer notebooks in ml/notebooks/ in JupyterLab
+notebooks:
+    uv run --directory ml --group notebooks jupyter lab notebooks
+
 # Export a training run to TFLite and check it against PyTorch and TFLite 2.17
 export run:
     uv run --directory ml python -m sudoku_ml.export {{run}}
