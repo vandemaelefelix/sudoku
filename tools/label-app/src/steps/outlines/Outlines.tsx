@@ -1,37 +1,20 @@
 import { useState } from 'react'
 
-import { get, outlineImage, post } from '../api/client'
-import type { OutlinePage } from '../api/types'
-import { Frame } from '../components/Frame'
-import { StepState } from '../components/StepState'
-import { plural } from '../format'
-import { useAction } from '../hooks/useAction'
-import { useKeys } from '../hooks/useKeys'
-import { useLoad } from '../hooks/useLoad'
-import { go } from '../hooks/useRoute'
-
-/** The marked outlines that wait for the large view, in gallery order. The large view takes the next one. */
-export const fixQueue: string[] = []
-
-let carried: string | undefined
-
-function takeCarried(): string | undefined {
-  const note = carried
-  carried = undefined
-  return note
-}
-
-/** Open the next marked outline, or the gallery with `note` when none is left. */
-export function nextToFix(note?: string): void {
-  const next = fixQueue.shift()
-  if (!next) carried = note
-  go(next ? `outlines/${next}` : 'outlines')
-}
+import { get, outlineImage, post } from '../../api/client'
+import type { OutlinePage } from '../../api/types'
+import { Frame } from '../../components/Frame'
+import { StepState } from '../../components/StepState'
+import { plural } from '../../format'
+import { useAction } from '../../hooks/useAction'
+import { useKeys } from '../../hooks/useKeys'
+import { useLoad } from '../../hooks/useLoad'
+import { go } from '../../hooks/useRoute'
+import { fixQueue, nextToFix } from './fixQueue'
 
 export function Outlines() {
   const page = useLoad(() => get<OutlinePage>('/api/outlines'), 'outlines')
   const action = useAction(page.reload)
-  const [arrived] = useState(takeCarried)
+  const [arrived] = useState(fixQueue.takeNote)
   const [marks, setMarks] = useState<Set<string>>(new Set())
   const scans = page.data?.scans ?? []
   // A photo without a detected outline cannot be approved: it always opens large.
@@ -64,7 +47,7 @@ export function Outlines() {
     }
     setMarks(new Set())
     if (marked.length) {
-      fixQueue.splice(0, fixQueue.length, ...marked)
+      fixQueue.replace(marked)
       nextToFix()
     }
   }
