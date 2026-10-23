@@ -223,7 +223,7 @@ def main(argv: list[str] | None = None, paths: DataPaths | None = None) -> int:
     argparse.ArgumentParser(prog="just check-data").parse_args(argv)
     try:
         report = check_data(paths or DataPaths.under())
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(error, file=sys.stderr)
         return 1
     print(format_report(report))

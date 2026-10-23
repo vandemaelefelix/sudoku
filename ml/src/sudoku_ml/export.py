@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         print(export(args.run, PREPROCESS_FIXTURES))
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

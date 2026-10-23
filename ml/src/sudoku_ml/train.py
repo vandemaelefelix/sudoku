@@ -158,6 +158,7 @@ def fit(
     epochs: int,
     device,
     generator: torch.Generator,
+    *,
     max_lr: float = 0.003,
     weight_decay: float = 1e-4,
     label_smoothing: float = 0.05,
@@ -239,11 +240,11 @@ def train_model(config: Config, training: TrainingData, device) -> CellClassifie
         config.epochs,
         device,
         generator,
-        config.max_lr,
-        config.weight_decay,
-        config.label_smoothing,
-        config.kind_weight,
-        config.augment,
+        max_lr=config.max_lr,
+        weight_decay=config.weight_decay,
+        label_smoothing=config.label_smoothing,
+        kind_weight=config.kind_weight,
+        augment_cells=config.augment,
     )
     return model
 
