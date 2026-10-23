@@ -14,10 +14,9 @@ from PIL import Image
 
 from sudoku_ml.contract import DIGIT_CLASSES, KIND_CLASSES
 from sudoku_ml.data_paths import ARTIFACTS, ML_ROOT, DataPaths
-from sudoku_ml.manifest import warn_unreadable
 from sudoku_ml.model import CellClassifier
 from sudoku_ml.preprocess import preprocess_cell, to_cell_image
-from sudoku_ml.tables import pixel_id, stem_of, write_atomic
+from sudoku_ml.tables import pixel_id, read_derived, stem_of, write_atomic
 
 BATCH = 1024
 # empty/ too: an app cell that the player left empty can hide a digit. The Kind step needs a
@@ -74,12 +73,7 @@ def write_prelabels(
     of this run. `wanted` (full cell ids) limits it to the cells that wait for a person. Drop the
     pre-labels of other cells. An entry without `probs` is old and is computed again. Returns the
     number of new pre-labels."""
-    stored = {}
-    if out.exists():
-        try:
-            stored = json.loads(out.read_text())
-        except (OSError, ValueError) as error:
-            warn_unreadable(out, error)
+    stored = read_derived(out, warn=True)
     if not isinstance(stored, dict):
         stored = {}
     known = stored.get("cells", {}) if stored.get("run") == run.name else {}

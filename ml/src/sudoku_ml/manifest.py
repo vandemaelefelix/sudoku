@@ -5,7 +5,6 @@ table itself with the journal applied on top."""
 import argparse
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sudoku_ml.data_paths import DataPaths
 from sudoku_ml.journal import (
@@ -33,10 +32,6 @@ from sudoku_ml.tables import (
 )
 
 UNCHANGED = "Check SUDOKU_IMAGES or restore the images. The table was not changed."
-
-
-def warn_unreadable(path: Path, error: Exception) -> None:
-    print(f"{path.name} cannot be read ({error}). Treated as missing.", file=sys.stderr)
 
 
 def base_kinds(table: dict[str, CellRow]) -> dict[str, str | None]:

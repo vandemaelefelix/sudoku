@@ -106,12 +106,12 @@ def pulled(tmp_path: Path, corners=(CORNERS, CORNERS)) -> tuple[LabelStore, Data
 
 def places(store: LabelStore, photo: str) -> list[str | None]:
     """The cell at each of the 81 places of a scan, or None."""
-    return store._places(store._scan_state(photo))
+    return store.book.places(store.book.state(photo))
 
 
 def own_cells(store: LabelStore, photo: str) -> list[str]:
     """The cells of the places of a scan that its own photo owns, each once."""
-    owner = store._scan_state(photo).row.photo_id
+    owner = store.book.state(photo).row.photo_id
     sources = store.sources()
     found = [c for c in places(store, photo) if c and sources[c][0] == owner]
     return list(dict.fromkeys(found))
@@ -119,7 +119,7 @@ def own_cells(store: LabelStore, photo: str) -> list[str]:
 
 def shared_cells(store: LabelStore, photo: str) -> list[str]:
     """The cells at the places of a scan that another scan owns."""
-    owner = store._scan_state(photo).row.photo_id
+    owner = store.book.state(photo).row.photo_id
     sources = store.sources()
     return [c for c in places(store, photo) if c and sources[c][0] != owner]
 

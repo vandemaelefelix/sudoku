@@ -9,6 +9,10 @@ from sudoku_ml.tables import NO_KIND_FOLDERS, stem_of
 
 # The digits that a person can give a cell. `unlabeled` is a folder, not a digit.
 ASSIGNABLE = (*DIGIT_CLASSES, "discarded")
+# The screens whose digit line a person made, and whose kind line a person made. SCANS and
+# GROUPS stay: old journals still hold lines from those screens (ADR-034, decision 8).
+DIGIT_SCREENS = (Screen.DIGITS, Screen.SCANS)
+KIND_SCREENS = (Screen.KINDS, Screen.SCANS, Screen.GROUPS, Screen.REVIEW)
 
 
 @dataclass(frozen=True)

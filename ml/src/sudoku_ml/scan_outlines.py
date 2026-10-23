@@ -18,6 +18,7 @@ from sudoku_ml.tables import (
     APP_SCAN,
     parse_corners,
     pixel_id_of,
+    read_derived,
     read_photos,
     write_atomic,
     write_photos,
@@ -40,8 +41,8 @@ def cut(rgb: np.ndarray, corners: str) -> list[tuple[np.ndarray, str]]:
 def read_scores(path: Path) -> dict[str, dict]:
     """Photo id → {"corners", "fit"}. A missing or broken file is empty: it is derived."""
     try:
-        return json.loads(path.read_text())["photos"]
-    except (OSError, ValueError, KeyError, TypeError):
+        return read_derived(path)["photos"]
+    except (KeyError, TypeError):
         return {}
 
 
