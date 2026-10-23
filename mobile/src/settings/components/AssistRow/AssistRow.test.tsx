@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { AssistRow } from './AssistRow'
 
-const props = { label: 'Box', description: 'Shade the 3×3 box of the selected cell.', value: true, divider: false }
+const props = { label: 'Box', description: 'Shade the 3×3 box of the selected cell.', value: true }
 
 // The switch speaks for the row, so VoiceOver skips the visible text.
 const hidden = { includeHiddenElements: true }

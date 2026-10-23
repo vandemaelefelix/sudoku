@@ -1,5 +1,6 @@
-import { Text, View } from 'react-native'
+import { Text } from 'react-native'
 import { HINT_TECHNIQUES, type HintTechniqueId, type TechniqueId } from '@sudoku/core'
+import { FramedCard } from '@/components/FramedCard'
 import { LinkRow } from '@/components/LinkRow'
 import { Screen } from '@/components/Screen'
 import { ScreenHeader } from '@/components/ScreenHeader'
@@ -19,8 +20,8 @@ export function TechniquesScreen({ onBack, onOpen }: TechniquesScreenProps) {
     <Screen>
       <ScreenHeader title={intl.formatMessage({ id: 'techniques.title' })} onBack={onBack} />
       <Text style={styles.intro}>{intl.formatMessage({ id: 'techniques.intro' })}</Text>
-      <View style={styles.card}>
-        {IDS.map((id, index) => {
+      <FramedCard>
+        {IDS.map((id) => {
           if (HINT_TECHNIQUES[id] === undefined) return null
           // A technique of HINT_TECHNIQUES has its name and definition in the catalogue.
           const hinted = id as HintTechniqueId
@@ -29,12 +30,11 @@ export function TechniquesScreen({ onBack, onOpen }: TechniquesScreenProps) {
               key={id}
               label={techniqueName(intl, hinted)}
               description={capitalised(techniqueDefinition(intl, hinted))}
-              divider={index > 0}
               onPress={() => onOpen(id)}
             />
           )
         })}
-      </View>
+      </FramedCard>
     </Screen>
   )
 }

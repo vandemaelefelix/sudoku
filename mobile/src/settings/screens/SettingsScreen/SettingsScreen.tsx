@@ -1,5 +1,5 @@
-import { View } from 'react-native'
 import { AccountSection } from '@/account/components/AccountSection'
+import { FramedCard } from '@/components/FramedCard'
 import { LinkRow } from '@/components/LinkRow'
 import { Screen } from '@/components/Screen'
 import { ScreenHeader } from '@/components/ScreenHeader'
@@ -17,7 +17,6 @@ import { useThemePreference } from '@/settings/hooks/useThemePreference'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { useLanguage } from '@/i18n/hooks/useLanguage'
 import { ASSIST_ROWS } from './SettingsScreen.constants'
-import { styles } from './SettingsScreen.styles'
 
 type SettingsScreenProps = { onBack(): void; onSignIn(): void; onTechniques(): void }
 
@@ -43,22 +42,21 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         title={intl.formatMessage({ id: 'settings.assists.title' })}
         hint={intl.formatMessage({ id: 'settings.assists.hint' })}
       />
-      <View testID="assist-card" style={styles.card}>
+      <FramedCard testID="assist-card">
         <AssistPreview />
-        {ASSIST_ROWS.map(({ name, label, description }, index) => (
+        {ASSIST_ROWS.map(({ name, label, description }) => (
           <AssistRow
             key={name}
             label={intl.formatMessage({ id: label })}
             description={intl.formatMessage({ id: description })}
             value={assists[name]}
-            divider={index > 0}
             onChange={(on) => {
               haptics.play('tick')
               setAssist(name, on)
             }}
           />
         ))}
-      </View>
+      </FramedCard>
       <SectionHeading title={intl.formatMessage({ id: 'settings.theme.title' })}>
         <ThemePicker
           value={preference}
@@ -87,24 +85,22 @@ export function SettingsScreen({ onBack, onSignIn, onTechniques }: SettingsScree
         />
       </SectionHeading>
       <SectionHeading title={intl.formatMessage({ id: 'settings.feedback.title' })} />
-      <View style={styles.card}>
+      <FramedCard>
         <AssistRow
           label={intl.formatMessage({ id: 'settings.haptics.label' })}
           description={intl.formatMessage({ id: 'settings.haptics.description' })}
           value={haptics.on}
-          divider={false}
           onChange={switchHaptics}
         />
-      </View>
+      </FramedCard>
       <SectionHeading title={intl.formatMessage({ id: 'settings.learn.title' })} />
-      <View style={styles.card}>
+      <FramedCard>
         <LinkRow
           label={intl.formatMessage({ id: 'techniques.title' })}
           description={intl.formatMessage({ id: 'settings.learn.techniques' })}
-          divider={false}
           onPress={onTechniques}
         />
-      </View>
+      </FramedCard>
       <ScanningSection />
       <AccountSection onSignIn={onSignIn} />
       <SettingsFooter />

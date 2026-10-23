@@ -1,4 +1,5 @@
 import { Linking, Pressable, Text, View } from 'react-native'
+import { FramedCard } from '@/components/FramedCard'
 import { SectionHeading } from '@/components/SectionHeading'
 import { AssistRow } from '@/settings/components/AssistRow'
 import { useHaptics } from '@/preferences/hooks/useHaptics'
@@ -17,12 +18,11 @@ export function ScanningSection() {
   return (
     <>
       <SectionHeading title={intl.formatMessage({ id: 'settings.scanning.title' })} />
-      <View testID="scanning-card" style={styles.card}>
+      <FramedCard testID="scanning-card">
         <AssistRow
           label={intl.formatMessage({ id: 'scanShare.title' })}
           description={intl.formatMessage({ id: 'scanShare.description' })}
           value={on}
-          divider={false}
           onChange={(next) => {
             haptics.play('tick')
             setOn(next)
@@ -38,7 +38,7 @@ export function ScanningSection() {
             <Text style={styles.link}>{policy}</Text>
           </Pressable>
         </View>
-      </View>
+      </FramedCard>
     </>
   )
 }

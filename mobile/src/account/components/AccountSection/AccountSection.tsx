@@ -2,6 +2,7 @@ import { getNetworkStateAsync } from 'expo-network'
 import { useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { useAccount } from '@/account/hooks/useAccount'
+import { FramedCard } from '@/components/FramedCard'
 import { SectionHeading } from '@/components/SectionHeading'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import type { MessageId } from '@/i18n/messages'
@@ -73,7 +74,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
     <>
       <SectionHeading title={t('account.section.title')} hint={hint} />
       {status === 'signedOut' ? (
-        <View style={styles.card}>
+        <FramedCard>
           <Pressable
             accessibilityRole="button"
             onPress={onSignIn}
@@ -81,10 +82,10 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
           >
             <Text style={styles.action}>{t('account.section.signIn')}</Text>
           </Pressable>
-        </View>
+        </FramedCard>
       ) : null}
       {status === 'signedIn' ? (
-        <View style={styles.card}>
+        <FramedCard>
           <View
             style={styles.row}
             accessible
@@ -97,7 +98,7 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
             accessibilityState={{ disabled: deleting }}
             disabled={deleting}
             onPress={confirmSignOut}
-            style={({ pressed }) => [styles.row, styles.divider, pressed && pressedStyles.pressed]}
+            style={({ pressed }) => [styles.row, pressed && pressedStyles.pressed]}
           >
             <Text style={styles.action}>{t('account.section.signOut')}</Text>
           </Pressable>
@@ -108,12 +109,12 @@ export function AccountSection({ onSignIn }: AccountSectionProps) {
               accessibilityState={{ disabled: deleting }}
               disabled={deleting}
               onPress={confirmDelete}
-              style={({ pressed }) => [styles.row, styles.divider, pressed && pressedStyles.pressed]}
+              style={({ pressed }) => [styles.row, pressed && pressedStyles.pressed]}
             >
               <Text style={styles.destructiveAction}>{t('account.delete.action')}</Text>
             </Pressable>
           ) : null}
-        </View>
+        </FramedCard>
       ) : null}
     </>
   )

@@ -150,8 +150,13 @@ describe('the Op-art look of the page (ADR-026)', () => {
 
   it('divides the rows by the strong rule of the box-line weight', () => {
     render(<SettingsScreen onBack={jest.fn()} onSignIn={jest.fn()} onTechniques={jest.fn()} />)
-    const second = screen.getByTestId('assist-row-Box')
-    expect(StyleSheet.flatten(second.props.style)).toMatchObject({
+    // FramedCard wraps each row and draws the line on the wrapper.
+    let line: Record<string, unknown> | undefined
+    for (let node = screen.getByTestId('assist-row-Box').parent; node && !line; node = node.parent) {
+      const style = StyleSheet.flatten(node.props.style)
+      if (style?.borderTopWidth !== undefined) line = style
+    }
+    expect(line).toMatchObject({
       borderTopWidth: cobalt.components.summary.ruleWidth,
       borderTopColor: cobalt.components.summary.rule,
     })

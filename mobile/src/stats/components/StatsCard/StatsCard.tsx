@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
+import { FramedCard } from '@/components/FramedCard'
 import { Icon } from '@/components/Icon'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { formatPercent } from '@/stats/utils/format.utils'
@@ -31,7 +32,7 @@ export function StatsCard({ winRate, streak, onPress }: StatsCardProps) {
       ? intl.formatMessage({ id: 'stats.card.labelNone' }, { count: streak })
       : intl.formatMessage({ id: 'stats.card.label' }, { rate, count: streak })
   const content = (
-    <>
+    <FramedCard divided={false}>
       <ThemeDecoration slot="summaryEdge" />
       <View style={styles.row}>
         <View style={styles.rate}>
@@ -51,11 +52,11 @@ export function StatsCard({ winRate, streak, onPress }: StatsCardProps) {
           {onPress !== undefined && <Icon name="next" tone="accent" size={16} />}
         </View>
       </View>
-    </>
+    </FramedCard>
   )
   if (onPress === undefined) {
     return (
-      <View accessible accessibilityLabel={label} style={styles.card}>
+      <View accessible accessibilityLabel={label}>
         {content}
       </View>
     )
@@ -65,7 +66,7 @@ export function StatsCard({ winRate, streak, onPress }: StatsCardProps) {
       accessibilityRole="button"
       accessibilityLabel={intl.formatMessage({ id: 'stats.card.open' }, { label })}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && pressedStyles.pressed]}
+      style={({ pressed }) => pressed && pressedStyles.pressed}
     >
       {content}
     </Pressable>

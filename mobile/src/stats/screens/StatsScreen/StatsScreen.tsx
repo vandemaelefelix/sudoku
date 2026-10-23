@@ -101,7 +101,6 @@ export function StatsScreen({ onBack, footer, refreshKey = 0 }: StatsScreenProps
               label={intl.formatMessage({ id: 'stats.includeScanned.label' })}
               description={intl.formatMessage({ id: 'stats.includeScanned.description' })}
               value={includeScanned}
-              divider={false}
               onChange={(on) => {
                 haptics.play('tick')
                 setIncludeScanned(on)
