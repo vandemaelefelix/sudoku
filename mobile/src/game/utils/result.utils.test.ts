@@ -1,5 +1,5 @@
 import { place, select } from '@sudoku/core'
-import { OPEN, sampleGame } from '@/game/testing/sample.testing'
+import { OPEN, sampleGame } from '@/game/sample.testkit'
 import { rightCells } from './result.utils'
 
 // The canvas puzzle has 30 givens. Cell 2 is empty. Its solution is 4.

@@ -1,6 +1,6 @@
 import { planHint, type CellDigit, type Digit, type Game } from '@sudoku/core'
 import { pointingStart, sampleStart, stuckStart } from './sample.utils'
-import { OPEN, runSession as run, sampleSession as start } from '@/game/testing/sample.testing'
+import { OPEN, runSession as run, sampleSession as start } from '@/game/sample.testkit'
 import { startSession, type Session, type SessionAction } from './session.utils'
 
 const answerOf = (game: Game): CellDigit => {

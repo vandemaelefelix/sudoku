@@ -1,5 +1,5 @@
 import type { Game } from '@sudoku/core'
-import { sampleGame } from '@/game/testing/sample.testing'
+import { sampleGame } from '@/game/sample.testkit'
 import { finishView, formatPuzzleNumber, type FinishInfo } from './finish.utils'
 import { createAppIntl } from '@/i18n/utils/intl.utils'
 

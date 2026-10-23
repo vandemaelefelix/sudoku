@@ -55,6 +55,7 @@ function Finish({ board, info, onNewPuzzle, onHome, now = currentDate }: FinishC
   // A new best lands with a thud: the solve already played its success haptic.
   // The card lands once. A change of Reduce Motion while it shows must not focus it or thud again.
   const hasLanded = useRef(false)
+  // landed keeps its identity: the result of a won game does not change, so the rise runs once.
   const landed = useCallback(() => {
     if (hasLanded.current) return
     hasLanded.current = true

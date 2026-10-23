@@ -1,4 +1,4 @@
-import { OPEN, runSession as run, sampleSession as start } from '@/game/testing/sample.testing'
+import { OPEN, runSession as run, sampleSession as start } from '@/game/sample.testkit'
 import { canErase, canUndo, reduceSession, startSession } from './session.utils'
 import { sampleStart } from './sample.utils'
 

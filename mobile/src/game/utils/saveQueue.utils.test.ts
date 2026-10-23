@@ -1,6 +1,6 @@
 import { place, select, type Digit, type Game } from '@sudoku/core'
 import { createSaveQueue } from './saveQueue.utils'
-import { OPEN, sampleGame as fresh } from '@/game/testing/sample.testing'
+import { OPEN, sampleGame as fresh } from '@/game/sample.testkit'
 
 /** Three wrong numbers end the game. */
 const lostGame = () => [1, 2, 3].reduce((game, digit) => place(game, digit as Digit).game, select(fresh(), OPEN))

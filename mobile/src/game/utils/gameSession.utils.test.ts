@@ -1,7 +1,7 @@
 import type { Game } from '@sudoku/core'
 import { MAX_ELAPSED_MS } from '@/game/constants/game.constants'
 import { createGameSession, type GameSession } from './gameSession.utils'
-import { OPEN } from '@/game/testing/sample.testing'
+import { OPEN } from '@/game/sample.testkit'
 import { sampleStart } from './sample.utils'
 
 beforeEach(() => jest.useFakeTimers())

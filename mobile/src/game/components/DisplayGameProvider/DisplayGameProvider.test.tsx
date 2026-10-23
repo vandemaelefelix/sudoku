@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { useGameState } from '@/game/hooks/useGameState'
-import { sampleGameAfter } from '@/game/testing/sample.testing'
+import { sampleGameAfter } from '@/game/sample.testkit'
 import { DisplayGameProvider } from './DisplayGameProvider'
 
 const board = sampleGameAfter({ type: 'select', cell: 40 })

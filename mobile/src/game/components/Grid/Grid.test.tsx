@@ -4,7 +4,7 @@ import { DisplayGameProvider } from '@/game/components/DisplayGameProvider'
 import { GameProvider } from '@/game/components/GameProvider'
 import { useGameActions } from '@/game/hooks/useGameActions'
 import { sampleStart } from '@/game/utils/sample.utils'
-import { sampleGameAfter } from '@/game/testing/sample.testing'
+import { sampleGameAfter } from '@/game/sample.testkit'
 import { cobalt } from '@/theme/themes/cobalt'
 import { Grid } from './Grid'
 

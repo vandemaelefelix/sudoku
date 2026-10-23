@@ -1,7 +1,7 @@
 import { DEFAULT_ASSISTS } from '@/game/constants/assists.constants'
 import { forestColour } from '@/theme/themes/forest'
 import { cellViews, displayFill, type HintHighlight } from './cell.utils'
-import { sampleGameAfter as gameAfter } from '@/game/testing/sample.testing'
+import { sampleGameAfter as gameAfter } from '@/game/sample.testkit'
 
 it('styles givens, entries and wrong entries apart', () => {
   const views = cellViews(gameAfter({ type: 'select', cell: 2 }, { type: 'digit', digit: 5 }), DEFAULT_ASSISTS)
