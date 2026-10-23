@@ -1,3 +1,5 @@
+import type { SyncResponse } from '@sudoku/sync-contract'
+
 export type SyncTrigger = 'game-end' | 'foreground' | 'network' | 'sign-in'
 
 /** The player who syncs now. `isCurrent` turns false when a sign-out or another account ends the session. */
@@ -9,7 +11,7 @@ export type SyncSession = {
 }
 
 /** The lenient body of a 200: the changes are checked one by one, so one bad entry cannot reject a page. */
-export type SyncPage = { acceptedIds: string[]; changes: unknown[]; cursor: string; more: boolean }
+export type SyncPage = Omit<SyncResponse, 'changes'> & { changes: unknown[] }
 
 /** The API client never throws. The kind says what the run does next (ADR-028, decision 8). */
 export type SyncApiResult =
