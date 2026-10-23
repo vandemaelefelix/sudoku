@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quality and how we work · Sudoku guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="assets/guide.css" />
+    <style>
+      .tabs { min-width: 0; max-width: 100%; }
+      .tab-list { contain: inline-size; }
+      .calc { padding: 16px 18px; }
+      .calc label { font-weight: 600; display: block; margin-bottom: 6px; }
+      .calc input[type='range'] { width: 100%; }
+      .calc .readout { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 10px 0 6px; align-items: baseline; }
+      .calc .big { font-family: 'Fraunces', serif; font-size: 2rem; line-height: 1.1; }
+      .calc .bar { height: 14px; border-radius: 7px; background: var(--border, rgba(127, 127, 127, 0.25)); overflow: hidden; }
+      .calc .bar > span { display: block; height: 100%; background: var(--accent, #d9822b); width: 0; transition: width 0.15s; }
+      .calc .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .finder { padding: 16px 18px; }
+      .finder .goals { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+      .finder .goals button, .sentences button, .calc .presets button {
+        font: inherit; font-size: 0.9rem; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+        border: 1px solid var(--border, rgba(127, 127, 127, 0.4)); background: transparent; color: inherit;
+      }
+      .finder .goals button[aria-pressed='true'] { background: var(--accent, #d9822b); color: #fff; border-color: transparent; }
+      .finder .result pre { margin: 8px 0; overflow-x: auto; }
+      .finder .result .meta { font-size: 0.92rem; }
+      .finder .result .meta p { margin: 4px 0; }
+      .sentences .pair { border: 1px solid var(--border, rgba(127, 127, 127, 0.3)); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+      .sentences .bad { margin: 0 0 6px; }
+      .sentences .fix { display: none; margin-top: 8px; }
+      .sentences .pair.open .fix { display: block; }
+      .sentences .tag { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; }
+    </style>
+    <script src="assets/guide.js" defer></script>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar"><nav id="guide-nav" aria-label="Guide"></nav></aside>
+      <main class="content">
+        <div class="kicker">Chapter 7</div>
+        <h1>Quality and how we work</h1>
+        <p class="lead">
+          A project that one person builds with many agents needs rules that a machine can check. This chapter shows
+          how the project defines good, how it tests, how it guards its own structure, and how a change travels from an
+          idea to the <code>develop</code> branch.
+        </p>
+
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          Think of a bakery with one baker. The baker cannot taste every loaf at every hour. So the baker writes down
+          what a good loaf is, installs ovens with timers, and puts a checklist on the wall. This chapter is that wall.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="quality-goals">What “good” means here</h2>
+        <p>
+          <strong>The problem.</strong> “The scanner works well” means nothing until someone says how well, and on
+          what. Without a number, two people argue and nobody can tell whether a change helped.
+        </p>
+        <p>
+          The project solves this with a <span class="term" data-def="The list of quality scenarios in chapter 10 of the architecture docs. Each has an ID, QR-01 to QR-13, a situation and a target.">quality tree</span>
+          and numbered scenarios. The tree has five goals. Each goal has scenarios with a target you can measure. The
+          source is <a href="../architecture/10-quality-requirements.md">chapter 10 of the architecture docs</a>.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 880 330" role="img" aria-label="The quality tree. Five goals: recognition correctness, smooth scanning, offline and private, understandable architecture, everyday game. Each has example scenarios.">
+            <defs>
+              <marker id="qt-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="350" y="10" width="180" height="46" rx="10" />
+            <text class="label" x="440" y="39" text-anchor="middle">Sudoku quality</text>
+
+            <path class="edge" d="M440,56 L440,76 L88,76 L88,100" marker-end="url(#qt-arrow)" />
+            <path class="edge" d="M440,56 L440,76 L264,76 L264,100" marker-end="url(#qt-arrow)" />
+            <path class="edge" d="M440,56 L440,100" marker-end="url(#qt-arrow)" />
+            <path class="edge" d="M440,56 L440,76 L616,76 L616,100" marker-end="url(#qt-arrow)" />
+            <path class="edge" d="M440,56 L440,76 L792,76 L792,100" marker-end="url(#qt-arrow)" />
+
+            <rect class="box blue" x="8" y="100" width="160" height="56" rx="10" />
+            <text class="label" x="88" y="124" text-anchor="middle">Correct</text>
+            <text class="sublabel" x="88" y="143" text-anchor="middle">whole grid right</text>
+
+            <rect class="box violet" x="184" y="100" width="160" height="56" rx="10" />
+            <text class="label" x="264" y="124" text-anchor="middle">Smooth</text>
+            <text class="sublabel" x="264" y="143" text-anchor="middle">30 fps outline</text>
+
+            <rect class="box green" x="360" y="100" width="160" height="56" rx="10" />
+            <text class="label" x="440" y="124" text-anchor="middle">Offline, private</text>
+            <text class="sublabel" x="440" y="143" text-anchor="middle">no ads, no tracking</text>
+
+            <rect class="box amber" x="536" y="100" width="160" height="56" rx="10" />
+            <text class="label" x="616" y="124" text-anchor="middle">Clear structure</text>
+            <text class="sublabel" x="616" y="143" text-anchor="middle">enforced boundaries</text>
+
+            <rect class="box muted" x="712" y="100" width="160" height="56" rx="10" />
+            <text class="label" x="792" y="124" text-anchor="middle">Everyday game</text>
+            <text class="sublabel" x="792" y="143" text-anchor="middle">never loses progress</text>
+
+            <text class="sublabel" x="88" y="190" text-anchor="middle">QR-01 newspaper</text>
+            <text class="sublabel" x="88" y="208" text-anchor="middle">95 % grids right</text>
+            <text class="sublabel" x="88" y="226" text-anchor="middle">QR-04 conflict flag</text>
+
+            <text class="sublabel" x="264" y="190" text-anchor="middle">QR-05 outline 300 ms</text>
+            <text class="sublabel" x="264" y="208" text-anchor="middle">QR-06 corner jitter</text>
+            <text class="sublabel" x="264" y="226" text-anchor="middle">QR-07 lock-on 1.5 s</text>
+
+            <text class="sublabel" x="440" y="190" text-anchor="middle">QR-09 airplane mode</text>
+            <text class="sublabel" x="440" y="208" text-anchor="middle">QR-10 no requests</text>
+            <text class="sublabel" x="440" y="226" text-anchor="middle">during a scan</text>
+
+            <text class="sublabel" x="616" y="190" text-anchor="middle">SUD-03, 04, 05</text>
+            <text class="sublabel" x="616" y="208" text-anchor="middle">checked by CI</text>
+            <text class="sublabel" x="616" y="226" text-anchor="middle">one ADR per decision</text>
+
+            <text class="sublabel" x="792" y="190" text-anchor="middle">QR-11 kill, resume</text>
+            <text class="sublabel" x="792" y="208" text-anchor="middle">QR-12 board in 2 s</text>
+            <text class="sublabel" x="792" y="226" text-anchor="middle">QR-13 model 1 MB</text>
+
+            <text class="sublabel" x="440" y="280" text-anchor="middle">Reference device: the developer's iPhone. Each QR line has an ID, a situation and a target.</text>
+            <text class="sublabel" x="440" y="300" text-anchor="middle">A target without a way to measure it is only a wish.</text>
+          </svg>
+          <figcaption>The quality tree. Five goals, each with numbered scenarios.</figcaption>
+        </figure>
+
+        <h3>Why the target counts whole grids</h3>
+        <p>
+          One wrong digit breaks a puzzle. So the main target is not “most cells right”. It is “all 81 digits right”.
+          This metric is the <span class="term" data-def="The share of fixture scans with all 81 digits right. The metric that matters for the scanner.">grid-exact accuracy</span>.
+          It is much harsher than the per-cell number. A small drop in per-cell accuracy drops the grid score fast,
+          because the cell chances multiply: <code>p<sup>81</sup></code>.
+        </p>
+
+        <div class="figure calc" id="grid-calc">
+          <label for="cell-acc">Per-cell digit accuracy: <span id="cell-acc-out">99.00 %</span></label>
+          <input id="cell-acc" type="range" min="95" max="99.99" step="0.01" value="99" />
+          <div class="readout">
+            <div><div class="big" id="grid-out">44 %</div><div>of whole grids are fully right</div></div>
+            <div><div class="big" id="cells-out">0.8</div><div>wrong cells expected in one grid</div></div>
+          </div>
+          <div class="bar" aria-hidden="true"><span id="grid-bar"></span></div>
+          <div class="presets">
+            <button type="button" data-p="98.71">Today: 98.71 %</button>
+            <button type="button" data-p="99">99 %</button>
+            <button type="button" data-p="99.9">99.9 %</button>
+            <button type="button" data-p="99.94">Target: 99.94 %</button>
+          </div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why this way?</span>
+          The 95 % grid target (QR-01) forces a per-cell target of 99.94 %. The number looks extreme. But it is the
+          honest translation. The current model has 98.71 % on 1,550 real test cells, so about 35 % of grids would
+          be fully right. The correction screen exists to close this gap: it marks the least certain cells so that the
+          player checks them.
+        </div>
+
+        <div class="callout note">
+          <span class="callout-title">A target needs enough data</span>
+          The targets gate only when the dev split has at least 40 newspaper scans and 20 book-page scans. Below that,
+          a percentage means little. The numbers are reported but do not block anything.
+        </div>
+
+        <h2 id="measuring">How the project measures</h2>
+        <p>
+          <strong>The problem.</strong> Some targets are about speed on a real phone. A laptop cannot tell you the
+          frame rate of the camera loop on an iPhone.
+        </p>
+        <p>
+          Two kinds of measure exist. A <strong>test</strong> runs on every push and gives a pass or a fail. A
+          <strong>measurement session</strong> happens by hand, on the reference iPhone, now and then. The result goes
+          into a record.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 880 250" role="img" aria-label="The measurement loop: build the development variant in Release on the iPhone, use the app, read the measure log lines in Console.app, write the numbers in the quality measurements record.">
+            <defs>
+              <marker id="ms-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="10" y="40" width="190" height="80" rx="10" />
+            <text class="label" x="105" y="70" text-anchor="middle">just ios-measure</text>
+            <text class="sublabel" x="105" y="90" text-anchor="middle">dev variant, Release</text>
+            <text class="sublabel" x="105" y="106" text-anchor="middle">no Metro needed</text>
+
+            <rect class="box violet" x="245" y="40" width="190" height="80" rx="10" />
+            <text class="label" x="340" y="70" text-anchor="middle">Use the app</text>
+            <text class="sublabel" x="340" y="90" text-anchor="middle">scan, kill, start games</text>
+            <text class="sublabel" x="340" y="106" text-anchor="middle">on the iPhone</text>
+
+            <rect class="box amber" x="480" y="40" width="190" height="80" rx="10" />
+            <text class="label" x="575" y="70" text-anchor="middle">[measure] lines</text>
+            <text class="sublabel" x="575" y="90" text-anchor="middle">QR-07 lock-on 1180 ms</text>
+            <text class="sublabel" x="575" y="106" text-anchor="middle">read in Console.app</text>
+
+            <rect class="box green" x="715" y="40" width="155" height="80" rx="10" />
+            <text class="label" x="792" y="70" text-anchor="middle">The record</text>
+            <text class="sublabel" x="792" y="90" text-anchor="middle">2026-10-22-quality-</text>
+            <text class="sublabel" x="792" y="106" text-anchor="middle">measurements.md</text>
+
+            <path class="edge" d="M200,80 L245,80" marker-end="url(#ms-arrow)" />
+            <path class="edge" d="M435,80 L480,80" marker-end="url(#ms-arrow)" />
+            <path class="edge" d="M670,80 L715,80" marker-end="url(#ms-arrow)" />
+
+            <rect class="box muted" x="245" y="160" width="425" height="64" rx="10" />
+            <text class="label" x="457" y="188" text-anchor="middle">The production variant logs nothing</text>
+            <text class="sublabel" x="457" y="208" text-anchor="middle">Nothing leaves the phone (SUD-02)</text>
+          </svg>
+          <figcaption>A measurement session, from build to record.</figcaption>
+        </figure>
+
+        <p>
+          The development variant writes lines that start with <code>[measure]</code> and the scenario ID. It does this
+          also in its Release build. A Release build matters, because a debug build is slower and would give false
+          numbers. The steps are in the
+          <a href="../operations/measure-quality.md">measurement guide</a>. The results go into the
+          <a href="../research/2026-10-22-quality-measurements.md">quality measurements record</a>.
+        </p>
+
+        <div class="callout warn">
+          <span class="callout-title">Be honest about open numbers</span>
+          On 2026-10-22 the method and the Mac number for QR-12 were in the record. The iPhone results were still
+          marked <code>(open)</code>. Read the record before you claim that a scenario passes.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="test-pyramid">The test pyramid</h2>
+        <p>
+          <strong>The problem.</strong> Each part of the code tests in a different way. The game rules are plain
+          TypeScript. The scanner needs a camera and native code. The model is Python. One tool cannot test all of
+          them well.
+        </p>
+        <p>
+          <strong>The analogy.</strong> A restaurant checks quality at many levels. The cook tastes each sauce (small,
+          fast, many). The chef tastes the full plate (fewer). A guest reviews the whole evening (rare and costly).
+          Tests work the same way. Many cheap tests at the bottom. A few costly ones at the top.
+        </p>
+        <p>
+          <a href="../architecture/adr/adr-010-testing-and-ci.md">ADR-010</a> defines the layers. Click a layer to
+          read what it tests, how to run it, and where it runs.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 800 360" role="img" aria-label="The test pyramid. From top to bottom: end-to-end flows with Maestro, the fixture runner on a device, Jest for the app, Vitest for core. Beside the pyramid: pytest for ml, DynamoDB Local for the backend, node test for the tools.">
+            <g data-node="e2e">
+              <rect class="box accent" x="165" y="10" width="170" height="62" rx="10" />
+              <text class="label" x="250" y="38" text-anchor="middle">End to end</text>
+              <text class="sublabel" x="250" y="58" text-anchor="middle">Maestro</text>
+            </g>
+            <g data-node="fixture">
+              <rect class="box violet" x="120" y="82" width="260" height="62" rx="10" />
+              <text class="label" x="250" y="110" text-anchor="middle">Fixture runner</text>
+              <text class="sublabel" x="250" y="130" text-anchor="middle">real scanner on the device</text>
+            </g>
+            <g data-node="jest">
+              <rect class="box blue" x="70" y="154" width="360" height="62" rx="10" />
+              <text class="label" x="250" y="182" text-anchor="middle">App logic</text>
+              <text class="sublabel" x="250" y="202" text-anchor="middle">Jest + Testing Library, scanner mocked</text>
+            </g>
+            <g data-node="vitest">
+              <rect class="box green" x="20" y="226" width="460" height="62" rx="10" />
+              <text class="label" x="250" y="254" text-anchor="middle">Game logic</text>
+              <text class="sublabel" x="250" y="274" text-anchor="middle">Vitest in Node, @sudoku/core</text>
+            </g>
+            <text class="sublabel" x="250" y="320" text-anchor="middle">fewer, slower, costlier at the top</text>
+            <text class="sublabel" x="250" y="340" text-anchor="middle">more, faster, cheaper at the bottom</text>
+
+            <text class="sublabel" x="640" y="24" text-anchor="middle">Beside the pyramid</text>
+            <g data-node="pytest">
+              <rect class="box amber" x="530" y="40" width="220" height="62" rx="10" />
+              <text class="label" x="640" y="68" text-anchor="middle">pytest</text>
+              <text class="sublabel" x="640" y="88" text-anchor="middle">the ml/ folder</text>
+            </g>
+            <g data-node="dynamo">
+              <rect class="box amber" x="530" y="116" width="220" height="62" rx="10" />
+              <text class="label" x="640" y="144" text-anchor="middle">DynamoDB Local</text>
+              <text class="sublabel" x="640" y="164" text-anchor="middle">sync-api against a real DB</text>
+            </g>
+            <g data-node="nodetest">
+              <rect class="box amber" x="530" y="192" width="220" height="62" rx="10" />
+              <text class="label" x="640" y="220" text-anchor="middle">node --test</text>
+              <text class="sublabel" x="640" y="240" text-anchor="middle">tools and infra checks</text>
+            </g>
+          </svg>
+          <p class="hint">Click a layer to read about it.</p>
+
+          <div class="panel" data-panel="e2e">
+            <h4>End to end: Maestro flows (layer 5)</h4>
+            <p>
+              <strong>Problem:</strong> unit tests cannot show a broken navigation, a native module that does not load,
+              or a game that a restart loses.
+            </p>
+            <p>
+              <strong>What:</strong> YAML flows in <code>mobile/e2e/</code> (<code>finish</code>, <code>levels</code>,
+              <code>resume</code>, <code>scan</code>, <code>theme</code>) drive the Release app on the iOS Simulator.
+              They find elements by <code>testID</code>. Each flow clears the app data first.
+            </p>
+            <p>
+              <strong>Run:</strong> <code>just ios-simulator</code>, then <code>just e2e</code>. The flows use their own
+              simulator, “Sudoku E2E iOS 26”.
+            </p>
+            <p>
+              <strong>In CI:</strong> only on a manual step. A macOS minute costs ten times. One run costs about 200 of
+              the 2,000 monthly minutes. Add the label <code>run: e2e</code> to a pull request. The flow
+              <code>scan</code> needs the real model, so CI skips the tag <code>model</code>.
+            </p>
+          </div>
+          <div class="panel" data-panel="fixture">
+            <h4>Fixture runner (layer 3)</h4>
+            <p>
+              <strong>Problem:</strong> the scanner uses VisionCamera, fast-opencv and fast-tflite. They do not run in
+              Node or Jest. A mock would test the mock, not the scanner.
+            </p>
+            <p>
+              <strong>What:</strong> a screen in development builds only. It reads fixture photo files instead of the
+              camera. It runs <code>detectGrid</code> and <code>recognise</code> on each photo. It reports corner
+              error, intersections found and grid-exact against <code>truth.json</code>. It writes the cell images and
+              <code>scanner.json</code> that the promote gate reads (ADR-007).
+            </p>
+            <p>
+              <strong>Run:</strong> by hand, on the device. Run it before a promote, before and after a native-module
+              upgrade, and when the capture stage changes.
+            </p>
+            <p>
+              <strong>Status:</strong> TD-05 in chapter 11 says the runner and the public fixture set are not built yet.
+              Today, no test runs the real scanner on fixture photos.
+            </p>
+          </div>
+          <div class="panel" data-panel="jest">
+            <h4>App logic: Jest (layer 2)</h4>
+            <p>
+              <strong>What:</strong> screens, state, storage and the scan screen. Jest and React Native Testing Library
+              render the components. The scanner sits behind its interface and is a fake here.
+            </p>
+            <p>
+              <strong>Why it works:</strong> the app reaches the scanner only through
+              <code>src/scanner/index.ts</code> (SUD-05). So a fake is easy. The same rule keeps the interface small.
+            </p>
+            <p>
+              <strong>Run:</strong> <code>pnpm -r test</code>, which <code>just test-ts</code> includes. CI runs it on
+              every pull request that touches TypeScript.
+            </p>
+          </div>
+          <div class="panel" data-panel="vitest">
+            <h4>Game logic: Vitest (layer 1)</h4>
+            <p>
+              <strong>What:</strong> <code>@sudoku/core</code>: rules, solver, generator, grader and hints. It is pure
+              TypeScript with no I/O (SUD-04). So the tests are fast and need no phone.
+            </p>
+            <p>
+              <strong>Also here:</strong> two measuring tools that use the same package.
+              <code>just bench-core</code> times <code>nextSteps</code> and the generation of each level (QR-12).
+              <code>just technique-coverage</code> measures how many generated puzzles the techniques solve.
+            </p>
+            <p><strong>Run:</strong> <code>pnpm -r test</code>. CI runs it on every pull request.</p>
+          </div>
+          <div class="panel" data-panel="pytest">
+            <h4>pytest for ml/ (layer 4)</h4>
+            <p>
+              <strong>What:</strong> preprocessing parity against <code>shared/fixtures/preprocess/</code>, dataset
+              manifest checks (SUD-10), a training smoke test and the classifier score on committed cell images.
+            </p>
+            <p>
+              <strong>Why parity matters:</strong> Python and the app must cut and scale a cell the same way. The
+              reference pairs are the shared truth. Both sides test against them. See chapter 5.
+            </p>
+            <p><strong>Run:</strong> <code>just test-ml</code>. CI runs it when <code>ml/</code>, the model contract or the fixtures change.</p>
+          </div>
+          <div class="panel" data-panel="dynamo">
+            <h4>DynamoDB Local</h4>
+            <p>
+              <strong>Problem:</strong> a mock of the database would hide real query mistakes.
+            </p>
+            <p>
+              <strong>What:</strong> the sync-api tests run against the real DynamoDB engine in a Docker container
+              (<code>amazon/dynamodb-local:3.3.1</code>, ADR-027). All worktrees share one container.
+            </p>
+            <p>
+              <strong>Run:</strong> <code>just test-api</code>. It runs <code>just dynamodb-up</code> first. Stop the
+              container with <code>just dynamodb-down</code>. CI starts the same image as a service. Keep the tag in the
+              workflow equal to <code>dynamodb_image</code> in the <code>justfile</code>.
+            </p>
+          </div>
+          <div class="panel" data-panel="nodetest">
+            <h4>node --test for the tools</h4>
+            <p>
+              <strong>What:</strong> the small tools of the repo have tests too. The custom oxlint plugin, the icons
+              tool, the layout check, the delete-scans tool and the infra files each have <code>*.test.mjs</code> or
+              <code>*.test.ts</code> files. The infra test also fails when a workflow uses a floating action tag.
+            </p>
+            <p>
+              <strong>Why:</strong> a guard that has no test can fail silently. A rule that never fires looks the same
+              as a rule that works.
+            </p>
+            <p><strong>Run:</strong> <code>just test-ts</code> runs them after the Vitest and Jest suites.</p>
+          </div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why not an iOS build on every push?</span>
+          ADR-010 first said “no iOS build in CI”. A macOS runner is slow, and the free plan counts a macOS minute ten
+          times. An amendment on 2026-10-22 added a build for the simulator. It runs only when a native input changes
+          (<code>mobile/package.json</code>, <code>app.json</code> or <code>app.config.ts</code>). The reason: an Expo
+          or native-module upgrade can break the native build, and risk R-08 says exactly that.
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The scanner uses native modules. Which test layer runs the real scanner on photos?</p>
+          <div class="options">
+            <button>Jest with the native modules mocked</button>
+            <button data-correct>The fixture runner, a screen on a development build on the device</button>
+            <button>Vitest in Node</button>
+          </div>
+          <p class="explain">
+            Jest fakes the scanner behind its interface, so it tests the app logic only. Vitest has no native modules.
+            Only the fixture runner runs the real native code on real photos. It is a manual layer (ADR-010).
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="ci">What CI does on a pull request</h2>
+        <p>
+          <strong>The problem.</strong> People forget steps. A check that depends on memory fails when the person is
+          tired. CI is a robot that runs the checks for every pull request, on a clean machine.
+        </p>
+        <p>
+          The workflows live in <code>.github/workflows/</code>. Each has a <code>paths</code> filter. A pull request
+          that changes only Markdown does not start the TypeScript job. This saves time and, for macOS, real money.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 980 470" role="img" aria-label="CI pipeline. A pull request starts path-filtered lanes: ci-ts with eight steps, ci-ml with lint and test, ci-docs with the link check, ci-workflows with actionlint. Two manual or rare lanes: ios-simulator on native input changes, e2e on the label run e2e. After merge to develop, deploy-api-dev runs.">
+            <defs>
+              <marker id="ci-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <text class="sublabel" x="10" y="18">On every pull request, if the changed paths match</text>
+
+            <!-- lane ci-ts -->
+            <rect class="box blue" x="10" y="30" width="118" height="46" rx="8" />
+            <text class="label" x="69" y="58" text-anchor="middle">ci-ts</text>
+            <rect class="box" x="140" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="183" y="57" text-anchor="middle">typecheck</text>
+            <rect class="box" x="232" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="275" y="57" text-anchor="middle">lint-ts</text>
+            <rect class="box" x="324" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="367" y="57" text-anchor="middle">boundaries</text>
+            <rect class="box" x="416" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="459" y="57" text-anchor="middle">layout</text>
+            <rect class="box" x="508" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="551" y="57" text-anchor="middle">test-ts</text>
+            <rect class="box" x="600" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="643" y="57" text-anchor="middle">infra types</text>
+            <rect class="box" x="692" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="735" y="57" text-anchor="middle">db tests</text>
+            <rect class="box" x="784" y="30" width="86" height="46" rx="8" /><text class="sublabel" x="827" y="57" text-anchor="middle">just bundle</text>
+            <path class="edge" d="M226,53 L232,53" /><path class="edge" d="M318,53 L324,53" /><path class="edge" d="M410,53 L416,53" />
+            <path class="edge" d="M502,53 L508,53" /><path class="edge" d="M594,53 L600,53" /><path class="edge" d="M686,53 L692,53" /><path class="edge" d="M778,53 L784,53" />
+            <path class="edge" d="M128,53 L140,53" />
+            <text class="sublabel" x="140" y="96">The first six steps are the composite action ts-checks. The deploy workflows reuse it.</text>
+
+            <!-- lane ci-ml -->
+            <rect class="box green" x="10" y="116" width="118" height="46" rx="8" />
+            <text class="label" x="69" y="144" text-anchor="middle">ci-ml</text>
+            <rect class="box" x="140" y="116" width="86" height="46" rx="8" /><text class="sublabel" x="183" y="143" text-anchor="middle">uv sync</text>
+            <rect class="box" x="232" y="116" width="86" height="46" rx="8" /><text class="sublabel" x="275" y="143" text-anchor="middle">lint-ml</text>
+            <rect class="box" x="324" y="116" width="86" height="46" rx="8" /><text class="sublabel" x="367" y="143" text-anchor="middle">test-ml</text>
+            <path class="edge" d="M128,139 L140,139" /><path class="edge" d="M226,139 L232,139" /><path class="edge" d="M318,139 L324,139" />
+            <text class="sublabel" x="430" y="143">paths: ml/, model contract, fixtures</text>
+
+            <!-- lane ci-docs -->
+            <rect class="box violet" x="10" y="180" width="118" height="46" rx="8" />
+            <text class="label" x="69" y="208" text-anchor="middle">ci-docs</text>
+            <rect class="box" x="140" y="180" width="130" height="46" rx="8" /><text class="sublabel" x="205" y="207" text-anchor="middle">just docs-check</text>
+            <path class="edge" d="M128,203 L140,203" />
+            <text class="sublabel" x="282" y="207">paths: any Markdown file, the link tool, the justfile</text>
+
+            <!-- lane ci-workflows -->
+            <rect class="box amber" x="10" y="244" width="118" height="46" rx="8" />
+            <text class="label" x="69" y="272" text-anchor="middle">ci-workflows</text>
+            <rect class="box" x="140" y="244" width="130" height="46" rx="8" /><text class="sublabel" x="205" y="271" text-anchor="middle">actionlint</text>
+            <path class="edge" d="M128,267 L140,267" />
+            <text class="sublabel" x="282" y="271">paths: .github/**</text>
+
+            <line class="grid-line" x1="10" y1="314" x2="970" y2="314" />
+            <text class="sublabel" x="10" y="334">Rare or by hand, because a macOS minute counts ten times</text>
+
+            <rect class="box muted" x="10" y="344" width="118" height="46" rx="8" />
+            <text class="label" x="69" y="372" text-anchor="middle">ios-simulator</text>
+            <rect class="box" x="140" y="344" width="230" height="46" rx="8" /><text class="sublabel" x="255" y="371" text-anchor="middle">xcodebuild for the simulator</text>
+            <text class="sublabel" x="382" y="371">only when a native input changes, or by hand. About 120 minutes a run</text>
+
+            <rect class="box muted" x="10" y="404" width="118" height="46" rx="8" />
+            <text class="label" x="69" y="432" text-anchor="middle">e2e</text>
+            <rect class="box" x="140" y="404" width="230" height="46" rx="8" /><text class="sublabel" x="255" y="431" text-anchor="middle">Maestro on the simulator</text>
+            <text class="sublabel" x="382" y="431">only with the label "run: e2e", or by hand. About 200 minutes a run</text>
+          </svg>
+          <figcaption>The lanes of CI. The top four run when their paths match. The bottom two are rare on purpose.</figcaption>
+        </figure>
+
+        <h3>After the merge: the deploy lanes</h3>
+        <figure class="figure">
+          <svg viewBox="0 0 880 200" role="img" aria-label="Deploy: a merge into develop that changes a backend file runs the checks, the account guard, sst diff and sst deploy to the stage dev. Production is a manual run from develop only, with a plan job then a deploy job.">
+            <defs>
+              <marker id="dp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="10" y="20" width="150" height="56" rx="10" />
+            <text class="label" x="85" y="46" text-anchor="middle">Merge to develop</text>
+            <text class="sublabel" x="85" y="64" text-anchor="middle">a backend file changed</text>
+            <path class="edge" d="M160,48 L200,48" marker-end="url(#dp-arrow)" />
+            <rect class="box" x="205" y="20" width="120" height="56" rx="10" /><text class="label" x="265" y="53" text-anchor="middle">ts-checks</text>
+            <path class="edge" d="M325,48 L360,48" marker-end="url(#dp-arrow)" />
+            <rect class="box" x="365" y="20" width="130" height="56" rx="10" /><text class="label" x="430" y="53" text-anchor="middle">aws-guard</text>
+            <path class="edge" d="M495,48 L530,48" marker-end="url(#dp-arrow)" />
+            <rect class="box" x="535" y="20" width="120" height="56" rx="10" /><text class="label" x="595" y="53" text-anchor="middle">sst diff</text>
+            <path class="edge" d="M655,48 L690,48" marker-end="url(#dp-arrow)" />
+            <rect class="box green" x="695" y="20" width="170" height="56" rx="10" />
+            <text class="label" x="780" y="46" text-anchor="middle">deploy: stage dev</text>
+            <text class="sublabel" x="780" y="64" text-anchor="middle">deploy-api-dev</text>
+
+            <rect class="box amber" x="10" y="110" width="150" height="56" rx="10" />
+            <text class="label" x="85" y="136" text-anchor="middle">Manual run</text>
+            <text class="sublabel" x="85" y="154" text-anchor="middle">branch develop only</text>
+            <path class="edge" d="M160,138 L200,138" marker-end="url(#dp-arrow)" />
+            <rect class="box" x="205" y="110" width="290" height="56" rx="10" />
+            <text class="label" x="350" y="136" text-anchor="middle">job plan</text>
+            <text class="sublabel" x="350" y="154" text-anchor="middle">checks, guard, sst diff</text>
+            <path class="edge" d="M495,138 L530,138" marker-end="url(#dp-arrow)" />
+            <rect class="box" x="535" y="110" width="120" height="56" rx="10" /><text class="label" x="595" y="143" text-anchor="middle">job deploy</text>
+            <path class="edge" d="M655,138 L690,138" marker-end="url(#dp-arrow)" />
+            <rect class="box accent" x="695" y="110" width="170" height="56" rx="10" />
+            <text class="label" x="780" y="136" text-anchor="middle">stage production</text>
+            <text class="sublabel" x="780" y="154" text-anchor="middle">deploy-api-production</text>
+          </svg>
+          <figcaption>The dev stage deploys by itself. Production needs a human to start the run.</figcaption>
+        </figure>
+
+        <div class="callout why">
+          <span class="callout-title">Why a manual run is the approval</span>
+          The repository is private on the free GitHub plan. That plan has no environment with a required reviewer.
+          Only the owner has write access, so starting the run is the approval. The AWS role trusts only one workflow
+          file on <code>develop</code>. GitHub stores no AWS secret: the workflows use a role through OIDC. See ADR-010
+          (amendment 2026-10-15) and the <a href="../../backend/infra/README.md">backend infra README</a>. Chapter 6
+          covers the backend itself.
+        </div>
+
+        <div class="callout note">
+          <span class="callout-title">Every action is pinned</span>
+          Each <code>uses:</code> line names a full commit SHA, not a tag like <code>v4</code>. A tag can move. A SHA
+          cannot. A test in <code>backend/infra</code> fails when a workflow uses a floating tag.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="guards">The guards: lint, format and boundaries</h2>
+        <p>
+          <strong>The problem.</strong> A rule in a document is only a hope. “The game must not use the scanner” is
+          easy to break by accident with one import line. A rule that a machine checks cannot be forgotten.
+        </p>
+        <p>
+          <strong>The analogy.</strong> A document rule is a sign that says “no entry”. A machine rule is a locked
+          door. This project uses locked doors for every rule that it can.
+        </p>
+
+        <div class="tabs" data-tabs>
+          <section data-tab="Boundaries">
+            <p>
+              <strong>Tool:</strong> dependency-cruiser. <strong>Config:</strong> <code>.dependency-cruiser.cjs</code>.
+              <strong>Run:</strong> <code>just boundaries</code> (it calls <code>pnpm boundaries</code>).
+            </p>
+            <p>
+              It reads every import in the code and fails when an import crosses a forbidden line. Each rule has a name
+              that points to its source. Some examples from the config:
+            </p>
+            <table>
+              <thead><tr><th>Rule name</th><th>What it forbids</th></tr></thead>
+              <tbody>
+                <tr><td><code>sud-04-core-has-no-dependencies</code></td><td><code>@sudoku/core</code> imports no package, no Node builtin, no React Native</td></tr>
+                <tr><td><code>sud-03-game-does-not-use-scanner</code></td><td>The game imports nothing from the scanner</td></tr>
+                <tr><td><code>sud-05-scanner-has-one-entry-point</code></td><td>The app reaches the scanner only through <code>src/scanner/index.ts</code></td></tr>
+                <tr><td><code>adr-027-app-does-not-import-services</code></td><td>The app does not import backend code</td></tr>
+                <tr><td><code>a-feature-does-not-import-a-sibling-feature</code></td><td>Feature folders stay independent</td></tr>
+                <tr><td><code>no-circular</code></td><td>No import loop</td></tr>
+              </tbody>
+            </table>
+            <p>
+              ADR-010 says that each rule was shown to fail on every kind of violation that it claims to cover. A rule
+              that was never seen to fail is a rule that may not work.
+            </p>
+          </section>
+          <section data-tab="Layout">
+            <p>
+              <strong>Tool:</strong> <code>tools/layout/check-layout.mjs</code>. <strong>Run:</strong>
+              <code>just check-layout</code>.
+            </p>
+            <p>
+              It enforces SUD-12: the repository root holds only the folders and files that
+              <a href="../architecture/adr/adr-029-repository-layout.md">ADR-029</a> lists. The folders are
+              <code>.github</code>, <code>backend</code>, <code>docs</code>, <code>ml</code>, <code>mobile</code>,
+              <code>shared</code>, <code>tools</code> and <code>web</code>. A stray file at the root fails the check.
+            </p>
+            <div class="callout warn">
+              <span class="callout-title">Pitfall</span>
+              Add a new root file or folder? Write or amend ADR-029 first, then update the list in the check. The
+              order matters (AGENTS.md rule 2).
+            </div>
+          </section>
+          <section data-tab="Custom lint rules">
+            <p>
+              <strong>Tool:</strong> oxlint with our own plugin, <code>tools/oxlint/sudoku-plugin.mjs</code>.
+              <strong>Run:</strong> <code>pnpm lint</code> (inside <code>just lint-ts</code>).
+            </p>
+            <p>The plugin holds rules that only this repository needs:</p>
+            <ul>
+              <li><strong>No colour literal.</strong> Only <code>mobile/src/theme/</code> holds raw colour values (ADR-015). A <code>#fff</code>, an <code>rgba()</code> or the word <code>white</code> anywhere else fails.</li>
+              <li><strong>No literal player text.</strong> Text that the player sees or hears comes from the catalogues in <code>src/i18n/messages/</code> (ADR-033). Use <code>intl.formatMessage</code>.</li>
+            </ul>
+            <p>
+              Warnings fail the run, because the command is <code>oxlint --deny-warnings</code>. The plugin has its
+              own tests, so the rules do not rot.
+            </p>
+          </section>
+          <section data-tab="Format">
+            <p>
+              <strong>Tool:</strong> oxfmt. <strong>Run:</strong> <code>just format</code> to fix,
+              <code>just format-check</code> to only check.
+            </p>
+            <p>
+              The formatter ends style debates. <code>just lint-ts</code> runs the format check first, so an unformatted
+              file fails CI. oxlint replaced ESLint in ADR-010: one small JSON config, no plugin conflicts with Expo, and
+              a run in well under a second.
+            </p>
+          </section>
+          <section data-tab="Python">
+            <p>
+              <strong>Tool:</strong> ruff. <strong>Run:</strong> <code>just lint-ml</code>.
+            </p>
+            <p>
+              It runs <code>ruff check</code> and <code>ruff format --check</code> on <code>ml/</code>. Ruff also enforces
+              two comment rules from AGENTS.md: no commented-out code, and no blanket <code>noqa</code>.
+            </p>
+          </section>
+          <section data-tab="Links and workflows">
+            <p>
+              <strong>Link check:</strong> <code>tools/check_links.py</code>, run by <code>just docs-check</code>. It
+              reads every Markdown file in the listed folders. It fails when a relative link points to a file that does
+              not exist. It skips code blocks, inline code and generated folders (<code>node_modules</code>,
+              <code>ios</code>, <code>android</code>).
+            </p>
+            <p>
+              <strong>Workflow lint:</strong> <code>just lint-workflows</code> runs <code>actionlint</code> on the files
+              in <code>.github/</code>. It needs a local install (<code>brew install actionlint</code>). CI has its own
+              lane for it.
+            </p>
+          </section>
+        </div>
+
+        <p>
+          <code>just lint</code> runs all of these together: <code>lint-ts</code>, <code>boundaries</code>,
+          <code>lint-ml</code> and <code>check-layout</code>. Run it before you open a pull request.
+        </p>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A developer adds a file called <code>notes.txt</code> to the repository root. Which check fails?</p>
+          <div class="options">
+            <button>dependency-cruiser, because the file imports nothing</button>
+            <button data-correct>check-layout, because SUD-12 lists the allowed root entries</button>
+            <button>The link check, because the file is not Markdown</button>
+          </div>
+          <p class="explain">
+            <code>tools/layout/check-layout.mjs</code> compares the root with the list from ADR-029. dependency-cruiser
+            reads imports only. The link check reads Markdown links only.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="command-finder">The justfile: a command finder</h2>
+        <p>
+          <strong>The problem.</strong> The project has Node, Python, Xcode, Docker and AWS commands. Nobody remembers
+          all the flags. <span class="term" data-def="A command runner. A justfile holds named recipes. You run one with: just name.">just</span>
+          puts one short name on each recipe. Run <code>just --list</code> to see all of them. Every recipe has a
+          comment line above it that explains it.
+        </p>
+        <p>Pick a goal. The finder shows the command and what it does. All commands come from the real <code>justfile</code>.</p>
+
+        <div class="figure finder" id="finder">
+          <div class="goals" role="group" aria-label="Pick a goal" id="finder-goals"></div>
+          <div class="result" id="finder-result" aria-live="polite"></div>
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-title">There is no promote command yet</span>
+          ADR-007 describes a promote gate. The <code>justfile</code> has no <code>promote-model</code> recipe today.
+          Technical debt TD-04 records this. <code>just install-model</code> copies a model without fixture scores.
+          This is the one named exception to SUD-06.
+        </div>
+
+        <details class="deep">
+          <summary>Why the AWS recipes use a long prefix</summary>
+          <p>
+            The recipes <code>deploy-api</code>, <code>diff-api</code>, <code>api-on</code> and others start with
+            <code>env -u AWS_ACCESS_KEY_ID … AWS_PROFILE=sudoku</code>. SST reads <code>AWS_*</code> variables
+            before it reads its own profile. The prefix removes them. So only the personal profile
+            <code>sudoku</code> is used. A script <code>backend/infra/check-account.ts</code> then confirms the
+            account. This stops an employer account from receiving a deploy by mistake (ADR-027).
+          </p>
+        </details>
+
+        <!-- ============================================================ -->
+        <h2 id="workflow">The developer workflow</h2>
+        <p>
+          <strong>The problem.</strong> Many agents and one developer work on the same repository. Without a fixed
+          path, work gets lost, branches clash and nobody knows why a change exists.
+        </p>
+        <p>
+          <strong>The analogy.</strong> A kitchen ticket rail. Each order is a ticket. A cook takes one ticket, cooks
+          it, and a second person checks the plate before it leaves. The ticket here is a GitHub issue.
+        </p>
+        <p>Click <em>Next</em> to follow one change from idea to merge.</p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 920 230" role="img" aria-label="The workflow in seven steps: issue, approved plan, branch, commits, pull request, second-agent review, merge into develop.">
+            <defs>
+              <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue keep" data-steps="1,2,3,4,5,6,7" x="6" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="64" y="90" text-anchor="middle">1 Issue</text>
+            <text class="sublabel" x="64" y="110" text-anchor="middle">gh issue</text>
+
+            <rect class="box violet keep" data-steps="2,3,4,5,6,7" x="138" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="196" y="90" text-anchor="middle">2 Plan</text>
+            <text class="sublabel" x="196" y="110" text-anchor="middle">approved first</text>
+
+            <rect class="box green keep" data-steps="3,4,5,6,7" x="270" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="328" y="90" text-anchor="middle">3 Branch</text>
+            <text class="sublabel" x="328" y="110" text-anchor="middle">from develop</text>
+
+            <rect class="box amber keep" data-steps="4,5,6,7" x="402" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="460" y="90" text-anchor="middle">4 Commits</text>
+            <text class="sublabel" x="460" y="110" text-anchor="middle">Conventional</text>
+
+            <rect class="box accent keep" data-steps="5,6,7" x="534" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="592" y="90" text-anchor="middle">5 Pull req.</text>
+            <text class="sublabel" x="592" y="110" text-anchor="middle">Closes #n</text>
+
+            <rect class="box violet keep" data-steps="6,7" x="666" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="724" y="90" text-anchor="middle">6 Review</text>
+            <text class="sublabel" x="724" y="110" text-anchor="middle">second agent</text>
+
+            <rect class="box green keep" data-steps="7" x="798" y="60" width="116" height="70" rx="10" />
+            <text class="label" x="856" y="90" text-anchor="middle">7 Merge</text>
+            <text class="sublabel" x="856" y="110" text-anchor="middle">into develop</text>
+
+            <path class="edge" d="M122,95 L138,95" marker-end="url(#wf-arrow)" />
+            <path class="edge" d="M254,95 L270,95" marker-end="url(#wf-arrow)" />
+            <path class="edge" d="M386,95 L402,95" marker-end="url(#wf-arrow)" />
+            <path class="edge" d="M518,95 L534,95" marker-end="url(#wf-arrow)" />
+            <path class="edge" d="M650,95 L666,95" marker-end="url(#wf-arrow)" />
+            <path class="edge" d="M782,95 L798,95" marker-end="url(#wf-arrow)" />
+
+            <text class="mono" data-steps="3" x="328" y="160" text-anchor="middle">feature/12-technique-solver</text>
+            <text class="mono" data-steps="4" x="460" y="192" text-anchor="middle">feat(core): add naked singles (#12)</text>
+            <text class="mono" data-steps="5" x="592" y="160" text-anchor="middle">Closes #12  or  Part of #epic</text>
+            <text class="sublabel" data-steps="6" x="724" y="192" text-anchor="middle">fresh context, no shared memory</text>
+            <text class="sublabel" data-steps="7" x="850" y="160" text-anchor="middle">the developer says go</text>
+          </svg>
+          <div class="step">
+            <p class="step-title">1. Start from an issue</p>
+            <p>
+              Every change starts from a GitHub issue, made with <code>gh</code>. If none exists, the agent proposes
+              one. The agent does not create it without the developer's approval. An issue has one
+              <code>type:</code> label, one <code>area:</code> label and a milestone from <code>M0</code> to
+              <code>M4</code>. An open issue also has one <code>priority:</code> label.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">2. Get the plan approved</p>
+            <p>
+              Work on an issue starts only after its implementation plan is approved. The plan states the approach
+              and the files. This is where a wrong idea is cheap to stop. If a change would break a
+              <code>SUD-xx</code> rule, the agent stops and says so. It does not work around the rule.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">3. Make a branch from develop</p>
+            <p>
+              The name is <code>&lt;type&gt;/&lt;issue&gt;-&lt;slug&gt;</code>, for example
+              <code>feature/12-technique-solver</code>. Branch from <code>origin/develop</code>.
+              <code>develop</code> is the integration branch. <code>main</code> is stale.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">4. Commit in small steps</p>
+            <p>
+              Messages follow Conventional Commits: <code>feat:</code>, <code>fix:</code>, <code>docs:</code>,
+              <code>chore:</code>. Add the issue number, for example <code>feat(core): add naked singles (#12)</code>.
+              A model promotion is its own commit. An agent does not commit or push unless the developer asks.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">5. Open a pull request</p>
+            <p>
+              The body of the template has <code>Closes #</code>, a short “What changed”, a “How it was tested” section
+              that names the layers of ADR-010, and a checklist. The pull request that meets the last open criterion of
+              an epic says <code>Closes #&lt;epic&gt;</code>. Every other pull request of the epic says
+              <code>Part of #&lt;epic&gt;</code>. Do not close issues by hand.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">6. A second agent reviews</p>
+            <p>
+              Before the merge, a second agent reviews the pull request without the context of the first session. Fresh
+              eyes catch what the author no longer sees. Fix the findings, or answer them in the pull request. Tick the
+              acceptance criteria in the issue when you meet them. When the work proves or changes a decision, update
+              the ADR in the same pull request.
+            </p>
+          </div>
+          <div class="step">
+            <p class="step-title">7. Merge into develop</p>
+            <p>
+              The pull request targets <code>develop</code>. The developer decides when it merges. “Just merge”, or a
+              passed iPhone test, means merge now. A merge that changes a backend file starts
+              <code>deploy-api-dev</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout rule">
+          <span class="callout-title">Rule: the developer decides</span>
+          Agents do not commit or push unless the developer asks. Agents do not create issues without approval. Agents
+          do not change an accepted decision in code alone: write or amend an ADR first.
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">Which branch name follows the rule?</p>
+          <div class="options">
+            <button>my-fix</button>
+            <button>felix/solver</button>
+            <button data-correct>fix/231-hint-card-crash</button>
+          </div>
+          <p class="explain">
+            The format is <code>&lt;type&gt;/&lt;issue&gt;-&lt;slug&gt;</code>. The type says what kind of change it is.
+            The issue number links the branch to the reason for the work.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="issues">Issues, epics, labels and milestones</h2>
+        <p>
+          <strong>The problem.</strong> A big goal such as “the player can sign in and sync history” needs many small
+          pieces. Someone must see the order and the blockers.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 880 312" role="img" aria-label="An epic groups sub-issues in waves. Wave 1 issues have no blockers. Wave 2 issues are blocked by wave 1. The last pull request closes the epic. Each issue has a type label, an area label, a priority label and a milestone.">
+            <defs>
+              <marker id="ep-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="320" y="10" width="240" height="56" rx="10" />
+            <text class="label" x="440" y="35" text-anchor="middle">Epic (type: epic)</text>
+            <text class="sublabel" x="440" y="54" text-anchor="middle">one player goal</text>
+
+            <text class="sublabel" x="10" y="214">Wave 1: no blockers</text>
+            <rect class="box blue" x="10" y="118" width="180" height="50" rx="10" /><text class="label" x="100" y="148" text-anchor="middle">Sub-issue A</text>
+            <rect class="box blue" x="205" y="118" width="180" height="50" rx="10" /><text class="label" x="295" y="148" text-anchor="middle">Sub-issue B</text>
+
+            <text class="sublabel" x="470" y="214">Wave 2: blocked by wave 1</text>
+            <rect class="box violet" x="470" y="118" width="190" height="50" rx="10" /><text class="label" x="565" y="148" text-anchor="middle">Sub-issue C</text>
+            <rect class="box violet" x="675" y="118" width="195" height="50" rx="10" /><text class="label" x="772" y="148" text-anchor="middle">Sub-issue D (last)</text>
+
+            <path class="edge" d="M410,66 L140,118" marker-end="url(#ep-arrow)" />
+            <path class="edge" d="M430,66 L295,118" marker-end="url(#ep-arrow)" />
+            <path class="edge" d="M450,66 L565,118" marker-end="url(#ep-arrow)" />
+            <path class="edge" d="M470,66 L772,118" marker-end="url(#ep-arrow)" />
+            <path class="edge dashed" d="M385,143 L470,143" marker-end="url(#ep-arrow)" />
+            <text class="sublabel" x="427" y="134" text-anchor="middle">blocked by</text>
+
+            <text class="sublabel" x="100" y="192" text-anchor="middle">Part of #epic</text>
+            <text class="sublabel" x="295" y="192" text-anchor="middle">Part of #epic</text>
+            <text class="sublabel" x="565" y="192" text-anchor="middle">Part of #epic</text>
+            <text class="sublabel" x="772" y="192" text-anchor="middle">Closes #epic</text>
+
+            <rect class="box muted" x="10" y="232" width="860" height="70" rx="10" />
+            <text class="label" x="440" y="258" text-anchor="middle">Every issue carries four marks</text>
+            <text class="sublabel" x="440" y="280" text-anchor="middle">one type: label · one area: label · one priority: label (when open) · a milestone M0 to M4</text>
+          </svg>
+          <figcaption>An epic, its waves, and the labels on each issue.</figcaption>
+        </figure>
+
+        <table>
+          <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Issue templates</td><td>Five files in <code>.github/ISSUE_TEMPLATE/</code>: <code>bug</code>, <code>feature</code>, <code>epic</code>, <code>decision</code> and <code>config.yml</code>. Acceptance criteria are a checklist.</td></tr>
+            <tr><td>Epic</td><td>Groups the issues of one player goal. It has a table “Order of work” with waves and “Blocked by”. Each issue of the epic is a GitHub sub-issue.</td></tr>
+            <tr><td>Decision issue</td><td>Type <code>decision</code>. It is done when an ADR records the choice, and <code>00-DECISIONS.md</code> and <code>09-architecture-decisions.md</code> are updated.</td></tr>
+            <tr><td><code>priority: high</code></td><td>Do this next.</td></tr>
+            <tr><td><code>priority: medium</code></td><td>Do this after the high-priority work.</td></tr>
+            <tr><td><code>priority: low</code></td><td>Do this when there is time.</td></tr>
+            <tr><td>Milestones <code>M0</code> to <code>M4</code></td><td>The stages of the roadmap. Open work lives in them.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout tip">
+          <span class="callout-title">Why waves?</span>
+          Many agents can work at once. A wave tells them which issues are free. An agent takes any issue whose blockers
+          are closed. GitHub shows the blockers on each issue.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="docs-system">The documentation system, in short</h2>
+        <p>
+          Chapter 1 covers the architecture docs in detail. Here is only what you need for daily work.
+        </p>
+        <ul>
+          <li>The docs follow <span class="term" data-def="A common template for architecture documentation with twelve numbered chapters.">Arc42</span>: numbered files <code>01-</code> to <code>12-</code> in <code>docs/architecture/</code>. Each starts with <code>status: DRAFT</code> or <code>status: ACCEPTED</code>.</li>
+          <li><a href="../architecture/00-DECISIONS.md"><code>00-DECISIONS.md</code></a> is an index. It has one line per constraint or decision. The reasoning lives in the source that the line links to.</li>
+          <li>An ADR is <code>Proposed</code> until it is validated, then <code>Accepted</code>. To replace one, write a new ADR that says “Supersedes ADR-NNN”. Do not rewrite the old decision.</li>
+          <li>When you add or change a decision, update <code>00-DECISIONS.md</code> and <code>09-architecture-decisions.md</code> in the same change.</li>
+          <li>Diagrams in the repo docs are Mermaid. Check every relative link: <code>just docs-check</code>.</li>
+        </ul>
+        <div class="callout note">
+          <span class="callout-title">This guide</span>
+          The guide you read now lives in <code>docs/guide/</code>. It is a teaching layer on top of the docs. When the
+          two disagree, the architecture docs win.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="writing-style">The writing style</h2>
+        <p>
+          <strong>The problem.</strong> The authors are mixed: the developer, many agents, and readers who may not be
+          native English speakers. Long, clever sentences cause misreadings.
+        </p>
+        <p>
+          The rule is <span class="term" data-def="ASD-STE100 made less strict so that technical terms stay usable. Short sentences, active voice, one word one meaning.">Simplified Technical English, light</span>.
+          It covers code comments, ADRs, concepts, commit messages and pull requests. The ten rules in short:
+        </p>
+        <ol>
+          <li><strong>One word, one meaning.</strong> The glossary is the dictionary.</li>
+          <li><strong>Short sentences.</strong> An instruction has 20 words or fewer. A description has 25 or fewer.</li>
+          <li><strong>One instruction per sentence.</strong></li>
+          <li><strong>Active voice.</strong></li>
+          <li><strong>Simple verb forms.</strong> Avoid “-ing” and perfect tenses where a simple form works.</li>
+          <li><strong>One topic per paragraph.</strong> Six sentences or fewer.</li>
+          <li><strong>Lists and tables</strong> for complex text.</li>
+          <li><strong>Plain words.</strong> “Use”, not “utilise”.</li>
+          <li><strong>Keep the articles.</strong> “the”, “a”, “this”.</li>
+          <li><strong>Warnings come first.</strong> Command first, then the risk.</li>
+        </ol>
+
+        <p>Try it. Click <em>Show the fix</em> to see the better sentence and the rule behind it.</p>
+        <div class="figure sentences" id="sentences"></div>
+
+        <!-- ============================================================ -->
+        <h2 id="comments">Code comments: the last option</h2>
+        <p>
+          <strong>The problem.</strong> Comments rot. The code changes and the comment still says the old thing. A false
+          comment is worse than none.
+        </p>
+        <p>
+          <strong>The rule.</strong> Write a comment only when it gives a fact that the code cannot show. A good name
+          comes first. A comment is the last option. Five ideas hold the rest:
+        </p>
+        <ul>
+          <li>Comment the <strong>reason</strong>, not the action.</li>
+          <li>An interface comment gives facts: units, shapes, ranges, invariants, side effects, failure behaviour.</li>
+          <li>Point to durable sources: <code>SUD-xx</code>, <code>ADR-NNN</code>, a concept, a record in <code>docs/research/</code>. Never an issue or a pull request number.</li>
+          <li>No <code>TODO</code>, <code>FIXME</code>, <code>XXX</code> or <code>HACK</code>. Propose an issue. No commented-out code. Git keeps the old version.</li>
+          <li>Name the rule in every lint suppression, and give the reason in the same comment. Update or delete a comment when the code changes.</li>
+        </ul>
+        <p>Test yourself. For each comment, decide: keep or delete?</p>
+
+        <div class="quiz" data-quiz>
+          <p class="q"><code>/** The number of cells in a sudoku grid. */</code> above <code>GRID_CELLS</code></p>
+          <div class="options">
+            <button>Keep</button>
+            <button data-correct>Delete</button>
+          </div>
+          <p class="explain">It repeats the name. The code already says it. Rule 2: delete a comment that repeats the name or the types.</p>
+        </div>
+        <div class="quiz" data-quiz>
+          <p class="q"><code># SUD-10: training must never draw synthetic cells with this seed.</code></p>
+          <div class="options">
+            <button data-correct>Keep</button>
+            <button>Delete</button>
+          </div>
+          <p class="explain">It gives a reason that the code cannot show, and it points to a durable rule, SUD-10.</p>
+        </div>
+        <div class="quiz" data-quiz>
+          <p class="q"><code>// The spy comes before render: the worklet captures countFrame when it is created.</code></p>
+          <div class="options">
+            <button data-correct>Keep</button>
+            <button>Delete</button>
+          </div>
+          <p class="explain">The test setup is not obvious. The comment explains why the order matters. It does not repeat the assertion.</p>
+        </div>
+        <div class="quiz" data-quiz>
+          <p class="q"><code>// scan flow rewrite (issue #2)</code> at the end of a component comment</p>
+          <div class="options">
+            <button>Keep, it helps people find the history</button>
+            <button data-correct>Delete</button>
+          </div>
+          <p class="explain">Issues and pull requests belong in commits and pull request text. A comment points to a durable source, not to a ticket. <code>just lint</code> also bans TODO and blanket suppressions.</p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="risks">Risks and technical debt</h2>
+        <p>
+          <strong>The problem.</strong> Every project has weak spots. If nobody writes them down, they surprise you at
+          the worst time. If they are written down, they are a plan.
+        </p>
+        <p>
+          <a href="../architecture/11-risks-and-technical-debt.md">Chapter 11</a> keeps two tables. A <strong>risk</strong>
+          (<code>R-nn</code>) is a thing that may go wrong. It has an impact, a probability and a mitigation. A
+          <strong>debt</strong> (<code>TD-nn</code>) is a shortcut that the project took on purpose. It names what will
+          pay it off. Click a card to read more.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 880 300" role="img" aria-label="A grid of risk cards by impact and probability, and a column of debt cards. Click a card to read about it.">
+            <text class="sublabel" x="10" y="20">Risks: R-nn</text>
+            <g data-node="r03">
+              <rect class="box accent" x="10" y="32" width="200" height="56" rx="10" />
+              <text class="label" x="110" y="56" text-anchor="middle">R-03 Handwriting</text>
+              <text class="sublabel" x="110" y="75" text-anchor="middle">medium impact, high chance</text>
+            </g>
+            <g data-node="r04">
+              <rect class="box accent" x="220" y="32" width="200" height="56" rx="10" />
+              <text class="label" x="320" y="56" text-anchor="middle">R-04 One laptop</text>
+              <text class="sublabel" x="320" y="75" text-anchor="middle">high impact, medium chance</text>
+            </g>
+            <g data-node="r13">
+              <rect class="box accent" x="10" y="98" width="200" height="56" rx="10" />
+              <text class="label" x="110" y="122" text-anchor="middle">R-13 Wrong labels</text>
+              <text class="sublabel" x="110" y="141" text-anchor="middle">medium impact, high chance</text>
+            </g>
+            <g data-node="r14">
+              <rect class="box accent" x="220" y="98" width="200" height="56" rx="10" />
+              <text class="label" x="320" y="122" text-anchor="middle">R-14 Validation leaks</text>
+              <text class="sublabel" x="320" y="141" text-anchor="middle">medium impact, high chance</text>
+            </g>
+            <g data-node="r08">
+              <rect class="box amber" x="10" y="164" width="200" height="56" rx="10" />
+              <text class="label" x="110" y="188" text-anchor="middle">R-08 Native upgrades</text>
+              <text class="sublabel" x="110" y="207" text-anchor="middle">medium, medium</text>
+            </g>
+            <g data-node="r01">
+              <rect class="box blue" x="220" y="164" width="200" height="56" rx="10" />
+              <text class="label" x="320" y="188" text-anchor="middle">R-01 fast-opencv</text>
+              <text class="sublabel" x="320" y="207" text-anchor="middle">high impact, low chance</text>
+            </g>
+            <g data-node="r15">
+              <rect class="box blue" x="10" y="230" width="200" height="56" rx="10" />
+              <text class="label" x="110" y="254" text-anchor="middle">R-15 AWS bill</text>
+              <text class="sublabel" x="110" y="273" text-anchor="middle">medium impact, low chance</text>
+            </g>
+            <g data-node="r07">
+              <rect class="box accent" x="220" y="230" width="200" height="56" rx="10" />
+              <text class="label" x="320" y="254" text-anchor="middle">R-07 Scope creep</text>
+              <text class="sublabel" x="320" y="273" text-anchor="middle">medium impact, high chance</text>
+            </g>
+
+            <text class="sublabel" x="470" y="20">Technical debt: TD-nn</text>
+            <g data-node="td01">
+              <rect class="box violet" x="470" y="32" width="400" height="48" rx="10" />
+              <text class="label" x="670" y="62" text-anchor="middle">TD-01 Training on labels with errors</text>
+            </g>
+            <g data-node="td04">
+              <rect class="box violet" x="470" y="90" width="400" height="48" rx="10" />
+              <text class="label" x="670" y="120" text-anchor="middle">TD-04 No promote gate</text>
+            </g>
+            <g data-node="td05">
+              <rect class="box violet" x="470" y="148" width="400" height="48" rx="10" />
+              <text class="label" x="670" y="178" text-anchor="middle">TD-05 No fixture runner, no public fixtures</text>
+            </g>
+            <g data-node="td07">
+              <rect class="box violet" x="470" y="206" width="400" height="48" rx="10" />
+              <text class="label" x="670" y="236" text-anchor="middle">TD-07 No pool of ready puzzles</text>
+            </g>
+            <text class="sublabel" x="670" y="278" text-anchor="middle">Nine debts today. These four touch quality most.</text>
+          </svg>
+          <p class="hint">Click a card to read about it.</p>
+          <div class="panel" data-panel="r03"><h4>R-03: handwriting data is scarce</h4><p>EMNIST does not look like pen in a printed cell, and own handwriting arrives slowly. <strong>Mitigation:</strong> heavy augmentation, the given / mine toggle in the correction screen, and the training-data export. A wrong kind is cheap to fix, because the player toggles it in one tap (ADR-006).</p></div>
+          <div class="panel" data-panel="r04"><h4>R-04: the real training data lives on one laptop</h4><p>The image store is the only copy until DVC is adopted. <strong>Mitigation:</strong> back it up (Time Machine plus an off-site copy). The 2026-10-22 check found no backup on record. Never commit training images (SUD-08).</p></div>
+          <div class="panel" data-panel="r13"><h4>R-13: wrong labels in the data</h4><p>About 0.6 % of the real cells have a wrong label. They cap the measured accuracy and teach the model mistakes. <strong>Mitigation:</strong> <code>just suspects</code> ranks the likely wrong labels. The “Doubtful labels” step of <code>just label-cells</code> is the check. The relabel and the retrain are still open (TD-01).</p></div>
+          <div class="panel" data-panel="r14"><h4>R-14: validation leaks</h4><p>Cells cut from the same photo look alike. A random split puts near-twins in training and validation and flatters the numbers. <strong>Mitigation:</strong> split by page. The recent commit “split the real cells by sudoku page” (ADR-035) pays this off.</p></div>
+          <div class="panel" data-panel="r08"><h4>R-08: native-module upgrades break together</h4><p>Expo SDK, VisionCamera, Skia, fast-opencv and fast-tflite must move in step. <strong>Mitigation:</strong> upgrade on a branch, all at once, with the <code>ios-simulator</code> workflow as the safety net. That workflow runs when a native input changes.</p></div>
+          <div class="panel" data-panel="r01"><h4>R-01: fast-opencv is young</h4><p>One maintainer, no <code>cornerSubPix</code>. <strong>Mitigation:</strong> our own TypeScript computes the homography. The scanner interface lets one step move to Swift without touching the app (SUD-05).</p></div>
+          <div class="panel" data-panel="r15"><h4>R-15: misuse runs up the AWS bill</h4><p><strong>Mitigation (SUD-11):</strong> a stage throttle, a daily write count per player, bot protection, budget alerts and a kill switch. After the kill switch, <code>just api-on &lt;stage&gt;</code> turns a stage on again. See chapter 6.</p></div>
+          <div class="panel" data-panel="r07"><h4>R-07: scope creep on a side project</h4><p>Backend, Android and a second model all look tempting. <strong>Mitigation:</strong> the order of work. The game ships first and is useful without the scanner.</p></div>
+          <div class="panel" data-panel="td01"><h4>TD-01: training on known wrong labels</h4><p>Paid off by the review of the suspects, a relabel and a retrain.</p></div>
+          <div class="panel" data-panel="td04"><h4>TD-04: no promote gate</h4><p>Today <code>just install-model</code> copies a model without fixture scores. This is the named exception to SUD-06. The future recipe is <code>just promote-model</code>. No issue exists yet.</p></div>
+          <div class="panel" data-panel="td05"><h4>TD-05: no fixture runner</h4><p>No test runs the real scanner on fixture photos. This is why the pyramid layer 3 is a plan more than a daily tool. No issue exists yet.</p></div>
+          <div class="panel" data-panel="td07"><h4>TD-07: no pool of ready puzzles</h4><p>On the iPhone, the slowest expert puzzles can take more than 1 s to generate. This touches QR-12. The iPhone check of #204 decides whether a pool is needed.</p></div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why write debt down?</span>
+          “Debt taken on deliberately is recorded here with the ADR or issue that will pay it off.” A debt with no issue
+          is marked “No issue yet”. A debt that the developer chose not to pay is marked “Not planned”. The debt stays
+          known. A known shortcut is a decision. A hidden one is a bug waiting.
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="iphone-and-model">The iPhone build and the private model</h2>
+        <p>
+          <strong>The problem.</strong> The scanner needs a trained model. The model learned from photos that may not be
+          published (SUD-08). So the model is <em>not in git</em>. A fresh clone plays every game, but its scanner has
+          no model.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 880 210" role="img" aria-label="The model path: just train makes a run, just export checks it against PyTorch, just install-model copies it into mobile/assets/models, then an iPhone or simulator build bundles it. CI uses an empty stub file instead.">
+            <defs>
+              <marker id="md-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="10" y="30" width="180" height="70" rx="10" />
+            <text class="label" x="100" y="58" text-anchor="middle">just train</text>
+            <text class="sublabel" x="100" y="78" text-anchor="middle">a run in ml/</text>
+            <rect class="box violet" x="225" y="30" width="180" height="70" rx="10" />
+            <text class="label" x="315" y="58" text-anchor="middle">just export run</text>
+            <text class="sublabel" x="315" y="78" text-anchor="middle">TFLite, checked</text>
+            <rect class="box amber" x="440" y="30" width="200" height="70" rx="10" />
+            <text class="label" x="540" y="58" text-anchor="middle">just install-model</text>
+            <text class="sublabel" x="540" y="78" text-anchor="middle">into mobile/assets/models</text>
+            <rect class="box green" x="675" y="30" width="195" height="70" rx="10" />
+            <text class="label" x="772" y="58" text-anchor="middle">just ios-dev UDID</text>
+            <text class="sublabel" x="772" y="78" text-anchor="middle">model in the app</text>
+            <path class="edge" d="M190,65 L225,65" marker-end="url(#md-arrow)" />
+            <path class="edge" d="M405,65 L440,65" marker-end="url(#md-arrow)" />
+            <path class="edge" d="M640,65 L675,65" marker-end="url(#md-arrow)" />
+
+            <rect class="box muted" x="10" y="130" width="860" height="60" rx="10" />
+            <text class="label" x="440" y="156" text-anchor="middle">CI never sees the model (SUD-08)</text>
+            <text class="sublabel" x="440" y="176" text-anchor="middle">It runs touch mobile/assets/models/cell-classifier.tflite. Metro needs a file, its content does not matter.</text>
+          </svg>
+          <figcaption>From a training run to a phone. CI uses an empty stand-in file.</figcaption>
+        </figure>
+
+        <p>The steps for a first run on a device:</p>
+        <ol>
+          <li><code>just setup</code>: install the TypeScript and Python dependencies.</li>
+          <li><code>just train</code>, then <code>just export &lt;run&gt;</code>, then <code>just install-model &lt;run&gt;</code>. The README points to <code>ml/README.md</code> for the details. In a new git worktree, run <code>just install-model</code> again, because the file is not in git.</li>
+          <li>Find the device with <code>xcrun devicectl list devices</code>. Then run <code>just ios-dev &lt;UDID&gt;</code>.</li>
+          <li>Start the Expo dev server with <code>just app</code> when the build needs Metro.</li>
+        </ol>
+        <p>
+          <code>just bundle</code>, <code>just ios-measure</code> and <code>just ios-simulator</code> all check first that
+          the model file exists. They stop with the message “The model is missing. Run: just install-model &lt;run&gt;”.
+        </p>
+
+        <div class="callout warn">
+          <span class="callout-title">Pitfall: two apps, two variants</span>
+          The development variant (<code>just ios-dev</code>) and the production variant (<code>just ios-release</code>)
+          have different bundle IDs. The development variant talks to the development Clerk instance and the
+          development sync API (ADR-022). Measure and test on the development variant. It also logs the
+          <code>[measure]</code> lines.
+        </div>
+
+        <details class="deep">
+          <summary>Maestro, Java and the simulator</summary>
+          <p>
+            <code>just e2e</code> creates or finds the simulator “Sudoku E2E iOS 26”, installs the app and adds the
+            fixture image <code>shared/fixtures/imports/screenshot-digital.png</code> to its photo library. It sets
+            <code>JAVA_HOME</code> when Homebrew keeps Java keg-only. Pass one flow file, or flags such as
+            <code>--exclude-tags model</code>. The flows clear the app data, so never point them at a simulator that you
+            use every day.
+          </p>
+        </details>
+
+        <!-- ============================================================ -->
+        <h2 id="where-next">Where to go next</h2>
+        <p>
+          You now know how the project defines good, how it checks itself and how a change moves. Use this map to go
+          back into the parts. Click a chapter to open it.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 880 330" role="img" aria-label="Map of the guide. Chapter 7 in the centre points to chapters 1 to 6: big picture, sudoku engine, the app, scanning, the digit model, backend and sync.">
+            <defs>
+              <marker id="nx-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box accent" x="340" y="130" width="200" height="70" rx="12" />
+            <text class="label" x="440" y="160" text-anchor="middle">7 Quality and</text>
+            <text class="label" x="440" y="182" text-anchor="middle">how we work</text>
+
+            <a href="01-big-picture.html"><rect class="box blue" x="20" y="10" width="230" height="64" rx="10" /><text class="label" x="135" y="38" text-anchor="middle">1 The big picture</text><text class="sublabel" x="135" y="58" text-anchor="middle">goals, rules, ADRs</text></a>
+            <a href="02-sudoku-engine.html"><rect class="box green" x="325" y="10" width="230" height="64" rx="10" /><text class="label" x="440" y="38" text-anchor="middle">2 Sudoku engine</text><text class="sublabel" x="440" y="58" text-anchor="middle">core: Vitest layer</text></a>
+            <a href="03-the-app.html"><rect class="box violet" x="630" y="10" width="230" height="64" rx="10" /><text class="label" x="745" y="38" text-anchor="middle">3 The app</text><text class="sublabel" x="745" y="58" text-anchor="middle">Jest layer, e2e flows</text></a>
+            <a href="04-scan-pipeline.html"><rect class="box amber" x="20" y="256" width="230" height="64" rx="10" /><text class="label" x="135" y="284" text-anchor="middle">4 Scanning</text><text class="sublabel" x="135" y="304" text-anchor="middle">fixture runner layer</text></a>
+            <a href="05-machine-learning.html"><rect class="box muted" x="325" y="256" width="230" height="64" rx="10" /><text class="label" x="440" y="284" text-anchor="middle">5 The digit model</text><text class="sublabel" x="440" y="304" text-anchor="middle">pytest, promote gate</text></a>
+            <a href="06-backend-and-sync.html"><rect class="box blue" x="630" y="256" width="230" height="64" rx="10" /><text class="label" x="745" y="284" text-anchor="middle">6 Backend and sync</text><text class="sublabel" x="745" y="304" text-anchor="middle">DynamoDB Local, deploys</text></a>
+
+            <path class="edge" d="M230,74 L385,130" marker-end="url(#nx-arrow)" />
+            <path class="edge" d="M440,74 L440,130" marker-end="url(#nx-arrow)" />
+            <path class="edge" d="M650,74 L495,130" marker-end="url(#nx-arrow)" />
+            <path class="edge" d="M230,256 L385,200" marker-end="url(#nx-arrow)" />
+            <path class="edge" d="M440,256 L440,200" marker-end="url(#nx-arrow)" />
+            <path class="edge" d="M650,256 L495,200" marker-end="url(#nx-arrow)" />
+          </svg>
+          <figcaption>Each chapter has a layer of the test pyramid and a rule that this chapter checks.</figcaption>
+        </figure>
+
+        <table>
+          <thead><tr><th>If you want to…</th><th>Read</th></tr></thead>
+          <tbody>
+            <tr><td>See every binding rule</td><td><a href="../architecture/00-DECISIONS.md">00-DECISIONS.md</a></td></tr>
+            <tr><td>Know a word</td><td><a href="../architecture/12-glossary.md">12-glossary.md</a></td></tr>
+            <tr><td>See where each folder lives</td><td><a href="../architecture/adr/adr-029-repository-layout.md">ADR-029</a> and <a href="../architecture/05-building-block-view.md">05-building-block-view.md</a></td></tr>
+            <tr><td>Understand tests and CI in full</td><td><a href="../architecture/adr/adr-010-testing-and-ci.md">ADR-010</a></td></tr>
+            <tr><td>Know the model promotion</td><td><a href="../architecture/adr/adr-007-model-promotion.md">ADR-007</a> and <a href="../architecture/00-concepts/model-contract.md">the model contract</a></td></tr>
+            <tr><td>Fix a broken backend part</td><td><a href="../operations/runbook.md">the runbook</a></td></tr>
+            <tr><td>Deploy or test the backend</td><td><a href="../../backend/infra/README.md">backend/infra/README.md</a> and <a href="../../backend/api/README.md">backend/api/README.md</a></td></tr>
+            <tr><td>Change the Expo app</td><td><a href="../../mobile/AGENTS.md">mobile/AGENTS.md</a></td></tr>
+            <tr><td>Measure on the iPhone</td><td><a href="../operations/measure-quality.md">the measurement guide</a></td></tr>
+            <tr><td>Train or label</td><td><a href="../../ml/README.md">ml/README.md</a></td></tr>
+            <tr><td>Start again</td><td><a href="index.html">Start here</a></td></tr>
+          </tbody>
+        </table>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A change breaks the rule “the game must not use the scanner” (SUD-03). What does the project do?</p>
+          <div class="options">
+            <button>A reviewer is asked to look for it</button>
+            <button data-correct>The check <code>just boundaries</code> fails in CI, and the agent must stop and say so</button>
+            <button>A comment in the code explains the exception</button>
+          </div>
+          <p class="explain">
+            SUD-03 is a locked door: dependency-cruiser enforces it (<code>sud-03-game-does-not-use-scanner</code>). And
+            AGENTS.md rule 1 says to stop and report, not to work around it. A change to the rule itself needs an ADR first.
+          </p>
+        </div>
+
+        <h2 id="where-to-read-more">Where to read more</h2>
+        <ul>
+          <li><a href="../architecture/10-quality-requirements.md">10 Quality requirements</a></li>
+          <li><a href="../architecture/11-risks-and-technical-debt.md">11 Risks and technical debt</a></li>
+          <li><a href="../architecture/adr/adr-010-testing-and-ci.md">ADR-010: testing and CI</a></li>
+          <li><a href="../operations/measure-quality.md">Measure the quality scenarios</a></li>
+          <li><a href="../research/2026-10-22-quality-measurements.md">Quality measurements record</a></li>
+          <li><a href="../../AGENTS.md">AGENTS.md: the rules for every agent</a></li>
+        </ul>
+      </main>
+    </div>
+
+    <script>
+      ;(function () {
+        // Grid calculator: the chance of a fully right grid is p to the power 81.
+        var range = document.getElementById('cell-acc')
+        if (range) {
+          var out = document.getElementById('cell-acc-out')
+          var gridOut = document.getElementById('grid-out')
+          var cellsOut = document.getElementById('cells-out')
+          var bar = document.getElementById('grid-bar')
+          var update = function () {
+            var p = parseFloat(range.value) / 100
+            var grid = Math.pow(p, 81) * 100
+            out.textContent = parseFloat(range.value).toFixed(2) + ' %'
+            gridOut.textContent = (grid >= 99.5 ? grid.toFixed(1) : grid.toFixed(0)) + ' %'
+            cellsOut.textContent = (81 * (1 - p)).toFixed(2)
+            bar.style.width = grid.toFixed(1) + '%'
+          }
+          range.addEventListener('input', update)
+          document.querySelectorAll('#grid-calc .presets button').forEach(function (b) {
+            b.addEventListener('click', function () {
+              range.value = b.getAttribute('data-p')
+              update()
+            })
+          })
+          update()
+        }
+
+        // Command finder. Every command comes from the justfile.
+        var GOALS = [
+          { goal: 'Install everything', cmd: 'just setup', what: 'Runs pnpm install and uv sync for ml/.', note: 'Run it once after a clone.' },
+          { goal: 'Run all tests', cmd: 'just test', what: 'Runs test-ts, test-api and test-ml.', note: 'test-api needs Docker, because it starts DynamoDB Local.' },
+          { goal: 'Test only TypeScript', cmd: 'just test-ts', what: 'Runs pnpm -r test (Vitest and Jest), then node --test for the lint plugin, icons, layout, delete-scans and infra.', note: 'No Docker needed.' },
+          { goal: 'Test the sync backend', cmd: 'just test-api', what: 'Starts DynamoDB Local, then runs the sync-api tests against it.', note: 'Stop the container later with just dynamodb-down.' },
+          { goal: 'Test the ML code', cmd: 'just test-ml', what: 'Runs pytest -q in ml/.', note: '' },
+          { goal: 'Run every check before a pull request', cmd: 'just lint', what: 'Runs lint-ts (with the format check), boundaries, lint-ml and check-layout.', note: 'Add just typecheck and just docs-check if you changed types or Markdown.' },
+          { goal: 'Fix the formatting', cmd: 'just format', what: 'Runs oxfmt on TypeScript, JavaScript and JSON.', note: 'just format-check only reports.' },
+          { goal: 'Check the architecture boundaries', cmd: 'just boundaries', what: 'Runs dependency-cruiser. It enforces SUD-03, SUD-04, SUD-05 and the backend and account boundaries.', note: '' },
+          { goal: 'Check the docs links', cmd: 'just docs-check', what: 'Runs tools/check_links.py on the docs and the READMEs. It fails on a broken relative link.', note: '' },
+          { goal: 'Start the app in development', cmd: 'just app', what: 'Starts the Expo dev server.', note: 'Metro uses port 8081. Two worktrees clash on it.' },
+          { goal: 'Run the app on my iPhone', cmd: 'just ios-dev <UDID>', what: 'Prebuilds and installs the development variant on a device.', note: 'Find the UDID with: xcrun devicectl list devices. Needs the model.' },
+          { goal: 'Build for the simulator', cmd: 'just ios-simulator', what: 'Builds the development variant in Release for the iOS Simulator, without code signing. It needs no Metro.', note: 'It stops when the model file is missing.' },
+          { goal: 'Run the end-to-end flows', cmd: 'just e2e', what: 'Runs the Maestro flows of mobile/e2e on the app of just ios-simulator, on the simulator “Sudoku E2E iOS 26”.', note: 'Pass one flow file, or flags such as --exclude-tags model.' },
+          { goal: 'Measure quality on the iPhone', cmd: 'just ios-measure <UDID>', what: 'Builds the development variant in Release and installs it. The app logs [measure] lines.', note: 'Follow docs/operations/measure-quality.md.' },
+          { goal: 'Time the puzzle generator', cmd: 'just bench-generate', what: 'Times the generation of each level on this machine (QR-12) and prints a table.', note: 'just bench-core times nextSteps and generation.' },
+          { goal: 'Train a model', cmd: 'just train', what: 'Trains from ml/configs/cell-classifier.toml. It uses only the cells that a person verified (ADR-030).', note: 'Pass another config name as an argument.' },
+          { goal: 'Export a model to TFLite', cmd: 'just export <run>', what: 'Exports a training run and checks it against PyTorch and TFLite 2.17.', note: '' },
+          { goal: 'Put a model in the app', cmd: 'just install-model <run>', what: 'Copies an exported run into mobile/assets/models, without a promote gate (M0, ADR-007).', note: 'There is no promote-model recipe yet (TD-04). Run it again in every new worktree.' },
+          { goal: 'Label cells', cmd: 'just label-cells', what: 'Opens the labelling app on 127.0.0.1 (port 8765 by default).', note: 'It rebuilds the app when a source is newer.' },
+          { goal: 'Check the dataset', cmd: 'just check-data', what: 'Checks that the images and the two tables in ml/dataset/ agree. Exit code 1 on a problem.', note: '' },
+          { goal: 'Find likely wrong labels', cmd: 'just suspects', what: 'Ranks the likely wrong digit and kind labels into ml/dataset/work/suspects.csv.', note: '' },
+          { goal: 'Sign in to AWS', cmd: 'just aws-login', what: 'Signs in to the personal account with the profile sudoku-login.', note: 'A bare aws login writes into the wrong profile.' },
+          { goal: 'See what a deploy would change', cmd: 'just diff-api <stage>', what: 'Runs sst diff on a stage, without a change.', note: 'Stages: felix, dev, production.' },
+          { goal: 'Deploy the backend', cmd: 'just deploy-api <stage>', what: 'Checks the account and the kill switch, then runs sst deploy on the stage.', note: 'Run just aws-login first. Production is a manual run in CI.' },
+          { goal: 'Turn a stage on after the kill switch', cmd: 'just api-on <stage>', what: 'Shows the cost of the month, asks first, then turns the stage on again.', note: 'Option: --yes.' },
+          { goal: 'Smoke-test the sync API', cmd: 'just smoke-api <stage> <user>', what: 'Calls the deployed sync API with a real Clerk token.', note: 'Export CLERK_SECRET_KEY of the development instance first.' },
+          { goal: 'Download uploaded scans', cmd: 'just pull-scans <table> <bucket>', what: 'Downloads the uploaded scans of a stage into ml/dataset/ (ADR-030).', note: 'Needs just aws-login.' },
+          { goal: 'See every command', cmd: 'just --list', what: 'Prints each recipe with the comment above it.', note: '' }
+        ]
+        var goalsBox = document.getElementById('finder-goals')
+        var result = document.getElementById('finder-result')
+        if (goalsBox && result) {
+          var show = function (i) {
+            var g = GOALS[i]
+            goalsBox.querySelectorAll('button').forEach(function (b, j) {
+              b.setAttribute('aria-pressed', String(i === j))
+            })
+            result.textContent = ''
+            var pre = document.createElement('pre')
+            var code = document.createElement('code')
+            code.textContent = '$ ' + g.cmd
+            pre.appendChild(code)
+            var meta = document.createElement('div')
+            meta.className = 'meta'
+            var p1 = document.createElement('p')
+            var s1 = document.createElement('strong')
+            s1.textContent = 'What it does: '
+            p1.appendChild(s1)
+            p1.appendChild(document.createTextNode(g.what))
+            meta.appendChild(p1)
+            if (g.note) {
+              var p2 = document.createElement('p')
+              var s2 = document.createElement('strong')
+              s2.textContent = 'Good to know: '
+              p2.appendChild(s2)
+              p2.appendChild(document.createTextNode(g.note))
+              meta.appendChild(p2)
+            }
+            result.appendChild(pre)
+            result.appendChild(meta)
+          }
+          GOALS.forEach(function (g, i) {
+            var b = document.createElement('button')
+            b.type = 'button'
+            b.textContent = g.goal
+            b.setAttribute('aria-pressed', 'false')
+            b.addEventListener('click', function () { show(i) })
+            goalsBox.appendChild(b)
+          })
+          show(1)
+        }
+
+        // Good and bad sentences.
+        var PAIRS = [
+          { bad: 'The model is refused by promote if the cell images are stale.', good: 'Promote refuses the model when the cell images are stale.', rule: 'Rule 4: active voice. Say who does the action.' },
+          { bad: 'Utilise the justfile to commence the build prior to the review.', good: 'Use the justfile to start the build before the review.', rule: 'Rule 8: plain words. “Use”, “start”, “before”.' },
+          { bad: 'Run the tests and then fix the failures and push the branch.', good: 'Run the tests. Fix the failures. Push the branch.', rule: 'Rule 3: one instruction per sentence. Do not join steps with “and”.' },
+          { bad: 'Run linter, fix errors.', good: 'Run the linter. Fix the errors.', rule: 'Rule 9: keep the articles. Do not drop “the” or “a” to save space.' },
+          { bad: 'Delete ml/dataset/. It holds the only copy of the labelled cells.', good: 'Do not delete ml/dataset/. It holds the only copy of the labelled cells.', rule: 'Rule 10: the warning comes first, and it must say what not to do.' },
+          { bad: 'Having finished the export, the checking of the output has been done by the script.', good: 'The script checks the output after the export.', rule: 'Rule 5: simple verb forms. Avoid “-ing” forms and perfect tenses.' },
+          { bad: 'The player taps a cell. The user then picks a digit. The person sees it appear.', good: 'The player taps a cell. The player picks a digit. The digit appears.', rule: 'Rule 1: one word, one meaning. Pick “player” and keep it.' }
+        ]
+        var box = document.getElementById('sentences')
+        if (box) {
+          PAIRS.forEach(function (pair) {
+            var card = document.createElement('div')
+            card.className = 'pair'
+            var tag = document.createElement('span')
+            tag.className = 'tag'
+            tag.textContent = 'Hard to read'
+            var bad = document.createElement('p')
+            bad.className = 'bad'
+            bad.textContent = pair.bad
+            var btn = document.createElement('button')
+            btn.type = 'button'
+            btn.textContent = 'Show the fix'
+            var fix = document.createElement('div')
+            fix.className = 'fix'
+            var t2 = document.createElement('span')
+            t2.className = 'tag'
+            t2.textContent = 'Better'
+            var good = document.createElement('p')
+            good.style.margin = '4px 0'
+            good.textContent = pair.good
+            var why = document.createElement('p')
+            why.style.margin = '4px 0'
+            why.style.fontSize = '0.9rem'
+            why.textContent = pair.rule
+            fix.append(t2, good, why)
+            btn.addEventListener('click', function () {
+              var open = card.classList.toggle('open')
+              btn.textContent = open ? 'Hide the fix' : 'Show the fix'
+            })
+            card.append(tag, bad, btn, fix)
+            box.appendChild(card)
+          })
+        }
+      })()
+    </script>
+  </body>
+</html>

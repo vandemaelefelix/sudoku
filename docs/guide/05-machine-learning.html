@@ -1,0 +1,2365 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The digit model · Sudoku guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="assets/guide.css" />
+    <script src="assets/guide.js" defer></script>
+    <style>
+      .demo {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin: 24px 0;
+        box-shadow: var(--shadow);
+      }
+      .demo > h4 {
+        margin: 0 0 4px;
+        font-size: 16px;
+      }
+      .demo .demo-help {
+        color: var(--ink-2);
+        font-size: 14px;
+        margin: 0 0 14px;
+      }
+      .demo-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 28px;
+        align-items: flex-start;
+      }
+      .demo-col {
+        min-width: 0;
+      }
+      .demo-col > .cap {
+        font: 600 11.5px var(--mono);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink-2);
+        margin-bottom: 8px;
+      }
+      .px-grid {
+        display: grid;
+        gap: 2px;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      .px {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font: 500 10.5px var(--mono);
+        color: var(--ink-2);
+        box-sizing: border-box;
+      }
+      .stepper text.only[data-steps]:not(.is-active) {
+        opacity: 0;
+      }
+      .px.on {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: var(--surface);
+      }
+      .px.paint {
+        cursor: crosshair;
+      }
+      .px.win {
+        outline: 2.5px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .px.out {
+        color: var(--ink);
+      }
+      .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 12px 0 0;
+      }
+      .btn.on {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .kernel {
+        display: grid;
+        grid-template-columns: repeat(3, 34px);
+        gap: 2px;
+      }
+      .kernel span {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        font: 600 13px var(--mono);
+        background: var(--surface-2);
+      }
+      .ctl {
+        display: grid;
+        grid-template-columns: 74px 1fr 64px;
+        gap: 12px;
+        align-items: center;
+        margin: 8px 0;
+      }
+      .ctl label {
+        font: 600 14px var(--mono);
+      }
+      .ctl output {
+        font: 500 13px var(--mono);
+        color: var(--ink-2);
+        text-align: right;
+      }
+      .ctl input[type='range'] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .bars {
+        margin: 12px 0 0;
+      }
+      .bar-row {
+        display: grid;
+        grid-template-columns: 74px 1fr 64px;
+        gap: 12px;
+        align-items: center;
+        margin: 6px 0;
+        font: 500 13px var(--mono);
+      }
+      .bar {
+        height: 20px;
+        background: var(--surface-2);
+        border-radius: 5px;
+        overflow: hidden;
+        position: relative;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        background: var(--blue);
+        transition: width 0.15s;
+      }
+      .bar > i.top {
+        background: var(--accent);
+      }
+      .bar > b {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--green);
+      }
+      .verdict {
+        margin: 14px 0 0;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14.5px;
+      }
+      .verdict.ok {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+      .verdict.low {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+      .verdict.bad {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+      .big-num {
+        font: 600 38px var(--serif);
+        line-height: 1.1;
+      }
+      .pages {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+      }
+      .page-block {
+        display: grid;
+        grid-template-columns: repeat(8, 12px);
+        gap: 2px;
+        padding: 4px;
+        border: 1px dashed var(--line);
+        border-radius: 5px;
+      }
+      .page-block i {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        display: block;
+        box-sizing: border-box;
+      }
+      .page-block i.s0 {
+        background: var(--blue);
+      }
+      .page-block i.s1 {
+        background: var(--amber);
+      }
+      .page-block i.s2 {
+        background: var(--green);
+      }
+      .page-block i.leak {
+        outline: 2px solid var(--red);
+        outline-offset: 1px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        font-size: 13.5px;
+        margin: 10px 0;
+      }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        margin-right: 6px;
+        vertical-align: -1px;
+      }
+      .stat-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        margin-top: 10px;
+      }
+      .stat .num {
+        font: 600 28px var(--serif);
+      }
+      .stat .lbl {
+        font-size: 13px;
+        color: var(--ink-2);
+      }
+      .kv {
+        font-family: var(--mono);
+        font-size: 13px;
+        background: var(--code-bg);
+        border-radius: 8px;
+        padding: 12px 14px;
+        overflow-x: auto;
+        white-space: pre;
+        line-height: 1.55;
+      }
+      .cmd {
+        font-family: var(--mono);
+        font-size: 13px;
+        background: var(--code-bg);
+        border-radius: 8px;
+        padding: 10px 14px;
+        overflow-x: auto;
+        white-space: pre;
+        margin: 10px 0;
+      }
+      @media (max-width: 560px) {
+        .px {
+          width: 26px;
+          height: 26px;
+          font-size: 9px;
+        }
+        .ctl,
+        .bar-row {
+          grid-template-columns: 56px 1fr 52px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar"><nav id="guide-nav" aria-label="Guide"></nav></aside>
+      <main class="content">
+        <div class="kicker">Chapter 5</div>
+        <h1>The digit model</h1>
+        <p class="lead">
+          One small neural network reads every cell of a scanned sudoku. This chapter starts with the basics of neural
+          networks, from zero. Then it follows the model from the first labelled photo to the file on the phone.
+        </p>
+
+        <div class="callout"><span class="callout-title">Before you read</span>
+          You know programming. You do not need to know machine learning. Each new idea starts with a problem, then an
+          everyday comparison, then a drawing. Then the chapter shows the real file and the real function. The scanner
+          that cuts the cells out of the photo is in <a href="04-scan-pipeline.html">chapter 4</a>. The big picture of
+          the whole system is in <a href="01-big-picture.html">chapter 1</a>.
+        </div>
+
+        <h2 id="map">The map of this chapter</h2>
+        <p>
+          The model is a small file. It takes a long road to get there. The code of this road lives in
+          <code>ml/</code>, a Python project. The app is TypeScript. The two sides never import each other
+          (<span class="term" data-def="ml/ (Python) and the TypeScript side share files only: the model contract, the fixtures and the promoted model.">SUD-07</span>).
+          They share three things: the contract, the fixtures and the model file.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 900 250" role="img" aria-label="The road of the model: data, labelling, split, training, evaluation, export, install on the phone">
+            <defs>
+              <marker id="m-map" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="10" y="20" width="120" height="64" rx="10" />
+            <text class="label" x="70" y="48" text-anchor="middle">Data</text>
+            <text class="sublabel" x="70" y="66" text-anchor="middle">photos, cells</text>
+            <rect class="box violet" x="160" y="20" width="120" height="64" rx="10" />
+            <text class="label" x="220" y="48" text-anchor="middle">Labelling</text>
+            <text class="sublabel" x="220" y="66" text-anchor="middle">a person checks</text>
+            <rect class="box amber" x="310" y="20" width="120" height="64" rx="10" />
+            <text class="label" x="370" y="48" text-anchor="middle">Split</text>
+            <text class="sublabel" x="370" y="66" text-anchor="middle">by sudoku page</text>
+            <rect class="box accent" x="460" y="20" width="120" height="64" rx="10" />
+            <text class="label" x="520" y="48" text-anchor="middle">Training</text>
+            <text class="sublabel" x="520" y="66" text-anchor="middle">just train</text>
+            <rect class="box green" x="610" y="20" width="120" height="64" rx="10" />
+            <text class="label" x="670" y="48" text-anchor="middle">Evaluation</text>
+            <text class="sublabel" x="670" y="66" text-anchor="middle">test cells</text>
+            <rect class="box blue" x="760" y="20" width="130" height="64" rx="10" />
+            <text class="label" x="825" y="48" text-anchor="middle">Export</text>
+            <text class="sublabel" x="825" y="66" text-anchor="middle">PyTorch to TFLite</text>
+            <path class="edge" d="M130,52 L156,52" marker-end="url(#m-map)" />
+            <path class="edge" d="M280,52 L306,52" marker-end="url(#m-map)" />
+            <path class="edge" d="M430,52 L456,52" marker-end="url(#m-map)" />
+            <path class="edge" d="M580,52 L606,52" marker-end="url(#m-map)" />
+            <path class="edge" d="M730,52 L756,52" marker-end="url(#m-map)" />
+            <path class="edge" d="M825,84 L825,140 L620,140" marker-end="url(#m-map)" />
+            <rect class="box accent" x="470" y="116" width="150" height="48" rx="10" />
+            <text class="label" x="545" y="145" text-anchor="middle">Promote gate</text>
+            <path class="edge" d="M470,140 L330,140" marker-end="url(#m-map)" />
+            <rect class="box green" x="170" y="116" width="160" height="48" rx="10" />
+            <text class="label" x="250" y="145" text-anchor="middle">Model in the app</text>
+            <path class="edge" d="M250,164 L250,200" marker-end="url(#m-map)" />
+            <rect class="box muted" x="150" y="200" width="200" height="40" rx="10" />
+            <text class="label" x="250" y="225" text-anchor="middle">Phone: 81 cells, 1 batch</text>
+            <rect class="box muted" x="520" y="196" width="370" height="44" rx="10" />
+            <text class="sublabel" x="705" y="214" text-anchor="middle">Shared files only: model contract,</text>
+            <text class="sublabel" x="705" y="230" text-anchor="middle">preprocess fixtures, the .tflite file</text>
+          </svg>
+          <figcaption>
+            The road of the model. Every box has its own section below. The promote gate is planned for milestone M3.
+            Today <code>just install-model</code> does its job without the checks.
+          </figcaption>
+        </figure>
+
+        <h2 id="the-task">The task: one cell in, two answers out</h2>
+        <p>
+          <strong>The problem.</strong> The scanner cuts a photo of a sudoku into 81 small square pictures. Each picture
+          is a <span class="term" data-def="One 64 by 64 pixel RGB picture of one square of the grid, made by the scanner's flatten step.">cell image</span>.
+          The app needs to know what is in each one. It needs a program that looks at a picture and says "this is a 7".
+          Nobody can write the rules for that by hand. A printed 7 and a 7 in pencil look very different. A crooked
+          photo makes it worse.
+        </p>
+        <p>
+          <strong>The idea.</strong> We do not write the rules. We show a program many pictures with the right answers.
+          The program finds the rules by itself. This is <em>machine learning</em>. The program we train is a
+          <span class="term" data-def="A function with many adjustable numbers (weights). Training sets the weights so that the function gives the right answers.">neural network</span>.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          Think of a child that learns to read digits. You do not explain the shape of a 7. You show 1000 cards and say
+          the digit each time. After some time the child knows. Training a model works the same way. The model is the
+          child. The labelled cells are the cards.
+        </div>
+
+        <p>
+          The model gives <strong>two answers</strong> for each cell (<a href="../architecture/adr/adr-006-two-head-cell-classifier.md">ADR-006</a>).
+        </p>
+        <figure class="figure">
+          <svg viewBox="0 0 900 300" role="img" aria-label="One cell image goes into the model. Two outputs come out: the digit and the kind.">
+            <defs>
+              <marker id="m-task" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <!-- a drawn cell: a hand-drawn 7, no real image -->
+            <rect class="box" x="30" y="70" width="140" height="140" rx="6" />
+            <path d="M62,104 L138,104 L102,184" fill="none" stroke="var(--ink)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+            <text class="label" x="100" y="238" text-anchor="middle">cell image</text>
+            <text class="sublabel mono" x="100" y="256" text-anchor="middle">64 x 64 x 3</text>
+            <path class="edge" d="M174,140 L250,140" marker-end="url(#m-task)" />
+            <rect class="box accent" x="254" y="90" width="170" height="100" rx="12" />
+            <text class="label" x="339" y="130" text-anchor="middle">CellClassifier</text>
+            <text class="sublabel" x="339" y="150" text-anchor="middle">73k numbers</text>
+            <text class="sublabel" x="339" y="168" text-anchor="middle">learned from data</text>
+            <path class="edge" d="M424,125 L500,70" marker-end="url(#m-task)" />
+            <path class="edge" d="M424,155 L500,210" marker-end="url(#m-task)" />
+            <rect class="box blue" x="504" y="30" width="370" height="90" rx="10" />
+            <text class="label" x="689" y="56" text-anchor="middle">digit head: 10 classes</text>
+            <text class="sublabel mono" x="689" y="78" text-anchor="middle">empty 1 2 3 4 5 6 7 8 9</text>
+            <text class="sublabel" x="689" y="100" text-anchor="middle">"which number is it?"</text>
+            <rect class="box green" x="504" y="170" width="370" height="90" rx="10" />
+            <text class="label" x="689" y="196" text-anchor="middle">kind head: 4 classes</text>
+            <text class="sublabel mono" x="689" y="218" text-anchor="middle">none printed handwritten notes</text>
+            <text class="sublabel" x="689" y="240" text-anchor="middle">"who or what made the mark?"</text>
+          </svg>
+          <figcaption>
+            Input and output of the model. The class lists live in <code>ml/src/sudoku_ml/contract.py</code> as
+            <code>DIGIT_CLASSES</code> and <code>KIND_CLASSES</code>.
+          </figcaption>
+        </figure>
+
+        <p>
+          Why two heads? The <strong>digit</strong> says which number is in the cell. The <strong>kind</strong> says how
+          the mark was made. The scanner loads a <em>printed</em> digit as a locked given. It loads a
+          <em>handwritten</em> digit as an entry that the player can edit. A <em>notes</em> cell has small pencil marks. It
+          counts as empty. Only some pairs make sense:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Digit</th><th>Valid kinds</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><code>empty</code></td><td><code>none</code>, <code>notes</code></td><td>A blank square, or a square with pencil notes.</td></tr>
+              <tr><td><code>1</code> to <code>9</code></td><td><code>printed</code>, <code>handwritten</code></td><td>A given, or a digit the player wrote.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The function <code>is_valid_pair</code> in <code>contract.py</code> checks this rule. The app treats an invalid
+          pair as low confidence. The confidence of a cell is the <em>lower</em> of the two top probabilities. The
+          full text is in the <a href="../architecture/00-concepts/model-contract.md">model contract</a>.
+        </p>
+
+        <h3 id="grid-exact">Why the whole grid must be right</h3>
+        <p>
+          A sudoku has one rule that matters here: <strong>one wrong digit breaks the puzzle</strong>. The solver finds
+          no solution, or a different one. So the number we care about is not "how many cells are right". It is
+          <strong>how many grids are fully right</strong>. The glossary calls this
+          <span class="term" data-def="The share of fixture scans with all 81 digits right. The metric that matters (chapter 10, ADR-007).">grid-exact accuracy</span>.
+        </p>
+        <p>
+          The maths is simple. If each cell is right with chance <code>p</code>, then 81 cells are all right with
+          chance <code>p</code> to the power 81. Small errors add up fast. Try it.
+        </p>
+
+        <div class="demo" id="demo-grid">
+          <h4>Demo: from cell accuracy to grid accuracy</h4>
+          <p class="demo-help">Move the slider. The grid-exact number falls much faster than the cell number.</p>
+          <div class="ctl">
+            <label for="ge-p">cell</label>
+            <input id="ge-p" type="range" min="900" max="10000" step="1" value="9900" />
+            <output id="ge-p-out">99.00 %</output>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="num" id="ge-grid">44.3 %</div><div class="lbl">grids with all 81 cells right</div></div>
+            <div class="stat"><div class="num" id="ge-100">44 of 100</div><div class="lbl">perfect scans out of 100</div></div>
+            <div class="stat"><div class="num" id="ge-need">99.94 %</div><div class="lbl">cell accuracy needed for 95 % of grids</div></div>
+          </div>
+          <div class="bars">
+            <div class="bar-row"><span>cell</span><div class="bar"><i id="ge-bar-cell" style="width: 99%"></i></div><span id="ge-bar-cell-n">99.0</span></div>
+            <div class="bar-row"><span>grid</span><div class="bar"><i class="top" id="ge-bar-grid" style="width: 44%"></i></div><span id="ge-bar-grid-n">44.3</span></div>
+          </div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why this way?</span>
+          The 95 % goal for newspaper scans (QR-01 in chapter 10) needs about 99.94 % per cell. That is why the
+          <a href="../architecture/adr/adr-007-model-promotion.md">promote gate (ADR-007)</a> scores grids, not cells. It is
+          also why the app has a correction screen: the model flags the cells it doubts, and the player fixes the rest.
+        </div>
+        <div class="callout warn">
+          <span class="callout-title">Pitfall</span>
+          The sum is a simplification. Real errors are not independent. A bad photo gives many errors in one grid.
+          The real score comes from real fixture scans, not from this formula.
+        </div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A model reads each cell right 99.5 % of the time. About how many of 100 scanned grids come out fully right?</p>
+          <div class="options">
+            <button>About 99</button>
+            <button>About 95</button>
+            <button data-correct>About 67</button>
+            <button>About 50</button>
+          </div>
+          <p class="explain">0.995 to the power 81 is about 0.67. Every cell is a new chance to fail. This is why the project measures grid-exact accuracy.</p>
+        </div>
+
+        <h2 id="basics">Neural networks from zero</h2>
+        <p>
+          Five ideas are enough to read the rest of this chapter: <strong>pixels are numbers</strong>, a
+          <strong>filter</strong> finds a pattern, <strong>layers</strong> stack the filters, <strong>training</strong>
+          sets the numbers, and <strong>softmax</strong> turns scores into probabilities. This section teaches them one
+          by one.
+        </p>
+
+        <h3 id="pixels">Idea 1: a picture is a table of numbers</h3>
+        <p>
+          A computer does not see a "7". It sees a table of numbers. Each number says how bright one pixel is. A
+          black and white picture has one number per pixel. A colour picture has three: red, green and blue. The model
+          of this project reads <em>one</em> number per pixel. The preprocessing turns the colour into grey first
+          (see <a href="#parity">preprocessing parity</a>). It also flips the scale: ink is near 1, paper is near 0.
+        </p>
+
+        <h3 id="convolution">Idea 2: a filter slides over the picture</h3>
+        <p>
+          <strong>The problem.</strong> A cell has 32 by 32 = 1024 pixels. We could connect every pixel to every
+          decision, but that needs a huge number of weights. It also ignores a simple fact: a "7" is a "7" wherever it
+          sits in the cell. A vertical stroke is a vertical stroke at the left or at the right.
+        </p>
+        <p>
+          <strong>The idea.</strong> Use a tiny <span class="term" data-def="A small grid of numbers (here 3 by 3) that slides over a picture. At each place it gives one number: how strongly the pattern is there.">filter</span>,
+          3 pixels by 3 pixels. Slide it over the whole picture. At each place, multiply the 9 pixels by the 9 filter
+          numbers and add the results. That is one output number. The result is a new picture: a
+          <em>response map</em>. It is bright where the pattern is. This operation is a
+          <span class="term" data-def="Sliding a small filter over a picture and writing the weighted sum at every place.">convolution</span>.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          A filter is a stencil with a pattern, for example "a vertical line". You move the stencil over the page. Where
+          the page matches the stencil, you mark a bright dot. Where it does not match, you mark a dark dot. A network
+          holds many stencils. It learns them by itself.
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 900 260" role="img" aria-label="A 3 by 3 filter slides over an input picture. At each position the nine products are added to one output number.">
+            <defs>
+              <marker id="m-conv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <!-- input 6x6 -->
+            <g>
+              <rect x="30" y="40" width="180" height="180" fill="var(--surface)" stroke="var(--line)" />
+              <path class="grid-line" d="M60,40 V220 M90,40 V220 M120,40 V220 M150,40 V220 M180,40 V220 M30,70 H210 M30,100 H210 M30,130 H210 M30,160 H210 M30,190 H210" />
+              <rect x="90" y="70" width="30" height="120" fill="var(--ink)" />
+              <rect x="60" y="70" width="60" height="30" fill="var(--ink)" />
+              <rect x="60" y="100" width="90" height="90" fill="none" stroke="var(--accent)" stroke-width="3" />
+            </g>
+            <text class="label" x="120" y="20" text-anchor="middle">input</text>
+            <text class="sublabel" x="120" y="242" text-anchor="middle">the window covers 9 pixels</text>
+            <path class="edge" d="M214,130 L280,130" marker-end="url(#m-conv)" />
+            <!-- filter -->
+            <g>
+              <rect class="box violet" x="290" y="80" width="130" height="100" rx="8" />
+              <text class="label" x="355" y="104" text-anchor="middle">filter</text>
+              <text class="mono sublabel" x="355" y="130" text-anchor="middle">-1  0  +1</text>
+              <text class="mono sublabel" x="355" y="148" text-anchor="middle">-1  0  +1</text>
+              <text class="mono sublabel" x="355" y="166" text-anchor="middle">-1  0  +1</text>
+            </g>
+            <text class="sublabel" x="355" y="204" text-anchor="middle">"dark to bright, left to right"</text>
+            <path class="edge" d="M424,130 L490,130" marker-end="url(#m-conv)" />
+            <rect class="box" x="500" y="85" width="150" height="90" rx="8" />
+            <text class="label" x="575" y="112" text-anchor="middle">multiply and add</text>
+            <text class="sublabel" x="575" y="134" text-anchor="middle">9 products</text>
+            <text class="sublabel" x="575" y="152" text-anchor="middle">1 sum</text>
+            <path class="edge" d="M654,130 L720,130" marker-end="url(#m-conv)" />
+            <rect x="730" y="40" width="150" height="180" fill="var(--surface)" stroke="var(--line)" />
+            <path class="grid-line" d="M760,40 V220 M790,40 V220 M820,40 V220 M850,40 V220 M730,70 H880 M730,100 H880 M730,130 H880 M730,160 H880 M730,190 H880" />
+            <rect x="790" y="100" width="30" height="30" fill="var(--accent)" />
+            <text class="label" x="805" y="20" text-anchor="middle">response map</text>
+            <text class="sublabel" x="805" y="242" text-anchor="middle">one new number per place</text>
+          </svg>
+          <figcaption>One convolution step. The filter sees 9 pixels and gives 1 number. Moving the window one pixel gives the next number.</figcaption>
+        </figure>
+
+        <div class="demo" id="demo-conv">
+          <h4>Demo: paint a picture, pick a filter, see the response</h4>
+          <p class="demo-help">
+            Click and drag on the left grid to paint (the model reads ink as 1). Pick a filter. Point at a number on the
+            right: the window that made it shows in orange on the left. The grid uses zero padding, like the real
+            network (<code>padding=1</code>).
+          </p>
+          <div class="demo-row">
+            <div class="demo-col">
+              <div class="cap">Input 8 x 8</div>
+              <div class="px-grid" id="cv-in" style="grid-template-columns: repeat(8, auto)" aria-label="Paint grid"></div>
+              <div class="btn-row">
+                <button class="btn" type="button" id="cv-clear">Clear</button>
+                <button class="btn" type="button" id="cv-one">Draw 1</button>
+                <button class="btn" type="button" id="cv-seven">Draw 7</button>
+                <button class="btn" type="button" id="cv-box">Draw box</button>
+              </div>
+            </div>
+            <div class="demo-col">
+              <div class="cap">Filter</div>
+              <div class="kernel" id="cv-kernel"></div>
+              <div class="btn-row" id="cv-filters"></div>
+              <div class="btn-row">
+                <label><input type="checkbox" id="cv-relu" /> ReLU: drop negatives</label>
+                <label><input type="checkbox" id="cv-pool" /> then 2 x 2 max pool</label>
+              </div>
+            </div>
+            <div class="demo-col">
+              <div class="cap" id="cv-out-cap">Response 8 x 8</div>
+              <div class="px-grid" id="cv-out" style="grid-template-columns: repeat(8, auto)" aria-label="Filter response"></div>
+              <p class="demo-help" style="margin-top: 8px" id="cv-note"></p>
+            </div>
+          </div>
+        </div>
+
+        <p>
+          Try the vertical filter on the drawn <strong>1</strong>. The response is strong blue on the left edge of the
+          stroke and strong orange on the right edge. The filter finds <em>edges</em>. Try the horizontal filter on the
+          <strong>7</strong>. It lights up under and over the top bar. A network has 16, 32 or 64 such filters in a
+          layer. Nobody sets their numbers by hand. Training does it.
+        </p>
+
+        <h3 id="relu-pool">Two helpers: ReLU and pooling</h3>
+        <ul>
+          <li>
+            <strong>ReLU</strong> sets every negative number to 0. It is one line: <code>max(0, x)</code>. Without it,
+            a stack of filters would collapse into one big filter. With it, each layer can make a real decision: "the
+            pattern is here" or "it is not here".
+          </li>
+          <li>
+            <strong>Max pooling</strong> shrinks the picture. It keeps the biggest number of each 2 by 2 block. The map
+            gets half as wide and half as high. The network cares less about the exact pixel and more about "there is an
+            edge near here". It also makes the next layers cheaper.
+          </li>
+          <li>
+            <strong>Batch normalisation</strong> keeps the numbers in a stable range after each convolution. It makes
+            training faster and steadier. You can read it as "tidy the numbers".
+          </li>
+        </ul>
+
+        <h3 id="layers">Idea 3: layers build up from edges to digits</h3>
+        <p>
+          The output of one layer is a stack of response maps. The next layer slides new filters over this stack. So the
+          second layer finds patterns of patterns: a corner is a vertical edge next to a horizontal one. The third layer
+          finds curves and loops. At the end, the network has one list of 64 numbers for the whole cell. Each number says
+          how much of one learned pattern is in the cell. Two small <em>heads</em> turn this list into answers.
+        </p>
+        <figure class="figure">
+          <svg viewBox="0 0 900 190" role="img" aria-label="Layers go from edges to corners to loops to a digit.">
+            <defs>
+              <marker id="m-lay" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box" x="20" y="50" width="130" height="90" rx="10" />
+            <path d="M52,70 L118,70 L88,122" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+            <text class="sublabel" x="85" y="164" text-anchor="middle">pixels</text>
+            <path class="edge" d="M154,95 L204,95" marker-end="url(#m-lay)" />
+            <rect class="box blue" x="210" y="50" width="150" height="90" rx="10" />
+            <path d="M242,125 L242,70 M270,125 L330,125 M260,100 L300,70" stroke="var(--blue)" stroke-width="5" stroke-linecap="round" fill="none" />
+            <text class="sublabel" x="285" y="164" text-anchor="middle">layer 1: edges</text>
+            <path class="edge" d="M364,95 L414,95" marker-end="url(#m-lay)" />
+            <rect class="box violet" x="420" y="50" width="150" height="90" rx="10" />
+            <path d="M450,110 L450,75 L505,75 M530,75 L550,75 L530,120" stroke="var(--violet)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            <text class="sublabel" x="495" y="164" text-anchor="middle">layer 3: corners, bends</text>
+            <path class="edge" d="M574,95 L624,95" marker-end="url(#m-lay)" />
+            <rect class="box accent" x="630" y="50" width="120" height="90" rx="10" />
+            <text class="label" x="690" y="90" text-anchor="middle">64</text>
+            <text class="sublabel" x="690" y="110" text-anchor="middle">numbers</text>
+            <text class="sublabel" x="690" y="164" text-anchor="middle">layer 6 + pooling</text>
+            <path class="edge" d="M754,95 L804,95" marker-end="url(#m-lay)" />
+            <rect class="box green" x="810" y="50" width="75" height="90" rx="10" />
+            <text class="label" x="847" y="100" text-anchor="middle">"7"</text>
+            <text class="sublabel" x="847" y="164" text-anchor="middle">the heads</text>
+          </svg>
+          <figcaption>An idea of what the layers learn. The drawing is a sketch. The real filters look less tidy, but the direction is true: simple patterns first, richer patterns later.</figcaption>
+        </figure>
+
+        <h3 id="training">Idea 4: training sets the numbers</h3>
+        <p>
+          <strong>The problem.</strong> The network has 72,926 numbers, the
+          <span class="term" data-def="The numbers inside a model that training changes. The filters and the head weights are weights.">weights</span>.
+          At the start they are random, so the answers are random. How do we find good values?
+        </p>
+        <p>
+          <strong>The idea.</strong> Make a guess, measure the mistake, and nudge every weight a tiny step in the
+          direction that makes the mistake smaller. Repeat many times.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          You stand in fog on a hill. You want to reach the valley. You cannot see it. But you can feel the slope under
+          your feet. You take a small step downhill. You feel again. You repeat. The height of the ground is the
+          <em>loss</em>. The weights are your position. The step size is the <em>learning rate</em>.
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 900 270" role="img" aria-label="The training loop: take a batch, run the model, measure the loss, nudge the weights, repeat.">
+            <defs>
+              <marker id="m-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="20" y="30" width="190" height="70" rx="10" />
+            <text class="label" x="115" y="60" text-anchor="middle">1. A batch of cells</text>
+            <text class="sublabel" x="115" y="80" text-anchor="middle">with the right answers</text>
+            <rect class="box accent" x="270" y="30" width="190" height="70" rx="10" />
+            <text class="label" x="365" y="60" text-anchor="middle">2. The model guesses</text>
+            <text class="sublabel" x="365" y="80" text-anchor="middle">scores for each class</text>
+            <rect class="box amber" x="520" y="30" width="190" height="70" rx="10" />
+            <text class="label" x="615" y="60" text-anchor="middle">3. The loss</text>
+            <text class="sublabel" x="615" y="80" text-anchor="middle">one number: how wrong</text>
+            <rect class="box green" x="520" y="160" width="190" height="70" rx="10" />
+            <text class="label" x="615" y="190" text-anchor="middle">4. Backward pass</text>
+            <text class="sublabel" x="615" y="210" text-anchor="middle">which weight caused what</text>
+            <rect class="box violet" x="270" y="160" width="190" height="70" rx="10" />
+            <text class="label" x="365" y="190" text-anchor="middle">5. The optimiser</text>
+            <text class="sublabel" x="365" y="210" text-anchor="middle">nudges every weight</text>
+            <path class="edge" d="M210,65 L266,65" marker-end="url(#m-loop)" />
+            <path class="edge" d="M460,65 L516,65" marker-end="url(#m-loop)" />
+            <path class="edge" d="M615,100 L615,156" marker-end="url(#m-loop)" />
+            <path class="edge" d="M520,195 L464,195" marker-end="url(#m-loop)" />
+            <path class="edge dashed" d="M270,195 L115,195 L115,104" marker-end="url(#m-loop)" />
+            <text class="sublabel" x="190" y="186" text-anchor="middle">next batch</text>
+            <text class="sublabel" x="780" y="100" text-anchor="start">In code:</text>
+            <text class="sublabel mono" x="780" y="120" text-anchor="start">loss(...)</text>
+            <text class="sublabel mono" x="780" y="140" text-anchor="start">value.backward()</text>
+            <text class="sublabel mono" x="780" y="160" text-anchor="start">optimiser.step()</text>
+          </svg>
+          <figcaption>The training loop. The function <code>fit</code> in <code>ml/src/sudoku_ml/train.py</code> runs exactly these steps.</figcaption>
+        </figure>
+
+        <p>The words you will meet:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Word</th><th>Plain meaning</th><th>In this project</th></tr></thead>
+            <tbody>
+              <tr><td><span class="term" data-def="A single number that says how wrong the model is on a batch. Training makes it smaller.">Loss</span></td><td>One number: how wrong the guesses are. Lower is better.</td><td>Cross-entropy of the digit head, plus 0.4 times the kind head.</td></tr>
+              <tr><td><span class="term" data-def="A small group of training cells that the model sees at once. One weight update per batch.">Batch</span></td><td>A small group of cells that one step uses.</td><td><code>batch_size = 256</code>, half synthetic, half real.</td></tr>
+              <tr><td><span class="term" data-def="One full pass over the training data.">Epoch</span></td><td>One full pass over all the training cells.</td><td><code>epochs = 25</code></td></tr>
+              <tr><td>Learning rate</td><td>The size of one nudge.</td><td>A "one-cycle" schedule that rises to <code>max_lr = 0.003</code>, then falls.</td></tr>
+              <tr><td>Optimiser</td><td>The rule that turns the slope into a nudge.</td><td><code>AdamW</code> with <code>weight_decay = 0.0001</code>.</td></tr>
+              <tr><td>Seed</td><td>The start of a random number generator. Same seed, same run.</td><td><code>seed = 7</code>. The fixtures use <code>2026</code> (<code>FIXTURE_SEED</code>).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="overfitting">Idea 5: train, validation and test, and the danger of memorising</h3>
+        <p>
+          <strong>The problem.</strong> A model can score 100 % on the cells it trained on and still fail on new ones. It
+          has <em>memorised</em> the cards instead of learning the rule. This is
+          <span class="term" data-def="The model fits its training data very well but does worse on data it has not seen.">overfitting</span>.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          A student gets the exam questions in advance and learns the answers by heart. The student scores 100 % on that
+          exam and fails the next one. To test the real understanding, you need <em>new questions</em>.
+        </div>
+        <p>So we split the labelled cells into three piles, before training starts:</p>
+        <figure class="figure">
+          <svg viewBox="0 0 900 180" role="img" aria-label="The three piles: training 80 percent, validation 10 percent, test 10 percent, with their jobs.">
+            <rect class="box blue" x="20" y="30" width="560" height="56" rx="8" />
+            <text class="label" x="300" y="64" text-anchor="middle">Train 80 %: the model learns from these</text>
+            <rect class="box amber" x="590" y="30" width="140" height="56" rx="8" />
+            <text class="label" x="660" y="64" text-anchor="middle">Validation 10 %</text>
+            <rect class="box green" x="740" y="30" width="140" height="56" rx="8" />
+            <text class="label" x="810" y="64" text-anchor="middle">Test 10 %</text>
+            <text class="sublabel" x="300" y="112" text-anchor="middle">Weights change here. The loss goes down.</text>
+            <text class="sublabel" x="660" y="112" text-anchor="middle">Tune and calibrate.</text>
+            <text class="sublabel" x="810" y="112" text-anchor="middle">Final honest score.</text>
+            <text class="sublabel" x="660" y="130" text-anchor="middle">Fit the temperature.</text>
+            <text class="sublabel" x="810" y="130" text-anchor="middle">Look at it once.</text>
+            <text class="sublabel mono" x="450" y="160" text-anchor="middle">split = [0.8, 0.1, 0.1] in the config</text>
+          </svg>
+          <figcaption>The three piles. In this project the split happens by <em>sudoku page</em>, not by cell. The next picture shows why it matters.</figcaption>
+        </figure>
+
+        <figure class="figure">
+          <svg viewBox="0 0 900 290" role="img" aria-label="A chart of loss against epochs. Training loss keeps falling. Validation loss falls, then rises. The gap is overfitting.">
+            <line class="edge" x1="70" y1="240" x2="860" y2="240" />
+            <line class="edge" x1="70" y1="30" x2="70" y2="240" />
+            <text class="sublabel" x="465" y="272" text-anchor="middle">epochs (more training)</text>
+            <text class="sublabel" x="22" y="140" text-anchor="middle" transform="rotate(-90 22 140)">loss (lower is better)</text>
+            <path d="M70,60 C150,140 220,185 300,205 C400,222 560,232 850,236" fill="none" stroke="var(--blue)" stroke-width="3.5" />
+            <path d="M70,66 C150,150 230,190 320,200 C420,204 520,196 600,180 C700,158 780,140 850,120" fill="none" stroke="var(--accent)" stroke-width="3.5" />
+            <line class="edge dashed" x1="360" y1="40" x2="360" y2="240" />
+            <text class="sublabel" x="368" y="52" text-anchor="start">the best moment to stop</text>
+            <path class="edge accent" d="M840,124 L840,232" marker-end="url(#m-over)" />
+            <defs>
+              <marker id="m-over" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <text class="sublabel" x="826" y="180" text-anchor="end">the gap grows: overfitting</text>
+            <rect class="box" x="560" y="38" width="290" height="58" rx="8" />
+            <line x1="574" y1="56" x2="604" y2="56" stroke="var(--blue)" stroke-width="3.5" />
+            <text class="sublabel" x="612" y="60" text-anchor="start">loss on the training cells</text>
+            <line x1="574" y1="80" x2="604" y2="80" stroke="var(--accent)" stroke-width="3.5" />
+            <text class="sublabel" x="612" y="84" text-anchor="start">loss on cells never seen</text>
+          </svg>
+          <figcaption>An illustration, not a measurement. Training loss only falls. Loss on unseen cells reaches a low point, then rises when the model starts to memorise.</figcaption>
+        </figure>
+
+        <p>
+          The three piles have three different jobs. The <strong>training</strong> pile changes the weights. The
+          <strong>validation</strong> pile checks progress and fits the
+          <a href="#softmax">temperature</a> (later in this chapter). The <strong>test</strong> pile gives the final
+          honest score. We must not tune the model on the test pile. If we did, the test would turn into another
+          training pile, and the score would be too good. The project guards this further with the
+          <a href="#evaluation">fixtures</a>, which no training run ever sees (SUD-10).
+        </p>
+        <p>
+          Two more tools fight memorising. <strong>Augmentation</strong> bends each training picture a little at random:
+          shift, rotate, blur, change the brightness. The model never sees the same picture twice, so it cannot learn
+          it by heart. <strong>Dropout</strong> switches off a few numbers at random during training, so no single number
+          can carry the answer alone. Both appear in the code later.
+        </p>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The validation score of a model gets worse for five epochs, while the training loss keeps falling. What happens?</p>
+          <div class="options">
+            <button>The model learns faster</button>
+            <button data-correct>The model overfits: it memorises the training cells</button>
+            <button>The test pile is broken</button>
+            <button>The learning rate is too low</button>
+          </div>
+          <p class="explain">A falling training loss with a rising validation loss is the sign of overfitting. The model fits the cards it has, not the rule behind them.</p>
+        </div>
+
+        <h2 id="softmax">Softmax, confidence and calibration</h2>
+        <p>
+          <strong>The problem.</strong> The last layer of the network gives 10 raw scores for the digit, one per class.
+          They are called <span class="term" data-def="The raw scores of a network before softmax. Any real number, positive or negative.">logits</span>.
+          A logit can be 5.3 or -2. The app needs something it can use: a chance for each class that adds up to 100 %,
+          and a single number that says how sure the model is.
+        </p>
+        <p>
+          <strong>The idea.</strong> <span class="term" data-def="A function that turns scores into probabilities: it makes every score positive with exp() and divides by the sum.">Softmax</span>
+          raises <em>e</em> to the power of each score, then divides by the sum. Big scores win much more than small
+          ones. Everything is positive, and the total is 1. The biggest probability is the <em>confidence</em>.
+        </p>
+
+        <div class="demo" id="demo-softmax">
+          <h4>Demo: scores to probabilities</h4>
+          <p class="demo-help">
+            Four classes of one cell. Move the sliders to change the scores. Then change the temperature: a high
+            temperature makes the model less sure. The green line is the 80 % ring threshold of the correction screen.
+          </p>
+          <div id="sm-sliders"></div>
+          <div class="ctl">
+            <label for="sm-t">temp</label>
+            <input id="sm-t" type="range" min="30" max="300" step="1" value="100" />
+            <output id="sm-t-out">1.00</output>
+          </div>
+          <div class="btn-row">
+            <button class="btn" type="button" data-sm="clear">A clear 7</button>
+            <button class="btn" type="button" data-sm="close">7 or 1?</button>
+            <button class="btn" type="button" data-sm="flat">No idea</button>
+          </div>
+          <div class="bars" id="sm-bars"></div>
+          <div class="verdict ok" id="sm-verdict"></div>
+        </div>
+
+        <p>
+          Look at what the demo shows. Equal scores give equal chances. A gap of 3 points already gives about 90 % to
+          the leader. The temperature divides all the scores before softmax. A large temperature flattens the bars. A
+          small one makes them sharper. Training can leave a model <em>too sure</em>: it says 99 % and is right only 90 %
+          of the time. The fix is cheap.
+        </p>
+        <div class="callout why">
+          <span class="callout-title">Why this way: calibration</span>
+          The app uses the confidence to decide which cells to flag. So the confidence must be honest. After training,
+          <code>fit_temperature</code> in <code>train.py</code> searches one number <code>T</code> on the
+          <em>validation</em> cells with the LBFGS optimiser. The best <code>T</code> makes "90 % sure" mean "right 90 % of
+          the time". The export divides the digit logits by <code>T</code>. The score for the honesty is the
+          <span class="term" data-def="The average gap between the confidence of the model and its accuracy, in bins of confidence. Lower is better.">expected calibration error (ECE)</span>.
+          A recent run had <code>ece = 0.0026</code> (0.26 %): confidence and accuracy differ by a quarter of a point on
+          average.
+        </div>
+
+        <details class="deep">
+          <summary>Deep dive: cross-entropy, label smoothing and the two losses</summary>
+          <p>
+            The <strong>cross-entropy</strong> loss looks at the probability that the model gave to the <em>right</em>
+            class. If that is 1.0, the loss is 0. If it is 0.01, the loss is large (about 4.6). So the loss pushes the
+            model to put all its chance on the right answer.
+          </p>
+          <p>
+            <strong>Label smoothing</strong> (<code>label_smoothing = 0.05</code>) says the right answer is "95 % this
+            class, 5 % spread over the others". Why? Some labels are wrong, because people make mistakes. If the model
+            must reach 100 %, a wrong label pulls hard. A small smoothing keeps the logits from growing without limit and
+            makes the model less proud.
+          </p>
+          <p>
+            The function <code>loss</code> in <code>train.py</code> adds two terms:
+          </p>
+          <div class="cmd">total = cross_entropy(digit_logits, digit, label_smoothing)
+total += kind_weight * cross_entropy(kind_logits[known], kind[known])   # kind_weight = 0.4</div>
+          <p>
+            A cell whose kind nobody knows has the target <code>UNKNOWN_KIND = -1</code>. It adds no kind loss, so
+            the missing label does not harm the digit. The weight 0.4 stops the kind head from pulling the shared
+            features away from the digit (ADR-006).
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A model gives a cell the probabilities 0.55 for "3" and 0.45 for "8". What should the app do with this cell?</p>
+          <div class="options">
+            <button>Load a 3 and say nothing</button>
+            <button data-correct>Flag it for review, because the confidence is below the 80 % ring threshold</button>
+            <button>Throw the whole scan away</button>
+            <button>Load an 8</button>
+          </div>
+          <p class="explain">The confidence is the top probability, 0.55. It is below <code>REVIEW_CONFIDENCE</code> (0.8), so the correction screen draws a dashed ring around the cell and the player checks it.</p>
+        </div>
+
+        <h2 id="architecture">The real network: CellClassifier</h2>
+        <p>
+          Now you know every part. The class <code>CellClassifier</code> in <code>ml/src/sudoku_ml/model.py</code> is
+          built from them. It follows <a href="../architecture/adr/adr-006-two-head-cell-classifier.md">ADR-006</a>:
+          three stages of two convolutions, then global average pooling, then two linear heads. Click a box to learn what
+          it does.
+        </p>
+
+        <div class="figure explorer" data-explorer="stage1">
+          <svg viewBox="0 0 960 340" role="img" aria-label="The network from left to right: input 1 by 32 by 32, three convolution stages, global average pooling, and two heads.">
+            <defs>
+              <marker id="m-arch" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-node="input">
+              <rect class="box muted" x="10" y="90" width="120" height="140" rx="10" />
+              <text class="label" x="70" y="140" text-anchor="middle">Input</text>
+              <text class="sublabel mono" x="70" y="164" text-anchor="middle">1 x 32 x 32</text>
+              <text class="sublabel" x="70" y="184" text-anchor="middle">grey, ink = 1</text>
+            </g>
+            <g data-node="stage1">
+              <rect class="box blue" x="166" y="60" width="130" height="200" rx="10" />
+              <text class="label" x="231" y="100" text-anchor="middle">Stage 1</text>
+              <text class="sublabel mono" x="231" y="126" text-anchor="middle">conv 16</text>
+              <text class="sublabel mono" x="231" y="146" text-anchor="middle">conv 16</text>
+              <text class="sublabel mono" x="231" y="166" text-anchor="middle">max pool</text>
+              <text class="sublabel mono" x="231" y="198" text-anchor="middle">16 x 16 x 16</text>
+              <text class="sublabel" x="231" y="228" text-anchor="middle">edges, strokes</text>
+            </g>
+            <g data-node="stage2">
+              <rect class="box violet" x="322" y="80" width="130" height="160" rx="10" />
+              <text class="label" x="387" y="116" text-anchor="middle">Stage 2</text>
+              <text class="sublabel mono" x="387" y="140" text-anchor="middle">conv 32</text>
+              <text class="sublabel mono" x="387" y="158" text-anchor="middle">conv 32</text>
+              <text class="sublabel mono" x="387" y="176" text-anchor="middle">max pool</text>
+              <text class="sublabel mono" x="387" y="206" text-anchor="middle">32 x 8 x 8</text>
+            </g>
+            <g data-node="stage3">
+              <rect class="box accent" x="478" y="100" width="130" height="120" rx="10" />
+              <text class="label" x="543" y="130" text-anchor="middle">Stage 3</text>
+              <text class="sublabel mono" x="543" y="152" text-anchor="middle">conv 64</text>
+              <text class="sublabel mono" x="543" y="170" text-anchor="middle">conv 64</text>
+              <text class="sublabel mono" x="543" y="200" text-anchor="middle">64 x 8 x 8</text>
+            </g>
+            <g data-node="gap">
+              <rect class="box amber" x="634" y="110" width="130" height="100" rx="10" />
+              <text class="label" x="699" y="136" text-anchor="middle">Average</text>
+              <text class="sublabel" x="699" y="156" text-anchor="middle">global pooling</text>
+              <text class="sublabel mono" x="699" y="178" text-anchor="middle">64 numbers</text>
+              <text class="sublabel" x="699" y="196" text-anchor="middle">+ dropout 0.1</text>
+            </g>
+            <g data-node="digit">
+              <rect class="box green" x="800" y="50" width="150" height="90" rx="10" />
+              <text class="label" x="875" y="84" text-anchor="middle">digit head</text>
+              <text class="sublabel mono" x="875" y="106" text-anchor="middle">Linear 64 to 10</text>
+              <text class="sublabel" x="875" y="126" text-anchor="middle">650 weights</text>
+            </g>
+            <g data-node="kind">
+              <rect class="box green" x="800" y="180" width="150" height="90" rx="10" />
+              <text class="label" x="875" y="214" text-anchor="middle">kind head</text>
+              <text class="sublabel mono" x="875" y="236" text-anchor="middle">Linear 64 to 4</text>
+              <text class="sublabel" x="875" y="256" text-anchor="middle">260 weights</text>
+            </g>
+            <path class="edge" d="M132,160 L162,160" marker-end="url(#m-arch)" />
+            <path class="edge" d="M298,160 L318,160" marker-end="url(#m-arch)" />
+            <path class="edge" d="M454,160 L474,160" marker-end="url(#m-arch)" />
+            <path class="edge" d="M610,160 L630,160" marker-end="url(#m-arch)" />
+            <path class="edge" d="M766,150 L796,100" marker-end="url(#m-arch)" />
+            <path class="edge" d="M766,170 L796,220" marker-end="url(#m-arch)" />
+            <text class="sublabel" x="480" y="310" text-anchor="middle">Every conv: 3 x 3 filters, no bias, then batch norm, then ReLU. The picture shrinks only at the max pools.</text>
+            <text class="sublabel" x="480" y="328" text-anchor="middle">Total: 72,926 weights, about 326 KB as a float32 file.</text>
+          </svg>
+          <p class="hint">Click a box to read about it.</p>
+          <div class="panel" data-panel="input"><h4>Input: 1 x 32 x 32</h4>
+            <p>The scanner gives a 64 x 64 colour cell. The preprocessing turns it into 32 x 32 numbers between 0 and 1. Ink is near 1, paper is near 0. The model reads the <em>whole</em> cell, including the grid lines at the edge (ADR-020). The function is <code>preprocess_cell</code> in <code>preprocess.py</code>.</p></div>
+          <div class="panel" data-panel="stage1"><h4>Stage 1: 16 filters, two times</h4>
+            <p>Two convolutions with 16 filters each find the simplest patterns: strokes, edges, dots. Then a 2 x 2 max pool halves the size to 16 x 16. This stage has 2,512 weights. <code>_conv(1, 16)</code> and <code>_conv(16, 16)</code> in <code>model.py</code> build it: a 3 x 3 <code>Conv2d</code> with <code>padding=1</code> and no bias, then <code>BatchNorm2d</code>, then <code>ReLU</code>.</p></div>
+          <div class="panel" data-panel="stage2"><h4>Stage 2: 32 filters, two times</h4>
+            <p>More filters, smaller picture. The filters here see bigger parts of the cell, because the picture is already smaller: corners, bends and short curves. A max pool gives 8 x 8. 13,952 weights.</p></div>
+          <div class="panel" data-panel="stage3"><h4>Stage 3: 64 filters, two times</h4>
+            <p>The biggest stage: 55,552 weights, three quarters of the model. The filters now describe parts of digits: a loop at the top, a stem, a diagonal. There is no pooling here, so the picture stays 8 x 8.</p></div>
+          <div class="panel" data-panel="gap"><h4>Global average pooling and dropout</h4>
+            <p>Each of the 64 maps (8 x 8) is replaced by its average. The result is one list of 64 numbers: how much of each learned pattern is in the cell, wherever it sits. This makes the model less sensitive to a small shift. The first design used a big dense layer here and scored lower (97.5 % against 98.7 %, see the research record). Dropout 0.1 switches off 1 of 10 numbers at random during training.</p></div>
+          <div class="panel" data-panel="digit"><h4>Digit head: 10 classes</h4>
+            <p><code>nn.Linear(64, 10)</code>. It multiplies the 64 numbers by a table of weights and gives 10 logits: <code>empty, 1 ... 9</code>. Softmax (in <code>ExportModel</code>) turns them into probabilities. The fitted temperature divides the logits first.</p></div>
+          <div class="panel" data-panel="kind"><h4>Kind head: 4 classes</h4>
+            <p><code>nn.Linear(64, 4)</code>. It reads the <em>same</em> 64 numbers as the digit head. That is the point of ADR-006: what a "7" looks like is learned once, and both answers use it. One model, one file, one pass on the phone. The kind head has no temperature: its softmax is plain.</p></div>
+        </div>
+
+        <details class="deep">
+          <summary>Deep dive: the numbers, layer by layer</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Layer</th><th>Output shape</th><th>Weights</th></tr></thead>
+              <tbody>
+                <tr><td>Conv 1 to 16 + batch norm</td><td>16 x 32 x 32</td><td>144 + 32</td></tr>
+                <tr><td>Conv 16 to 16 + batch norm, max pool</td><td>16 x 16 x 16</td><td>2,304 + 32</td></tr>
+                <tr><td>Conv 16 to 32 + batch norm</td><td>32 x 16 x 16</td><td>4,608 + 64</td></tr>
+                <tr><td>Conv 32 to 32 + batch norm, max pool</td><td>32 x 8 x 8</td><td>9,216 + 64</td></tr>
+                <tr><td>Conv 32 to 64 + batch norm</td><td>64 x 8 x 8</td><td>18,432 + 128</td></tr>
+                <tr><td>Conv 64 to 64 + batch norm</td><td>64 x 8 x 8</td><td>36,864 + 128</td></tr>
+                <tr><td>Average pool, flatten, dropout</td><td>64</td><td>0</td></tr>
+                <tr><td>Digit head, kind head</td><td>10 and 4</td><td>650 + 260</td></tr>
+                <tr><td><strong>Total</strong></td><td></td><td><strong>72,926</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            A conv layer has <code>in x out x 3 x 3</code> weights. Example: 32 to 64 gives 32 x 64 x 9 = 18,432. Batch
+            norm adds 2 numbers per channel. A linear layer has <code>in x out + out</code>. The sum matches the number in
+            the ADR and in <code>metrics</code> of the first run. 72,926 float32 numbers are 292 KB. The rest of the 326 KB
+            file is the structure of the model.
+          </p>
+          <p>
+            <code>ExportModel</code> wraps the network for the phone. It permutes the input from NHWC (the app's layout:
+            batch, height, width, channel) to the NCHW layout that PyTorch uses. It divides the digit logits by the
+            temperature and applies softmax to both heads. So the phone gets <em>probabilities</em>, not logits.
+          </p>
+        </details>
+
+        <h2 id="data">The data</h2>
+        <p>
+          <strong>The problem.</strong> The model learns what the data shows. If the data has only clean printed digits,
+          the model fails on a crumpled newspaper in poor light. The data needs to be big, varied and correct. A model is
+          only as good as its labels.
+        </p>
+        <p>Two kinds of data train this model:</p>
+        <div class="tabs" data-tabs>
+          <section data-tab="Synthetic cells">
+            <p>
+              <strong>What:</strong> cells that a program draws. <code>render_cell</code> in <code>synthetic.py</code> draws
+              a digit with a random font from <code>ml/fonts/</code> (seven open-licence families), at a random size and
+              offset. Then it makes the picture imperfect, as a camera would:
+            </p>
+            <ul>
+              <li>a random paper colour and a random ink colour (15 % coloured ink)</li>
+              <li>a small rotation and a shift of the digit</li>
+              <li>sometimes part of a neighbouring digit at the edge (20 %)</li>
+              <li>leftover grid lines at the border (up to 4 sides)</li>
+              <li>blur and random pixel noise</li>
+              <li>for <em>notes</em> cells: 2 to 5 tiny digits in a 3 x 3 pattern</li>
+            </ul>
+            <p>
+              <strong>Why:</strong> it is free, it needs no labelling, it is perfectly correct, and the generator and its
+              seed are the dataset. Nothing is stored (ADR-009). <strong>Limit:</strong> synthetic cells have no
+              handwriting, so they cannot teach the model the kind <em>handwritten</em>. They give <code>printed</code>,
+              <code>notes</code> and <code>empty</code> only.
+            </p>
+          </section>
+          <section data-tab="Real cells">
+            <p>
+              <strong>What:</strong> cells cut from real photos of sudokus: phone photos of newspapers and books, web
+              images, public datasets, and the scans that players upload from the app (when the setting "Help improve the
+              app" is on, SUD-02). The scanner cuts each photo into 81 cells.
+            </p>
+            <p>
+              <strong>Why:</strong> only real cells show real paper, real light and real handwriting.
+              <strong>Cost:</strong> a person must label each cell. That is the job of the
+              <a href="#labelling">labelling app</a>.
+            </p>
+            <p>
+              Training mixes both: each batch takes <strong>half synthetic and half real</strong> cells (see
+              <code>train_model</code>). The synthetic half teaches the clean shapes. The real half teaches the mess.
+            </p>
+          </section>
+          <section data-tab="Licences">
+            <p>
+              Every image in the store comes from a source in <a href="../../ml/DATA_SOURCES.md"><code>ml/DATA_SOURCES.md</code></a>.
+              The rule: <strong>do not use a source that is not in the table.</strong> The table says where the images come
+              from, the licence, and whether a model or image may be <em>published</em>.
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Source</th><th>Licence</th><th>May be published</th></tr></thead>
+                <tbody>
+                  <tr><td><code>phone</code>: photos of newspapers and books</td><td>Copyrighted puzzles</td><td>No</td></tr>
+                  <tr><td><code>web</code>: downloaded images</td><td>None</td><td>No</td></tr>
+                  <tr><td><code>wicht</code>: public sudoku dataset</td><td>CC BY 4.0</td><td>Yes, with attribution</td></tr>
+                  <tr><td><code>openverse</code>, <code>commons</code></td><td>Per photo</td><td>Only cc0, pdm, by, by-sa</td></tr>
+                  <tr><td><code>lexski</code>: Hugging Face set</td><td>Unverified</td><td>No</td></tr>
+                  <tr><td>Synthetic cells</td><td>SIL Open Font Licence</td><td>Yes</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              <strong>Consequence.</strong> Training does not filter by licence yet. So a model trained with
+              <code>real_cells = true</code> is <em>private</em> (ADR-013). That is why the <code>.tflite</code> is not in
+              git. See <a href="#private-model">the private model</a>.
+            </p>
+          </section>
+        </div>
+
+        <h3 id="two-tables">Where the data lives: one folder, two tables</h3>
+        <p>
+          Images are big and may not be public, so they stay out of git (ADR-009). But a model is only reproducible if you
+          know exactly which images trained it. The answer of
+          <a href="../architecture/adr/adr-018-one-data-folder-two-tables.md">ADR-018</a> is a small table in git next to a
+          big image store outside git.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 900 330" role="img" aria-label="The folder ml/dataset: two CSV tables in git, and the images and work folder not in git.">
+            <defs>
+              <marker id="m-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <text class="label" x="20" y="28">ml/dataset/</text>
+            <rect class="box green" x="40" y="44" width="400" height="224" rx="10" />
+            <text class="label" x="240" y="68" text-anchor="middle">In git: small, reviewable</text>
+            <rect class="box" x="58" y="82" width="364" height="52" rx="8" />
+            <text class="label mono" x="74" y="104">cells.csv</text>
+            <text class="sublabel" x="74" y="123">one row per cell: id, digit, kind, photo, row, col</text>
+            <rect class="box" x="58" y="144" width="364" height="52" rx="8" />
+            <text class="label mono" x="74" y="166">sudoku-photos.csv</text>
+            <text class="sublabel" x="74" y="185">one row per photo: source, licence, status, corners</text>
+            <rect class="box" x="58" y="206" width="364" height="46" rx="8" />
+            <text class="label mono" x="74" y="226">STATUS.md, kind-checks.jsonl</text>
+            <text class="sublabel" x="74" y="243">counts of the last Finish, the blind-check answers</text>
+            <rect class="box amber" x="470" y="44" width="410" height="224" rx="10" />
+            <text class="label" x="675" y="68" text-anchor="middle">Not in git: big, private</text>
+            <rect class="box" x="488" y="82" width="374" height="76" rx="8" />
+            <text class="label mono" x="504" y="104">images/cells/&lt;digit&gt;/&lt;id16&gt;.png</text>
+            <text class="sublabel" x="504" y="124">the folder name is the digit</text>
+            <text class="sublabel" x="504" y="142">folders: 1 to 9, empty, unlabeled, discarded</text>
+            <rect class="box" x="488" y="168" width="374" height="40" rx="8" />
+            <text class="label mono" x="504" y="193">images/sudoku-photos/&lt;id16&gt;.jpg</text>
+            <rect class="box" x="488" y="216" width="374" height="40" rx="8" />
+            <text class="label mono" x="504" y="241">work/journal.jsonl</text>
+            <text class="sublabel" x="750" y="241" text-anchor="start">unfinished work</text>
+            <text class="sublabel" x="450" y="300" text-anchor="middle">The id is a SHA-256 of "WxH" + the RGB pixel bytes. The file name is its first 16 characters.</text>
+            <text class="sublabel" x="450" y="318" text-anchor="middle">Same pixels, same id: the same cell is never stored twice. The SUDOKU_IMAGES variable can name another store.</text>
+          </svg>
+          <figcaption>The two-tables layout of ADR-018. Do not delete <code>images/</code>: until it has a backup it holds the only copy of the images (risk R-04).</figcaption>
+        </figure>
+
+        <p>
+          The <strong>digit</strong> of a cell is its <em>folder</em>. The folder is the truth, and the
+          <code>digit</code> column must match it (<code>just check-data</code> tests this). The <strong>kind</strong> is
+          a column. Two more columns link a cell to its sudoku photo: <code>photo_id</code>, <code>row</code> and
+          <code>col</code>. This link matters for the <a href="#split">split</a>.
+        </p>
+        <p>
+          The journal is the trick that makes labelling safe. Every click is one line in <code>work/journal.jsonl</code>,
+          saved at once. <strong>Finish</strong> folds the journal into <code>cells.csv</code>. So the diff of a labelling
+          session is a few changed table rows, not thousands of log lines (ADR-018). The code is
+          <code>write_cells_manifest</code> in <code>manifest.py</code> and <code>finish</code> in <code>finish.py</code>.
+        </p>
+
+        <div class="callout rule">
+          <span class="callout-title">Rule SUD-08</span>
+          Do not commit training images or private fixtures. Cells, photos and model files stay on the Mac. Notebooks use
+          synthetic images by default for the same reason. The guide shows <em>drawings</em> of cells, never real ones.
+        </div>
+
+        <h2 id="labelling">Labelling: how a photo becomes trusted cells</h2>
+        <p>
+          <strong>The problem.</strong> A model can only be as correct as its labels. A wrong label teaches a wrong
+          rule. And there are many cells: the dataset has tens of thousands. A person cannot type each digit from zero.
+        </p>
+        <p>
+          <strong>The idea.</strong> Let the current model <em>guess</em> first. The person then only checks the guesses,
+          most doubtful first. This is faster than typing, and the person still has the last word. The tool is the
+          <strong>labelling app</strong>: a React app in <code>tools/label-app/</code> and a Python server
+          <code>ml/src/sudoku_ml/label_server.py</code> that holds all the rules
+          (<a href="../architecture/adr/adr-034-labelling-app.md">ADR-034</a>). It runs on <code>127.0.0.1</code> only. A
+          photo never leaves the Mac while you label (SUD-02). Start it with <code>just label-cells</code>.
+        </p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 900 200" role="img" aria-label="The five steps of the labelling flow: fetch, outlines, digits, kind, finish.">
+            <defs>
+              <marker id="m-lab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1">
+              <rect class="box blue" x="10" y="50" width="150" height="90" rx="10" />
+              <text class="label" x="85" y="86" text-anchor="middle">1 Fetch</text>
+              <text class="sublabel" x="85" y="108" text-anchor="middle">uploaded scans</text>
+              <text class="sublabel" x="85" y="124" text-anchor="middle">+ photos, loose cells</text>
+            </g>
+            <g data-steps="2">
+              <rect class="box violet" x="188" y="50" width="150" height="90" rx="10" />
+              <text class="label" x="263" y="86" text-anchor="middle">2 Outlines</text>
+              <text class="sublabel" x="263" y="108" text-anchor="middle">is the grid corner</text>
+              <text class="sublabel" x="263" y="124" text-anchor="middle">box right?</text>
+            </g>
+            <g data-steps="3">
+              <rect class="box accent" x="366" y="50" width="150" height="90" rx="10" />
+              <text class="label" x="441" y="86" text-anchor="middle">3 Digits</text>
+              <text class="sublabel" x="441" y="108" text-anchor="middle">confirm the digit</text>
+              <text class="sublabel" x="441" y="124" text-anchor="middle">of each cell</text>
+            </g>
+            <g data-steps="4">
+              <rect class="box amber" x="544" y="50" width="150" height="90" rx="10" />
+              <text class="label" x="619" y="86" text-anchor="middle">4 Kind</text>
+              <text class="sublabel" x="619" y="108" text-anchor="middle">printed, handwritten</text>
+              <text class="sublabel" x="619" y="124" text-anchor="middle">or unsure</text>
+            </g>
+            <g data-steps="5">
+              <rect class="box green" x="722" y="50" width="168" height="90" rx="10" />
+              <text class="label" x="806" y="86" text-anchor="middle">5 Finish</text>
+              <text class="sublabel" x="806" y="108" text-anchor="middle">fold the journal into</text>
+              <text class="sublabel" x="806" y="124" text-anchor="middle">cells.csv, check data</text>
+            </g>
+            <path class="edge" d="M162,95 L184,95" marker-end="url(#m-lab)" />
+            <path class="edge" d="M340,95 L362,95" marker-end="url(#m-lab)" />
+            <path class="edge" d="M518,95 L540,95" marker-end="url(#m-lab)" />
+            <path class="edge" d="M696,95 L718,95" marker-end="url(#m-lab)" />
+            <text class="sublabel" x="450" y="180" text-anchor="middle">Every Enter is saved at once in the journal. Ctrl-C at any time is safe.</text>
+          </svg>
+          <div class="step"><p class="step-title">1. Fetch new scans</p><p>Players can upload the scans they corrected on the phone (setting "Help improve the app"). The step downloads them from the cloud of the chosen stage (<code>just pull-scans</code> does the same without the app). It also takes photos from <code>just import-photos &lt;folder&gt;</code> and loose cells in <code>unlabeled/</code>. After the fetch, the model guesses every open cell.</p></div>
+          <div class="step"><p class="step-title">2. Outlines</p><p>The scan cut the photo along four corners. If a corner is wrong, <em>all 81 cell labels</em> of that scan are wrong. So a person looks at the outline of each scan first, the most doubtful first. Click a bad outline. Enter approves the rest. A bad one opens large: drag the corners, or press R to reject the photo. No cell of a scan trains the model before its outline is approved.</p></div>
+          <div class="step"><p class="step-title">3. Digits</p><p>The open cells appear as galleries, one tab per digit (Empty, 1 to 9, No guess). The cell with the most doubt comes first. Point at a cell: the side panel shows the whole sudoku with the cell marked, the model's probabilities and the reasons for the doubt. Type a digit to fix. Press X to discard a bad cut. Enter confirms the page. "Confirm the sure ones" confirms every cell of the tab that the model reads at 98 % or more.</p></div>
+          <div class="step"><p class="step-title">4. Kind</p><p>For the cells of 1 to 9 the person marks the kind: P (printed), H (handwritten) or U (unsure). Training ignores <code>unsure</code>. The sure-threshold here is 95 %. Finish refuses while cells still wait in this step.</p></div>
+          <div class="step"><p class="step-title">5. Finish</p><p><code>finish</code> in <code>finish.py</code> folds the journal into <code>cells.csv</code>, runs the data check, writes <code>STATUS.md</code>, and deletes the journal. Each cell that a person confirmed gets the label source <code>verified</code>. Then the developer commits the tables: <code>git add ml/dataset</code>. Git never adds the images.</p></div>
+        </div>
+
+        <h3 id="doubt">How the order of doubt works</h3>
+        <p>
+          The tile of a cell has an edge from red (doubtful) to green (sure). <code>doubt.py</code> adds up small
+          <em>signals</em>. Each signal keeps its evidence, so the app can say why. The signals only set the <em>order</em>.
+          A person still checks every cell.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Signal</th><th>Idea</th></tr></thead>
+            <tbody>
+              <tr><td>low probability</td><td>The model gives its own label less than 90 %.</td></tr>
+              <tr><td>model reads another digit or kind</td><td>The top guess is not the label.</td></tr>
+              <tr><td>the player changed it</td><td>The player edited this cell on the phone (<code>app-edited</code>). Players fix real mistakes, so this is evidence.</td></tr>
+              <tr><td>a rule is broken</td><td>The same digit twice in a row, column or box. This needs no model.</td></tr>
+              <tr><td>not unique</td><td>The printed givens have more than one solution. A real puzzle has one. <code>sudoku_signals.py</code> counts solutions with its own small solver, because SUD-07 forbids importing the TypeScript one.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="trust">Which labels train the model</h3>
+        <p>
+          Every cell has a <code>label_source</code>. The training code reads only the trusted ones:
+          <code>TRUSTED_LABEL_SOURCES = ("", "verified")</code> in <code>tables.py</code>. The empty value is for old cells
+          from before this field existed. <code>app-edited</code> and <code>app-unedited</code> labels come from a phone
+          scan that nobody has checked yet. They stay out of training until a person confirms them. The function
+          <code>training_cells</code> in <code>dataset.py</code> applies the rule.
+        </p>
+        <div class="callout why">
+          <span class="callout-title">Why this way?</span>
+          A model that trains on its own unchecked guesses learns its own mistakes. The loop would feed itself. The
+          person in the loop is the guard against that. The cheap tools (order by doubt, confirm the sure ones) make the
+          person fast, not optional.
+        </div>
+
+        <h3 id="kind-checks">Kind checks: how good are the labels?</h3>
+        <p>
+          How do you measure the quality of labels that a person made? You ask the person again. The
+          <strong>blind check</strong> (<code>kind_check.py</code>) shows old cells again, after at least 7 days
+          (<code>MIN_AGE</code>), so that the developer no longer remembers the first answer. The share of equal answers
+          is the <em>agreement</em>. It estimates the label noise. The answers go in <code>kind-checks.jsonl</code> and
+          never change a label. Training copies the last agreement into the model card, so you can see how far the kind
+          labels can be trusted. The tool <code>just suspects</code> does the other direction: it trains models on parts of
+          the data and lists the cells whose label a model doubts most (<code>suspects.py</code>).
+        </p>
+
+        <div class="quiz" data-quiz>
+          <p class="q">A phone scan arrives with a wrong outline, one corner is off. Why does the labelling flow check the outline <em>before</em> the cells?</p>
+          <div class="options">
+            <button>It makes the gallery look nicer</button>
+            <button data-correct>A wrong outline cuts every one of its 81 cells wrong, so every label of the scan would be wrong</button>
+            <button>The outline is the kind of the cell</button>
+            <button>The model cannot read cells without an outline</button>
+          </div>
+          <p class="explain">The cells are cut along the outline. A wrong outline moves the cut, so the cell images do not match the grid positions. Training uses a scan's cells only after a person approved its outline.</p>
+        </div>
+
+        <h2 id="split">The split: by sudoku page, not by cell</h2>
+        <p>
+          <strong>The problem.</strong> Remember the three piles. The test pile must hold cells the model has <em>never
+          seen anything like</em>. The easy way to split is to shuffle all cells and deal 80 / 10 / 10. That looks right.
+          It is wrong, and the project learned this the hard way.
+        </p>
+        <p>
+          The 81 cells of one photo share the same font, the same paper, the same light and the same camera. Two photos of
+          the <em>same newspaper page</em> are nearly the same picture. If one cell of a page sits in training and its
+          neighbour sits in test, the test is not a new question. The model has seen the "sibling". It scores better
+          than it would on a new photo.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          A teacher gives an exam. The questions are new, but the students already did the same exercise with other
+          numbers. They pass. The result says nothing about how they handle a really new exercise. To test for real, the
+          whole <em>exercise sheet</em> must be kept out of the lessons. Here, the sheet is the sudoku page.
+        </div>
+        <p>
+          <a href="../architecture/adr/adr-035-split-by-page.md">ADR-035</a> measured the leak on the real data:
+          <strong>3,189 of 5,735 test cells (55.6 %)</strong> had a photo that also had training cells. Six of seven pairs
+          of photos of the same page sat on different sides. The test accuracy was too high.
+        </p>
+
+        <div class="demo" id="demo-split">
+          <h4>Demo: split by cell against split by page</h4>
+          <p class="demo-help">
+            20 sudoku pages, 8 cells each (a small sample: a real page has 81). Each square is one cell. Blue is
+            training, amber is validation, green is test. A <span style="color: var(--red); font-weight: 600">red ring</span>
+            marks a test cell whose page also has training cells: a leak. Switch the mode and press "New seed".
+          </p>
+          <div class="btn-row" style="margin: 0 0 12px">
+            <button class="btn on" type="button" id="sp-cell">Split by cell (shuffle)</button>
+            <button class="btn" type="button" id="sp-page">Split by page (hash)</button>
+            <button class="btn" type="button" id="sp-seed">New seed</button>
+          </div>
+          <div class="legend">
+            <span><i style="background: var(--blue)"></i>train</span>
+            <span><i style="background: var(--amber)"></i>validation</span>
+            <span><i style="background: var(--green)"></i>test</span>
+            <span><i style="outline: 2px solid var(--red); outline-offset: 1px; background: var(--green)"></i>test cell that leaks</span>
+          </div>
+          <div class="pages" id="sp-pages"></div>
+          <div class="stat-row">
+            <div class="stat"><div class="num" id="sp-test">0</div><div class="lbl">test cells</div></div>
+            <div class="stat"><div class="num" id="sp-leak">0</div><div class="lbl">test cells with a sibling in training</div></div>
+            <div class="stat"><div class="num" id="sp-pct">0 %</div><div class="lbl">share of the test set that leaks</div></div>
+          </div>
+          <p class="demo-help" id="sp-note" style="margin-top: 12px"></p>
+        </div>
+
+        <h3 id="split-how">How the code builds the split</h3>
+        <p>
+          All the code is in <code>ml/src/sudoku_ml/dataset.py</code>. The entry point is <code>split_cells</code>.
+          Training, the suspect ranking and the labelling app all call the same function, so they agree on which cells
+          are test cells.
+        </p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 900 230" role="img" aria-label="Four steps of the split: find pages, join near copies, take the smallest key, hash the key to a side.">
+            <defs>
+              <marker id="m-spl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1">
+              <rect class="box blue" x="10" y="30" width="205" height="110" rx="10" />
+              <text class="label" x="112" y="58" text-anchor="middle">1 page_keys</text>
+              <text class="sublabel" x="112" y="82" text-anchor="middle">photo A + photo B</text>
+              <text class="sublabel" x="112" y="100" text-anchor="middle">same page? then</text>
+              <text class="sublabel" x="112" y="118" text-anchor="middle">one key for both</text>
+            </g>
+            <g data-steps="2">
+              <rect class="box violet" x="240" y="30" width="205" height="110" rx="10" />
+              <text class="label" x="342" y="58" text-anchor="middle">2 group_ids</text>
+              <text class="sublabel" x="342" y="82" text-anchor="middle">near-copy cells join</text>
+              <text class="sublabel" x="342" y="100" text-anchor="middle">cells of one page</text>
+              <text class="sublabel" x="342" y="118" text-anchor="middle">join one group</text>
+            </g>
+            <g data-steps="3">
+              <rect class="box amber" x="470" y="30" width="205" height="110" rx="10" />
+              <text class="label" x="572" y="58" text-anchor="middle">3 key of a group</text>
+              <text class="sublabel" x="572" y="82" text-anchor="middle">the smallest key</text>
+              <text class="sublabel" x="572" y="100" text-anchor="middle">of its cells</text>
+              <text class="sublabel" x="572" y="118" text-anchor="middle">(page or file name)</text>
+            </g>
+            <g data-steps="4">
+              <rect class="box green" x="700" y="30" width="190" height="110" rx="10" />
+              <text class="label" x="795" y="58" text-anchor="middle">4 side_of</text>
+              <text class="sublabel" x="795" y="82" text-anchor="middle">hash("seed:key")</text>
+              <text class="sublabel" x="795" y="100" text-anchor="middle">a number u, 0 to 1</text>
+              <text class="sublabel" x="795" y="118" text-anchor="middle">u picks the pile</text>
+            </g>
+            <path class="edge" d="M217,85 L236,85" marker-end="url(#m-spl)" />
+            <path class="edge" d="M447,85 L466,85" marker-end="url(#m-spl)" />
+            <path class="edge" d="M677,85 L696,85" marker-end="url(#m-spl)" />
+            <text class="sublabel mono only" x="450" y="190" text-anchor="middle" data-steps="4">u &lt; 0.8 train   u &lt; 0.9 validation   else test</text>
+            <text class="sublabel mono only" x="450" y="190" text-anchor="middle" data-steps="1">shared &gt;= 10 digit cells and 90 % agree</text>
+            <text class="sublabel mono only" x="450" y="190" text-anchor="middle" data-steps="2">dhash distance &lt;= 4 bits, union-find</text>
+            <text class="sublabel mono only" x="450" y="190" text-anchor="middle" data-steps="3">group_key = min(keys of the members)</text>
+          </svg>
+          <div class="step"><p class="step-title">1. Find which photos show the same page</p><p><code>page_keys</code> compares the labelled digits of every two photos. Two photos show the same page when they share at least 10 digit cells at the same row and column (<code>SAME_PAGE_MIN_DIGITS</code>), and 90 % of these hold the same digit (<code>SAME_PAGE_AGREEMENT</code>). It uses a matrix product on one-hot tables, so it takes milliseconds for hundreds of photos. The key of a page is its smallest photo id. A cell of any photo gets the key of its page.</p></div>
+          <div class="step"><p class="step-title">2. Join the cells that belong together</p><p><code>group_ids</code> joins groups with union-find. Two rules: cells whose 64-bit <em>difference hash</em> (<code>dhash</code>) differs by 4 bits or fewer join, and all cells with the same page key join. A cell with no photo link keeps only the first rule. The difference hash is a tiny fingerprint: shrink the cell to 9 x 8, and for each pixel record "is it brighter than its left neighbour?".</p></div>
+          <div class="step"><p class="step-title">3. Choose the key of each group</p><p><code>split_by_group</code> gives each group one key: the smallest key of its members. The key of a cell is its page, or else its file name. A group is never cut in two, so the cells of a page can never land on two sides.</p></div>
+          <div class="step"><p class="step-title">4. Hash the key to a pile</p><p><code>side_of</code> takes the SHA-256 of the text <code>"&lt;seed&gt;:&lt;key&gt;"</code>, reads the first 8 bytes as a number between 0 and 1, and compares it with the split fractions. The side depends only on the key and the seed. A new cell never moves an old group.</p></div>
+        </div>
+
+        <div class="demo" id="demo-side">
+          <h4>Demo: a key goes in, a pile comes out</h4>
+          <p class="demo-help">
+            Type any text as a key. The page shows a number <code>u</code> and the pile. This demo uses a simple hash
+            so that it runs in your browser. The real <code>side_of</code> uses SHA-256, but the idea is the same.
+            The same key and seed always give the same answer.
+          </p>
+          <div class="demo-row">
+            <div class="demo-col">
+              <div class="cap">key (a photo id)</div>
+              <input id="sd-key" type="text" value="3fa91c0b2d" style="font: 500 14px var(--mono); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); width: 220px" />
+            </div>
+            <div class="demo-col">
+              <div class="cap">seed</div>
+              <input id="sd-seed" type="number" value="7" style="font: 500 14px var(--mono); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); width: 90px" />
+            </div>
+          </div>
+          <div class="bars">
+            <div class="bar" style="height: 26px">
+              <i style="width: 80%; background: var(--blue); position: absolute; left: 0"></i>
+              <i style="width: 10%; background: var(--amber); position: absolute; left: 80%"></i>
+              <i style="width: 10%; background: var(--green); position: absolute; left: 90%"></i>
+              <b id="sd-mark" style="background: var(--ink); width: 4px; left: 0"></b>
+            </div>
+          </div>
+          <div class="verdict ok" id="sd-out" style="margin-top: 10px"></div>
+        </div>
+
+        <details class="deep">
+          <summary>Deep dive: why hash the key, and why not shuffle</summary>
+          <p>
+            The first version of the split shuffled the list of all groups with the seed. One new cell changed the list.
+            That moved <em>old</em> groups to other piles. So after each fetch of new scans, the "test set" held other
+            cells, and the scores of two runs could not be compared.
+          </p>
+          <p>
+            A hash has no list. The pile of a group depends only on its own key and the seed. New data adds groups, and it
+            leaves every old group where it was. The price: the sizes of the piles vary more. A photo holds up to 81 cells,
+            so one photo more or less in the test pile moves its size. On the tables of 2026-10-23, the test pile has
+            1,884 cells (5.5 %) and the validation pile 2,100 (6.1 %), where the plan said 10 % each. The score then has a
+            wider confidence interval. The ADR names a trigger: if the test pile falls under 1,000 cells, raise its
+            fraction or keep a fixed holdout of whole pages.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Measure (same data, seed 7)</th><th>Old split</th><th>New split</th></tr></thead>
+              <tbody>
+                <tr><td>Digit accuracy</td><td>99.31 %</td><td>99.20 %</td></tr>
+                <tr><td>Calibration error (ECE)</td><td>0.39 %</td><td>0.97 %</td></tr>
+                <tr><td>Kind accuracy (real test cells)</td><td>98.88 %</td><td>98.21 %</td></tr>
+                <tr><td>Test cells</td><td>3,168</td><td>1,884</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Read this table with care. The digit accuracy barely moves (inside the margin of error). The calibration
+            error and the kind accuracy move more. This is what a leak hides: the model is <em>less sure</em> on a
+            photo that is truly new.
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">Why must the 81 cells of one photo end up on the same side of the split?</p>
+          <div class="options">
+            <button>Because training needs full grids to work</button>
+            <button>Because the photo would be too small otherwise</button>
+            <button data-correct>Because the cells share font, paper and light. A test cell with siblings in training is easier than a cell of a new photo, so the score would be too high</button>
+            <button>Because the hash function cannot split a photo</button>
+          </div>
+          <p class="explain">A leak makes the test easier than the real world. The real world gives the model a photo it has never seen, with all its cells new.</p>
+        </div>
+
+        <h2 id="training-run">Training: one command, one run folder</h2>
+        <p>
+          You know the loop. Here is how the project runs it. One command trains the model:
+        </p>
+        <div class="cmd">just train                  # the real run: configs/cell-classifier.toml
+just train smoke            # seconds long, no real cells, for tests and CI</div>
+        <p>
+          The justfile line is <code>uv run --directory ml python -m sudoku_ml.train configs/{{config}}.toml</code>.
+          Everything the run does is in <code>train.py</code>. A <em>config file</em> holds every number that you may want
+          to change, so a run is repeatable:
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 900 270" role="img" aria-label="How one training batch is made: half synthetic cells and half real cells, augmentation, preprocessing, model, loss.">
+            <defs>
+              <marker id="m-trn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-node="pools">
+              <rect class="box blue" x="10" y="20" width="170" height="70" rx="10" />
+              <text class="label" x="95" y="50" text-anchor="middle">Synthetic pool</text>
+              <text class="sublabel" x="95" y="70" text-anchor="middle">128 per batch</text>
+              <rect class="box green" x="10" y="130" width="170" height="70" rx="10" />
+              <text class="label" x="95" y="160" text-anchor="middle">Real pool</text>
+              <text class="sublabel" x="95" y="180" text-anchor="middle">128 per batch</text>
+            </g>
+            <g data-node="augment">
+              <rect class="box violet" x="220" y="70" width="140" height="90" rx="10" />
+              <text class="label" x="290" y="108" text-anchor="middle">augment</text>
+              <text class="sublabel" x="290" y="128" text-anchor="middle">bend each cell</text>
+            </g>
+            <g data-node="prep">
+              <rect class="box muted" x="400" y="70" width="140" height="90" rx="10" />
+              <text class="label" x="470" y="108" text-anchor="middle">preprocess</text>
+              <text class="sublabel" x="470" y="128" text-anchor="middle">64x64x3 to 32x32</text>
+            </g>
+            <g data-node="model">
+              <rect class="box accent" x="580" y="70" width="130" height="90" rx="10" />
+              <text class="label" x="645" y="108" text-anchor="middle">CellClassifier</text>
+              <text class="sublabel" x="645" y="128" text-anchor="middle">two sets of logits</text>
+            </g>
+            <g data-node="loss">
+              <rect class="box amber" x="750" y="70" width="140" height="90" rx="10" />
+              <text class="label" x="820" y="108" text-anchor="middle">loss + step</text>
+              <text class="sublabel" x="820" y="128" text-anchor="middle">AdamW, one-cycle</text>
+            </g>
+            <path class="edge" d="M182,55 L216,100" marker-end="url(#m-trn)" />
+            <path class="edge" d="M182,165 L216,130" marker-end="url(#m-trn)" />
+            <path class="edge" d="M362,115 L396,115" marker-end="url(#m-trn)" />
+            <path class="edge" d="M542,115 L576,115" marker-end="url(#m-trn)" />
+            <path class="edge" d="M712,115 L746,115" marker-end="url(#m-trn)" />
+            <text class="sublabel" x="450" y="240" text-anchor="middle">The same preprocess runs in training, in evaluation and on the phone (as TypeScript). Augment only runs in training.</text>
+          </svg>
+          <p class="hint">Click a box to read about it.</p>
+          <div class="panel" data-panel="pools"><h4>Two pools, half and half</h4>
+            <p>The class <code>Pool</code> holds the images, the digit targets, the kind targets and <code>per_batch</code>. With <code>batch_size = 256</code>, each pool gives 128 cells per batch, drawn <em>with replacement</em> (<code>torch.randint</code>). The synthetic pool is large and clean. The real pool is smaller and messy. This mix keeps the real mess in every step. Without real cells (<code>real_cells = false</code>), the synthetic pool fills the whole batch.</p></div>
+          <div class="panel" data-panel="augment"><h4>Augmentation</h4>
+            <p><code>augment</code> in <code>augment.py</code> bends each 64 x 64 cell at random <em>before</em> preprocessing: shift up to 4 px, rotate up to 6 degrees, scale 10 %, shear, blur (in 40 % of cells), gamma, contrast, brightness and noise. It is one <code>affine_grid</code> and <code>grid_sample</code> call on the whole batch, so it is fast, also on the GPU. The model never sees the same cell twice.</p></div>
+          <div class="panel" data-panel="prep"><h4>Preprocessing</h4>
+            <p><code>preprocess_batch</code> in <code>preprocess.py</code>: grey, invert, shrink to 32 x 32 with an exact area average. It is the same maths as the phone does, written for a batch of tensors. See <a href="#parity">preprocessing parity</a>.</p></div>
+          <div class="panel" data-panel="model"><h4>The model</h4>
+            <p>Returns digit logits (256 x 10) and kind logits (256 x 4). In training mode, batch norm uses the batch numbers and dropout is on. <code>predict_logits</code> puts the model into <code>eval()</code> mode for scoring.</p></div>
+          <div class="panel" data-panel="loss"><h4>Loss and optimiser</h4>
+            <p>The loss is the digit cross-entropy (with label smoothing 0.05) plus 0.4 times the kind cross-entropy. <code>AdamW</code> turns the slope into a nudge. The <code>OneCycleLR</code> schedule raises the learning rate to <code>max_lr = 0.003</code> in the first part of the run and lowers it again toward the end. Big steps early find the valley. Small steps late settle in it. An epoch has <code>(cells in all pools) // batch_size</code> steps.</p></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Config key</th><th>Value</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><code>seed</code></td><td>7</td><td>Start of all random numbers. <code>load_config</code> refuses a seed that collides with the fixture seed 2026 (SUD-10).</td></tr>
+              <tr><td><code>epochs</code></td><td>25</td><td>Passes over the data.</td></tr>
+              <tr><td><code>batch_size</code></td><td>256</td><td>Cells per weight update.</td></tr>
+              <tr><td><code>max_lr</code>, <code>weight_decay</code></td><td>0.003, 0.0001</td><td>Top learning rate. A small pull that keeps weights small.</td></tr>
+              <tr><td><code>label_smoothing</code></td><td>0.05</td><td>The target is 95 % right class.</td></tr>
+              <tr><td><code>kind_weight</code></td><td>0.4</td><td>How much the kind loss counts.</td></tr>
+              <tr><td><code>synthetic_per_class</code></td><td>2000</td><td>Synthetic cells per digit. With the empty and notes cells, about 21,000 cells.</td></tr>
+              <tr><td><code>real_cells</code></td><td>true</td><td>Use the real dataset. The model then stays private.</td></tr>
+              <tr><td><code>split</code></td><td>[0.8, 0.1, 0.1]</td><td>Train, validation, test. <code>load_config</code> checks that they add up to 1.</td></tr>
+              <tr><td><code>augment</code></td><td>true</td><td>Bend the cells in training.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="run-folder">What a run leaves behind</h3>
+        <p>
+          A run writes one folder in <code>ml/artifacts/</code>, named with the time and the config name. The folder is
+          not in git. It holds everything you need to judge, export and reproduce the run:
+        </p>
+        <div class="kv">ml/artifacts/20261023-142723-cell-classifier/
+  model.pt          the 72,926 trained weights (PyTorch)
+  metrics.json      scores, temperature, counts, the config used, seconds
+  model-card.md     the same in words + hash of cells.csv + label state
+  # after `just export`:
+  cell-classifier.tflite    the phone file
+  export.json               contract, shapes, output map, ops, size, max diff
+  reference-outputs.json    PyTorch answers for the 81 reference cells</div>
+        <p>
+          The model card records a <strong>hash of <code>cells.csv</code></strong>. The tables are in git, so this hash
+          names the exact dataset version that trained the model. This is why ADR-009 keeps the images out of git but the
+          tables in.
+        </p>
+
+        <details class="deep">
+          <summary>Deep dive: the five calls of train()</summary>
+          <div class="kv">train(config)
+  load_data      real cells (read_real_cells + split_cells), synthetic cells (seed and seed+1)
+  train_model    two Pools, then fit(...): the loop above
+  evaluate       fit_temperature on val, then every score on test
+  write_run      model.pt, metrics.json, model-card.md</div>
+          <p>
+            <code>load_data</code> draws the synthetic <em>training</em> cells with <code>seed</code> and a second small
+            set for kind scores with <code>seed + 1</code>. The fixtures use <code>2026</code>. If a config sets a seed so
+            that <code>seed</code> or <code>seed + 1</code> equals 2026, the run stops. Why? Fixture cells and training
+            cells must never be the same pictures (SUD-10). The device is <code>mps</code> (Apple GPU) when present, else
+            the CPU (<code>default_device</code>). A real run takes minutes on a MacBook.
+          </p>
+        </details>
+
+        <h2 id="evaluation">Evaluation: is the model good?</h2>
+        <p>
+          After training, <code>evaluate</code> computes the scores on the <strong>test</strong> pile. They go into
+          <code>metrics.json</code> and the model card.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Score</th><th>What it says</th></tr></thead>
+            <tbody>
+              <tr><td><code>digit_accuracy</code></td><td>Share of test cells where the top digit is right. A recent run: 0.9944.</td></tr>
+              <tr><td><code>review</code> (<code>review_2%</code> ...)</td><td>Accuracy after you remove the 2 % (or 1 %, 5 %) of cells that the model is least sure about. These cells go to the player to check. The accuracy of the rest is higher.</td></tr>
+              <tr><td><code>ece</code>, <code>temperature</code></td><td>How honest the confidence is. Lower ECE is better.</td></tr>
+              <tr><td><code>kind_accuracy_real</code></td><td>Kind accuracy on real test cells with a printed or handwritten label. <code>unsure</code> is not scored.</td></tr>
+              <tr><td><code>kind_accuracy_synthetic</code></td><td>Kind accuracy on synthetic cells. It is always near 100 %: synthetic cells cannot be handwritten. It says little.</td></tr>
+              <tr><td><code>eval_set</code></td><td><code>real</code> or <code>synthetic</code>. A smoke run only scores synthetic cells. Read this first.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="fixtures-eval">Fixtures: the exam that training never sees</h3>
+        <p>
+          The test pile is cut from the same data as the training pile. Even split by page, it is "more of the same".
+          For the final check, the project keeps <strong>fixtures</strong>: whole scans, with the truth for all 81
+          cells, that <em>no training run may ever use</em> (SUD-10). They are in <code>shared/fixtures/scans/</code>:
+          <code>&lt;split&gt;/&lt;id&gt;/photo.jpg</code>, <code>truth.json</code> and <code>cells/00.png ... 80.png</code>.
+          The split is <code>dev</code> (used to choose between runs) or <code>holdout</code> (looked at only at release
+          time, so that choosing the best run does not overfit the gate).
+        </p>
+        <p>
+          The classifier is scored on the cell images that the <em>app's own scanner</em> produced from each photo, so
+          there is no second scanner in Python (ADR-007). The score is <strong>grid-exact</strong>: the share of fixtures
+          where all 81 digits are right. Public fixtures are puzzles this project made, so they may be published. Private
+          fixtures (real newspapers and books) stay on the Mac (ADR-013).
+        </p>
+        <div class="callout warn">
+          <span class="callout-title">State of the code</span>
+          The folder <code>shared/fixtures/scans/</code> holds only its README today. The preprocessing fixtures
+          (<code>shared/fixtures/preprocess/</code>) exist and are in use. The grid-exact scoring is part of the planned
+          promote gate (M3). Until then, the test pile and the on-device measurements in
+          <a href="../operations/measure-quality.md">measure-quality</a> are the evidence.
+        </div>
+
+        <h2 id="export">Export: from PyTorch to a phone file</h2>
+        <p>
+          <strong>The problem.</strong> The model lives in PyTorch, in Python. The phone cannot run PyTorch. It runs
+          <strong>TFLite</strong> (also called LiteRT), a small runtime that Google builds for phones. We must translate the
+          model, and we must be sure the translation gives the same answers.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          You write a book in English. The reader speaks another language. You hire a translator. Then you do not trust
+          the translator blindly. You ask a second person to translate a few pages back, and you compare them with the
+          original. If a sentence changed meaning, you stop.
+        </div>
+        <p>
+          <code>just export artifacts/&lt;run&gt;</code> does this (<code>ml/src/sudoku_ml/export.py</code>,
+          <a href="../architecture/adr/adr-005-pytorch-to-tflite.md">ADR-005</a>). It does the work and then <em>checks</em>
+          the result five ways. A failed check raises an error and no file is promised.
+        </p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 900 250" role="img" aria-label="The export pipeline: wrap the model, convert it, check the ops and the size, run both and compare, write the reference outputs.">
+            <defs>
+              <marker id="m-exp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1">
+              <rect class="box blue" x="10" y="30" width="160" height="80" rx="10" />
+              <text class="label" x="90" y="64" text-anchor="middle">1 Wrap</text>
+              <text class="sublabel" x="90" y="86" text-anchor="middle">ExportModel + T</text>
+            </g>
+            <g data-steps="2">
+              <rect class="box violet" x="196" y="30" width="160" height="80" rx="10" />
+              <text class="label" x="276" y="64" text-anchor="middle">2 Convert</text>
+              <text class="sublabel" x="276" y="86" text-anchor="middle">litert_torch</text>
+            </g>
+            <g data-steps="3">
+              <rect class="box amber" x="382" y="30" width="160" height="80" rx="10" />
+              <text class="label" x="462" y="64" text-anchor="middle">3 Static checks</text>
+              <text class="sublabel" x="462" y="86" text-anchor="middle">ops, float32, size</text>
+            </g>
+            <g data-steps="4">
+              <rect class="box accent" x="568" y="30" width="160" height="80" rx="10" />
+              <text class="label" x="648" y="64" text-anchor="middle">4 Compare</text>
+              <text class="sublabel" x="648" y="86" text-anchor="middle">TFLite vs PyTorch</text>
+            </g>
+            <g data-steps="5">
+              <rect class="box green" x="754" y="30" width="136" height="80" rx="10" />
+              <text class="label" x="822" y="64" text-anchor="middle">5 Write</text>
+              <text class="sublabel" x="822" y="86" text-anchor="middle">json files</text>
+            </g>
+            <path class="edge" d="M172,70 L192,70" marker-end="url(#m-exp)" />
+            <path class="edge" d="M358,70 L378,70" marker-end="url(#m-exp)" />
+            <path class="edge" d="M544,70 L564,70" marker-end="url(#m-exp)" />
+            <path class="edge" d="M730,70 L750,70" marker-end="url(#m-exp)" />
+            <text class="sublabel mono only" x="450" y="170" text-anchor="middle" data-steps="3">every op version &lt;= the TFLite 2.17 table</text>
+            <text class="sublabel mono only" x="450" y="170" text-anchor="middle" data-steps="4">max difference &lt; 1e-3, same argmax on 81 cells</text>
+            <text class="sublabel mono only" x="450" y="170" text-anchor="middle" data-steps="1">NHWC input, softmax outputs, digit logits / T</text>
+            <text class="sublabel mono only" x="450" y="170" text-anchor="middle" data-steps="2">litert_torch.convert(model, sample).export(path)</text>
+            <text class="sublabel mono only" x="450" y="170" text-anchor="middle" data-steps="5">export.json, reference-outputs.json</text>
+          </svg>
+          <div class="step"><p class="step-title">1. Wrap the model for the phone</p><p><code>ExportModel</code> adds what the phone needs. The input has the layout NHWC (batch, height, width, channel), which is what the app sends. It is permuted to the layout PyTorch uses. The digit logits are divided by the fitted temperature. Softmax makes both outputs <em>probabilities</em>. The result is a dictionary with the names <code>digit</code> and <code>kind</code>.</p></div>
+          <div class="step"><p class="step-title">2. Convert</p><p>One call: <code>litert_torch.convert(wrapped, (sample,)).export(path)</code>. Google's tool traces the PyTorch model on the sample and writes a <code>.tflite</code> file. The sample is the 81 reference cells (a batch of 81, static). All weights stay <code>float32</code>: no float16 and no int8 in v1. A model this small (under 1 MB) does not need the saving, and a smaller number format would add risk.</p></div>
+          <div class="step"><p class="step-title">3. Check the file itself</p><p><code>check_op_versions</code> reads every operation in the file and compares its version with <code>tflite_2_17_ops.json</code>. The phone bundles TFLite <strong>2.17</strong> (through <code>react-native-fast-tflite</code>). A newer op version would crash on the phone, not on the Mac. <code>check_float32</code> finds constants that are not float32 (int shape constants are fine). The size must stay under <code>MAX_BYTES = 1,000,000</code>.</p></div>
+          <div class="step"><p class="step-title">4. Run both and compare</p><p>The export runs the new file with the Python TFLite interpreter and runs the PyTorch model on the same 81 cells. The largest difference must be under <code>1e-3</code>. The top class of both heads must agree on every cell (<code>check_same_argmax</code>). One real run showed a difference of 1.19e-7: the same numbers, within float rounding.</p></div>
+          <div class="step"><p class="step-title">5. Write the evidence</p><p><code>export.json</code> records the contract version, the input shape, the <em>index</em> of each output, the largest difference, the size and the ops. <code>reference-outputs.json</code> holds the 81 inputs (base64) and the PyTorch probabilities. The app later runs the model on the phone and compares with this file, so a broken phone runtime shows up in a test.</p></div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">Why outputs are found by index</span>
+          The phone runtime returns outputs in tensor order and its names are not reliable. So <code>export</code> finds
+          the head by its <em>width</em> (10 is the digit, 4 is the kind) and records the index in
+          <code>manifest.json</code>: <code>"outputs": {"digit": 0, "kind": 1}</code>. The scanner reads the map and checks
+          the shapes <code>[81, 10]</code> and <code>[81, 4]</code> before it trusts a number.
+        </div>
+
+        <h2 id="parity">Preprocessing parity: two kitchens, one recipe</h2>
+        <p>
+          <strong>The problem.</strong> The model was trained on numbers made by a Python function. On the phone, the
+          numbers come from TypeScript. If the two functions differ a little, for example the order of grey weights, or
+          ink = 1 against ink = 0, nothing crashes. The model quietly gives worse answers on <em>every</em> scan. This
+          kind of bug is very hard to find.
+        </p>
+        <div class="callout tip">
+          <span class="callout-title">Analogy</span>
+          Two kitchens cook the same dish from one recipe. If one cook uses a teaspoon where the recipe says a
+          tablespoon, the dish tastes wrong, but nobody gets an error. The fix is a <em>taste test</em>: both kitchens cook
+          the same 81 samples and you compare them.
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 900 230" role="img" aria-label="Preprocessing in five steps: 64 by 64 colour cell, grey, no crop, shrink to 32 by 32, invert to ink 1.">
+            <defs>
+              <marker id="m-prep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box" x="10" y="50" width="130" height="110" rx="10" />
+            <rect x="35" y="66" width="80" height="80" fill="var(--amber-soft)" stroke="var(--amber)" />
+            <path d="M55,88 L95,88 L77,128" fill="none" stroke="var(--blue)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+            <text class="label" x="75" y="184" text-anchor="middle">cell image</text>
+            <text class="sublabel mono" x="75" y="202" text-anchor="middle">64x64x3 uint8</text>
+            <path class="edge" d="M142,105 L172,105" marker-end="url(#m-prep)" />
+            <rect class="box blue" x="176" y="50" width="130" height="110" rx="10" />
+            <text class="label" x="241" y="96" text-anchor="middle">1 Grey</text>
+            <text class="sublabel mono" x="241" y="118" text-anchor="middle">0.299 R</text>
+            <text class="sublabel mono" x="241" y="134" text-anchor="middle">0.587 G 0.114 B</text>
+            <path class="edge" d="M308,105 L338,105" marker-end="url(#m-prep)" />
+            <rect class="box muted" x="342" y="50" width="120" height="110" rx="10" />
+            <text class="label" x="402" y="96" text-anchor="middle">2 No crop</text>
+            <text class="sublabel" x="402" y="118" text-anchor="middle">all of 0..63</text>
+            <text class="sublabel" x="402" y="134" text-anchor="middle">(contract 2.0)</text>
+            <path class="edge" d="M464,105 L494,105" marker-end="url(#m-prep)" />
+            <rect class="box violet" x="498" y="50" width="150" height="110" rx="10" />
+            <text class="label" x="573" y="96" text-anchor="middle">3 Shrink</text>
+            <text class="sublabel" x="573" y="118" text-anchor="middle">area average</text>
+            <text class="sublabel mono" x="573" y="134" text-anchor="middle">W . img . W^T</text>
+            <path class="edge" d="M650,105 L680,105" marker-end="url(#m-prep)" />
+            <rect class="box accent" x="684" y="50" width="206" height="110" rx="10" />
+            <text class="label" x="787" y="96" text-anchor="middle">4 Invert</text>
+            <text class="sublabel mono" x="787" y="118" text-anchor="middle">x = 1 - grey / 255</text>
+            <text class="sublabel" x="787" y="134" text-anchor="middle">ink near 1, paper near 0</text>
+            <text class="sublabel" x="450" y="224" text-anchor="middle">Result: 32 x 32 float32. A batch is [81, 32, 32, 1]. No per-cell normalisation: the scale is absolute.</text>
+          </svg>
+          <figcaption>The input steps of the contract. Python does them in <code>preprocess_cell</code> (and <code>preprocess_batch</code>). The scanner does the same in plain TypeScript on a <code>Float32Array</code>.</figcaption>
+        </figure>
+
+        <p>
+          The "exact area average" in step 3 sounds hard. It is not. 64 to 32 is a factor of two. Each output pixel is the
+          <em>mean of a 2 x 2 block</em>. The function <code>area_weights</code> builds the weight matrix <code>W</code>
+          (32 x 64) so that the same code also works for other sizes (<code>to_cell_image</code> uses it for real cells of
+          71 x 71). No OpenCV is needed on either side, so the result does not depend on a library build.
+        </p>
+        <p>The taste test is a folder of <strong>81 pairs</strong>:</p>
+        <div class="kv">shared/fixtures/preprocess/
+  00.cell.png        a synthetic 64 x 64 cell (drawn, never a real photo)
+  00.expected.json   {"shape": [32, 32], "values": [[...]]}  the answer, 6 decimals
+  ...
+  80.cell.png  80.expected.json</div>
+        <p>
+          Python and TypeScript both read these pairs. Every value must match within <code>1/255</code>. The pairs
+          are made with <code>just preprocess-fixtures</code>, which overwrites the committed files. The same 81 cells are
+          also the batch for the export, so one set of files pins <em>both</em> the preprocessing and the model.
+        </p>
+        <div class="callout rule">
+          <span class="callout-title">Rule SUD-09 and the contract version</span>
+          The contract has a version (<code>CONTRACT_VERSION = "2.0"</code>). A change of the input size, the crop, the
+          polarity or the class list is a <strong>major</strong> change. The scanner declares the majors it implements. The
+          install step and a unit test refuse a model of another major. Contract 1 cropped the cell to rows 6..57.
+          Contract 2 reads all of it (ADR-020). A contract-1 model would read a full cell wrongly.
+        </div>
+
+        <details class="deep">
+          <summary>Deep dive: why not just resize with a library?</summary>
+          <p>
+            Libraries differ. A bilinear resize in one library is not the same as in another. They differ at the sub-pixel
+            level, and many use anti-aliasing in different ways. A model is sensitive to such small differences, because
+            its filters read the exact edge shape. By defining the resize as a <em>matrix product</em>, the contract
+            fixes the numbers and each side can implement it in a few lines. The contract text notes that OpenCV
+            <code>INTER_AREA</code> on float32 agrees within 4e-5 grey levels, so you can use it as a second check, but
+            no side needs it.
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The TypeScript preprocessing forgets to invert the grey (ink = 0 instead of ink = 1). What happens first?</p>
+          <div class="options">
+            <button>The app crashes at start</button>
+            <button>The export fails</button>
+            <button data-correct>The preprocessing fixture test fails, because the 81 expected values do not match</button>
+            <button>The model learns the new scale by itself</button>
+          </div>
+          <p class="explain">That is the job of the 81 reference pairs. Without them, the bug would stay hidden: the app would run and give wrong digits.</p>
+        </div>
+
+        <h2 id="promote">The promote gate: who may enter the app?</h2>
+        <p>
+          <strong>The problem.</strong> Training makes many runs. Most are experiments. The app must ship exactly one model,
+          and a person must be able to say <em>why this one</em>. The rule is <strong>SUD-06</strong>: a model reaches
+          <code>mobile/assets/models/</code> only through <code>just promote-model</code>. This keeps a bad run from
+          reaching players by accident.
+        </p>
+        <div class="callout warn">
+          <span class="callout-title">What exists today</span>
+          <code>just promote-model</code> is <strong>planned</strong> for milestone M3. It is not in the justfile yet.
+          Today the one exception of SUD-06 is <code>just install-model</code>. It copies an exported run without the
+          scoring checks (ADR-007, amendment 2026-10-11). The stepper shows the full gate. The table after it shows what
+          the install step does now.
+        </div>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 900 270" role="img" aria-label="The planned promote gate: contract check, score on dev, absolute floor, not worse than current, holdout, copy with manifest.">
+            <defs>
+              <marker id="m-pro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1">
+              <rect class="box blue" x="10" y="20" width="190" height="80" rx="10" />
+              <text class="label" x="105" y="54" text-anchor="middle">1 Contract</text>
+              <text class="sublabel" x="105" y="76" text-anchor="middle">major version known?</text>
+            </g>
+            <g data-steps="2">
+              <rect class="box violet" x="250" y="20" width="190" height="80" rx="10" />
+              <text class="label" x="345" y="54" text-anchor="middle">2 Score on dev</text>
+              <text class="sublabel" x="345" y="76" text-anchor="middle">grid-exact, scanner cells</text>
+            </g>
+            <g data-steps="3">
+              <rect class="box amber" x="490" y="20" width="190" height="80" rx="10" />
+              <text class="label" x="585" y="54" text-anchor="middle">3 Absolute floor</text>
+              <text class="sublabel" x="585" y="76" text-anchor="middle">QR-01 / 02 / 03 targets</text>
+            </g>
+            <g data-steps="4">
+              <rect class="box accent" x="710" y="20" width="180" height="80" rx="10" />
+              <text class="label" x="800" y="54" text-anchor="middle">4 Not worse</text>
+              <text class="sublabel" x="800" y="76" text-anchor="middle">than now, by 1 grid</text>
+            </g>
+            <g data-steps="5">
+              <rect class="box muted" x="250" y="150" width="190" height="80" rx="10" />
+              <text class="label" x="345" y="184" text-anchor="middle">5 Holdout</text>
+              <text class="sublabel" x="345" y="206" text-anchor="middle">scored, only recorded</text>
+            </g>
+            <g data-steps="6">
+              <rect class="box green" x="490" y="150" width="400" height="80" rx="10" />
+              <text class="label" x="690" y="184" text-anchor="middle">6 Copy and commit</text>
+              <text class="sublabel" x="690" y="206" text-anchor="middle">cell-classifier.tflite + manifest.json</text>
+            </g>
+            <path class="edge" d="M202,60 L246,60" marker-end="url(#m-pro)" />
+            <path class="edge" d="M442,60 L486,60" marker-end="url(#m-pro)" />
+            <path class="edge" d="M682,60 L706,60" marker-end="url(#m-pro)" />
+            <path class="edge" d="M800,102 L800,126 L345,126 L345,146" marker-end="url(#m-pro)" />
+            <path class="edge" d="M442,190 L486,190" marker-end="url(#m-pro)" />
+          </svg>
+          <div class="step"><p class="step-title">1. Check the contract</p><p>The run must say which contract it implements (<code>export.json</code>). If the major version is one the scanner does not know, the gate refuses (SUD-09). This one check already exists in <code>install.py</code>.</p></div>
+          <div class="step"><p class="step-title">2. Score the dev fixtures</p><p>The gate runs the model on the 81 cell images of each <em>dev</em> fixture. The cell images are the ones that the app's own scanner wrote. The score is <strong>grid-exact</strong>: the share of fixtures with all 81 digits right (and the kinds right).</p></div>
+          <div class="step"><p class="step-title">3. The absolute floor</p><p>The score must reach the quality targets QR-01, QR-02 and QR-03 of chapter 10: at least 95 % of newspaper scans, 85 % of curved book pages, and a single cell at 99.94 %. This applies once the fixture set is big enough to mean something.</p></div>
+          <div class="step"><p class="step-title">4. Not worse than the current model</p><p>The new model may not be worse than the model in the app by more than <em>one fixture grid</em>, on the grid-exact score of either split. For the very first model only the floor counts. This stops a regression that looks fine on the average.</p></div>
+          <div class="step"><p class="step-title">5. Score the holdout, but only record it</p><p>The holdout split is <em>not</em> looked at while you choose between runs. The gate scores it and writes the number in the manifest. A human reads it only when deciding a release. This keeps the "pick the best on dev" habit from overfitting the gate itself.</p></div>
+          <div class="step"><p class="step-title">6. Copy and commit</p><p>The model is copied as <code>cell-classifier.tflite</code> (a stable name, because React Native needs a fixed <code>require()</code>). <code>manifest.json</code> is rewritten with the version, contract, output map, metrics, holdout and date. The promotion is its own commit, for example <code>feat(model): cell-classifier 1.2.0, dev grid-exact 96 % to 97 %</code>.</p></div>
+        </div>
+
+        <h3 id="install-today">What <code>just install-model</code> does today</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Check or action</th><th>In <code>install-model</code></th><th>In the planned promote</th></tr></thead>
+            <tbody>
+              <tr><td>Contract major equals the package's</td><td>Yes (<code>install.py</code>)</td><td>Yes</td></tr>
+              <tr><td>The run has the <code>.tflite</code> and the reference outputs</td><td>Yes, else it tells you to run <code>just export</code></td><td>Yes</td></tr>
+              <tr><td>Export checks (ops, float32, size, parity with PyTorch)</td><td>Already done by <code>just export</code></td><td>Yes</td></tr>
+              <tr><td>Grid-exact score on dev fixtures</td><td>No</td><td>Yes</td></tr>
+              <tr><td>Floor, no-regression and holdout</td><td>No</td><td>Yes</td></tr>
+              <tr><td>Copy files and write <code>manifest.json</code></td><td>Yes, with fields model, version, contract, file, outputs, run, metrics, installedAt</td><td>Yes, plus fixture scores and holdout</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>This is the manifest of the model now in the app (<code>mobile/assets/models/manifest.json</code>):</p>
+        <div class="kv">{
+  "model": "cell-classifier",
+  "version": "2.0.0",
+  "contract": "2.0",
+  "file": "cell-classifier.tflite",
+  "outputs": { "digit": 0, "kind": 1 },
+  "run": "20261013-140341-cell-classifier",
+  "metrics": { "digitAccuracy": 0.994397, "ece": 0.002641 },
+  "installedAt": "2026-10-13"
+}</div>
+
+        <h2 id="on-device">On the phone</h2>
+        <p>
+          All inference runs <strong>on the device</strong> (<a href="../architecture/adr/adr-003-on-device-inference.md">ADR-003</a>).
+          The game works offline. The live outline needs zero delay. A running server would cost money for each scan and
+          would send the photo away. The model is under 400 KB, so nothing here needs a server.
+        </p>
+        <ul>
+          <li><code>react-native-fast-tflite</code> runs the model with TFLite 2.17 on the CPU. It does not use the Metal GPU delegate.</li>
+          <li><code>mobile/src/scanner/classifier.ts</code> reads <code>manifest.json</code>, loads the model, and checks the contract and the output shapes. On a mismatch it turns scanning off with a message instead of giving wrong digits.</li>
+          <li>The scanner sends all <strong>81 cells in one batch</strong>: the input is <code>[81, 32, 32, 1]</code>. The model has a static batch size of 81.</li>
+          <li>The answer is two tables, <code>[81, 10]</code> and <code>[81, 4]</code>. The confidence of a cell is the lower of the two top probabilities. A low value gets a dashed ring on the correction screen.</li>
+        </ul>
+        <p>
+          How the scanner finds the grid, cuts the 81 cells and uses these answers is the story of
+          <a href="04-scan-pipeline.html">chapter 4</a>. How the correction screen uses the confidence is in
+          <a href="03-the-app.html">chapter 3</a>.
+        </p>
+
+        <h3 id="private-model">The private model: why the .tflite is not in git</h3>
+        <p>
+          A model that trained on <code>real_cells = true</code> learned from images with unclear licences (newspapers,
+          web photos). So it may not be published (ADR-013). Training does not filter by licence yet, so <em>every</em>
+          real run is private. The rule in practice:
+        </p>
+        <ul>
+          <li><code>mobile/assets/models/*.tflite</code> is in <code>.gitignore</code>.</li>
+          <li><code>manifest.json</code> and <code>reference-outputs.json</code> <em>are</em> in git. <code>git log mobile/assets/models</code> shows the history of the manifest, not of the bytes. The <code>run</code> field in the manifest points to the run folder in <code>ml/artifacts/</code>.</li>
+          <li>A new clone or a new worktree has no model file. The app does not bundle without it. Run <code>just install-model artifacts/&lt;run&gt;</code> first. The iOS recipes <code>ios-measure</code> and <code>ios-simulator</code> stop with "The model is missing. Run: just install-model &lt;run&gt;".</li>
+          <li>CI bundles the app with an empty placeholder file.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-title">Pitfall</span>
+          Do not delete <code>ml/artifacts/</code> or the image store when you tidy. The model and the data are not in
+          git. Until there is a backup, they exist once.
+        </div>
+
+        <h2 id="commands">The commands, in the order you use them</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Goal</th><th>Command</th></tr></thead>
+            <tbody>
+              <tr><td>Add sudoku photos to the image store</td><td><code>just import-photos &lt;folder&gt; --source S --licence L</code></td></tr>
+              <tr><td>Label cells (opens the app)</td><td><code>just label-cells</code></td></tr>
+              <tr><td>Check that tables and images agree</td><td><code>just check-data</code></td></tr>
+              <tr><td>Rank labels that look wrong</td><td><code>just suspects</code></td></tr>
+              <tr><td>Rewrite <code>cells.csv</code> from folders and journal</td><td><code>just dataset-manifest [--forget-missing]</code></td></tr>
+              <tr><td>Train</td><td><code>just train [config]</code></td></tr>
+              <tr><td>Export a run to TFLite and check it</td><td><code>just export artifacts/&lt;run&gt;</code></td></tr>
+              <tr><td>Put an exported run in the app (M0 path)</td><td><code>just install-model artifacts/&lt;run&gt; [version]</code></td></tr>
+              <tr><td>Rebuild the preprocessing fixtures</td><td><code>just preprocess-fixtures</code></td></tr>
+              <tr><td>Open the explainer notebooks</td><td><code>just notebooks</code></td></tr>
+              <tr><td>Undo an unfinished labelling session</td><td><code>just label-rollback &lt;session&gt;</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The whole road from a new photo to a model on the phone, in commands:
+        </p>
+        <div class="cmd">just import-photos ~/Pictures/sudokus --source phone --licence none
+just label-cells                 # outlines, digits, kind, Finish
+git add ml/dataset &amp;&amp; git commit   # the tables, never the images
+just train                       # a new folder in ml/artifacts/
+just export artifacts/20261023-142723-cell-classifier
+just install-model artifacts/20261023-142723-cell-classifier 2.1.0</div>
+
+        <div class="quiz" data-quiz>
+          <p class="q">You clone the repository on a new Mac and run the iOS build. It stops with "The model is missing". Why, and what do you do?</p>
+          <div class="options">
+            <button>The model is in git LFS. Run git lfs pull</button>
+            <button data-correct>A model trained on real cells stays out of git. Run <code>just install-model</code> on a run from <code>ml/artifacts/</code></button>
+            <button>The model downloads on first start. Wait</button>
+            <button>The model is generated by <code>just preprocess-fixtures</code></button>
+          </div>
+          <p class="explain">The real-data model is private (ADR-013). Only the manifest and the reference outputs are in git. You need a trained and exported run in <code>ml/artifacts/</code> (or a copy from the developer).</p>
+        </div>
+
+        <h2 id="where-to-read-more">Where to read more</h2>
+        <ul>
+          <li><a href="../../ml/README.md">ml/README.md</a>: the commands and the data rules of the Python side.</li>
+          <li><a href="../../ml/LABELLING.md">ml/LABELLING.md</a>: the keys and flow of the labelling app. <a href="../../ml/DATA_SOURCES.md">ml/DATA_SOURCES.md</a>: sources and licences.</li>
+          <li><a href="../../ml/notebooks/README.md">ml/notebooks</a>: two notebooks that call the real functions step by step.</li>
+          <li><a href="../architecture/00-concepts/model-contract.md">The model contract</a> and the <a href="../research/2026-10-09-cell-classifier-research.md">research record</a> with the measured designs.</li>
+          <li>ADRs: <a href="../architecture/adr/adr-003-on-device-inference.md">003 on-device</a>, <a href="../architecture/adr/adr-005-pytorch-to-tflite.md">005 TFLite</a>, <a href="../architecture/adr/adr-006-two-head-cell-classifier.md">006 two heads</a>, <a href="../architecture/adr/adr-007-model-promotion.md">007 promotion</a>, <a href="../architecture/adr/adr-009-training-data-outside-git.md">009 data outside git</a>, <a href="../architecture/adr/adr-013-fixtures-and-data-licensing.md">013 licensing</a>, <a href="../architecture/adr/adr-018-one-data-folder-two-tables.md">018 two tables</a>, <a href="../architecture/adr/adr-020-full-cell-input.md">020 full cell</a>, <a href="../architecture/adr/adr-034-labelling-app.md">034 labelling app</a>, <a href="../architecture/adr/adr-035-split-by-page.md">035 split by page</a>.</li>
+          <li><a href="../operations/measure-quality.md">Measure the quality scenarios</a> on the iPhone, and the <a href="../architecture/12-glossary.md">glossary</a>.</li>
+          <li>Next in this guide: <a href="06-backend-and-sync.html">chapter 6, the backend</a> (where the uploaded scans arrive). For tests and rules of work, see <a href="07-how-we-work.html">chapter 7</a>.</li>
+        </ul>
+      </main>
+    </div>
+
+    <script>
+      ;(function () {
+        const $ = (id) => document.getElementById(id)
+
+        // ---------- Demo 1: cell accuracy to grid accuracy ----------
+        ;(function () {
+          const slider = $('ge-p')
+          if (!slider) return
+          function update() {
+            const p = Number(slider.value) / 10000
+            const grid = Math.pow(p, 81)
+            const need = Math.pow(0.95, 1 / 81)
+            $('ge-p-out').textContent = (p * 100).toFixed(2) + ' %'
+            $('ge-grid').textContent = (grid * 100).toFixed(1) + ' %'
+            $('ge-100').textContent = Math.round(grid * 100) + ' of 100'
+            $('ge-need').textContent = (need * 100).toFixed(2) + ' %'
+            $('ge-bar-cell').style.width = p * 100 + '%'
+            $('ge-bar-grid').style.width = grid * 100 + '%'
+            $('ge-bar-cell-n').textContent = (p * 100).toFixed(1)
+            $('ge-bar-grid-n').textContent = (grid * 100).toFixed(1)
+          }
+          slider.addEventListener('input', update)
+          update()
+        })()
+
+        // ---------- Demo 2: convolution ----------
+        ;(function () {
+          const inEl = $('cv-in')
+          if (!inEl) return
+          const N = 8
+          const filters = {
+            'Vertical edge': [-1, 0, 1, -1, 0, 1, -1, 0, 1],
+            'Horizontal edge': [-1, -1, -1, 0, 0, 0, 1, 1, 1],
+            'Diagonal': [0, 1, 1, -1, 0, 1, -1, -1, 0],
+            'Blur (sum)': [1, 1, 1, 1, 1, 1, 1, 1, 1],
+          }
+          const notes = {
+            'Vertical edge': 'Orange: dark to ink going right. Blue: ink to dark going right. Zero where nothing changes sideways.',
+            'Horizontal edge': 'Orange: paper above, ink below. Blue: ink above, paper below.',
+            'Diagonal': 'Strong where the ink runs from the top right to the bottom left.',
+            'Blur (sum)': 'Only positive numbers. Each number counts the ink in its window.',
+          }
+          let filterName = 'Vertical edge'
+          const grid = new Array(N * N).fill(0)
+          const inCells = []
+          const outCells = []
+          let painting = null
+
+          function build(el, cells, paintable) {
+            for (let i = 0; i < N * N; i++) {
+              const d = document.createElement('div')
+              d.className = 'px' + (paintable ? ' paint' : ' out')
+              d.dataset.i = i
+              el.append(d)
+              cells.push(d)
+            }
+          }
+          build(inEl, inCells, true)
+          build($('cv-out'), outCells, false)
+
+          function setPixel(i, v) {
+            if (grid[i] === v) return
+            grid[i] = v
+            render()
+          }
+          inEl.addEventListener('pointerdown', (e) => {
+            const t = e.target.closest('.px')
+            if (!t) return
+            const i = Number(t.dataset.i)
+            painting = grid[i] ? 0 : 1
+            setPixel(i, painting)
+            inEl.setPointerCapture(e.pointerId)
+            e.preventDefault()
+          })
+          inEl.addEventListener('pointermove', (e) => {
+            if (painting === null) return
+            const t = document.elementFromPoint(e.clientX, e.clientY)
+            const c = t && t.closest && t.closest('#cv-in .px')
+            if (c) setPixel(Number(c.dataset.i), painting)
+          })
+          const stop = () => {
+            painting = null
+          }
+          inEl.addEventListener('pointerup', stop)
+          inEl.addEventListener('pointercancel', stop)
+
+          function draw(rows) {
+            grid.fill(0)
+            rows.forEach((r, y) => [...r].forEach((ch, x) => (grid[y * N + x] = ch === '#' ? 1 : 0)))
+            render()
+          }
+          $('cv-clear').addEventListener('click', () => draw([]))
+          $('cv-one').addEventListener('click', () =>
+            draw(['...##...', '..###...', '...##...', '...##...', '...##...', '...##...', '...##...', '..####..']),
+          )
+          $('cv-seven').addEventListener('click', () =>
+            draw(['.######.', '.######.', '.....##.', '....##..', '...##...', '...##...', '..##....', '..##....']),
+          )
+          $('cv-box').addEventListener('click', () =>
+            draw(['........', '.######.', '.######.', '.##..##.', '.##..##.', '.######.', '.######.', '........']),
+          )
+
+          const filtersEl = $('cv-filters')
+          for (const name of Object.keys(filters)) {
+            const b = document.createElement('button')
+            b.type = 'button'
+            b.className = 'btn'
+            b.textContent = name
+            b.addEventListener('click', () => {
+              filterName = name
+              render()
+            })
+            filtersEl.append(b)
+          }
+
+          function convolve() {
+            const k = filters[filterName]
+            const out = new Array(N * N).fill(0)
+            for (let y = 0; y < N; y++)
+              for (let x = 0; x < N; x++) {
+                let s = 0
+                for (let dy = -1; dy <= 1; dy++)
+                  for (let dx = -1; dx <= 1; dx++) {
+                    const yy = y + dy
+                    const xx = x + dx
+                    if (yy < 0 || yy >= N || xx < 0 || xx >= N) continue
+                    s += grid[yy * N + xx] * k[(dy + 1) * 3 + (dx + 1)]
+                  }
+                out[y * N + x] = s
+              }
+            return out
+          }
+
+          function colour(v, max) {
+            if (v === 0 || max === 0) return ''
+            const a = Math.min(100, Math.round((Math.abs(v) / max) * 85) + 10)
+            return v > 0
+              ? 'color-mix(in srgb, var(--accent) ' + a + '%, var(--surface))'
+              : 'color-mix(in srgb, var(--blue) ' + a + '%, var(--surface))'
+          }
+
+          function clearWin() {
+            inCells.forEach((c) => c.classList.remove('win'))
+          }
+
+          function render() {
+            const relu = $('cv-relu').checked
+            const pool = $('cv-pool').checked
+            const k = filters[filterName]
+            document.querySelectorAll('#cv-kernel span').forEach((s) => s.remove())
+            k.forEach((v) => {
+              const s = document.createElement('span')
+              s.textContent = v > 0 ? '+' + v : String(v)
+              $('cv-kernel').append(s)
+            })
+            ;[...filtersEl.children].forEach((b) => b.classList.toggle('on', b.textContent === filterName))
+            inCells.forEach((c, i) => {
+              c.classList.toggle('on', grid[i] === 1)
+              c.textContent = ''
+            })
+            let out = convolve()
+            if (relu) out = out.map((v) => Math.max(0, v))
+            const outEl = $('cv-out')
+            let size = N
+            if (pool) {
+              const p = []
+              for (let y = 0; y < N; y += 2)
+                for (let x = 0; x < N; x += 2)
+                  p.push(Math.max(out[y * N + x], out[y * N + x + 1], out[(y + 1) * N + x], out[(y + 1) * N + x + 1]))
+              out = p
+              size = N / 2
+            }
+            outEl.style.gridTemplateColumns = 'repeat(' + size + ', auto)'
+            outCells.forEach((c, i) => {
+              if (i >= size * size) {
+                c.style.display = 'none'
+                return
+              }
+              c.style.display = ''
+              c.textContent = out[i]
+              c.style.background = colour(out[i], Math.max(1, ...out.map(Math.abs)))
+            })
+            $('cv-out-cap').textContent =
+              (pool ? 'After ReLU + pool ' : relu ? 'After ReLU ' : 'Response ') + size + ' x ' + size
+            $('cv-note').textContent = notes[filterName] + (pool ? ' The pool keeps the biggest number of each 2 x 2 block.' : '')
+          }
+
+          $('cv-out').addEventListener('pointerover', (e) => {
+            clearWin()
+            const t = e.target.closest('.px')
+            if (!t || $('cv-pool').checked) return
+            const i = Number(t.dataset.i)
+            const y = Math.floor(i / N)
+            const x = i % N
+            for (let dy = -1; dy <= 1; dy++)
+              for (let dx = -1; dx <= 1; dx++) {
+                const yy = y + dy
+                const xx = x + dx
+                if (yy >= 0 && yy < N && xx >= 0 && xx < N) inCells[yy * N + xx].classList.add('win')
+              }
+          })
+          $('cv-out').addEventListener('pointerleave', clearWin)
+          $('cv-relu').addEventListener('change', render)
+          $('cv-pool').addEventListener('change', render)
+          draw(['...##...', '..###...', '...##...', '...##...', '...##...', '...##...', '...##...', '..####..'])
+        })()
+
+        // ---------- Demo 3: softmax ----------
+        ;(function () {
+          const box = $('sm-sliders')
+          if (!box) return
+          const names = ['7', '1', '4', 'empty']
+          const logits = [3, 0, -1, -2]
+          const sliders = []
+          names.forEach((n, i) => {
+            const row = document.createElement('div')
+            row.className = 'ctl'
+            row.innerHTML =
+              '<label for="sm-' + i + '">z(' + n + ')</label>' +
+              '<input id="sm-' + i + '" type="range" min="-6" max="8" step="0.1" value="' + logits[i] + '" />' +
+              '<output id="sm-o' + i + '"></output>'
+            box.append(row)
+            sliders.push(row.querySelector('input'))
+          })
+          const bars = $('sm-bars')
+          const barEls = names.map((n) => {
+            const row = document.createElement('div')
+            row.className = 'bar-row'
+            row.innerHTML =
+              '<span>P(' + n + ')</span><div class="bar"><i></i><b style="left: 80%"></b></div><span></span>'
+            bars.append(row)
+            return row
+          })
+          function update() {
+            const t = Number($('sm-t').value) / 100
+            $('sm-t-out').textContent = t.toFixed(2)
+            const z = sliders.map((s) => Number(s.value))
+            z.forEach((v, i) => ($('sm-o' + i).textContent = v.toFixed(1)))
+            const m = Math.max(...z.map((v) => v / t))
+            const e = z.map((v) => Math.exp(v / t - m))
+            const sum = e.reduce((a, b) => a + b, 0)
+            const p = e.map((v) => v / sum)
+            const top = p.indexOf(Math.max(...p))
+            barEls.forEach((row, i) => {
+              const bar = row.querySelector('i')
+              bar.style.width = p[i] * 100 + '%'
+              bar.classList.toggle('top', i === top)
+              row.lastElementChild.textContent = (p[i] * 100).toFixed(1) + ' %'
+            })
+            const c = p[top]
+            const v = $('sm-verdict')
+            if (c >= 0.8) {
+              v.className = 'verdict ok'
+              v.textContent = 'Confidence ' + (c * 100).toFixed(0) + ' % for "' + names[top] + '". Above 80 %: the cell gets no ring.'
+            } else {
+              v.className = 'verdict low'
+              v.textContent = 'Confidence ' + (c * 100).toFixed(0) + ' %. Below 80 %: the correction screen draws a dashed ring here.'
+            }
+          }
+          sliders.forEach((s) => s.addEventListener('input', update))
+          $('sm-t').addEventListener('input', update)
+          const presets = { clear: [6, 0, -1, -2], close: [2.2, 1.6, -1, -2], flat: [0.5, 0.4, 0.5, 0.4] }
+          document.querySelectorAll('[data-sm]').forEach((b) =>
+            b.addEventListener('click', () => {
+              presets[b.dataset.sm].forEach((v, i) => (sliders[i].value = v))
+              $('sm-t').value = 100
+              update()
+            }),
+          )
+          update()
+        })()
+
+        // ---------- Demo 4: leakage ----------
+        ;(function () {
+          const host = $('sp-pages')
+          if (!host) return
+          const PAGES = 20
+          const PER = 8
+          let mode = 'cell'
+          let seed = 7
+
+          function rng(a) {
+            return function () {
+              a |= 0
+              a = (a + 0x6d2b79f5) | 0
+              let t = Math.imul(a ^ (a >>> 15), 1 | a)
+              t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+              return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+            }
+          }
+          function fnv(text) {
+            let h = 0x811c9dc5
+            for (let i = 0; i < text.length; i++) {
+              h ^= text.charCodeAt(i)
+              h = Math.imul(h, 0x01000193)
+            }
+            h ^= h >>> 15
+            h = Math.imul(h, 0x2c1b3c6d)
+            h ^= h >>> 12
+            return (h >>> 0) / 4294967296
+          }
+          function side(u) {
+            return u < 0.8 ? 0 : u < 0.9 ? 1 : 2
+          }
+
+          function render() {
+            const rand = rng(seed * 7919)
+            const sides = []
+            for (let p = 0; p < PAGES; p++) {
+              const pageSide = side(fnv(seed + ':page-' + p))
+              const row = []
+              for (let c = 0; c < PER; c++) row.push(mode === 'page' ? pageSide : side(rand()))
+              sides.push(row)
+            }
+            host.innerHTML = ''
+            let test = 0
+            let leak = 0
+            sides.forEach((row) => {
+              const hasTrain = row.includes(0)
+              const block = document.createElement('div')
+              block.className = 'page-block'
+              row.forEach((s) => {
+                const i = document.createElement('i')
+                i.className = 's' + s
+                if (s === 2) {
+                  test++
+                  if (hasTrain) {
+                    leak++
+                    i.classList.add('leak')
+                  }
+                }
+                block.append(i)
+              })
+              host.append(block)
+            })
+            $('sp-test').textContent = test
+            $('sp-leak').textContent = leak
+            $('sp-pct').textContent = test ? Math.round((leak / test) * 100) + ' %' : '0 %'
+            $('sp-note').textContent =
+              mode === 'cell'
+                ? 'Shuffled by cell: almost every test cell has a sibling from the same page in training. The test score would be too high.'
+                : 'Hashed by page: a page is never cut. The leak is always 0. With few pages, the sizes of the piles swing from seed to seed. This is the price (ADR-035).'
+            $('sp-cell').classList.toggle('on', mode === 'cell')
+            $('sp-page').classList.toggle('on', mode === 'page')
+          }
+          $('sp-cell').addEventListener('click', () => {
+            mode = 'cell'
+            render()
+          })
+          $('sp-page').addEventListener('click', () => {
+            mode = 'page'
+            render()
+          })
+          $('sp-seed').addEventListener('click', () => {
+            seed = Math.floor(Math.random() * 1000) + 1
+            render()
+          })
+          render()
+        })()
+
+        // ---------- Demo 5: key to side ----------
+        ;(function () {
+          const keyEl = $('sd-key')
+          if (!keyEl) return
+          function fnv(text) {
+            let h = 0x811c9dc5
+            for (let i = 0; i < text.length; i++) {
+              h ^= text.charCodeAt(i)
+              h = Math.imul(h, 0x01000193)
+            }
+            h ^= h >>> 15
+            h = Math.imul(h, 0x2c1b3c6d)
+            h ^= h >>> 12
+            h ^= h >>> 16
+            return (h >>> 0) / 4294967296
+          }
+          function update() {
+            const u = fnv($('sd-seed').value + ':' + keyEl.value)
+            const name = u < 0.8 ? 'train' : u < 0.9 ? 'validation' : 'test'
+            const cls = u < 0.8 ? 'ok' : u < 0.9 ? 'low' : 'ok'
+            $('sd-mark').style.left = 'calc(' + u * 100 + '% - 2px)'
+            const out = $('sd-out')
+            out.className = 'verdict ' + cls
+            out.textContent = 'u = ' + u.toFixed(4) + '  ->  ' + name + '. Same key, same seed: always the same pile.'
+          }
+          keyEl.addEventListener('input', update)
+          $('sd-seed').addEventListener('input', update)
+          update()
+        })()
+      })()
+    </script>
+  </body>
+</html>

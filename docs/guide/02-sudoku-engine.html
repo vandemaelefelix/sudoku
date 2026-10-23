@@ -1,0 +1,2775 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The sudoku engine · Sudoku guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="assets/guide.css" />
+    <script src="assets/guide.js" defer></script>
+    <style>
+      /* A flex child must be allowed to shrink, so a wide tab list scrolls inside itself on a phone. */
+      .content { min-width: 0; }
+      @media (max-width: 700px) { .content table { display: block; overflow-x: auto; } }
+      /* Page-specific styles for the interactive demos of this chapter. */
+      .board.lab .cell { cursor: pointer; }
+      .board .cell.sup { background: var(--violet-soft); }
+      .board .cell.sup.focus, .board .cell.hl.focus { background: var(--accent-soft); }
+      .board .cell.done { background: var(--green-soft); }
+      .board .cell.num { font: 500 12px var(--mono); color: var(--ink-2); }
+      .board .cell.num.focus { color: var(--ink); font-weight: 700; }
+      .board .cell .notes span.struck { color: var(--red); text-decoration: line-through; font-weight: 700; }
+      .board .cell .notes span { font-size: 9px; }
+      .board .cell.ghost { color: var(--accent); font-weight: 700; }
+      .board .cell.small-notes .notes { font-size: 8px; }
+      .lab-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+      .lab-row > .board { flex: 0 0 auto; width: min(100%, 360px); }
+      .lab-side { flex: 1 1 240px; min-width: 220px; }
+      .lab-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+      .lab-buttons .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+      .readout { font: 500 13px/1.5 var(--mono); background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin: 8px 0; overflow-wrap: anywhere; }
+      .bitrow { display: flex; align-items: center; gap: 4px; margin: 6px 0; flex-wrap: wrap; }
+      .bitrow .name { width: 92px; font-size: 13px; color: var(--ink-2); }
+      .bitrow .bit { width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 5px; display: flex; align-items: center; justify-content: center; font: 600 12px var(--mono); color: var(--ink-2); background: var(--surface); }
+      .bitrow .bit.on { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+      .bitrow.result .bit.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+      .eventlog { list-style: none; margin: 8px 0; padding: 0; font-size: 13.5px; }
+      .eventlog li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+      .eventlog li:last-child { font-weight: 600; border-bottom: 0; }
+      .eventlog li.bad { color: var(--red); }
+      .eventlog li.good { color: var(--green); }
+      .counters { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+      .hintcard { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; margin-top: 10px; }
+      .hintcard .top { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-weight: 700; flex-wrap: wrap; }
+      .hintcard .dots { display: inline-flex; gap: 5px; }
+      .hintcard .dots i { width: 9px; height: 9px; border-radius: 99px; background: var(--line); display: inline-block; }
+      .hintcard .dots i.on { background: var(--accent); }
+      .hintcard .text { min-height: 4.4em; margin: 10px 0; }
+      .daystrip { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin: 12px 0; }
+      .daystrip button { padding: 10px 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-2); cursor: pointer; font: 600 11px var(--mono); }
+      .daystrip button.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+      .daystrip button.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+      table.compact td, table.compact th { padding: 6px 10px; font-size: 14px; }
+      .lvl { display: inline-block; font: 600 11px var(--mono); padding: 2px 7px; border-radius: 99px; }
+      .lvl.easy { background: var(--green-soft); color: var(--green); }
+      .lvl.medium { background: var(--blue-soft); color: var(--blue); }
+      .lvl.hard { background: var(--amber-soft); color: var(--amber); }
+      .lvl.expert { background: var(--red-soft); color: var(--red); }
+      input[type="number"].lab-input { width: 5.5em; font: 500 14px var(--mono); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+      label.lab-label { font-size: 13.5px; color: var(--ink-2); margin-right: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar"><nav id="guide-nav" aria-label="Guide"></nav></aside>
+      <main class="content">
+        <div class="kicker">Chapter 2</div>
+        <h1>The sudoku engine</h1>
+        <p class="lead">
+          Inside <code>shared/core</code> lives a small TypeScript package that knows every rule of sudoku. It solves
+          a puzzle, grades it, makes new ones, coaches the player with hints and keeps the score. It never touches the
+          screen, the disk or the network. In this chapter you open it piece by piece.
+        </p>
+
+        <div class="callout tip">
+          <span class="callout-title">How to read this chapter</span>
+          Each part starts with the problem. Then it gives an everyday picture, a diagram and the real code. Most
+          diagrams react to clicks. Try them. The demos on this page run small copies of the real algorithms, so what
+          you see is what the engine does.
+        </div>
+
+        <h2 id="what-the-engine-is">1. What the engine is, and what it is not</h2>
+        <p>
+          A sudoku app has two kinds of code. One kind draws things: the grid, the keypad, the animations. The other
+          kind <em>knows</em> things: is this digit allowed here, does this puzzle have one solution, which technique
+          finds the next move. The second kind must give the same answer on every phone, every time. It must also be
+          easy to test.
+        </p>
+        <p>
+          So the project keeps the second kind in its own package, <code>@sudoku/core</code>. Think of it as the
+          referee of a chess club. The referee knows the rules and gives rulings. The referee never moves a piece and
+          never owns a chessboard. The app (<code>mobile/</code>) owns the board and asks the referee.
+        </p>
+
+        <div class="callout rule">
+          <span class="callout-title">Rule SUD-04</span>
+          <code>@sudoku/core</code> must not depend on React Native, Expo or any I/O. A lint rule checks it in CI. The
+          rule is in <a href="../architecture/00-DECISIONS.md">00-DECISIONS.md</a> and
+          <a href="../architecture/adr/adr-008-package-boundaries.md">ADR-008</a>.
+        </div>
+
+        <p>
+          What does "no I/O" mean in practice? Every function is <strong>pure</strong>: the same input gives the same
+          output, and nothing else changes. Two examples show how far the project goes:
+        </p>
+        <ul>
+          <li>
+            The engine never reads a clock. The function <code>tick(game, elapsedMs)</code> receives the time that
+            passed. The app measures it.
+          </li>
+          <li>
+            The engine never calls <code>Math.random()</code>. It takes a <em>seed</em> and builds its own random
+            stream. So a seed names one puzzle on every device.
+          </li>
+        </ul>
+
+        <p>Click a box in the map to see what lives in each part. The arrows show the main direction of use.</p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 800 370" role="img" aria-label="Map of the parts of the sudoku engine and how they use each other">
+            <defs>
+              <marker id="m2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box muted" x="8" y="150" width="112" height="70" rx="10" />
+            <text class="label" x="64" y="181" text-anchor="middle">The app</text>
+            <text class="sublabel mono" x="64" y="200" text-anchor="middle">mobile/</text>
+            <path class="edge" d="M120,185 L150,185" marker-end="url(#m2-arrow)" />
+            <rect class="box" x="150" y="8" width="642" height="354" rx="14" style="stroke-dasharray: 6 5" />
+            <text class="sublabel" x="170" y="30">@sudoku/core · shared/core/src · no I/O (SUD-04)</text>
+
+            <g data-node="grid">
+              <rect class="box blue" x="170" y="50" width="180" height="76" rx="10" />
+              <text class="label" x="260" y="83" text-anchor="middle">Grid and units</text>
+              <text class="sublabel mono" x="260" y="104" text-anchor="middle">grid units bits</text>
+            </g>
+            <g data-node="solver">
+              <rect class="box blue" x="380" y="50" width="180" height="76" rx="10" />
+              <text class="label" x="470" y="83" text-anchor="middle">Solver and verify</text>
+              <text class="sublabel mono" x="470" y="104" text-anchor="middle">solver verify</text>
+            </g>
+            <g data-node="generator">
+              <rect class="box violet" x="590" y="50" width="190" height="76" rx="10" />
+              <text class="label" x="685" y="83" text-anchor="middle">Generator</text>
+              <text class="sublabel mono" x="685" y="104" text-anchor="middle">generator random</text>
+            </g>
+            <g data-node="technique">
+              <rect class="box green" x="170" y="150" width="180" height="76" rx="10" />
+              <text class="label" x="260" y="183" text-anchor="middle">Technique solver</text>
+              <text class="sublabel mono" x="260" y="204" text-anchor="middle">technique/</text>
+            </g>
+            <g data-node="grading">
+              <rect class="box amber" x="380" y="150" width="180" height="76" rx="10" />
+              <text class="label" x="470" y="183" text-anchor="middle">Grading</text>
+              <text class="sublabel mono" x="470" y="204" text-anchor="middle">grading/ level</text>
+            </g>
+            <g data-node="hint">
+              <rect class="box accent" x="590" y="150" width="190" height="76" rx="10" />
+              <text class="label" x="685" y="183" text-anchor="middle">Hints that teach</text>
+              <text class="sublabel mono" x="685" y="204" text-anchor="middle">hint/</text>
+            </g>
+            <g data-node="game">
+              <rect class="box muted" x="170" y="250" width="180" height="76" rx="10" />
+              <text class="label" x="260" y="283" text-anchor="middle">Game rules</text>
+              <text class="sublabel mono" x="260" y="304" text-anchor="middle">game/</text>
+            </g>
+            <g data-node="stats">
+              <rect class="box muted" x="380" y="250" width="180" height="76" rx="10" />
+              <text class="label" x="470" y="283" text-anchor="middle">Stats</text>
+              <text class="sublabel mono" x="470" y="304" text-anchor="middle">stats/</text>
+            </g>
+            <text class="sublabel" x="590" y="276">Every part reads the</text>
+            <text class="sublabel" x="590" y="294">grid and the units.</text>
+
+            <path class="edge" d="M560,88 L590,88" marker-end="url(#m2-arrow)" />
+            <path class="edge" d="M350,188 L380,188" marker-end="url(#m2-arrow)" />
+            <path class="edge" d="M560,170 L575,170 L575,118 L590,118" marker-end="url(#m2-arrow)" />
+            <path class="edge dashed" d="M260,226 L260,240 L685,240 L685,230" marker-end="url(#m2-arrow)" />
+          </svg>
+          <p class="hint">Click a box to read about it.</p>
+          <div class="panel" data-panel="grid">
+            <h4>Grid and units</h4>
+            <p>
+              The base of everything. <code>types.ts</code> says a grid is 81 numbers. <code>units.ts</code> lists the
+              27 rows, columns and boxes and the 20 peers of each cell. <code>bits.ts</code> counts set bits in a
+              mask.
+            </p>
+          </div>
+          <div class="panel" data-panel="solver">
+            <h4>Solver and verify</h4>
+            <p>
+              <code>solver.ts</code> is a fast backtracking search that counts solutions: none, one or two or more.
+              <code>verify.ts</code> uses it to judge a grid that a player or a scan filled.
+            </p>
+          </div>
+          <div class="panel" data-panel="generator">
+            <h4>Generator</h4>
+            <p>
+              <code>generator.ts</code> builds a full grid, removes clues while the puzzle keeps one solution, and
+              keeps a puzzle only when it grades as the wanted level. <code>random.ts</code> holds the seeded random
+              stream.
+            </p>
+          </div>
+          <div class="panel" data-panel="technique">
+            <h4>Technique solver</h4>
+            <p>
+              The folder <code>technique/</code> solves like a person. It finds named moves such as a naked single or
+              an X-wing. Each move is a <code>Step</code>. The grading and the hints both stand on it.
+            </p>
+          </div>
+          <div class="panel" data-panel="grading">
+            <h4>Grading</h4>
+            <p>
+              <code>grading/grade.ts</code> plays a puzzle through with the technique solver and turns what it needed
+              into a level: easy, medium, hard or expert. The generator uses it to accept or reject puzzles. The app
+              uses it to give a scanned puzzle a level.
+            </p>
+          </div>
+          <div class="panel" data-panel="hint">
+            <h4>Hints that teach</h4>
+            <p>
+              <code>hint/plan.ts</code> builds a short plan of steps from the player's board to one placed digit. The
+              dashed arrow means that hints read the technique solver. The files <code>message.ts</code> and
+              <code>text.ts</code> turn the plan into message ids. The app writes the words.
+            </p>
+          </div>
+          <div class="panel" data-panel="game">
+            <h4>Game rules</h4>
+            <p>
+              <code>game/</code> holds the <code>Game</code> value and the actions on it: select, place, note, erase,
+              undo, pause, tick. Every action returns a new game. Nothing changes in place.
+            </p>
+          </div>
+          <div class="panel" data-panel="stats">
+            <h4>Stats</h4>
+            <p>
+              <code>stats/</code> has two small rules: which finished games count for the best time, and how many days
+              in a row the player won.
+            </p>
+          </div>
+        </div>
+
+        <h2 id="the-grid">2. A grid is 81 numbers</h2>
+        <p>
+          <strong>The problem.</strong> A sudoku has 81 cells. The code must say "this cell", "the cells in the same
+          row" and "the cells that block this digit" thousands of times per second. A slow or clumsy picture of the
+          grid would make everything else slow or clumsy.
+        </p>
+        <p>
+          <strong>The picture.</strong> Think of the grid as a long row of 81 mailboxes, numbered from 0. A tall
+          building and a long street hold the same mailboxes. Only the numbering decides who is your neighbour. The
+          engine uses the street. It cuts the street into rows of nine.
+        </p>
+        <p>
+          In <code>types.ts</code> the whole idea is one line: <code>type Grid = number[]</code>. The array has 81
+          items, row by row. The value <code>0</code> means "empty". A digit is <code>1</code> to <code>9</code>.
+          <code>createEmptyGrid()</code> in <code>grid.ts</code> makes 81 zeros.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 700 350" role="img" aria-label="A 9 by 9 grid with each cell numbered from 0 to 80, and the formulas for row, column and box">
+            <rect class="box" x="8" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="116" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="152" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="188" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="8" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="116" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="152" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="188" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="44" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="116" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box muted" x="152" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box accent" x="188" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="80" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="116" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="152" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="188" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="116" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="116" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="152" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="188" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="152" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="116" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="152" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="188" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="188" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="116" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="152" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="188" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="224" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="116" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="152" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="188" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="260" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="8" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="44" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="80" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="116" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="152" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="188" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="224" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="260" y="296" width="36" height="36" style="stroke-width:1" />
+            <rect class="box" x="296" y="296" width="36" height="36" style="stroke-width:1" />
+            <text class="sublabel" x="26.0" y="30.0" text-anchor="middle">0</text>
+            <text class="sublabel" x="62.0" y="30.0" text-anchor="middle">1</text>
+            <text class="sublabel" x="98.0" y="30.0" text-anchor="middle">2</text>
+            <text class="sublabel" x="134.0" y="30.0" text-anchor="middle">3</text>
+            <text class="sublabel" x="170.0" y="30.0" text-anchor="middle">4</text>
+            <text class="sublabel" x="206.0" y="30.0" text-anchor="middle">5</text>
+            <text class="sublabel" x="242.0" y="30.0" text-anchor="middle">6</text>
+            <text class="sublabel" x="278.0" y="30.0" text-anchor="middle">7</text>
+            <text class="sublabel" x="314.0" y="30.0" text-anchor="middle">8</text>
+            <text class="sublabel" x="26.0" y="66.0" text-anchor="middle">9</text>
+            <text class="sublabel" x="62.0" y="66.0" text-anchor="middle">10</text>
+            <text class="sublabel" x="98.0" y="66.0" text-anchor="middle">11</text>
+            <text class="sublabel" x="134.0" y="66.0" text-anchor="middle">12</text>
+            <text class="sublabel" x="170.0" y="66.0" text-anchor="middle">13</text>
+            <text class="sublabel" x="206.0" y="66.0" text-anchor="middle">14</text>
+            <text class="sublabel" x="242.0" y="66.0" text-anchor="middle">15</text>
+            <text class="sublabel" x="278.0" y="66.0" text-anchor="middle">16</text>
+            <text class="sublabel" x="314.0" y="66.0" text-anchor="middle">17</text>
+            <text class="sublabel" x="26.0" y="102.0" text-anchor="middle">18</text>
+            <text class="sublabel" x="62.0" y="102.0" text-anchor="middle">19</text>
+            <text class="sublabel" x="98.0" y="102.0" text-anchor="middle">20</text>
+            <text class="sublabel" x="134.0" y="102.0" text-anchor="middle">21</text>
+            <text class="sublabel" x="170.0" y="102.0" text-anchor="middle">22</text>
+            <text class="sublabel" x="206.0" y="102.0" text-anchor="middle" style="font-weight:700">23</text>
+            <text class="sublabel" x="242.0" y="102.0" text-anchor="middle">24</text>
+            <text class="sublabel" x="278.0" y="102.0" text-anchor="middle">25</text>
+            <text class="sublabel" x="314.0" y="102.0" text-anchor="middle">26</text>
+            <text class="sublabel" x="26.0" y="138.0" text-anchor="middle">27</text>
+            <text class="sublabel" x="62.0" y="138.0" text-anchor="middle">28</text>
+            <text class="sublabel" x="98.0" y="138.0" text-anchor="middle">29</text>
+            <text class="sublabel" x="134.0" y="138.0" text-anchor="middle">30</text>
+            <text class="sublabel" x="170.0" y="138.0" text-anchor="middle">31</text>
+            <text class="sublabel" x="206.0" y="138.0" text-anchor="middle">32</text>
+            <text class="sublabel" x="242.0" y="138.0" text-anchor="middle">33</text>
+            <text class="sublabel" x="278.0" y="138.0" text-anchor="middle">34</text>
+            <text class="sublabel" x="314.0" y="138.0" text-anchor="middle">35</text>
+            <text class="sublabel" x="26.0" y="174.0" text-anchor="middle">36</text>
+            <text class="sublabel" x="62.0" y="174.0" text-anchor="middle">37</text>
+            <text class="sublabel" x="98.0" y="174.0" text-anchor="middle">38</text>
+            <text class="sublabel" x="134.0" y="174.0" text-anchor="middle">39</text>
+            <text class="sublabel" x="170.0" y="174.0" text-anchor="middle">40</text>
+            <text class="sublabel" x="206.0" y="174.0" text-anchor="middle">41</text>
+            <text class="sublabel" x="242.0" y="174.0" text-anchor="middle">42</text>
+            <text class="sublabel" x="278.0" y="174.0" text-anchor="middle">43</text>
+            <text class="sublabel" x="314.0" y="174.0" text-anchor="middle">44</text>
+            <text class="sublabel" x="26.0" y="210.0" text-anchor="middle">45</text>
+            <text class="sublabel" x="62.0" y="210.0" text-anchor="middle">46</text>
+            <text class="sublabel" x="98.0" y="210.0" text-anchor="middle">47</text>
+            <text class="sublabel" x="134.0" y="210.0" text-anchor="middle">48</text>
+            <text class="sublabel" x="170.0" y="210.0" text-anchor="middle">49</text>
+            <text class="sublabel" x="206.0" y="210.0" text-anchor="middle">50</text>
+            <text class="sublabel" x="242.0" y="210.0" text-anchor="middle">51</text>
+            <text class="sublabel" x="278.0" y="210.0" text-anchor="middle">52</text>
+            <text class="sublabel" x="314.0" y="210.0" text-anchor="middle">53</text>
+            <text class="sublabel" x="26.0" y="246.0" text-anchor="middle">54</text>
+            <text class="sublabel" x="62.0" y="246.0" text-anchor="middle">55</text>
+            <text class="sublabel" x="98.0" y="246.0" text-anchor="middle">56</text>
+            <text class="sublabel" x="134.0" y="246.0" text-anchor="middle">57</text>
+            <text class="sublabel" x="170.0" y="246.0" text-anchor="middle">58</text>
+            <text class="sublabel" x="206.0" y="246.0" text-anchor="middle">59</text>
+            <text class="sublabel" x="242.0" y="246.0" text-anchor="middle">60</text>
+            <text class="sublabel" x="278.0" y="246.0" text-anchor="middle">61</text>
+            <text class="sublabel" x="314.0" y="246.0" text-anchor="middle">62</text>
+            <text class="sublabel" x="26.0" y="282.0" text-anchor="middle">63</text>
+            <text class="sublabel" x="62.0" y="282.0" text-anchor="middle">64</text>
+            <text class="sublabel" x="98.0" y="282.0" text-anchor="middle">65</text>
+            <text class="sublabel" x="134.0" y="282.0" text-anchor="middle">66</text>
+            <text class="sublabel" x="170.0" y="282.0" text-anchor="middle">67</text>
+            <text class="sublabel" x="206.0" y="282.0" text-anchor="middle">68</text>
+            <text class="sublabel" x="242.0" y="282.0" text-anchor="middle">69</text>
+            <text class="sublabel" x="278.0" y="282.0" text-anchor="middle">70</text>
+            <text class="sublabel" x="314.0" y="282.0" text-anchor="middle">71</text>
+            <text class="sublabel" x="26.0" y="318.0" text-anchor="middle">72</text>
+            <text class="sublabel" x="62.0" y="318.0" text-anchor="middle">73</text>
+            <text class="sublabel" x="98.0" y="318.0" text-anchor="middle">74</text>
+            <text class="sublabel" x="134.0" y="318.0" text-anchor="middle">75</text>
+            <text class="sublabel" x="170.0" y="318.0" text-anchor="middle">76</text>
+            <text class="sublabel" x="206.0" y="318.0" text-anchor="middle">77</text>
+            <text class="sublabel" x="242.0" y="318.0" text-anchor="middle">78</text>
+            <text class="sublabel" x="278.0" y="318.0" text-anchor="middle">79</text>
+            <text class="sublabel" x="314.0" y="318.0" text-anchor="middle">80</text>
+            <line class="grid-line thick" x1="8" y1="8" x2="332" y2="8" />
+            <line class="grid-line thick" x1="8" y1="8" x2="8" y2="332" />
+            <line class="grid-line thick" x1="8" y1="116" x2="332" y2="116" />
+            <line class="grid-line thick" x1="116" y1="8" x2="116" y2="332" />
+            <line class="grid-line thick" x1="8" y1="224" x2="332" y2="224" />
+            <line class="grid-line thick" x1="224" y1="8" x2="224" y2="332" />
+            <line class="grid-line thick" x1="8" y1="332" x2="332" y2="332" />
+            <line class="grid-line thick" x1="332" y1="8" x2="332" y2="332" />
+            <text class="label" x="368" y="34">Cell number i, from 0 to 80</text>
+            <text class="sublabel" x="368" y="58">Read it like a book, row by row.</text>
+            <rect class="box" x="368" y="76" width="320" height="104" rx="10" />
+            <text class="sublabel mono" x="382" y="102">row = floor(i / 9)</text>
+            <text class="sublabel mono" x="382" y="126">col = i mod 9</text>
+            <text class="sublabel mono" x="382" y="150">box = floor(i / 27) * 3</text>
+            <text class="sublabel mono" x="382" y="170">      + floor((i mod 9) / 3)</text>
+            <rect class="box accent" x="368" y="196" width="320" height="94" rx="10" />
+            <text class="label" x="382" y="222">Example: cell 23</text>
+            <text class="sublabel" x="382" y="244">row 23 / 9 = 2 (the third row)</text>
+            <text class="sublabel" x="382" y="262">column 23 mod 9 = 5 (the sixth column)</text>
+            <text class="sublabel" x="382" y="280">box 0 * 3 + 5 / 3 = 1 (the top-middle box)</text>
+            <text class="sublabel" x="368" y="316">Rows, columns and boxes all count from 0 in code.</text>
+            <text class="sublabel" x="368" y="334">The screens count from 1, as people do.</text>
+          </svg>
+          <figcaption>
+            The three formulas are <code>ROW_OF</code>, <code>COL_OF</code> and <code>BOX_OF</code> in
+            <code>units.ts</code>. The engine builds each as a table once, so a lookup is one array read.
+          </figcaption>
+        </figure>
+
+        <h3>Units and peers</h3>
+        <p>
+          A <span class="term" data-def="One row, one column or one 3×3 box. Each unit holds the digits 1 to 9 once.">unit</span>
+          is a group of nine cells that must hold the digits 1 to 9 exactly once. There are 27 units. The file
+          <code>units.ts</code> lists them as arrays of cell numbers and gives them a number too:
+        </p>
+        <table class="compact">
+          <thead><tr><th>Unit numbers</th><th>Kind</th><th>Constant</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>0 to 8</td><td>rows</td><td><code>ROWS</code></td><td>unit 0 = cells 0 to 8</td></tr>
+            <tr><td>9 to 17</td><td>columns</td><td><code>COLUMNS</code></td><td>unit 9 = cells 0, 9, 18, … 72</td></tr>
+            <tr><td>18 to 26</td><td>boxes</td><td><code>BOXES</code></td><td>unit 18 = cells 0, 1, 2, 9, 10, 11, 18, 19, 20</td></tr>
+          </tbody>
+        </table>
+        <p>
+          <code>UNITS</code> joins the three lists. <code>UNITS_OF[cell]</code> gives the three unit numbers of one
+          cell. The <span class="term" data-def="A cell that shares a row, column or box with another cell. A cell has 20 peers.">peers</span>
+          of a cell are all other cells that share a unit with it. Count them: 8 in the row, 8 in the column and 4
+          more in the box (the other 4 box cells are already in the row or the column). That is 20.
+          <code>PEERS[cell]</code> stores them, sorted.
+        </p>
+
+        <div class="callout why">
+          <span class="callout-title">Why precompute?</span>
+          The solver asks for the peers of a cell in its inner loop. Computing them each time would waste work. The
+          engine builds <code>PEERS</code> and <code>UNITS_OF</code> when the module loads. After that, each question
+          is an array read.
+        </div>
+
+        <p>
+          <strong>Try it.</strong> Move the mouse over the board, or click a cell to lock it. Switch between the row,
+          the column, the box and all 20 peers.
+        </p>
+
+        <div class="figure" id="peers-lab">
+          <div class="lab-row">
+            <div class="board lab num-board" id="peers-board" aria-label="Board of cell numbers 0 to 80"></div>
+            <div class="lab-side">
+              <div class="lab-buttons" id="peers-modes">
+                <button class="btn" type="button" data-mode="row">Row</button>
+                <button class="btn" type="button" data-mode="column">Column</button>
+                <button class="btn" type="button" data-mode="box">Box</button>
+                <button class="btn" type="button" data-mode="all" aria-pressed="true">All 20 peers</button>
+              </div>
+              <div class="readout" id="peers-readout"></div>
+              <p style="font-size:14px">
+                A cell may hold a digit only if none of its peers holds it. That one idea drives the solver, the
+                candidates and every technique.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <details class="deep">
+          <summary>Why a flat array and not an array of rows?</summary>
+          <p>
+            A flat array makes a cell one number. A cell number is easy to pass around, to store in a
+            <code>Set</code> and to compare. A step of a technique, for example, lists its cells as plain numbers. A
+            nested array would need a pair <code>[row, column]</code> everywhere.
+          </p>
+          <p>
+            The flat array also matches the other packages. The scanner, the saved game and the backend all send a grid
+            as 81 numbers. They share the shape without sharing code.
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">Which cell number is in row 4, column 2? Count rows and columns from 0.</p>
+          <div class="options">
+            <button>34</button>
+            <button data-correct>38</button>
+            <button>42</button>
+            <button>6</button>
+          </div>
+          <p class="explain">
+            The cell number is <code>row * 9 + column</code>, so 4 * 9 + 2 = 38. The option 42 is row 4, column 6. The
+            option 34 is row 3, column 7.</p>
+        </div>
+
+        <h2 id="candidates-and-bits">3. Candidates and bit sets</h2>
+        <p>
+          <strong>The problem.</strong> To solve a sudoku you ask one question again and again: <em>which digits can
+          still go in this cell?</em> The answers are the
+          <span class="term" data-def="A digit that can still go in an empty cell. The givens and the entries decide it. The notes of the player never do.">candidates</span>
+          of the cell. A cell can hold a digit only if no peer holds it already.
+        </p>
+        <p>
+          <strong>The picture.</strong> Imagine a row of nine light switches on the wall of each cell, one for each
+          digit. Switch on means "this digit is still possible". Every digit that a peer holds switches one light
+          off. A cell with one light left has an answer. A cell with no light left means the board is broken.
+        </p>
+        <p>
+          A computer stores nine switches in one small number. This is a <strong>bit set</strong>, or
+          <strong>mask</strong>. Digit <em>d</em> is the bit at place <em>d − 1</em>, counted from the right. So the
+          mask <code>0b000010101</code> means "1, 3 and 5 are possible". The number is 21 in decimal, but nobody reads
+          it that way.
+        </p>
+        <table class="compact">
+          <thead><tr><th>You want to</th><th>You write</th><th>Why it works</th></tr></thead>
+          <tbody>
+            <tr><td>Switch digit d on</td><td><code>mask | bit</code></td><td>OR sets a bit and keeps the others</td></tr>
+            <tr><td>Switch digit d off</td><td><code>mask &amp; ~bit</code></td><td>AND with the opposite clears one bit</td></tr>
+            <tr><td>Ask "is d possible?"</td><td><code>mask &amp; bit</code></td><td>The result is not 0 when the bit is on</td></tr>
+            <tr><td>Count the possible digits</td><td><code>bitCount(mask)</code></td><td>The helper in <code>bits.ts</code></td></tr>
+          </tbody>
+        </table>
+        <p>
+          In <code>technique/candidates.ts</code>, <code>computeCandidates(board)</code> makes an array of 81 masks
+          (a <code>Uint16Array</code>). It starts with all nine bits on in every cell. Then, for each cell that holds a
+          digit, it sets that cell's own mask to <code>0</code> and clears that digit's bit in all 20 peers. A placed
+          cell always has the mask 0. The notes of the player never enter this function (ADR-032).
+        </p>
+
+        <p>
+          <strong>Try it.</strong> Click an empty cell. The panel shows which digits its row, column and box already
+          use, and what is left.
+        </p>
+
+        <div class="figure" id="cand-lab">
+          <div class="lab-row">
+            <div class="board lab" id="cand-board" aria-label="A puzzle: click an empty cell"></div>
+            <div class="lab-side">
+              <p id="cand-title" style="margin-top:0"><strong>Click an empty cell.</strong></p>
+              <div id="cand-rows"></div>
+              <div class="readout" id="cand-readout"></div>
+            </div>
+          </div>
+          <p class="caption">
+            Blue squares are digits that a unit already holds. The green row is what is left: the candidates. The
+            solver computes the same thing in its inner loop, with three small masks per unit.
+          </p>
+        </div>
+
+        <details class="deep">
+          <summary>Two bit conventions, and the bit tricks of the solver</summary>
+          <p>
+            You may meet two ways to number the bits. The technique code (<code>technique/masks.ts</code>) uses bit
+            <em>d − 1</em> for digit <em>d</em>, so a mask fits in 9 bits: <code>ALL_DIGITS = 0b1_1111_1111</code>. The
+            backtracking solver (<code>solver.ts</code>) uses bit <em>d</em> itself, so its constant is
+            <code>0b11_1111_1110</code> and bit 0 stays empty. Both work. The solver's choice saves one subtraction in
+            the hot loop. Do not mix the two: a mask from one place is not valid in the other.
+          </p>
+          <p>Three small tricks appear in the solver. They all work on the lowest set bit:</p>
+          <ul>
+            <li>
+              <code>bitCount</code> loops <code>rest &amp;= rest - 1</code>. This clears the lowest set bit, so the
+              loop runs once per set bit.
+            </li>
+            <li><code>rest &amp; -rest</code> isolates the lowest set bit. The solver takes the candidates one by one with it.</li>
+            <li>
+              <code>31 - Math.clz32(bit)</code> turns a single bit back into the digit. <code>clz32</code> counts the
+              leading zeros of a 32-bit number.
+            </li>
+          </ul>
+        </details>
+
+        <h2 id="checking-a-grid">4. Checking a full grid</h2>
+        <p>
+          <strong>The problem.</strong> Two places hand the engine a full grid and ask "is this right?". One is the
+          player who finishes a game. The other is the scan screen: the camera read a paper puzzle, the player typed
+          the missing digits, and the app must say whether the result is a valid solution.
+        </p>
+        <p>
+          <code>verify.ts</code> answers with <code>verifyGrid(givens, entries)</code>. The word
+          <span class="term" data-def="A digit printed in the puzzle. In a scan: a printed digit. Locked.">givens</span>
+          means the printed digits. The word
+          <span class="term" data-def="A digit the player filled in. In a scan: a handwritten digit. Editable.">entries</span>
+          means the digits that someone wrote in. The function trusts the givens and judges the entries. It returns one
+          of three verdicts:
+        </p>
+        <div class="grid-3">
+          <div class="card"><span class="pill green">solved</span><p>No unit holds a digit twice. The grid is a valid sudoku.</p></div>
+          <div class="card"><span class="pill amber">wrong</span><p>The givens have exactly one solution, and some entries differ from it. The verdict lists the right digit for each such cell.</p></div>
+          <div class="card"><span class="pill accent">clash</span><p>Some cells share a digit in a unit, and the givens cannot tell which one is wrong. The verdict lists the clashing cells.</p></div>
+        </div>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 330" role="img" aria-label="Flow chart of verifyGrid: merge the grid, check for empty cells, check for duplicates, then solve the givens to choose between clash and wrong">
+            <defs>
+              <marker id="v2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="10" y="20" width="170" height="60" rx="10" />
+            <text class="label" x="95" y="46" text-anchor="middle">verifyGrid</text>
+            <text class="sublabel mono" x="95" y="65" text-anchor="middle">givens, entries</text>
+            <path class="edge" d="M180,50 L210,50" marker-end="url(#v2-arrow)" />
+            <rect class="box" x="210" y="20" width="190" height="60" rx="10" />
+            <text class="label" x="305" y="46" text-anchor="middle">Merge the grid</text>
+            <text class="sublabel" x="305" y="65" text-anchor="middle">a given beats an entry</text>
+            <path class="edge" d="M400,50 L430,50" marker-end="url(#v2-arrow)" />
+            <rect class="box" x="430" y="20" width="190" height="60" rx="10" />
+            <text class="label" x="525" y="46" text-anchor="middle">Any empty cell?</text>
+            <text class="sublabel" x="525" y="65" text-anchor="middle">yes: throw RangeError</text>
+            <path class="edge" d="M525,80 L525,120" marker-end="url(#v2-arrow)" />
+            <text class="sublabel" x="535" y="106">no</text>
+
+            <rect class="box" x="430" y="120" width="190" height="60" rx="10" />
+            <text class="label" x="525" y="146" text-anchor="middle">Digit twice in a unit?</text>
+            <text class="sublabel mono" x="525" y="165" text-anchor="middle">duplicateCells()</text>
+            <path class="edge" d="M430,150 L380,150" marker-end="url(#v2-arrow)" />
+            <text class="sublabel" x="405" y="140" text-anchor="middle">no</text>
+            <rect class="box green" x="190" y="120" width="190" height="60" rx="10" />
+            <text class="label" x="285" y="146" text-anchor="middle">solved</text>
+            <text class="sublabel" x="285" y="165" text-anchor="middle">whatever the givens are</text>
+            <path class="edge" d="M525,180 L525,230" marker-end="url(#v2-arrow)" />
+            <text class="sublabel" x="535" y="210">yes</text>
+
+            <rect class="box" x="430" y="230" width="190" height="64" rx="10" />
+            <text class="label" x="525" y="256" text-anchor="middle">One solution?</text>
+            <text class="sublabel mono" x="525" y="276" text-anchor="middle">solve(givens).count</text>
+            <path class="edge" d="M430,262 L380,262" marker-end="url(#v2-arrow)" />
+            <text class="sublabel" x="405" y="252" text-anchor="middle">not 1</text>
+            <rect class="box accent" x="190" y="230" width="190" height="64" rx="10" />
+            <text class="label" x="285" y="256" text-anchor="middle">clash</text>
+            <text class="sublabel" x="285" y="276" text-anchor="middle">the cells that share a digit</text>
+            <path class="edge" d="M620,262 L650,262" marker-end="url(#v2-arrow)" />
+            <text class="sublabel" x="626" y="252">1</text>
+            <rect class="box amber" x="650" y="230" width="100" height="64" rx="10" />
+            <text class="label" x="700" y="256" text-anchor="middle">wrong</text>
+            <text class="sublabel" x="700" y="276" text-anchor="middle">+ hints</text>
+          </svg>
+          <figcaption>
+            The order matters. A grid with no duplicate is solved at once, without any search. Only a broken grid pays
+            for a call to the solver.
+          </figcaption>
+        </figure>
+
+        <p>
+          The helper <code>duplicateCells</code> walks the 27 units. In each unit it remembers the first cell of each
+          digit. When it meets the digit again, it marks both cells. Then <code>verifyGrid</code> asks the solver about
+          the givens alone. When there is exactly one solution, the engine can say <em>which</em> entries are wrong, so
+          the verdict is <code>wrong</code> and carries a <code>hints</code> record from cell number to the right
+          digit. When the givens have no solution or many solutions, the engine cannot judge the entries. It returns
+          <code>clash</code> and the cells that clash.
+        </p>
+        <p>
+          The app calls this in <code>mobile/src/scan/hooks/useVerify/useVerify.ts</code>. During play, the game uses a
+          simpler check: <code>isWrong(game, cell)</code> in <code>game/completion.ts</code> compares a cell with the
+          stored solution. The next section shows where that solution comes from.
+        </p>
+
+        <h2 id="backtracking-solver">5. The backtracking solver</h2>
+        <p>
+          <strong>The problem.</strong> The engine needs a solver that never gets stuck and that can count: is there
+          no solution, exactly one, or more than one? A puzzle with two solutions is a bad puzzle. A scanned puzzle with
+          zero solutions means the camera misread a digit. Two parts need this answer: the generator (while it removes
+          clues) and <code>verifyGrid</code>.
+        </p>
+        <p>
+          <strong>The picture.</strong> A maze with chalk. At every fork you pick a path and write a mark. At a dead end
+          you walk back to the last fork and rub out your mark. You try the next path. The trick of this solver is how
+          it picks the fork: it always goes to the fork with the <em>fewest paths</em>. Fewer paths mean fewer wrong
+          turns.
+        </p>
+        <p>This is the whole algorithm of <code>solve(puzzle)</code> in <code>solver.ts</code>:</p>
+        <ol>
+          <li>
+            Check the input: 81 integers from 0 to 9. Else throw a <code>RangeError</code>.
+          </li>
+          <li>
+            Fill three arrays of masks, <code>rows</code>, <code>cols</code> and <code>boxes</code>. Each mask holds
+            the digits that the unit already uses. If a given clashes with an earlier one, return
+            <code>{ count: 0 }</code> at once.
+          </li>
+          <li>
+            <strong>Search.</strong> Scan all empty cells. For each one, the candidate mask is
+            <code>ALL_DIGITS &amp; ~(row | col | box)</code>. Remember the cell with the fewest candidates. Stop the
+            scan early when a cell has 1 or 0.
+          </li>
+          <li>No empty cell left? That is a solution. Count it. Copy the grid when it is the first.</li>
+          <li>The best cell has 0 candidates? <strong>Dead end.</strong> Return and let the caller try the next digit.</li>
+          <li>
+            Otherwise try each candidate: write it into the cell and into the three masks, call the search again, then
+            <strong>undo</strong> the write.
+          </li>
+          <li>
+            Stop only when the second solution appears. The result is <code>{ count: 0 }</code>,
+            <code>{ count: 1, solution }</code> or <code>{ count: 2 }</code>. The type comment says "count 2 means two
+            or more".
+          </li>
+        </ol>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 345" role="img" aria-label="A search tree: pick a cell, try two digits, one ends in a dead end and one ends in a solution, then the search ends with a count of one">
+            <defs>
+              <marker id="t2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="290" y="10" width="200" height="56" rx="10" />
+            <text class="label" x="390" y="34" text-anchor="middle">Pick cell A</text>
+            <text class="sublabel" x="390" y="54" text-anchor="middle">candidates: 3 or 7</text>
+            <path class="edge" d="M340,66 L190,116" marker-end="url(#t2-arrow)" />
+            <text class="sublabel" x="226" y="86">try 3</text>
+            <path class="edge" d="M440,66 L590,116" marker-end="url(#t2-arrow)" />
+            <text class="sublabel" x="520" y="86">try 7</text>
+            <rect class="box" x="90" y="116" width="200" height="56" rx="10" />
+            <text class="label" x="190" y="140" text-anchor="middle">A = 3</text>
+            <text class="sublabel" x="190" y="160" text-anchor="middle">cell B now has 0 candidates</text>
+            <rect class="box" x="490" y="116" width="200" height="56" rx="10" />
+            <text class="label" x="590" y="140" text-anchor="middle">A = 7</text>
+            <text class="sublabel" x="590" y="160" text-anchor="middle">each next pick is forced</text>
+            <path class="edge" d="M190,172 L190,216" marker-end="url(#t2-arrow)" />
+            <path class="edge" d="M590,172 L590,216" marker-end="url(#t2-arrow)" />
+            <rect class="box accent" x="90" y="216" width="200" height="56" rx="10" />
+            <text class="label" x="190" y="240" text-anchor="middle">Dead end</text>
+            <text class="sublabel" x="190" y="260" text-anchor="middle">undo 3, go back to A</text>
+            <rect class="box green" x="490" y="216" width="200" height="56" rx="10" />
+            <text class="label" x="590" y="240" text-anchor="middle">Solution 1</text>
+            <text class="sublabel" x="590" y="260" text-anchor="middle">no empty cell left</text>
+            <text class="sublabel" x="490" y="292">The search does not stop here.</text>
+            <text class="sublabel" x="10" y="318">Back at A, no digit is left to try. The search ends with count 1: the puzzle is unique.</text>
+            <text class="sublabel" x="10" y="336">A second solution would end the search at once with count 2.</text>
+          </svg>
+          <figcaption>
+            Why "solved" is not enough. To <em>prove</em> that a solution is the only one, the solver must show that
+            every other branch fails.
+          </figcaption>
+        </figure>
+
+        <div class="callout why">
+          <span class="callout-title">Why the cell with the fewest candidates?</span>
+          A cell with one candidate is forced: no guess is needed. A cell with zero candidates ends the branch at once.
+          Picking these first shrinks the tree a lot. Many puzzles finish without one dead end. A
+          cell-by-cell scan from the top-left would try far more wrong digits.
+        </div>
+
+        <p>
+          <strong>Watch it work.</strong> This is a real expert puzzle with 25 givens. The page runs the same search as
+          <code>solver.ts</code>, but it records each event so you can step through. Bold digits are the givens. Blue
+          digits are guesses. The orange cell is the cell the solver just picked.
+        </p>
+
+        <div class="figure" id="solver-lab">
+          <div class="lab-row">
+            <div class="board lab" id="solver-board" aria-label="The solver working on an expert puzzle"></div>
+            <div class="lab-side">
+              <div class="lab-buttons">
+                <button class="btn primary" type="button" id="solver-step">Step</button>
+                <button class="btn" type="button" id="solver-ten">+10 steps</button>
+                <button class="btn" type="button" id="solver-dead">Next dead end</button>
+                <button class="btn" type="button" id="solver-end">To the end</button>
+                <button class="btn" type="button" id="solver-play" aria-pressed="false">Play</button>
+                <button class="btn" type="button" id="solver-reset">Reset</button>
+              </div>
+              <div class="counters" id="solver-counters"></div>
+              <ul class="eventlog" id="solver-log" aria-live="polite"></ul>
+            </div>
+          </div>
+          <p class="caption">
+            Rows and columns in the log count from 1, as the app does. In code the cell numbers count from 0.
+          </p>
+        </div>
+
+        <details class="deep">
+          <summary>Why the solver counts to two, and not to the end</summary>
+          <p>
+            The answer "how many solutions" has only three useful values: none, one, or more than one. Once the search
+            finds two, the exact number does not matter. Stopping there makes a bad puzzle cheap to reject. That is
+            why <code>search()</code> returns <code>true</code> ("stop everything") when <code>count &gt;= 2</code>,
+            and why the result type has <code>{ count: 2 }</code> with no list.
+          </p>
+          <p>
+            The generator does not even call <code>solve()</code> for every clue it removes. It has a special search,
+            <code>createOtherSolutionSearch</code>, that asks a narrower question: "if this one cell could not hold its
+            old digit, would the puzzle still have a solution?" The old solution is known, so one found solution means
+            "not unique". This is faster and it allocates nothing per call. A test proves that both give the same
+            result.
+          </p>
+        </details>
+
+        <div class="quiz" data-quiz>
+          <p class="q">The solver finds a solution. Why does it keep searching?</p>
+          <div class="options">
+            <button>It checks that the solution is correct.</button>
+            <button data-correct>It looks for a second solution, to prove the puzzle is unique.</button>
+            <button>It wants the solution with the most givens.</button>
+            <button>It cannot tell that the search has ended.</button>
+          </div>
+          <p class="explain">
+            The solution is correct by construction: every digit was checked against the three masks. The search goes on
+            because "unique" means "no other solution". If a second one appears, the result is
+            <code>{ count: 2 }</code> and the puzzle is not unique.
+          </p>
+        </div>
+
+        <h2 id="technique-solver">6. The technique solver: solving like a person</h2>
+        <p>
+          <strong>The problem.</strong> The backtracking solver is fast, but it is a poor teacher. If a hint said "try
+          a 7 and see if it breaks", nobody would learn anything. And it cannot measure difficulty: a puzzle that takes
+          the search a millisecond may still be hard for a human. The project needs a second solver that thinks the way
+          a player thinks.
+        </p>
+        <p>
+          <strong>The picture.</strong> Backtracking is like shaking a locked box until it opens. A technique is like
+          reading the marks on the lock. It tells you <em>why</em> a pin must move. The technique solver only makes a
+          move when it can name the reason.
+        </p>
+
+        <h3>What a technique is</h3>
+        <p>
+          A <span class="term" data-def="A rule that a person uses to place a digit or to remove candidates, such as a hidden single or a naked pair.">technique</span>
+          is a rule with a name. Using it once gives a
+          <span class="term" data-def="One use of a technique. It lists the placements, the eliminations, the units, the pattern cells and the support cells.">step</span>.
+          A step does one of two things:
+        </p>
+        <ul>
+          <li>It <strong>places</strong> a digit: "this cell must hold a 6".</li>
+          <li>
+            It <strong>eliminates</strong> candidates: "this cell cannot hold a 5". This opens no cell yet, but it
+            makes a later step possible.
+          </li>
+        </ul>
+        <p>
+          The type <code>Step</code> in <code>technique/types.ts</code> is the data contract between the solver, the
+          grading, the hints and the app. Click a field to see what it holds.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 760 250" role="img" aria-label="The fields of a Step: technique, placements, eliminations, units, pattern, support, digits, and the optional links and groups">
+            <rect class="box blue" x="10" y="10" width="740" height="40" rx="10" />
+            <text class="label" x="26" y="35">type Step</text>
+            <text class="sublabel" x="130" y="35">Click a field. Each list holds cell numbers 0 to 80 or unit numbers 0 to 26.</text>
+            <g data-node="technique">
+              <rect class="box green" x="10" y="66" width="175" height="60" rx="10" />
+              <text class="label mono" x="97" y="102" text-anchor="middle">technique</text>
+            </g>
+            <g data-node="placements">
+              <rect class="box accent" x="197" y="66" width="175" height="60" rx="10" />
+              <text class="label mono" x="285" y="102" text-anchor="middle">placements</text>
+            </g>
+            <g data-node="eliminations">
+              <rect class="box accent" x="384" y="66" width="175" height="60" rx="10" />
+              <text class="label mono" x="471" y="102" text-anchor="middle">eliminations</text>
+            </g>
+            <g data-node="units">
+              <rect class="box" x="571" y="66" width="179" height="60" rx="10" />
+              <text class="label mono" x="660" y="102" text-anchor="middle">units</text>
+            </g>
+            <g data-node="pattern">
+              <rect class="box" x="10" y="138" width="175" height="60" rx="10" />
+              <text class="label mono" x="97" y="174" text-anchor="middle">pattern</text>
+            </g>
+            <g data-node="support">
+              <rect class="box violet" x="197" y="138" width="175" height="60" rx="10" />
+              <text class="label mono" x="285" y="174" text-anchor="middle">support</text>
+            </g>
+            <g data-node="digits">
+              <rect class="box" x="384" y="138" width="175" height="60" rx="10" />
+              <text class="label mono" x="471" y="174" text-anchor="middle">digits</text>
+            </g>
+            <g data-node="extra">
+              <rect class="box muted" x="571" y="138" width="179" height="60" rx="10" />
+              <text class="label mono" x="660" y="174" text-anchor="middle">links, groups</text>
+            </g>
+            <text class="sublabel" x="10" y="226">A step has at least one placement or one elimination.</text>
+          </svg>
+          <p class="hint">Click a field to read about it.</p>
+          <div class="panel" data-panel="technique"><h4>technique</h4><p>The id of the rule, such as <code>'nakedSingle'</code> or <code>'xWing'</code>. It is a string union of 23 ids. The grading and the hint text look the rule up by this id.</p></div>
+          <div class="panel" data-panel="placements"><h4>placements</h4><p>The digits that the step puts on the board, as <code>{ cell, digit }</code> pairs. The singles have one. Other techniques have none.</p></div>
+          <div class="panel" data-panel="eliminations"><h4>eliminations</h4><p>The candidates that the step removes, as <code>{ cell, digit }</code> pairs. A pointing step might remove a 5 from three cells.</p></div>
+          <div class="panel" data-panel="units"><h4>units</h4><p>The rows, columns or boxes that matter, as unit numbers 0 to 26. The first one is the <em>focus unit</em>: the place where the app tells the player to look.</p></div>
+          <div class="panel" data-panel="pattern"><h4>pattern</h4><p>The cells that form the technique itself: the two cells of a naked pair, the four corners of an X-wing.</p></div>
+          <div class="panel" data-panel="support"><h4>support</h4><p>Cells that already hold a digit on the board and cause the step. In a hidden single, the support cells are the placed digits that block the other cells of the unit.</p></div>
+          <div class="panel" data-panel="digits"><h4>digits</h4><p>The digits of the pattern: the 3 and the 7 of a naked pair, or the single digit of a fish.</p></div>
+          <div class="panel" data-panel="extra"><h4>links and groups</h4><p>Only for the chain techniques (<code>links</code>: the chain from cell to cell) and simple colouring (<code>groups</code>: the two colours). Every other step leaves them out.</p></div>
+        </div>
+
+        <h3>The loop: <code>nextSteps</code> and <code>playThrough</code></h3>
+        <p>
+          Two functions drive the folder. <code>nextSteps(candidates, board, ranks)</code> in
+          <code>technique/nextSteps.ts</code> finds the next steps. <code>playThrough(givens)</code> in
+          <code>technique/playThrough.ts</code> calls it in a loop until the puzzle is solved or stuck. Step through the
+          loop:
+        </p>
+
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 760 190" role="img" aria-label="The loop of playThrough: board, candidates, try the ranks, first hit wins, apply one step, repeat">
+            <defs>
+              <marker id="l2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1,5">
+              <rect class="box" x="10" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="75" y="52" text-anchor="middle">Board</text>
+              <text class="sublabel" x="75" y="72" text-anchor="middle">81 numbers</text>
+            </g>
+            <path class="edge" data-steps="2" d="M140,55 L160,55" marker-end="url(#l2-arrow)" />
+            <g data-steps="2">
+              <rect class="box blue" x="160" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="225" y="52" text-anchor="middle">Candidates</text>
+              <text class="sublabel" x="225" y="72" text-anchor="middle">81 masks</text>
+            </g>
+            <path class="edge" data-steps="3" d="M290,55 L310,55" marker-end="url(#l2-arrow)" />
+            <g data-steps="3">
+              <rect class="box green" x="310" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="375" y="52" text-anchor="middle">Try the ranks</text>
+              <text class="sublabel" x="375" y="72" text-anchor="middle">easiest first</text>
+            </g>
+            <path class="edge" data-steps="4" d="M440,55 L460,55" marker-end="url(#l2-arrow)" />
+            <g data-steps="4">
+              <rect class="box amber" x="460" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="525" y="52" text-anchor="middle">First hit wins</text>
+              <text class="sublabel" x="525" y="72" text-anchor="middle">nextSteps()</text>
+            </g>
+            <path class="edge" data-steps="5" d="M590,55 L610,55" marker-end="url(#l2-arrow)" />
+            <g data-steps="5">
+              <rect class="box accent" x="610" y="20" width="140" height="70" rx="10" />
+              <text class="label" x="680" y="52" text-anchor="middle">Apply a step</text>
+              <text class="sublabel" x="680" y="72" text-anchor="middle">playThrough()</text>
+            </g>
+            <path class="edge dashed" data-steps="5" d="M680,90 L680,140 L75,140 L75,94" marker-end="url(#l2-arrow)" />
+            <text class="sublabel" data-steps="5" x="260" y="132">repeat, until no rank finds a step</text>
+            <text class="sublabel" data-steps="6" x="10" y="172">Stuck: the puzzle needs a technique that the solver does not know, or a guess.</text>
+          </svg>
+          <div class="step"><p class="step-title">1. Start with a board</p><p>The board is the givens at first. Later it also holds every digit that earlier steps placed.</p></div>
+          <div class="step"><p class="step-title">2. Compute the candidates</p><p><code>computeCandidates</code> gives one mask per cell. <code>playThrough</code> also clears the bits that earlier steps eliminated. They are stored in a <code>struck</code> array, because the board alone cannot show an elimination.</p></div>
+          <div class="step"><p class="step-title">3. Try the ranks, easiest first</p><p>A rank is one line of <code>TECHNIQUE_ORDER</code>: a technique and its weight. The function <code>findSteps</code> sends each rank to its finder, for example <code>findNakedSingles</code>.</p></div>
+          <div class="step"><p class="step-title">4. The first rank with a result wins</p><p><code>nextSteps</code> returns <em>every</em> step of that one rank, sorted by focus unit, first pattern cell and first digit. The sort makes the result the same every time.</p></div>
+          <div class="step"><p class="step-title">5. Apply the first step, then loop</p><p>Placements go on the board. Eliminations go into <code>struck</code>. Then the loop starts again from step 2.</p></div>
+          <div class="step"><p class="step-title">6. The end</p><p>When no rank finds anything, <code>playThrough</code> returns what it has: the steps, the position before each step and a flag <code>solved</code>. A board with no empty cell is solved.</p></div>
+        </div>
+
+        <h3>Every technique in the code</h3>
+        <p>
+          <code>TECHNIQUE_ORDER</code> in <code>technique/order.ts</code> lists 24 ranks in the order in which a person
+          finds them. The weight of each rank is its difficulty in
+          <em>Sudoku Explainer points</em>, a rating from the sudoku community. The research record is
+          <a href="../research/2026-10-21-technique-coverage.md">technique-coverage</a>. A hidden single in a box gets
+          a lower weight than one in a row or a column, so the table has two lines for it.
+        </p>
+
+        <table class="compact">
+          <thead><tr><th>Technique</th><th>Level</th><th>Weight</th><th>The idea in one line</th><th>File</th></tr></thead>
+          <tbody>
+            <tr><td>Full house</td><td><span class="lvl easy">easy</span></td><td>1.0</td><td>A unit has one empty cell. Put the missing digit there.</td><td><code>singles.ts</code></td></tr>
+            <tr><td>Hidden single (box)</td><td><span class="lvl easy">easy</span></td><td>1.2</td><td>A digit fits in one cell only, inside a box.</td><td><code>singles.ts</code></td></tr>
+            <tr><td>Hidden single (row, column)</td><td><span class="lvl easy">easy</span></td><td>1.5</td><td>The same, inside a row or a column.</td><td><code>singles.ts</code></td></tr>
+            <tr><td>Naked single</td><td><span class="lvl easy">easy</span></td><td>2.3</td><td>A cell has one candidate left.</td><td><code>singles.ts</code></td></tr>
+            <tr><td>Pointing</td><td><span class="lvl medium">medium</span></td><td>2.6</td><td>A digit in a box lies on one line. Remove it from the rest of the line.</td><td><code>intersections.ts</code></td></tr>
+            <tr><td>Box-line reduction</td><td><span class="lvl medium">medium</span></td><td>2.8</td><td>A digit in a line lies in one box. Remove it from the rest of the box.</td><td><code>intersections.ts</code></td></tr>
+            <tr><td>Naked pair</td><td><span class="lvl medium">medium</span></td><td>3.0</td><td>Two cells of a unit share the same two candidates. Remove those from the other cells.</td><td><code>subsets.ts</code></td></tr>
+            <tr><td>X-wing</td><td><span class="lvl hard">hard</span></td><td>3.2</td><td>A digit sits in the same two columns in two rows. Remove it from those columns elsewhere.</td><td><code>fish.ts</code></td></tr>
+            <tr><td>Hidden pair</td><td><span class="lvl medium">medium</span></td><td>3.4</td><td>Two digits fit in the same two cells of a unit. Remove the other candidates of those cells.</td><td><code>subsets.ts</code></td></tr>
+            <tr><td>Naked triple</td><td><span class="lvl medium">medium</span></td><td>3.6</td><td>The naked pair idea with three cells.</td><td><code>subsets.ts</code></td></tr>
+            <tr><td>Swordfish</td><td><span class="lvl hard">hard</span></td><td>3.8</td><td>The X-wing idea with three rows and three columns.</td><td><code>fish.ts</code></td></tr>
+            <tr><td>Hidden triple</td><td><span class="lvl medium">medium</span></td><td>4.0</td><td>The hidden pair idea with three digits.</td><td><code>subsets.ts</code></td></tr>
+            <tr><td>Skyscraper</td><td><span class="lvl hard">hard</span></td><td>4.0</td><td>Two lines hold a digit twice and share one end. The cells that see both other ends lose the digit.</td><td><code>singleDigit.ts</code></td></tr>
+            <tr><td>Two-string kite</td><td><span class="lvl hard">hard</span></td><td>4.1</td><td>A row and a column link a digit through a box. The cell that sees both ends loses it.</td><td><code>singleDigit.ts</code></td></tr>
+            <tr><td>XY-wing</td><td><span class="lvl hard">hard</span></td><td>4.2</td><td>A cell with two candidates and two partner cells. Whatever the pivot is, a shared digit goes.</td><td><code>wings.ts</code></td></tr>
+            <tr><td>XYZ-wing</td><td><span class="lvl hard">hard</span></td><td>4.4</td><td>The XY-wing with a pivot of three candidates.</td><td><code>wings.ts</code></td></tr>
+            <tr><td>W-wing</td><td><span class="lvl hard">hard</span></td><td>4.4</td><td>Two cells with the same two candidates, joined by a strong link on one digit.</td><td><code>wings.ts</code></td></tr>
+            <tr><td>Unique rectangle</td><td><span class="lvl expert">expert</span></td><td>4.5</td><td>Avoid a pattern that would give two solutions. Works only when the puzzle has one solution.</td><td><code>rectangles.ts</code></td></tr>
+            <tr><td>Simple colouring</td><td><span class="lvl expert">expert</span></td><td>4.6</td><td>Colour the cells of one digit in two colours. Exactly one colour is true.</td><td><code>colouring.ts</code></td></tr>
+            <tr><td>Naked quad</td><td><span class="lvl hard">hard</span></td><td>5.0</td><td>The naked pair idea with four cells.</td><td><code>subsets.ts</code></td></tr>
+            <tr><td>Jellyfish</td><td><span class="lvl hard">hard</span></td><td>5.2</td><td>The X-wing idea with four rows and four columns.</td><td><code>fish.ts</code></td></tr>
+            <tr><td>Hidden quad</td><td><span class="lvl hard">hard</span></td><td>5.4</td><td>The hidden pair idea with four digits.</td><td><code>subsets.ts</code></td></tr>
+            <tr><td>X-chain</td><td><span class="lvl expert">expert</span></td><td>6.5</td><td>A chain of strong and weak links on one digit.</td><td><code>chains.ts</code></td></tr>
+            <tr><td>XY-chain</td><td><span class="lvl expert">expert</span></td><td>6.6</td><td>A chain of two-candidate cells.</td><td><code>chains.ts</code></td></tr>
+          </tbody>
+        </table>
+        <div class="callout note">
+          <span class="callout-title">Look at the Level column</span>
+          The weights rise down the table, but the levels do not. The X-wing (3.2) is <em>hard</em>. The naked triple
+          (3.6) is <em>medium</em>. The weight orders the techniques by how a person finds them. The level says how
+          hard a puzzle feels. The grading section below shows how the code keeps the two apart.
+        </div>
+
+        <h3>See the techniques on a real board</h3>
+        <p>
+          These six examples come from <code>TECHNIQUE_PAGES</code> in <code>hint/pages.ts</code>: real positions of
+          generated puzzles. They are the same boards that the "Learn more" page of the app shows. Pick a tab. Candidate
+          digits show in the cells that matter.
+        </p>
+        <ul style="font-size:14.5px">
+          <li><strong>Orange cell</strong>: the pattern, or the target of a placement.</li>
+          <li><strong>Amber cells</strong>: the focus unit, the place to look.</li>
+          <li><strong>Violet cells</strong>: the support, digits on the board that cause the step.</li>
+          <li><strong>Red struck digit</strong>: a candidate that the step removes.</li>
+        </ul>
+
+        <div class="tabs" data-tabs>
+          <section data-tab="Naked single">
+            <div class="lab-row">
+              <div class="board" id="ex-naked"></div>
+              <div class="lab-side">
+                <p><strong>Cell row 6, column 6 can only be a 2.</strong></p>
+                <p>
+                  Look at the cell's row, column and box (amber). The violet cells hold the other eight digits. No
+                  other digit can go in the orange cell. So it must be a 2.
+                </p>
+                <p>This is the easiest technique that starts from one cell. It looks at the cell, not at a unit.</p>
+              </div>
+            </div>
+          </section>
+          <section data-tab="Hidden single">
+            <div class="lab-row">
+              <div class="board" id="ex-hidden"></div>
+              <div class="lab-side">
+                <p><strong>In the top-middle box, only one cell can hold a 6.</strong></p>
+                <p>
+                  The box is amber. The three violet cells hold a 6 each. Their rows and columns cross the box and
+                  block every other empty cell for a 6. The orange cell is the one place left.
+                </p>
+                <p>The cell may have other candidates. That does not matter: the digit has only one home in the unit.</p>
+              </div>
+            </div>
+          </section>
+          <section data-tab="Pointing">
+            <div class="lab-row">
+              <div class="board" id="ex-pointing"></div>
+              <div class="lab-side">
+                <p><strong>A 5 in the top-right box points down a column.</strong></p>
+                <p>
+                  In the amber box, the 5 can only go in the two orange cells. Both lie in column 8 (amber). So the 5
+                  of column 8 must be in that box. Any other cell of the column cannot be a 5. The struck 5 shows
+                  the cell that loses it.
+                </p>
+              </div>
+            </div>
+          </section>
+          <section data-tab="Box-line">
+            <div class="lab-row">
+              <div class="board" id="ex-boxline"></div>
+              <div class="lab-side">
+                <p><strong>A 2 in column 3 stays inside one box.</strong></p>
+                <p>
+                  In the amber column, the 2 fits in two cells only. Both lie in the bottom-left box (amber). So the 2
+                  of the box must be in column 3. The other box cells lose their 2.
+                </p>
+                <p>This is pointing seen from the other side: a line that points into a box.</p>
+              </div>
+            </div>
+          </section>
+          <section data-tab="Naked pair">
+            <div class="lab-row">
+              <div class="board" id="ex-pair"></div>
+              <div class="lab-side">
+                <p><strong>Two cells hold only 3 and 7.</strong></p>
+                <p>
+                  In the amber box, the two orange cells both have the candidates 3 and 7 and nothing else. They will
+                  use both digits. So no other cell of the box can be a 3 or a 7.
+                </p>
+              </div>
+            </div>
+          </section>
+          <section data-tab="X-wing">
+            <div class="lab-row">
+              <div class="board" id="ex-xwing"></div>
+              <div class="lab-side">
+                <p><strong>Four corners hold an 8, in a rectangle.</strong></p>
+                <p>
+                  Rows 1 and 9 (amber) hold the 8 in the same two columns only: columns 3 and 9 (amber). The 8 must
+                  fill two opposite corners of the rectangle. Either way, columns 3 and 9 get their 8 from those
+                  rows. So the 8 leaves every other cell of the two columns.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <h3>Try it: find the next step</h3>
+        <p>
+          Now play the technique solver yourself. This demo has the finders of the first four ranks: full house,
+          hidden single and naked single. They are ports of <code>technique/singles.ts</code>. Press
+          <strong>Find next step</strong>. The page picks the step that <code>nextSteps</code> would pick, shows
+          <em>why</em>, and waits. Press <strong>Apply it</strong> to place the digit.
+        </p>
+
+        <div class="figure" id="finder-lab">
+          <div class="lab-buttons" id="finder-puzzles">
+            <button class="btn" type="button" data-puzzle="easy" aria-pressed="true">Easy puzzle</button>
+            <button class="btn" type="button" data-puzzle="medium" aria-pressed="false">Medium puzzle</button>
+            <button class="btn" type="button" data-puzzle="hard" aria-pressed="false">Hard puzzle</button>
+          </div>
+          <div class="lab-row">
+            <div class="board lab" id="finder-board" aria-label="A puzzle for the single finder"></div>
+            <div class="lab-side">
+              <div class="lab-buttons">
+                <button class="btn primary" type="button" id="finder-find">Find next step</button>
+                <button class="btn" type="button" id="finder-apply" disabled>Apply it</button>
+                <button class="btn" type="button" id="finder-auto">Apply to the end</button>
+                <button class="btn" type="button" id="finder-reset">Reset</button>
+              </div>
+              <label class="lab-label"><input type="checkbox" id="finder-notes" /> Show candidates</label>
+              <div class="counters" id="finder-counters"></div>
+              <div class="readout" id="finder-explain" style="font-family: var(--sans)" aria-live="polite"></div>
+            </div>
+          </div>
+          <p class="caption">
+            Try the hard puzzle. Singles take it a good way, then the demo stops. The real solver goes on with
+            pointing, box-line, pairs and the rest of the table.
+          </p>
+        </div>
+
+        <details class="deep">
+          <summary>How a finder works: the hidden single in code</summary>
+          <p><code>findHiddenSingles(candidates, board, kinds)</code> in <code>singles.ts</code> does this:</p>
+          <ol>
+            <li>It walks the units of the wanted kinds: boxes first for the cheap rank, then rows and columns.</li>
+            <li>For each digit 1 to 9, it skips the unit if the digit is already placed there.</li>
+            <li>It collects the cells of the unit whose mask has the digit's bit.</li>
+            <li>When exactly one cell is left, it builds a step with that placement.</li>
+            <li>It stores a key (<code>cell * 10 + digit</code>) so that a digit that is hidden in two units gives one step only.</li>
+            <li>For the support, it asks each other empty cell of the unit for its <code>blockerOf</code>: the peer with the lowest cell number that holds the digit.</li>
+          </ol>
+          <p>
+            The fixed choice in the last point matters. When several peers hold the digit, the code always picks the
+            lowest. The output never changes between two runs, so Vitest can pin a hint to the exact cells.
+          </p>
+        </details>
+
+        <details class="deep">
+          <summary>The harder families, in a few words</summary>
+          <ul>
+            <li>
+              <strong>Subsets</strong> (<code>subsets.ts</code>): naked and hidden pairs, triples and quads. The code
+              tries every combination of 2, 3 or 4 cells (or digits) in a unit. It rejects a combination that has a
+              smaller group inside it, so a triple never repeats a pair.
+            </li>
+            <li>
+              <strong>Fish</strong> (<code>fish.ts</code>): X-wing, swordfish, jellyfish. A fish of size n uses n base
+              lines and n cover lines. The code runs once with rows as base lines and once with columns.
+            </li>
+            <li>
+              <strong>Single-digit patterns</strong> (<code>singleDigit.ts</code>): skyscraper and two-string kite.
+              Both link two "strong links" of one digit.
+            </li>
+            <li>
+              <strong>Wings</strong> (<code>wings.ts</code>): XY, XYZ and W. They use cells with two or three
+              candidates.
+            </li>
+            <li>
+              <strong>Unique rectangle</strong> (<code>rectangles.ts</code>): the only rank with
+              <code>needsUnique: true</code>. It is wrong for a puzzle with two solutions, so
+              <code>nextSteps</code> skips it unless the caller passes <code>{ unique: true }</code>.
+            </li>
+            <li>
+              <strong>Colouring and chains</strong> (<code>colouring.ts</code>, <code>chains.ts</code>): the most
+              powerful and the slowest. Their steps carry <code>groups</code> and <code>links</code>.
+            </li>
+          </ul>
+          <p>
+            The developer wrote all of them clean-room: the logic comes from reading HoDoKu and SudokuWiki, and the
+            code copies nothing (ADR-032, point 15).
+          </p>
+        </details>
+
+        <h2 id="grading">7. Grading: how hard is this puzzle?</h2>
+        <p>
+          <strong>The problem.</strong> The app offers four levels: easy, medium, hard and expert. "Hard" must mean the
+          same for every puzzle. Counting clues is a poor measure: a puzzle with 30 clues can be a stroll or a wall.
+          What makes a puzzle hard is the <em>reasoning</em> that a person needs.
+        </p>
+        <p>
+          <strong>The picture.</strong> Think of a climbing route. Its grade is the hardest single move on it, not the
+          number of handholds. The engine plays the puzzle through with the technique solver and looks at the hardest
+          technique it needed.
+        </p>
+        <p>
+          The function is <code>grade(givens)</code> in <code>grading/grade.ts</code>. It needs a puzzle with exactly one
+          solution. It returns a <code>Grade</code>:
+        </p>
+        <table class="compact">
+          <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>level</code></td><td><code>easy</code>, <code>medium</code>, <code>hard</code>, <code>expert</code>, or <code>beyond</code> when the technique solver does not finish. <code>beyond</code> is not a level of the game.</td></tr>
+            <tr><td><code>hardest</code></td><td>The hardest technique used. First by level, then by weight inside a level.</td></tr>
+            <tr><td><code>score</code></td><td>The sum of the weights of all steps, in Sudoku Explainer points.</td></tr>
+            <tr><td><code>choice</code></td><td>A measure of how many moves a player can pick from. Explained below.</td></tr>
+            <tr><td><code>steps</code></td><td>The number of steps the solve took.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>The level ladder</h3>
+        <p>
+          The map <code>TECHNIQUE_LEVEL</code> in <code>grading/levels.ts</code> gives each technique a level. The level
+          of a puzzle is the level of its hardest technique. It is a <code>Record</code> over all technique ids, so
+          adding a new technique id fails the typecheck until someone gives it a level. Click a step of the ladder.
+        </p>
+
+        <div class="figure explorer" data-explorer>
+          <svg viewBox="0 0 760 300" role="img" aria-label="Four steps of a ladder: easy, medium, hard and expert, with their techniques and givens floors">
+            <line class="grid-line thick" x1="10" y1="276" x2="750" y2="276" />
+            <g data-node="easy">
+              <rect class="box green" x="10" y="186" width="170" height="90" rx="10" />
+              <text class="label" x="95" y="216" text-anchor="middle">Easy</text>
+              <text class="sublabel" x="95" y="238" text-anchor="middle">3 techniques</text>
+              <text class="sublabel" x="95" y="256" text-anchor="middle">the singles</text>
+            </g>
+            <g data-node="medium">
+              <rect class="box blue" x="200" y="146" width="170" height="130" rx="10" />
+              <text class="label" x="285" y="176" text-anchor="middle">Medium</text>
+              <text class="sublabel" x="285" y="198" text-anchor="middle">6 techniques</text>
+              <text class="sublabel" x="285" y="216" text-anchor="middle">pointing, pairs,</text>
+              <text class="sublabel" x="285" y="234" text-anchor="middle">triples</text>
+            </g>
+            <g data-node="hard">
+              <rect class="box amber" x="390" y="96" width="170" height="180" rx="10" />
+              <text class="label" x="475" y="126" text-anchor="middle">Hard</text>
+              <text class="sublabel" x="475" y="148" text-anchor="middle">10 techniques</text>
+              <text class="sublabel" x="475" y="166" text-anchor="middle">fish, wings, quads,</text>
+              <text class="sublabel" x="475" y="184" text-anchor="middle">skyscraper, kite</text>
+            </g>
+            <g data-node="expert">
+              <rect class="box accent" x="580" y="36" width="170" height="240" rx="10" />
+              <text class="label" x="665" y="66" text-anchor="middle">Expert</text>
+              <text class="sublabel" x="665" y="88" text-anchor="middle">4 techniques</text>
+              <text class="sublabel" x="665" y="106" text-anchor="middle">rectangle, colouring,</text>
+              <text class="sublabel" x="665" y="124" text-anchor="middle">chains</text>
+            </g>
+          </svg>
+          <p class="hint">Click a step to read about it.</p>
+          <div class="panel" data-panel="easy">
+            <h4>Easy</h4>
+            <p>
+              Full house, hidden single, naked single. A puzzle is easy when it needs only singles <em>and</em> its
+              choice is 19 or more. The generator removes clues down to a floor of 40 givens.
+            </p>
+          </div>
+          <div class="panel" data-panel="medium">
+            <h4>Medium</h4>
+            <p>
+              Pointing, box-line, naked and hidden pairs and triples. A puzzle that needs only singles, but with a
+              choice below 19, is medium too. The floor is 34 givens. About 91 in 100 attempts at 34 givens are medium.
+            </p>
+          </div>
+          <div class="panel" data-panel="hard">
+            <h4>Hard</h4>
+            <p>
+              X-wing, swordfish, jellyfish, skyscraper, two-string kite, the three wings, naked and hidden quads. The
+              floor is 29 givens. About 9 in 100 attempts give a hard puzzle.
+            </p>
+          </div>
+          <div class="panel" data-panel="expert">
+            <h4>Expert</h4>
+            <p>
+              Unique rectangle, simple colouring, X-chain and XY-chain. The floor is 25 givens. Only about 8 in 100
+              attempts give an expert puzzle, so the generator may need a dozen attempts.
+            </p>
+          </div>
+        </div>
+
+        <h3>Why there is a second order: <code>GRADE_ORDER</code></h3>
+        <p>
+          <code>TECHNIQUE_ORDER</code> puts the X-wing (hard) before the hidden pair (medium), because that is how
+          people find them. If grading used that order, a puzzle that medium techniques can solve might use an X-wing
+          on the way and grade as <em>hard</em>. That would be unfair.
+        </p>
+        <p>
+          So <code>levels.ts</code> builds <code>GRADE_ORDER</code>: all easy ranks first, then all medium ranks, then
+          hard, then expert. Inside a level it keeps the order of <code>TECHNIQUE_ORDER</code>. A harder technique now
+          runs only when no easier level helps. The grade then shows the true minimum of what the puzzle needs.
+        </p>
+
+        <h3>The choice: the same techniques can feel different</h3>
+        <p>
+          Here is a surprise. Look at two real puzzles from the demo above. Both need <em>only singles</em>. But one
+          is easy and one is medium. How?
+        </p>
+        <table class="compact">
+          <thead><tr><th>Puzzle</th><th>Givens</th><th>Hardest</th><th>Score</th><th>Choice</th><th>Steps</th><th>Level</th></tr></thead>
+          <tbody>
+            <tr><td>Easy puzzle (seed 1)</td><td>40</td><td>hidden single</td><td>45</td><td><strong>19.24</strong></td><td>41</td><td><span class="lvl easy">easy</span></td></tr>
+            <tr><td>Medium puzzle (seed 1)</td><td>34</td><td>hidden single</td><td>52.2</td><td><strong>13</strong></td><td>47</td><td><span class="lvl medium">medium</span></td></tr>
+            <tr><td>Hard puzzle (seed 1)</td><td>29</td><td>XYZ-wing</td><td>82.8</td><td>3.08</td><td>58</td><td><span class="lvl hard">hard</span></td></tr>
+            <tr><td>Expert puzzle of the solver demo (seed 50)</td><td>25</td><td>XY-chain</td><td>77</td><td>9.48</td><td>58</td><td><span class="lvl expert">expert</span></td></tr>
+          </tbody>
+        </table>
+        <p>
+          The difference is the <strong>choice</strong>. At each point of the solve, how many cells can a player fill
+          right now with a single? When many cells are open at once, the puzzle is generous: any move works, the player
+          never hunts. When only one cell is open at each point, the player must search for it. That feels harder, even
+          though the technique is the same.
+        </p>
+        <p>
+          The rule: a puzzle that needs only singles is <em>easy</em> when its choice is at least
+          <code>EASY_MIN_CHOICE = 19</code>, and <em>medium</em> when it is lower. The value 19 comes from measuring
+          10 000 puzzles. The data is in
+          <a href="../research/2026-10-21-technique-grading.md">the grading research record</a>.
+        </p>
+
+        <details class="deep">
+          <summary>How <code>choiceOf</code> counts</summary>
+          <p>The function plays the puzzle in <em>rounds</em>, and it measures only the first <code>CHOICE_MOVES = 25</code> moves.</p>
+          <ol>
+            <li>A round fills <em>every</em> cell that a single can fill, all at once.</li>
+            <li>It counts one move per cell. The <em>value</em> of each move is the number of cells in the round.</li>
+            <li>When no single applies, it applies the first step of <code>GRADE_ORDER</code> and counts one move with the value 0.</li>
+            <li>The choice is the mean value of the moves.</li>
+          </ol>
+          <p>
+            A test example: a round that fills 2 cells counts two moves of value 2, so the choice is 2. A grid with a
+            whole empty row has one round of 9 cells: nine moves of value 9, so the choice is 9. Because rounds do not
+            depend on the scan order, the choice stays the same when a puzzle is rotated, transposed or relabelled.
+            <code>grading/symmetry.ts</code> provides those transforms for the tests.
+          </p>
+        </details>
+
+        <details class="deep">
+          <summary><code>gradesAs</code>: a faster question for the generator</summary>
+          <p>
+            The generator asks one question many times: "does this puzzle grade as <em>hard</em>?" It does not need the
+            full grade. <code>gradesAs(givens, level)</code> runs the solver with the ranks up to the wanted level only.
+            If it needs a harder rank, it stops with <code>false</code> at once. It also skips the choice unless the
+            hardest technique is a single. A test proves that it always agrees with <code>grade()</code>.
+          </p>
+        </details>
+
+        <p>
+          The app also uses <code>grade()</code> on <em>scanned</em> puzzles, in
+          <code>mobile/src/game/utils/newGame.utils.ts</code>. A scanned puzzle never counts for the best time, because
+          its level is an estimate (ADR-011).
+        </p>
+
+        <div class="quiz" data-quiz>
+          <p class="q">
+            A puzzle needs only naked singles and hidden singles. At every point, only one or two cells can be filled.
+            What level does the engine give it?
+          </p>
+          <div class="options">
+            <button>Easy, because singles are easy techniques.</button>
+            <button data-correct>Medium, because its choice is below 19.</button>
+            <button>Hard, because it has few options.</button>
+            <button><code>beyond</code>, because it cannot be solved.</button>
+          </div>
+          <p class="explain">
+            Singles solve it, so it is not <code>beyond</code>, and it is not hard. But a low choice makes it feel
+            harder than an easy puzzle. <code>levelOf</code> in <code>grade.ts</code> turns an "easy" technique level
+            into <em>medium</em> when the choice is below <code>EASY_MIN_CHOICE</code>.
+          </p>
+        </div>
+
+        <h2 id="generator">8. The generator: making a puzzle with one solution</h2>
+        <p>
+          <strong>The problem.</strong> The app wants endless puzzles. Each needs exactly one solution and the level
+          that the player chose. And a puzzle must be <em>reproducible</em>: when a friend types the same puzzle number,
+          they must get the same board. The engine must do all this on a phone, in a blink.
+        </p>
+        <p>
+          <strong>The picture.</strong> A sculptor starts with a full block of stone and chips pieces away. After each
+          chip, the sculptor checks: can I still see only one statue? If a chip would let a second statue hide in the
+          stone, the chip goes back. At the end, a judge looks at the statue and decides the level. A statue of the wrong
+          level goes back to the block, and the sculptor starts again.
+        </p>
+
+        <h3>The seed: one number names one puzzle</h3>
+        <p>
+          <code>random.ts</code> holds <code>createRandom(seed)</code>. It is
+          <em>Mulberry32</em>, a tiny random number generator. A seed in, a stream of numbers in [0, 1) out. The same
+          seed gives the same stream on every device and every JavaScript engine. That is why the finish card can say
+          "Puzzle 412 077": the seed <em>is</em> the number. The app draws seeds below one million, but
+          <code>generate()</code> accepts any integer up to <code>0xffffffff</code>.
+        </p>
+        <p>
+          The second helper is <code>shuffled(items, random)</code>, a Fisher–Yates shuffle on a copy. Everything that
+          looks random in the generator (the digit order, the clue order) goes through these two functions. Nothing
+          calls <code>Math.random()</code>.
+        </p>
+
+        <h3>The pipeline</h3>
+        <div class="figure stepper" data-stepper tabindex="0">
+          <svg viewBox="0 0 760 200" role="img" aria-label="Generator pipeline: seed, full grid, remove clues, grade, keep or retry">
+            <defs>
+              <marker id="g2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g data-steps="1,2">
+              <rect class="box violet" x="10" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="75" y="52" text-anchor="middle">Seed</text>
+              <text class="sublabel" x="75" y="72" text-anchor="middle">createRandom</text>
+            </g>
+            <path class="edge" data-steps="2" d="M140,55 L160,55" marker-end="url(#g2-arrow)" />
+            <g data-steps="2,3">
+              <rect class="box blue" x="160" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="225" y="52" text-anchor="middle">Full grid</text>
+              <text class="sublabel" x="225" y="72" text-anchor="middle">fullGrid()</text>
+            </g>
+            <path class="edge" data-steps="3" d="M290,55 L310,55" marker-end="url(#g2-arrow)" />
+            <g data-steps="3,4">
+              <rect class="box accent" x="310" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="375" y="52" text-anchor="middle">Remove clues</text>
+              <text class="sublabel" x="375" y="72" text-anchor="middle">removeGivens()</text>
+            </g>
+            <path class="edge" data-steps="4" d="M440,55 L460,55" marker-end="url(#g2-arrow)" />
+            <g data-steps="4,5">
+              <rect class="box amber" x="460" y="20" width="130" height="70" rx="10" />
+              <text class="label" x="525" y="52" text-anchor="middle">Grade it</text>
+              <text class="sublabel" x="525" y="72" text-anchor="middle">gradesAs()</text>
+            </g>
+            <path class="edge" data-steps="5" d="M590,55 L610,55" marker-end="url(#g2-arrow)" />
+            <g data-steps="5,6">
+              <rect class="box green" x="610" y="20" width="140" height="70" rx="10" />
+              <text class="label" x="680" y="52" text-anchor="middle">Keep or retry</text>
+              <text class="sublabel" x="680" y="72" text-anchor="middle">up to 250 times</text>
+            </g>
+            <path class="edge dashed" data-steps="5,6" d="M680,90 L680,140 L225,140 L225,94" marker-end="url(#g2-arrow)" />
+            <text class="sublabel" data-steps="5,6" x="250" y="132">wrong level: a new full grid from the same stream</text>
+            <text class="sublabel" data-steps="6" x="10" y="176">All 250 attempts missed: take the nearest level. This is very rare.</text>
+          </svg>
+          <div class="step"><p class="step-title">1. A seed starts one random stream</p><p><code>generate(level, seed)</code> checks the arguments. It throws a <code>RangeError</code> for an unknown level or a seed that is not an integer from 0 to <code>0xffffffff</code>. Then <code>generateAtLevel</code> makes one stream with <code>createRandom(seed)</code>. All attempts share it.</p></div>
+          <div class="step"><p class="step-title">2. Build a full, valid grid</p><p><code>fullGrid(random)</code> fills the cells 0 to 80 in order. For each cell it tries the digits in a shuffled order and skips any that the row, column or box holds. When a later cell has no digit left, it backtracks. The finished grid is the <em>solution</em>.</p></div>
+          <div class="step"><p class="step-title">3. Remove clues, but keep one solution</p><p><code>removeGivens</code> shuffles the 81 cells. For each cell it empties it, then asks: could another digit fit here and still give a valid grid? If yes, the clue goes back. If no, it stays removed. The removal stops at the <em>givens floor</em> of the level, or when the list ends.</p></div>
+          <div class="step"><p class="step-title">4. Ask a judge</p><p><code>gradesAs(givens, level)</code> plays the puzzle through with the technique solver, only up to the wanted level. It is true when the grade equals the level.</p></div>
+          <div class="step"><p class="step-title">5. Keep it, or try again</p><p>A match returns a <code>Puzzle</code>: <code>{ level, seed, givens, solution }</code>. A miss draws the next full grid from the same stream. The stream has moved on, so the next grid is new. The loop runs at most <code>MAX_ATTEMPTS = 250</code> times.</p></div>
+          <div class="step"><p class="step-title">6. The fallback</p><p>If every attempt misses, the generator grades them and picks the one nearest to the wanted level. At the same distance, a level <em>below</em> wins: a puzzle that is too easy is safer than one that is too hard. If every attempt is <code>beyond</code>, it reveals clues until the solver can finish. The result is never <code>beyond</code>, and it is still the same on every device.</p></div>
+        </div>
+
+        <div class="callout why">
+          <span class="callout-title">The floor does not set the level</span>
+          Older versions picked the level by the number of clues (easy 40, medium 34, hard 29, expert 25). That was a
+          poor measure of difficulty. Now those numbers are only a <strong>floor</strong>: the point where the
+          removal stops. The <em>grade</em> decides the level. A hard puzzle may keep more than 29 clues when the
+          removal cannot go lower. It is still a valid hard puzzle (ADR-011, amendment "generation by technique").
+        </div>
+
+        <table class="compact">
+          <thead><tr><th>Level</th><th>Givens floor</th><th>Share of attempts that match</th><th>Attempts per puzzle</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lvl easy">easy</span></td><td>40</td><td>53 %</td><td>1.9</td></tr>
+            <tr><td><span class="lvl medium">medium</span></td><td>34</td><td>91 %</td><td>1.1</td></tr>
+            <tr><td><span class="lvl hard">hard</span></td><td>29</td><td>8.6 %</td><td>11.6</td></tr>
+            <tr><td><span class="lvl expert">expert</span></td><td>25</td><td>7.8 %</td><td>12.8</td></tr>
+          </tbody>
+        </table>
+        <p>
+          The numbers come from ADR-011. The floor with the lowest expected time per puzzle won. A puzzle takes about
+          one millisecond for easy and medium, and about 10 to 30 ms for hard and expert on a Mac. The chance that
+          all 250 attempts miss for expert is about 1.5 in a billion.
+        </p>
+
+        <h3>Play with the removal</h3>
+        <p>
+          This lab runs the real procedure. Press <strong>Build full grid</strong>. Then press
+          <strong>Remove next clue</strong> and read the log. Each line says how many solutions the puzzle would have
+          without the clue. A clue that leaves exactly 1 solution may go. You can also click a cell yourself: remove a
+          clue, and watch the solution count.
+        </p>
+
+        <div class="figure" id="gen-lab">
+          <div class="lab-buttons">
+            <label class="lab-label" for="gen-seed">Seed</label>
+            <input class="lab-input" type="number" id="gen-seed" value="7" min="0" max="4294967295" />
+            <label class="lab-label" for="gen-target">Stop at</label>
+            <input class="lab-input" type="number" id="gen-target" value="30" min="17" max="80" />
+            <button class="btn primary" type="button" id="gen-build">Build full grid</button>
+            <button class="btn" type="button" id="gen-next" disabled>Remove next clue</button>
+            <button class="btn" type="button" id="gen-ten" disabled>Try 10 clues</button>
+            <button class="btn" type="button" id="gen-all" disabled>Finish</button>
+          </div>
+          <div class="lab-row">
+            <div class="board lab" id="gen-board" aria-label="The generator lab board"></div>
+            <div class="lab-side">
+              <div class="counters" id="gen-counters"></div>
+              <ul class="eventlog" id="gen-log" aria-live="polite"></ul>
+            </div>
+          </div>
+          <p class="caption">
+            With seed 7 and 30 clues, the page builds the same full grid and removes clues in the same order as
+            <code>generateWithTarget(30, 7)</code> in the engine. It skips the grading step, so the puzzle has one
+            solution, but no level is checked.
+          </p>
+        </div>
+
+        <h2 id="hints">9. Hints that teach</h2>
+        <p>
+          <strong>The problem.</strong> A hint that only shows a digit teaches nothing. The player gets the answer and
+          learns nothing for the next puzzle. The project wants a coach: first "where to look", then "what technique",
+          then "why", and the digit last. The player may stop at any point and finish alone.
+          <a href="../architecture/adr/adr-032-hints-that-teach.md">ADR-032</a> records the decision, and
+          <a href="../architecture/00-concepts/hints.md">the hints concept</a> describes it.
+        </p>
+        <p>
+          <strong>The picture.</strong> A good teacher at your shoulder. First the teacher points at a row. Then names
+          the trick. Then explains it. Only when you ask again, the teacher says the digit.
+        </p>
+
+        <h3>Four rungs for each step</h3>
+        <table class="compact">
+          <thead><tr><th>Rung</th><th>The card says</th><th>Costs a hint?</th></tr></thead>
+          <tbody>
+            <tr><td>1 Look</td><td>Where to look: "Look at row 8."</td><td>No</td></tr>
+            <tr><td>2 Technique</td><td>The name and a one-line definition</td><td>No</td></tr>
+            <tr><td>3 Why</td><td>One or two sentences of reasoning</td><td>No</td></tr>
+            <tr><td>4 Answer</td><td>"Put 5 in row 8, column 7." Or "Remove 5 from column 8."</td><td>Yes, when it shows a <em>placement</em></td></tr>
+          </tbody>
+        </table>
+
+        <h3>A hint is a plan</h3>
+        <p>
+          Sometimes the next digit has no direct technique. The 5 may only appear after another step removes a
+          candidate. So a hint is not one step but a <strong>hint plan</strong>: a short list of steps that ends in a
+          placed digit. <code>planHint(game)</code> in <code>hint/plan.ts</code> builds it. The result has one of three
+          shapes (the type <code>HintPlan</code> in <code>hint/types.ts</code>):
+        </p>
+        <ul>
+          <li><code>mistake</code>: the board holds a wrong entry. The card says "Erase it first". This hint does not count.</li>
+          <li><code>steps</code>: 1 to 6 steps. Only the last one places a digit. Its <code>answer</code> is that placement.</li>
+          <li><code>fallback</code>: no hint technique reaches a placement in 6 steps. The answer is the empty cell with the fewest candidates.</li>
+        </ul>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 310" role="img" aria-label="How planHint chooses between a mistake plan, a steps plan and a fallback plan">
+            <defs>
+              <marker id="h2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box blue" x="10" y="20" width="130" height="64" rx="10" />
+            <text class="label" x="75" y="46" text-anchor="middle">planHint</text>
+            <text class="sublabel" x="75" y="66" text-anchor="middle">game of the player</text>
+            <path class="edge" d="M140,52 L165,52" marker-end="url(#h2-arrow)" />
+            <rect class="box" x="165" y="20" width="150" height="64" rx="10" />
+            <text class="label" x="240" y="46" text-anchor="middle">Wrong entry?</text>
+            <text class="sublabel" x="240" y="66" text-anchor="middle">isWrong on a cell</text>
+            <path class="edge" d="M315,52 L340,52" marker-end="url(#h2-arrow)" />
+            <text class="sublabel" x="318" y="42">no</text>
+            <rect class="box green" x="340" y="20" width="150" height="64" rx="10" />
+            <text class="label" x="415" y="46" text-anchor="middle">Greedy search</text>
+            <text class="sublabel" x="415" y="66" text-anchor="middle">easiest step first</text>
+            <path class="edge" d="M490,52 L515,52" marker-end="url(#h2-arrow)" />
+            <rect class="box amber" x="515" y="20" width="110" height="64" rx="10" />
+            <text class="label" x="570" y="46" text-anchor="middle">Prune</text>
+            <text class="sublabel" x="570" y="66" text-anchor="middle">needed only</text>
+            <path class="edge" d="M625,52 L650,52" marker-end="url(#h2-arrow)" />
+            <rect class="box violet" x="650" y="20" width="100" height="64" rx="10" />
+            <text class="label" x="700" y="46" text-anchor="middle">At most 6</text>
+            <text class="sublabel" x="700" y="66" text-anchor="middle">steps</text>
+
+            <path class="edge" d="M240,84 L240,150" marker-end="url(#h2-arrow)" />
+            <text class="sublabel" x="250" y="124">yes</text>
+            <rect class="box accent" x="165" y="150" width="150" height="64" rx="10" />
+            <text class="label" x="240" y="176" text-anchor="middle">mistake</text>
+            <text class="sublabel" x="240" y="196" text-anchor="middle">Erase it first</text>
+
+            <path class="edge" d="M415,84 L415,150" marker-end="url(#h2-arrow)" />
+            <text class="sublabel" x="425" y="124">no step fits</text>
+            <rect class="box accent" x="340" y="150" width="150" height="64" rx="10" />
+            <text class="label" x="415" y="176" text-anchor="middle">fallback</text>
+            <text class="sublabel" x="415" y="196" text-anchor="middle">fewest candidates</text>
+
+            <text class="sublabel" x="10" y="246">The search takes the easiest step among the techniques that have hint text.</text>
+            <text class="sublabel" x="10" y="266">It applies the eliminations of that step, and repeats, until a step places a digit.</text>
+            <text class="sublabel" x="10" y="286">A plan longer than 6 steps after pruning also becomes a fallback.</text>
+          </svg>
+          <figcaption>The plan never changes the game. The app keeps the open hint in its own session state.</figcaption>
+        </figure>
+
+        <h3>Three design choices that matter</h3>
+        <ol>
+          <li>
+            <strong>The candidates ignore the player's notes.</strong> <code>planHint</code> calls
+            <code>computeCandidates</code> on the givens and the entries only. A player's notes may be wrong. The
+            hint must not copy a wrong note (ADR-032, point 2).
+          </li>
+          <li>
+            <strong>The choice is the same every time.</strong> Among steps of the same rank, <code>byChoice</code>
+            prefers a step that places a digit, then the step nearest to the selected cell, then the lowest unit,
+            pattern cell and digit. So the same board and selection always give the same plan. Vitest can pin it.
+          </li>
+          <li>
+            <strong>Pruning keeps the plan honest.</strong> The greedy search may take an elimination that the final
+            placement does not need. <code>pruned()</code> tries to drop each step and calls <code>replays()</code> to
+            check that the remaining steps still work. Only needed steps stay.
+          </li>
+        </ol>
+
+        <div class="callout why">
+          <span class="callout-title">The engine holds no player text</span>
+          <code>hintMessage(plan, stepIndex, rung)</code> in <code>hint/text.ts</code> returns a message
+          <em>id</em> with values, such as <code>hint.pointing.why</code> with a digit and two units. The app turns it
+          into English or Dutch from <code>mobile/src/i18n/messages/en.ts</code> (ADR-033). Cells and units are indexes
+          in the message. The app writes "row 8, column 7". This keeps the engine free of language, and the typecheck of the app proves
+          that it has a text for every id.
+        </div>
+
+        <h3>A hint, rung by rung</h3>
+        <p>
+          This is a real two-step plan from <code>TECHNIQUE_PAGES</code>. It teaches <em>pointing</em>, which unlocks a
+          <em>hidden single</em>. The card texts are the English texts of the app. The board shows only the digit 5, so
+          you can follow the reasoning.
+        </p>
+
+        <div class="figure" id="hint-lab">
+          <div class="lab-row">
+            <div class="board lab" id="hint-board" aria-label="Board that shows the candidates of the digit 5"></div>
+            <div class="lab-side">
+              <div class="hintcard">
+                <div class="top">
+                  <span id="hint-title">Hint</span>
+                  <span id="hint-step"></span>
+                  <span class="dots" id="hint-dots"></span>
+                </div>
+                <div class="text" id="hint-text" aria-live="polite"></div>
+                <div class="lab-buttons">
+                  <button class="btn primary" type="button" id="hint-more">More help</button>
+                  <button class="btn" type="button" id="hint-show">Show answer</button>
+                  <button class="btn" type="button" id="hint-reset">Start again</button>
+                </div>
+              </div>
+              <div class="readout" id="hint-count"></div>
+            </div>
+          </div>
+          <p class="caption">
+            Orange: where the step points. Amber: the unit to look at. Violet: digits that block the target cell. A
+            red struck 5 is a candidate that the step removes.
+          </p>
+        </div>
+
+        <h3>When does a hint count?</h3>
+        <p>
+          Rungs 1 to 3 are free. A hint counts when the <em>answer</em> shows: the player taps "Fill it", taps "Show
+          answer", or sees the fallback. The function <code>revealHint(game, answer, shown)</code> in
+          <code>game/actions.ts</code> adds 1 to <code>hintsUsed</code>. The same answer counts once in a game session,
+          so a second look adds nothing. <code>fillHint</code> places the answer, selects its cell and counts as
+          <code>revealHint</code> does. A hint is never a mistake.
+        </p>
+
+        <div class="quiz" data-quiz>
+          <p class="q">
+            A player opens a hint, reads rungs 1, 2 and 3, and then closes the card. They find the digit alone. How many
+            hints does the game count?
+          </p>
+          <div class="options">
+            <button data-correct>None.</button>
+            <button>One.</button>
+            <button>Three.</button>
+            <button>One for each rung they read.</button>
+          </div>
+          <p class="explain">
+            A hint counts when its answer shows. Rungs 1 to 3 never show the placement, so they are free. The player
+            can still win a flawless game and a best time. <code>countsForBestTime</code> needs
+            <code>hintsUsed === 0</code>.
+          </p>
+        </div>
+
+        <h2 id="game-and-stats">10. The game and the stats</h2>
+        <p>
+          The last two folders are small. They are still a good lesson in how to write rule code.
+        </p>
+
+        <h3>The <code>Game</code> value</h3>
+        <p>
+          <code>game/types.ts</code> defines <code>Game</code>: the grids <code>givens</code>,
+          <code>solution</code> and <code>entries</code>; the pencil <code>notes</code> for each cell; the
+          <code>selected</code> cell; the counters <code>mistakes</code>, <code>hintsUsed</code> and
+          <code>playedMs</code>; a <code>status</code>; and the <code>undoSteps</code>. Everything is
+          <code>readonly</code>. An action never changes a game. It returns a new one. That makes undo cheap (keep the
+          old value) and makes the React screen simple (a new value means a new render).
+        </p>
+        <p>
+          <code>createGame({ givens, solution, entries })</code> checks that the grids fit together. A given must equal
+          the solution, and a cell may not hold both a given and an entry. It throws a <code>RangeError</code> when
+          they do not. If the entries already solve the grid, the game starts as <code>won</code>.
+        </p>
+
+        <h3>The actions</h3>
+        <table class="compact">
+          <thead><tr><th>Action</th><th>What it does, and the rules inside</th></tr></thead>
+          <tbody>
+            <tr><td><code>select</code></td><td>Marks a cell. Throws for a number outside 0 to 80.</td></tr>
+            <tr><td><code>place</code></td><td>Writes a digit. It clears the notes of that cell and removes the digit from the notes of the 20 peers. A wrong digit adds a mistake, and the third mistake sets <code>lost</code> (<code>MAX_MISTAKES = 3</code>). The last right digit sets <code>won</code>. The same digit again erases the cell.</td></tr>
+            <tr><td><code>toggleNote</code></td><td>Adds or removes one pencil mark in an empty cell.</td></tr>
+            <tr><td><code>erase</code></td><td>Clears the entry and the notes of the selected cell.</td></tr>
+            <tr><td><code>undo</code></td><td>Restores the entries and the notes of the last step (<code>UNDO_LIMIT = 100</code> steps). It never gives back a mistake, a hint or time.</td></tr>
+            <tr><td><code>pause</code>, <code>resume</code></td><td>Switch between <code>playing</code> and <code>paused</code>.</td></tr>
+            <tr><td><code>tick</code></td><td>Adds the milliseconds that the app measured. The engine never reads a clock (SUD-04).</td></tr>
+            <tr><td><code>revealHint</code>, <code>fillHint</code></td><td>Count and place a hint. See the section on hints.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          Every action that changes a cell goes through the helper <code>editableCell</code>. It returns a cell only
+          when the game is <code>playing</code>, a cell is selected and that cell is not a given. Else the action
+          returns the <em>same game object</em>, so the screen can tell that nothing changed.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 250" role="img" aria-label="Game status: playing goes to paused and back, to won on the last right digit, and to lost on the third mistake">
+            <defs>
+              <marker id="s2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box" x="10" y="90" width="150" height="64" rx="10" />
+            <text class="label" x="85" y="118" text-anchor="middle">paused</text>
+            <text class="sublabel" x="85" y="138" text-anchor="middle">the clock stops</text>
+            <rect class="box blue" x="290" y="90" width="170" height="64" rx="10" />
+            <text class="label" x="375" y="118" text-anchor="middle">playing</text>
+            <text class="sublabel" x="375" y="138" text-anchor="middle">all actions work</text>
+            <rect class="box green" x="600" y="20" width="150" height="64" rx="10" />
+            <text class="label" x="675" y="48" text-anchor="middle">won</text>
+            <text class="sublabel" x="675" y="68" text-anchor="middle">grid solved</text>
+            <rect class="box accent" x="600" y="160" width="150" height="64" rx="10" />
+            <text class="label" x="675" y="188" text-anchor="middle">lost</text>
+            <text class="sublabel" x="675" y="208" text-anchor="middle">3 mistakes</text>
+            <path class="edge" d="M290,108 L160,108" marker-end="url(#s2-arrow)" />
+            <text class="sublabel" x="196" y="100">pause()</text>
+            <path class="edge" d="M160,138 L290,138" marker-end="url(#s2-arrow)" />
+            <text class="sublabel" x="192" y="158">resume()</text>
+            <path class="edge" d="M460,102 L600,56" marker-end="url(#s2-arrow)" />
+            <text class="sublabel" x="446" y="68">last right digit</text>
+            <path class="edge" d="M460,142 L600,188" marker-end="url(#s2-arrow)" />
+            <text class="sublabel" x="446" y="190">third mistake</text>
+            <text class="sublabel" x="10" y="244">Won and lost are final. select(), place(), undo() and tick() do nothing outside "playing".</text>
+          </svg>
+          <figcaption>The four values of <code>GameStatus</code>.</figcaption>
+        </figure>
+
+        <h3>What a move completed</h3>
+        <p>
+          <code>place</code> returns a <code>MoveResult</code>: the new <code>game</code> and a <code>Completion</code>
+          with the rows, columns, boxes and digits that the move finished, and whether the whole grid is done.
+          <code>completedBetween(before, after)</code> in <code>game/completion.ts</code> computes it by comparing the
+          two games. The game screen uses it to play the small pulse animations. The engine only reports facts. The app
+          decides how they look.
+        </p>
+
+        <h3>The stats rules</h3>
+        <p>
+          The stats folder holds two rules. A third rule, the clock format, lives in <code>game/</code>. The history lives in a database in the app (SQLite). The database does
+          the counting. The engine only keeps the rules that must be the same everywhere
+          (<a href="../architecture/adr/adr-023-player-stats.md">ADR-023</a>).
+        </p>
+        <ul>
+          <li>
+            <code>countsForBestTime(game)</code> in <code>stats/bestTime.ts</code>: a game counts when it was
+            <strong>won</strong>, <strong>generated</strong> (not scanned) and used <strong>no hints</strong>. A scanned
+            puzzle has only an estimated level. The SQL in the app repeats this rule for speed. A contract test keeps
+            the two the same.
+          </li>
+          <li>
+            <code>formatClock(ms)</code> in <code>game/clock.ts</code> gives "04:12". It rounds <em>down</em> to whole
+            seconds, as the timer does, so the finish card and the stats screen show the same time. There are no
+            hours: 75 minutes show as "75:00".
+          </li>
+          <li>
+            <code>computeStreak(winTimes, now, timeZone)</code> in <code>stats/streak.ts</code> counts the days in a
+            row with a win. SQLite has no time zones, so every implementation uses this function. It groups times by
+            calendar day in the player's time zone with one <code>Intl.DateTimeFormat</code>.
+          </li>
+        </ul>
+        <p>
+          The rule of the streak has one subtle part: <em>today may still get its win</em>. So a streak that ended
+          yesterday is still alive until the end of today. Try it. Click days to mark a win. The orange outline is
+          today, on the right.
+        </p>
+
+        <div class="figure" id="streak-lab">
+          <div class="daystrip" id="streak-days"></div>
+          <div class="counters" id="streak-counters"></div>
+          <p class="caption">
+            The real function looks back over the whole history for the longest run. This demo shows only the last 14
+            days, the same window as <code>Streak.recent</code>.
+          </p>
+        </div>
+
+        <h2 id="putting-it-together">11. Putting it together</h2>
+        <p>
+          Follow one game from start to end and watch which engine function runs. The app owns the screens and the
+          storage. The engine only answers questions.
+        </p>
+
+        <figure class="figure">
+          <svg viewBox="0 0 760 210" role="img" aria-label="The life of a game and the engine functions that run at each stage">
+            <defs>
+              <marker id="p2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <rect class="box violet" x="10" y="30" width="160" height="110" rx="10" />
+            <text class="label" x="90" y="58" text-anchor="middle">New game</text>
+            <text class="sublabel mono" x="90" y="84" text-anchor="middle">generate(level, seed)</text>
+            <text class="sublabel" x="90" y="106" text-anchor="middle">or, after a scan:</text>
+            <text class="sublabel mono" x="90" y="124" text-anchor="middle">solve + grade</text>
+            <path class="edge" d="M170,85 L200,85" marker-end="url(#p2-arrow)" />
+            <rect class="box blue" x="200" y="30" width="160" height="110" rx="10" />
+            <text class="label" x="280" y="58" text-anchor="middle">Play</text>
+            <text class="sublabel mono" x="280" y="84" text-anchor="middle">createGame, place</text>
+            <text class="sublabel mono" x="280" y="106" text-anchor="middle">planHint, tick</text>
+            <text class="sublabel mono" x="280" y="124" text-anchor="middle">undo, pause</text>
+            <path class="edge" d="M360,85 L390,85" marker-end="url(#p2-arrow)" />
+            <rect class="box green" x="390" y="30" width="160" height="110" rx="10" />
+            <text class="label" x="470" y="58" text-anchor="middle">Finish</text>
+            <text class="sublabel mono" x="470" y="84" text-anchor="middle">isSolved, won/lost</text>
+            <text class="sublabel mono" x="470" y="106" text-anchor="middle">countsForBestTime</text>
+            <text class="sublabel mono" x="470" y="124" text-anchor="middle">formatClock</text>
+            <path class="edge" d="M550,85 L580,85" marker-end="url(#p2-arrow)" />
+            <rect class="box amber" x="580" y="30" width="170" height="110" rx="10" />
+            <text class="label" x="665" y="58" text-anchor="middle">Stats</text>
+            <text class="sublabel mono" x="665" y="84" text-anchor="middle">computeStreak</text>
+            <text class="sublabel" x="665" y="106" text-anchor="middle">the app counts the</text>
+            <text class="sublabel" x="665" y="124" text-anchor="middle">rest with SQL</text>
+            <text class="sublabel" x="10" y="176">The scan screen also calls verifyGrid. The solver checks uniqueness at every stage that needs it.</text>
+            <text class="sublabel" x="10" y="196">Chapter 3 shows the screens that call these functions. Chapter 4 shows how a scan becomes a puzzle.</text>
+          </svg>
+          <figcaption>The engine has no state of its own. The app keeps the <code>Game</code> and passes it in.</figcaption>
+        </figure>
+
+        <div class="callout tip">
+          <span class="callout-title">What to remember</span>
+          <ul style="margin:6px 0 0">
+            <li>A grid is 81 numbers. Units and peers are tables made once.</li>
+            <li>Candidates are bit masks. One bit stands for one digit.</li>
+            <li>The backtracking solver <em>counts</em> solutions. It proves uniqueness.</li>
+            <li>The technique solver <em>explains</em> solutions. It finds named steps. The grade and the hints stand on it.</li>
+            <li>The generator removes clues while the puzzle stays unique, and keeps a puzzle only at the right grade.</li>
+            <li>A hint is a plan of at most 6 steps, shown rung by rung. The answer comes last.</li>
+            <li>Every function is pure. Time and chance come in from the app as plain values.</li>
+          </ul>
+        </div>
+
+        <h2 id="where-to-read-more">Where to read more</h2>
+        <ul>
+          <li><a href="01-big-picture.html">Chapter 1: the big picture</a>, for where the engine sits among the other parts.</li>
+          <li><a href="03-the-app.html">Chapter 3: the app and the game screen</a>, which calls the engine.</li>
+          <li><a href="04-scan-pipeline.html">Chapter 4: scanning a paper sudoku</a>, where <code>verifyGrid</code>, <code>solve</code> and <code>grade</code> check a scanned puzzle.</li>
+          <li><a href="../architecture/adr/adr-011-puzzle-generation-and-hints.md">ADR-011</a>: generation, grading and the three solvers.</li>
+          <li><a href="../architecture/adr/adr-032-hints-that-teach.md">ADR-032</a> and <a href="../architecture/00-concepts/hints.md">the hints concept</a>: rungs, plans and highlights.</li>
+          <li><a href="../architecture/adr/adr-023-player-stats.md">ADR-023</a>: the stats rules.</li>
+          <li><a href="../research/2026-10-21-technique-coverage.md">Technique coverage</a> and <a href="../research/2026-10-21-technique-grading.md">technique grading</a>: the measurements behind the weights and levels.</li>
+          <li><a href="../architecture/12-glossary.md">The glossary</a>: the words of this project.</li>
+        </ul>
+      </main>
+    </div>
+
+    <script>
+/* ---- Pure helpers: small ports of @sudoku/core, written for this page. ---- */
+const ROW_OF = (c) => Math.floor(c / 9)
+const COL_OF = (c) => c % 9
+const BOX_OF = (c) => Math.floor(c / 27) * 3 + Math.floor((c % 9) / 3)
+const ALL_BITS = 0b111111111
+const SOLVER_ALL = 0b1111111110
+const NINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+const ROWS = NINE.map((r) => NINE.map((k) => r * 9 + k))
+const COLUMNS = NINE.map((c) => NINE.map((k) => k * 9 + c))
+const BOXES = NINE.map((b) => NINE.map((k) => (Math.floor(b / 3) * 3 + Math.floor(k / 3)) * 9 + (b % 3) * 3 + (k % 3)))
+const UNITS = [...ROWS, ...COLUMNS, ...BOXES]
+const PEERS = Array.from({ length: 81 }, (_, c) =>
+  Array.from({ length: 81 }, (_, o) => o).filter(
+    (o) => o !== c && (ROW_OF(o) === ROW_OF(c) || COL_OF(o) === COL_OF(c) || BOX_OF(o) === BOX_OF(c)),
+  ),
+)
+function bitCount(m) {
+  let n = 0
+  for (; m; m &= m - 1) n++
+  return n
+}
+function createRandom(seed) {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function shuffled(items, random) {
+  const out = [...items]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    const s = out[i]
+    out[i] = out[j]
+    out[j] = s
+  }
+  return out
+}
+function fullGrid(random) {
+  const cells = Array(81).fill(0)
+  const rows = Array(9).fill(0)
+  const cols = Array(9).fill(0)
+  const boxes = Array(9).fill(0)
+  function fill(cell) {
+    if (cell === 81) return true
+    const r = ROW_OF(cell), c = COL_OF(cell), b = BOX_OF(cell)
+    for (const d of shuffled([1, 2, 3, 4, 5, 6, 7, 8, 9], random)) {
+      const bit = 1 << d
+      if ((rows[r] | cols[c] | boxes[b]) & bit) continue
+      cells[cell] = d
+      rows[r] |= bit
+      cols[c] |= bit
+      boxes[b] |= bit
+      if (fill(cell + 1)) return true
+      cells[cell] = 0
+      rows[r] &= ~bit
+      cols[c] &= ~bit
+      boxes[b] &= ~bit
+    }
+    return false
+  }
+  fill(0)
+  return cells
+}
+/* The same search as solver.ts, as a trace of events. It stops at the second solution. */
+function solveTrace(puzzle) {
+  const cells = puzzle.slice()
+  const rows = Array(9).fill(0)
+  const cols = Array(9).fill(0)
+  const boxes = Array(9).fill(0)
+  for (let c = 0; c < 81; c++) {
+    const d = cells[c]
+    if (!d) continue
+    const b = 1 << d
+    rows[ROW_OF(c)] |= b
+    cols[COL_OF(c)] |= b
+    boxes[BOX_OF(c)] |= b
+  }
+  const events = []
+  let count = 0
+  function search() {
+    let best = -1, bestMask = 0, bestCount = 10
+    for (let c = 0; c < 81; c++) {
+      if (cells[c]) continue
+      const m = SOLVER_ALL & ~(rows[ROW_OF(c)] | cols[COL_OF(c)] | boxes[BOX_OF(c)])
+      const n = bitCount(m)
+      if (n < bestCount) {
+        best = c
+        bestMask = m
+        bestCount = n
+        if (n <= 1) break
+      }
+    }
+    if (best === -1) {
+      count++
+      events.push({ t: 'found', n: count })
+      return count >= 2
+    }
+    if (bestCount === 0) {
+      events.push({ t: 'dead', cell: best })
+      return false
+    }
+    const cands = []
+    for (let d = 1; d <= 9; d++) if (bestMask & (1 << d)) cands.push(d)
+    events.push({ t: 'pick', cell: best, cands })
+    const r = ROW_OF(best), c2 = COL_OF(best), b = BOX_OF(best)
+    for (const d of cands) {
+      const bit = 1 << d
+      cells[best] = d
+      rows[r] |= bit
+      cols[c2] |= bit
+      boxes[b] |= bit
+      events.push({ t: 'try', cell: best, digit: d })
+      const stop = search()
+      cells[best] = 0
+      rows[r] &= ~bit
+      cols[c2] &= ~bit
+      boxes[b] &= ~bit
+      events.push({ t: 'undo', cell: best, digit: d })
+      if (stop) return true
+    }
+    return false
+  }
+  search()
+  events.push({ t: 'end', count })
+  return { events, count }
+}
+function countSolutions(puzzle) {
+  return solveTrace(puzzle).count
+}
+/* Removal of givens as in generator.ts: random order, keep a removal only when one solution stays. */
+function removeGivens(solution, target, random) {
+  const givens = solution.slice()
+  let count = 81
+  const log = []
+  for (const cell of shuffled(Array.from({ length: 81 }, (_, i) => i), random)) {
+    if (count === target) break
+    const digit = givens[cell]
+    givens[cell] = 0
+    if (countSolutions(givens) !== 1) {
+      givens[cell] = digit
+      log.push({ cell, digit, kept: true })
+    } else {
+      count--
+      log.push({ cell, digit, kept: false })
+    }
+  }
+  return { givens, log }
+}
+/* Candidate masks: bit d - 1 is digit d. A placed cell has the mask 0. */
+function computeCandidates(board) {
+  const cand = Array(81).fill(ALL_BITS)
+  for (let c = 0; c < 81; c++) {
+    const d = board[c]
+    if (!d) continue
+    cand[c] = 0
+    for (const p of PEERS[c]) cand[p] &= ~(1 << (d - 1))
+  }
+  return cand
+}
+const bitOf = (d) => 1 << (d - 1)
+const digitsOf = (m) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => m & bitOf(d))
+function blockerOf(board, cell, digit) {
+  return PEERS[cell].find((p) => board[p] === digit)
+}
+/* The singles of singles.ts. A step: { technique, cell, digit, unit, support }. */
+function findSingles(cand, board) {
+  const out = { fullHouse: [], hiddenBox: [], hiddenLine: [], naked: [] }
+  const unitsOfKind = { box: [18, 19, 20, 21, 22, 23, 24, 25, 26], row: [0, 1, 2, 3, 4, 5, 6, 7, 8], column: [9, 10, 11, 12, 13, 14, 15, 16, 17] }
+  const done = new Set()
+  for (const unit of [...unitsOfKind.box, ...unitsOfKind.row, ...unitsOfKind.column]) {
+    const cells = UNITS[unit]
+    const empty = cells.filter((c) => board[c] === 0)
+    if (empty.length !== 1) continue
+    const cell = empty[0]
+    if (done.has(cell)) continue
+    const used = cells.reduce((m, o) => (board[o] ? m | bitOf(board[o]) : m), 0)
+    const missing = ALL_BITS & ~used
+    if (bitCount(missing) !== 1 || !(cand[cell] & missing)) continue
+    done.add(cell)
+    out.fullHouse.push({ technique: 'fullHouse', cell, digit: digitsOf(missing)[0], unit, support: [] })
+  }
+  const seen = new Set()
+  for (const kinds of [['box'], ['row', 'column']]) {
+    const bucket = kinds[0] === 'box' ? out.hiddenBox : out.hiddenLine
+    for (const kind of kinds) {
+      for (const unit of unitsOfKind[kind]) {
+        const cells = UNITS[unit]
+        for (let digit = 1; digit <= 9; digit++) {
+          if (cells.some((c) => board[c] === digit)) continue
+          const places = cells.filter((c) => cand[c] & bitOf(digit))
+          if (places.length !== 1) continue
+          const cell = places[0]
+          const key = cell * 10 + digit
+          if (seen.has(key)) continue
+          seen.add(key)
+          const support = cells
+            .filter((o) => o !== cell && board[o] === 0)
+            .map((o) => blockerOf(board, o, digit))
+            .filter((x) => x !== undefined)
+          bucket.push({ technique: 'hiddenSingle', cell, digit, unit, support: [...new Set(support)].sort((a, b) => a - b) })
+        }
+      }
+    }
+  }
+  for (let cell = 0; cell < 81; cell++) {
+    if (board[cell] !== 0 || bitCount(cand[cell]) !== 1) continue
+    const digit = digitsOf(cand[cell])[0]
+    const support = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      .filter((o) => o !== digit)
+      .map((o) => blockerOf(board, cell, o))
+      .filter((x) => x !== undefined)
+    out.naked.push({ technique: 'nakedSingle', cell, digit, unit: ROW_OF(cell), support: [...new Set(support)].sort((a, b) => a - b) })
+  }
+  return out
+}
+/* The first step of the easiest rank that applies, as nextSteps does. Null when no single applies. */
+function nextSingle(board) {
+  const cand = computeCandidates(board)
+  if (cand.some((m, c) => m === 0 && board[c] === 0)) return null
+  const f = findSingles(cand, board)
+  for (const group of [f.fullHouse, f.hiddenBox, f.hiddenLine, f.naked]) {
+    if (group.length) return [...group].sort((a, b) => a.unit - b.unit || a.cell - b.cell || a.digit - b.digit)[0]
+  }
+  return null
+}
+
+/* ---- Demos of this chapter. Each one builds its own board. ---- */
+const $ = (id) => document.getElementById(id)
+const BOX_NAMES = ['top-left', 'top-middle', 'top-right', 'middle-left', 'centre', 'middle-right', 'bottom-left', 'bottom-middle', 'bottom-right']
+const rcName = (cell) => `row ${ROW_OF(cell) + 1}, column ${COL_OF(cell) + 1}`
+function unitName(unit) {
+  if (unit < 9) return `row ${unit + 1}`
+  if (unit < 18) return `column ${unit - 8}`
+  return `the ${BOX_NAMES[unit - 18]} box`
+}
+
+function makeBoard(host) {
+  host.classList.add('board')
+  host.textContent = ''
+  const cells = []
+  for (let i = 0; i < 81; i++) {
+    const cell = document.createElement('div')
+    cell.className = 'cell'
+    cell.dataset.index = String(i)
+    host.append(cell)
+    cells.push(cell)
+  }
+  return cells
+}
+
+/* o.text: a digit or label. o.notes: digits as pencil marks. o.struck: digits drawn struck. o.cls: extra classes. */
+function draw(cell, o = {}) {
+  cell.className = 'cell' + (o.cls ? ' ' + o.cls : '')
+  cell.textContent = ''
+  if (o.text !== undefined && o.text !== null && o.text !== '') {
+    cell.textContent = String(o.text)
+  } else if (o.notes && o.notes.length) {
+    const notes = document.createElement('div')
+    notes.className = 'notes'
+    for (let d = 1; d <= 9; d++) {
+      const span = document.createElement('span')
+      if (o.notes.includes(d)) {
+        span.textContent = String(d)
+        if (o.struck && o.struck.includes(d)) span.className = 'struck'
+      }
+      notes.append(span)
+    }
+    cell.append(notes)
+  }
+}
+
+const parseBoard = (text) => text.split('').map(Number)
+
+/* ---------- 2. Peers ---------- */
+function initPeers() {
+  const host = $('peers-board')
+  if (!host) return
+  const cells = makeBoard(host)
+  host.classList.add('lab')
+  let locked = 40
+  let hover = null
+  let mode = 'all'
+  const readout = $('peers-readout')
+  function paint() {
+    const focus = hover !== null ? hover : locked
+    const marked = new Set()
+    if (mode === 'row' || mode === 'all') ROWS[ROW_OF(focus)].forEach((c) => marked.add(c))
+    if (mode === 'column' || mode === 'all') COLUMNS[COL_OF(focus)].forEach((c) => marked.add(c))
+    if (mode === 'box' || mode === 'all') BOXES[BOX_OF(focus)].forEach((c) => marked.add(c))
+    cells.forEach((cell, i) => draw(cell, { text: i, cls: 'num' + (i === focus ? ' focus' : marked.has(i) ? ' hl' : '') }))
+    const unitsOf = [ROW_OF(focus), 9 + COL_OF(focus), 18 + BOX_OF(focus)]
+    readout.textContent =
+      `cell ${focus}\nrow ${ROW_OF(focus)}, column ${COL_OF(focus)}, box ${BOX_OF(focus)}\n` +
+      `UNITS_OF[${focus}] = [${unitsOf.join(', ')}]\n` +
+      (mode === 'all' ? `PEERS[${focus}] = ${PEERS[focus].length} cells\n[${PEERS[focus].join(', ')}]` : `${[...marked].length - 1} other cells marked`)
+    readout.style.whiteSpace = 'pre-wrap'
+  }
+  cells.forEach((cell, i) => {
+    cell.addEventListener('mouseenter', () => {
+      hover = i
+      paint()
+    })
+    cell.addEventListener('click', () => {
+      locked = i
+      paint()
+    })
+  })
+  host.addEventListener('mouseleave', () => {
+    hover = null
+    paint()
+  })
+  const buttons = [...document.querySelectorAll('#peers-modes button')]
+  buttons.forEach((button) =>
+    button.addEventListener('click', () => {
+      mode = button.dataset.mode
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)))
+      paint()
+    }),
+  )
+  paint()
+}
+
+/* ---------- 3. Candidate calculator ---------- */
+function initCandidates() {
+  const host = $('cand-board')
+  if (!host) return
+  const cells = makeBoard(host)
+  host.classList.add('lab')
+  const puzzle = parseBoard('876000004000000700091200580034010809217069050000305070050008600040076908008000040')
+  const cand = computeCandidates(puzzle)
+  let focus = puzzle.findIndex((d, c) => d === 0 && bitCount(cand[c]) === Math.min(...puzzle.map((x, k) => (x === 0 ? bitCount(cand[k]) : 99))))
+  const usedMask = (unit) => UNITS[unit].reduce((m, c) => (puzzle[c] ? m | bitOf(puzzle[c]) : m), 0)
+  function bitsRow(name, mask, cls) {
+    const row = document.createElement('div')
+    row.className = 'bitrow' + (cls ? ' ' + cls : '')
+    const label = document.createElement('span')
+    label.className = 'name'
+    label.textContent = name
+    row.append(label)
+    for (let d = 1; d <= 9; d++) {
+      const bit = document.createElement('span')
+      bit.className = 'bit' + (mask & bitOf(d) ? ' on' : '')
+      bit.textContent = String(d)
+      row.append(bit)
+    }
+    return row
+  }
+  function paint() {
+    const r = ROW_OF(focus), c = COL_OF(focus), b = BOX_OF(focus)
+    const marked = new Set([...ROWS[r], ...COLUMNS[c], ...BOXES[b]])
+    cells.forEach((cell, i) => {
+      const cls = (puzzle[i] ? 'given ' : '') + (i === focus ? 'focus' : marked.has(i) ? 'hl' : '')
+      if (puzzle[i]) draw(cell, { text: puzzle[i], cls })
+      else draw(cell, { notes: i === focus ? digitsOf(cand[i]) : [], cls })
+    })
+    const rowMask = usedMask(r), colMask = usedMask(9 + c), boxMask = usedMask(18 + b)
+    const left = ALL_BITS & ~(rowMask | colMask | boxMask)
+    $('cand-title').innerHTML = `<strong>${rcName(focus)}</strong> (cell ${focus})`
+    const rows = $('cand-rows')
+    rows.textContent = ''
+    rows.append(bitsRow('Row uses', rowMask), bitsRow('Column uses', colMask), bitsRow('Box uses', boxMask), bitsRow('Left over', left, 'result'))
+    const binary = [9, 8, 7, 6, 5, 4, 3, 2, 1].map((d) => (left & bitOf(d) ? '1' : '0')).join('')
+    $('cand-readout').textContent =
+      `mask = ALL & ~(row | column | box)\n      = 0b${binary} = ${left}\nbitCount(mask) = ${bitCount(left)}\ncandidates: ${digitsOf(left).join(', ') || 'none'}`
+    $('cand-readout').style.whiteSpace = 'pre-wrap'
+  }
+  cells.forEach((cell, i) =>
+    cell.addEventListener('click', () => {
+      if (puzzle[i] === 0) {
+        focus = i
+        paint()
+      }
+    }),
+  )
+  paint()
+}
+
+/* ---------- 5. Solver trace ---------- */
+function initSolver() {
+  const host = $('solver-board')
+  if (!host) return
+  const cells = makeBoard(host)
+  host.classList.add('lab')
+  const puzzle = parseBoard('000096100020450700060010002090000000715002060200003080500020000000100030001009000')
+  const { events, count } = solveTrace(puzzle)
+  let ptr, board, pick, dead, found, log, counters, timer
+  function reset() {
+    ptr = 0
+    board = puzzle.slice()
+    pick = null
+    dead = null
+    found = false
+    log = []
+    counters = { tries: 0, dead: 0, found: 0 }
+    stopPlay()
+    paint()
+    $('solver-log').innerHTML = '<li>Press Step. The solver will pick the empty cell with the fewest candidates.</li>'
+  }
+  function say(text, cls) {
+    log.push({ text, cls })
+    if (log.length > 7) log.shift()
+  }
+  function apply() {
+    if (ptr >= events.length) return null
+    const e = events[ptr++]
+    dead = null
+    found = false
+    if (e.t === 'pick') {
+      pick = e
+      say(`Pick ${rcName(e.cell)}. It has ${e.cands.length} candidate${e.cands.length === 1 ? '' : 's'}: ${e.cands.join(', ')}.${e.cands.length === 1 ? ' No guess is needed.' : ''}`)
+    } else if (e.t === 'try') {
+      board[e.cell] = e.digit
+      counters.tries++
+      say(`Try ${e.digit} in ${rcName(e.cell)}.`)
+    } else if (e.t === 'dead') {
+      dead = e.cell
+      counters.dead++
+      say(`Dead end: ${rcName(e.cell)} has no candidate left. Go back.`, 'bad')
+    } else if (e.t === 'undo') {
+      board[e.cell] = 0
+      pick = null
+      say(`Take back the ${e.digit} in ${rcName(e.cell)}.`)
+    } else if (e.t === 'found') {
+      found = true
+      counters.found++
+      say(e.n === 1 ? 'A solution! The search does not stop. It looks for a second one.' : 'A second solution. The puzzle is not unique.', 'good')
+    } else if (e.t === 'end') {
+      say(e.count === 1 ? 'Search over. Exactly one solution: the puzzle is unique.' : `Search over. Solutions counted: ${e.count}.`, 'good')
+    }
+    return e
+  }
+  function paint() {
+    cells.forEach((cell, i) => {
+      let cls = ''
+      if (puzzle[i]) cls = 'given'
+      else if (board[i]) cls = 'mine'
+      if (found) cls += ' done'
+      else if (i === dead) cls += ' bad'
+      else if (pick && i === pick.cell && !board[i]) cls += ' focus'
+      else if (pick && i === pick.cell) cls += ' focus'
+      if (board[i]) draw(cell, { text: board[i], cls })
+      else draw(cell, { notes: pick && pick.cell === i ? pick.cands : [], cls })
+    })
+    const c = $('solver-counters')
+    c.innerHTML = `<span class="pill blue">guesses ${counters.tries}</span><span class="pill accent">dead ends ${counters.dead}</span><span class="pill green">solutions found ${counters.found}</span><span class="pill">event ${ptr} / ${events.length}</span>`
+    const ul = $('solver-log')
+    ul.textContent = ''
+    for (const item of log) {
+      const li = document.createElement('li')
+      li.textContent = item.text
+      if (item.cls) li.className = item.cls
+      ul.append(li)
+    }
+    $('solver-step').disabled = ptr >= events.length
+  }
+  function stopPlay() {
+    if (timer) clearInterval(timer)
+    timer = null
+    $('solver-play').setAttribute('aria-pressed', 'false')
+    $('solver-play').textContent = 'Play'
+  }
+  $('solver-step').addEventListener('click', () => {
+    apply()
+    paint()
+  })
+  $('solver-ten').addEventListener('click', () => {
+    for (let k = 0; k < 10; k++) apply()
+    paint()
+  })
+  $('solver-dead').addEventListener('click', () => {
+    for (;;) {
+      const e = apply()
+      if (!e || e.t === 'dead') break
+    }
+    paint()
+  })
+  $('solver-end').addEventListener('click', () => {
+    while (apply());
+    paint()
+  })
+  $('solver-play').addEventListener('click', () => {
+    if (timer) return stopPlay()
+    $('solver-play').setAttribute('aria-pressed', 'true')
+    $('solver-play').textContent = 'Pause'
+    timer = setInterval(() => {
+      if (!apply()) return stopPlay()
+      paint()
+    }, 130)
+  })
+  $('solver-reset').addEventListener('click', reset)
+  reset()
+  void count
+}
+
+/* ---------- 6. Technique examples ---------- */
+function renderExample(id, spec) {
+  const host = $(id)
+  if (!host) return
+  const cells = makeBoard(host)
+  const board = parseBoard(spec.board)
+  const cand = computeCandidates(board)
+  const inUnit = new Set()
+  spec.units.forEach((u) => UNITS[u].forEach((c) => inUnit.add(c)))
+  const pattern = new Set(spec.pattern)
+  const support = new Set(spec.support || [])
+  const struck = new Map()
+  for (const [cell, digit] of spec.elim || []) struck.set(cell, [...(struck.get(cell) || []), digit])
+  const digits = spec.digits || []
+  cells.forEach((cell, c) => {
+    const isTarget = spec.ghost && spec.ghost[0] === c
+    let cls = ''
+    if (support.has(c)) cls = 'sup'
+    else if (inUnit.has(c)) cls = 'hl'
+    if (pattern.has(c) || isTarget) cls += ' focus'
+    if (board[c]) return draw(cell, { text: board[c], cls: 'given ' + cls })
+    if (isTarget) return draw(cell, { text: spec.ghost[1], cls: cls + ' ghost' })
+    const show = inUnit.has(c) || pattern.has(c) || struck.has(c)
+    const notes = show ? digitsOf(cand[c]).filter((d) => digits.includes(d)) : []
+    draw(cell, { notes, struck: struck.get(c) || [], cls })
+  })
+}
+function initExamples() {
+  renderExample('ex-naked', { board: '008090105090058327200030009000019006419765238000040971806021093002983004900070002', units: [5, 14, 22], pattern: [], support: [14, 31, 32, 39, 40, 41, 49, 68], ghost: [50, 2] })
+  renderExample('ex-hidden', { board: '876000004000000700091200580034010809217069050000305070050008600040076908008000040', units: [19], pattern: [], support: [2, 40, 68], ghost: [12, 6], digits: [6] })
+  renderExample('ex-pointing', { board: '609312700327458916080967302904821605260795000508634290000209060092146003006503429', units: [20, 16], pattern: [7, 25], elim: [[70, 5]], digits: [5] })
+  renderExample('ex-boxline', { board: '938547216154692738006138050897451362003879040415326897000063000301085670000714003', units: [11, 24], pattern: [56, 74], elim: [[54, 2], [55, 2], [64, 2], [72, 2], [73, 2]], digits: [2] })
+  renderExample('ex-pair', { board: '000019624240006901619040508900000056020000093004090812487931265500000189190080347', units: [21], pattern: [28, 45], elim: [[29, 3], [36, 7], [46, 3], [46, 7]], digits: [3, 7] })
+  renderExample('ex-xwing', { board: '050903120090020000002050900800562791906014350015390064001005609009186030560209410', units: [0, 8, 11, 17], pattern: [2, 8, 74, 80], elim: [[11, 8], [17, 8], [26, 8], [44, 8]], digits: [8] })
+}
+
+/* ---------- 6. Single finder ---------- */
+const FINDER_PUZZLES = {
+  easy: '876000024020000700091207580034010809217069050000345070050008600040576908068000040',
+  medium: '876000004000000700091200580034010809217069050000305070050008600040076908008000040',
+  hard: '080003600204000000000978400002300506000800100036000098560000910000405360000000085',
+}
+function initFinder() {
+  const host = $('finder-board')
+  if (!host) return
+  const cells = makeBoard(host)
+  host.classList.add('lab')
+  let key = 'easy'
+  let puzzle, board, step, counts, placed
+  const TECH_NAMES = { fullHouse: 'Full house', hiddenSingle: 'Hidden single', nakedSingle: 'Naked single' }
+  function load(k) {
+    key = k
+    puzzle = parseBoard(FINDER_PUZZLES[k])
+    board = puzzle.slice()
+    step = null
+    counts = { fullHouse: 0, hiddenSingle: 0, nakedSingle: 0 }
+    placed = 0
+    document.querySelectorAll('#finder-puzzles button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.puzzle === k)))
+    $('finder-explain').textContent = 'Press "Find next step".'
+    paint()
+  }
+  function explain(s) {
+    const n = placed + 1
+    const where = rcName(s.cell)
+    if (s.technique === 'fullHouse')
+      return `Step ${n}: Full house. ${unitName(s.unit)} has one empty cell. Only the digit ${s.digit} is missing there, so ${s.digit} goes in ${where}.`
+    if (s.technique === 'hiddenSingle')
+      return `Step ${n}: Hidden single. In ${unitName(s.unit)}, the digit ${s.digit} fits in only one cell: ${where}. The violet cells hold a ${s.digit} that blocks every other empty cell of the unit.`
+    return `Step ${n}: Naked single. ${where} has one candidate left: ${s.digit}. The violet cells in its row, column and box already hold the other eight digits.`
+  }
+  function paint() {
+    const cand = computeCandidates(board)
+    const showNotes = $('finder-notes').checked
+    const hl = new Set()
+    if (step) {
+      if (step.technique === 'nakedSingle') [ROW_OF(step.cell), 9 + COL_OF(step.cell), 18 + BOX_OF(step.cell)].forEach((u) => UNITS[u].forEach((c) => hl.add(c)))
+      else UNITS[step.unit].forEach((c) => hl.add(c))
+    }
+    const sup = new Set(step ? step.support : [])
+    cells.forEach((cell, i) => {
+      let cls = puzzle[i] ? 'given' : board[i] ? 'mine' : ''
+      if (sup.has(i)) cls += ' sup'
+      else if (hl.has(i)) cls += ' hl'
+      if (step && step.cell === i) return draw(cell, { text: step.digit, cls: cls + ' focus ghost' })
+      if (board[i]) return draw(cell, { text: board[i], cls })
+      draw(cell, { notes: showNotes ? digitsOf(cand[i]) : [], cls: cls + (showNotes ? ' small-notes' : '') })
+    })
+    const empty = board.filter((d) => d === 0).length
+    $('finder-counters').innerHTML = `<span class="pill green">placed ${placed}</span><span class="pill">empty cells ${empty}</span><span class="pill blue">full house ${counts.fullHouse} · hidden ${counts.hiddenSingle} · naked ${counts.nakedSingle}</span>`
+    $('finder-apply').disabled = !step
+  }
+  function find() {
+    if (!board.includes(0)) {
+      $('finder-explain').textContent = `Solved with ${placed} singles. No cell is empty.`
+      return false
+    }
+    step = nextSingle(board)
+    if (!step) {
+      $('finder-explain').textContent = `No single applies. ${board.filter((d) => d === 0).length} cells are still empty. The real solver now tries pointing, box-line, pairs and the harder techniques of the table. This demo knows only the singles.`
+      paint()
+      return false
+    }
+    $('finder-explain').textContent = explain(step)
+    paint()
+    return true
+  }
+  function applyStep() {
+    if (!step) return
+    board[step.cell] = step.digit
+    counts[step.technique]++
+    placed++
+    step = null
+    paint()
+  }
+  $('finder-find').addEventListener('click', find)
+  $('finder-apply').addEventListener('click', () => {
+    const text = step ? `Placed ${step.digit} in ${rcName(step.cell)} (${TECH_NAMES[step.technique].toLowerCase()}). Press "Find next step" again.` : ''
+    applyStep()
+    if (text) $('finder-explain').textContent = text
+  })
+  $('finder-auto').addEventListener('click', () => {
+    while (find()) applyStep()
+    $('finder-explain').textContent = board.includes(0)
+      ? `Stopped after ${placed} singles. No single applies, and ${board.filter((d) => d === 0).length} cells are empty. A harder technique is needed.`
+      : `Solved with ${placed} singles.`
+  })
+  $('finder-reset').addEventListener('click', () => load(key))
+  $('finder-notes').addEventListener('change', paint)
+  document.querySelectorAll('#finder-puzzles button').forEach((b) => b.addEventListener('click', () => load(b.dataset.puzzle)))
+  load('easy')
+}
+
+/* ---------- 8. Generator lab ---------- */
+function initGenerator() {
+  const host = $('gen-board')
+  if (!host) return
+  const cells = makeBoard(host)
+  host.classList.add('lab')
+  let solution = null, givens = null, order = [], idx = 0, decisions = 0, putBack = 0, log = []
+  const countGivens = () => (givens ? givens.filter(Boolean).length : 0)
+  function say(text, cls) {
+    log.push({ text, cls })
+    if (log.length > 8) log.shift()
+  }
+  function solutionsText() {
+    if (!givens) return '-'
+    const n = countSolutions(givens)
+    return n === 1 ? '1 (unique)' : '2 or more (not unique)'
+  }
+  function paint() {
+    cells.forEach((cell, i) => {
+      if (!givens) return draw(cell, { text: '' })
+      draw(cell, givens[i] ? { text: givens[i], cls: 'given' } : { notes: [], cls: 'hl' })
+    })
+    const counters = $('gen-counters')
+    counters.innerHTML = givens
+      ? `<span class="pill blue">givens ${countGivens()}</span><span class="pill green">solutions: ${solutionsText()}</span><span class="pill">tried ${decisions}</span><span class="pill accent">put back ${putBack}</span>`
+      : '<span class="pill">Press "Build full grid".</span>'
+    const ul = $('gen-log')
+    ul.textContent = ''
+    for (const item of log) {
+      const li = document.createElement('li')
+      li.textContent = item.text
+      if (item.cls) li.className = item.cls
+      ul.append(li)
+    }
+    const ready = !!givens
+    $('gen-next').disabled = !ready
+    $('gen-ten').disabled = !ready
+    $('gen-all').disabled = !ready
+  }
+  function build() {
+    const seed = Math.max(0, Math.min(4294967295, Math.floor(Number($('gen-seed').value) || 0)))
+    const random = createRandom(seed)
+    solution = fullGrid(random)
+    order = shuffled(Array.from({ length: 81 }, (_, i) => i), random)
+    givens = solution.slice()
+    idx = 0
+    decisions = 0
+    putBack = 0
+    log = []
+    say(`Seed ${seed}: a full grid with 81 givens. The removal order is shuffled from the same stream.`)
+    paint()
+  }
+  function target() {
+    return Math.max(17, Math.min(80, Math.floor(Number($('gen-target').value) || 30)))
+  }
+  // Returns false when no more decision is possible.
+  function decide() {
+    if (countGivens() <= target()) {
+      say(`Reached ${countGivens()} givens. The removal stops here.`, 'good')
+      return false
+    }
+    while (idx < 81 && givens[order[idx]] === 0) idx++
+    if (idx >= 81) {
+      say('No cell is left to try. The removal ends.', 'good')
+      return false
+    }
+    const cell = order[idx++]
+    const digit = givens[cell]
+    givens[cell] = 0
+    decisions++
+    if (countSolutions(givens) === 1) {
+      say(`Empty ${rcName(cell)} (a ${digit}): still 1 solution. The clue stays removed.`, 'good')
+    } else {
+      givens[cell] = digit
+      putBack++
+      say(`Empty ${rcName(cell)} (a ${digit}): 2 or more solutions. The clue goes back.`, 'bad')
+    }
+    return true
+  }
+  $('gen-build').addEventListener('click', build)
+  $('gen-next').addEventListener('click', () => {
+    decide()
+    paint()
+  })
+  $('gen-ten').addEventListener('click', () => {
+    for (let k = 0; k < 10 && decide(); k++);
+    paint()
+  })
+  $('gen-all').addEventListener('click', () => {
+    while (decide());
+    paint()
+  })
+  cells.forEach((cell, i) =>
+    cell.addEventListener('click', () => {
+      if (!givens) return
+      if (givens[i]) {
+        givens[i] = 0
+        say(`You emptied ${rcName(i)}. ${countSolutions(givens) === 1 ? 'Still 1 solution.' : 'Now 2 or more solutions: the puzzle is not unique.'}`, countSolutions(givens) === 1 ? 'good' : 'bad')
+      } else {
+        givens[i] = solution[i]
+        say(`You put the clue in ${rcName(i)} back.`)
+      }
+      paint()
+    }),
+  )
+  paint()
+}
+
+/* ---------- 9. Hint rungs ---------- */
+function initHint() {
+  const host = $('hint-board')
+  if (!host) return
+  const cells = makeBoard(host)
+  host.classList.add('lab')
+  const board = parseBoard('609312700327458916080967302904821605260795000508634290000209060092146003006503429')
+  const cand0 = computeCandidates(board)
+  const cand1 = cand0.slice()
+  cand1[70] &= ~bitOf(5)
+  const single = Object.values(findSingles(cand1, board)).flat().find((s) => s.cell === 69 && s.digit === 5)
+  const steps = [
+    { name: 'Pointing', unit: 20, line: 16, pattern: [7, 25], elim: [70, 5] },
+    { name: 'Hidden single', unit: 7, target: [69, 5], support: single ? single.support : [] },
+  ]
+  const TEXT = [
+    [
+      'Look where a 5 fits in the top-right box.',
+      'Pointing: a digit that fits in only one row or column of a box. That row or column loses the digit outside the box.',
+      'In the top-right box, a 5 fits only in column 8. So the 5 of column 8 must be in this box.',
+      'Remove 5 from column 8, outside the top-right box.',
+    ],
+    [
+      'Look at row 8.',
+      'Hidden single: a digit that fits in only one cell of a row, column or box.',
+      'In row 8, a 5 fits only in row 8, column 7. Every other empty cell has a 5 in its row, column or box, or an earlier step removed it.',
+      'Put 5 in row 8, column 7.',
+    ],
+  ]
+  let step, rung, hints, filled
+  function reset() {
+    step = 0
+    rung = 1
+    hints = 0
+    filled = false
+    paint()
+  }
+  function paint() {
+    const s = steps[step]
+    const last = step === steps.length - 1
+    const hl = new Set(UNITS[s.unit])
+    if (rung >= 3 && s.line !== undefined) UNITS[s.line].forEach((c) => hl.add(c))
+    const patt = new Set(rung >= 3 ? s.pattern || [] : [])
+    const sup = new Set(rung >= 3 && s.support ? s.support : [])
+    const struckNow = rung >= 4 && step === 0
+    cells.forEach((cell, c) => {
+      let cls = ''
+      if (sup.has(c)) cls = 'sup'
+      else if (hl.has(c)) cls = 'hl'
+      if (patt.has(c)) cls += ' focus'
+      if (board[c]) return draw(cell, { text: board[c], cls: 'given ' + cls })
+      if (s.target && s.target[0] === c && (rung >= 3 || filled)) {
+        if (rung === 4 || filled) return draw(cell, { text: s.target[1], cls: (filled ? 'mine' : 'ghost') + ' focus' })
+        cls += ' focus'
+      }
+      const has5 = step === 0 ? cand0[c] & bitOf(5) : cand1[c] & bitOf(5)
+      const strike = struckNow && c === 70
+      draw(cell, { notes: has5 ? [5] : [], struck: strike ? [5] : [], cls })
+    })
+    const dots = $('hint-dots')
+    dots.textContent = ''
+    for (let r = 1; r <= 4; r++) {
+      const dot = document.createElement('i')
+      if (r <= rung) dot.className = 'on'
+      dots.append(dot)
+    }
+    $('hint-title').textContent = rung >= 2 ? s.name : 'Hint'
+    $('hint-step').textContent = `Step ${step + 1} of ${steps.length}`
+    $('hint-text').textContent = filled ? 'The 5 is placed. The hint is over.' : TEXT[step][rung - 1]
+    const more = $('hint-more')
+    more.textContent = rung < 4 ? 'More help' : last ? 'Fill it' : 'Next step'
+    more.disabled = filled
+    $('hint-show').hidden = rung === 4 || filled
+    $('hint-count').textContent =
+      `Hints used: ${hints}\n` + (hints === 0 ? 'Rungs 1 to 3 are free. The count goes up when the placement shows.' : 'The answer was shown, so this hint counted once.')
+    $('hint-count').style.whiteSpace = 'pre-wrap'
+  }
+  function reachAnswer() {
+    if (step === steps.length - 1 && rung === 4 && hints === 0) hints = 1
+  }
+  $('hint-more').addEventListener('click', () => {
+    const last = step === steps.length - 1
+    if (rung < 4) rung++
+    else if (!last) {
+      step++
+      rung = 1
+    } else filled = true
+    reachAnswer()
+    paint()
+  })
+  $('hint-show').addEventListener('click', () => {
+    step = steps.length - 1
+    rung = 4
+    reachAnswer()
+    paint()
+  })
+  $('hint-reset').addEventListener('click', reset)
+  reset()
+}
+
+/* ---------- 10. Streak ---------- */
+function initStreak() {
+  const host = $('streak-days')
+  if (!host) return
+  const days = Array(14).fill(false)
+  ;[7, 8, 9, 10, 12].forEach((d) => (days[d] = true))
+  const buttons = days.map((_, i) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.textContent = i === 13 ? 'today' : String(i - 13)
+    b.setAttribute('aria-label', i === 13 ? 'Today' : `${13 - i} days ago`)
+    if (i === 13) b.classList.add('today')
+    b.addEventListener('click', () => {
+      days[i] = !days[i]
+      paint()
+    })
+    host.append(b)
+    return b
+  })
+  function paint() {
+    buttons.forEach((b, i) => b.classList.toggle('on', days[i]))
+    let day = days[13] ? 13 : 12
+    let current = 0
+    while (day >= 0 && days[day]) {
+      current++
+      day--
+    }
+    let longest = 0
+    let run = 0
+    for (const win of days) {
+      run = win ? run + 1 : 0
+      longest = Math.max(longest, run)
+    }
+    const alive = !days[13] && current > 0
+    $('streak-counters').innerHTML = `<span class="pill green">current streak ${current}</span><span class="pill blue">longest in this window ${longest}</span>` + (alive ? '<span class="pill amber">alive: today can still get its win</span>' : '')
+  }
+  paint()
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  for (const init of [initPeers, initCandidates, initSolver, initExamples, initFinder, initGenerator, initHint, initStreak]) {
+    try {
+      init()
+    } catch (error) {
+      console.error(error)
+    }
+  }
+})
+
+    </script>
+  </body>
+</html>
