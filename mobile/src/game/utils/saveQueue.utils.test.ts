@@ -1,10 +1,7 @@
-import { createGame, place, select, type Digit, type Game } from '@sudoku/core'
-import { createSaveQueue } from './save.utils'
-import { sampleStart } from './sample.utils'
+import { place, select, type Digit, type Game } from '@sudoku/core'
+import { createSaveQueue } from './saveQueue.utils'
+import { OPEN, sampleGame as fresh } from '@/game/sample.testkit'
 
-// Cell 2 is empty in the canvas puzzle. Its solution is 4.
-const OPEN = 2
-const fresh = () => createGame(sampleStart())
 /** Three wrong numbers end the game. */
 const lostGame = () => [1, 2, 3].reduce((game, digit) => place(game, digit as Digit).game, select(fresh(), OPEN))
 

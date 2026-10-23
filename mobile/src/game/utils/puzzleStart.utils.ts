@@ -2,7 +2,7 @@ import { createGame, type Game, type Level, type NewGame, type Random } from '@s
 import type { PuzzleRepository, PuzzleSource, SavedProgress } from '@/storage'
 import { devWarn, errorMessage } from '@/utils/log.utils'
 import { startMeasures } from '@/utils/measure.utils'
-import { newGeneratedGame, scannedLevel } from './start.utils'
+import { newGeneratedGame, scannedLevel } from './newGame.utils'
 
 type PuzzleStartDeps = {
   puzzles: PuzzleRepository

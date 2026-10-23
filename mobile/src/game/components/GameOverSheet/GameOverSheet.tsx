@@ -1,18 +1,16 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { AccessibilityInfo, Pressable, Text } from 'react-native'
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
-import { useUnistyles } from 'react-native-unistyles'
-import { scheduleOnRN } from 'react-native-worklets'
+import Animated from 'react-native-reanimated'
 import { formatClock, GRID_CELLS, type Game } from '@sudoku/core'
 import { useGameState } from '@/game/hooks/useGameState'
 import { useLeave, type LeaveCallback } from '@/game/hooks/useLeave'
 import { useHold } from '@/game/hooks/useHold'
+import { useSheetRise } from '@/game/hooks/useSheetRise'
 import { useGameTime } from '@/game/hooks/useGameTime'
 import { rightCells } from '@/game/utils/result.utils'
-import { easeOut } from '@/utils/motion.utils'
 import { useIntl } from '@/i18n/hooks/useIntl'
 import { pressedStyles } from '@/theme/pressed.styles'
-import { LOST_HOLD_MS, RISE_OFFSET } from './GameOverSheet.constants'
+import { GAME_OVER_RISE_OFFSET, LOST_HOLD_MS } from './GameOverSheet.constants'
 import { styles } from './GameOverSheet.styles'
 
 type GameOverSheetProps = {
@@ -36,31 +34,14 @@ export function GameOverSheet(props: GameOverSheetProps) {
 function Sheet({ board, onRetry, onNewPuzzle, onHome }: GameOverSheetProps & { board: Game }) {
   const time = formatClock(useGameTime())
   const intl = useIntl()
-  const { theme } = useUnistyles()
-  const reduceMotion = useReducedMotion()
   const title = useRef<Text>(null)
   // The modal scrim hides the grid, but VoiceOver focus stays on the key that ended the game.
   const focusTitle = useCallback(() => {
     if (title.current) AccessibilityInfo.sendAccessibilityEvent(title.current, 'focus')
   }, [])
-  // 1 is the start of the rise and 0 its end. With Reduce Motion the sheet starts at its end.
-  const rise = useSharedValue(reduceMotion ? 0 : 1)
-  useEffect(() => {
-    if (reduceMotion) {
-      focusTitle()
-      return
-    }
-    rise.set(
-      withTiming(0, { duration: theme.motion.medium, easing: easeOut }, (finished) => {
-        if (finished) scheduleOnRN(focusTitle)
-      }),
-    )
-  }, [focusTitle, reduceMotion, rise, theme.motion.medium])
+  const { rise, fadeStyle, riseStyle } = useSheetRise(focusTitle, GAME_OVER_RISE_OFFSET)
   // The sheet sinks before the new game shows. The game-screen route takes Back to home away.
   const { leaveThen, guard } = useLeave(rise)
-  // The scrim fades with the rise, so the board does not go dark before the sheet arrives.
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: 1 - rise.value }))
-  const riseStyle = useAnimatedStyle(() => ({ transform: [{ translateY: rise.value * RISE_OFFSET }] }))
   return (
     <Animated.View testID="game-over" style={[styles.scrim, fadeStyle]} accessibilityViewIsModal>
       <Animated.View testID="game-over-sheet" style={[styles.sheet, riseStyle]}>

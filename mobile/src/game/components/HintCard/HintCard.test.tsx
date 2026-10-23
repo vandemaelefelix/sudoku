@@ -6,7 +6,7 @@ import { AccessibilityInfo, StyleSheet } from 'react-native'
 import { GameActionsContext } from '@/game/hooks/useGameActions'
 import type { GameActions } from '@/game/utils/gameSession.utils'
 import { pointingStart, stuckStart } from '@/game/utils/sample.utils'
-import type { OpenHint } from '@/game/utils/session.utils'
+import type { OpenHint } from '@/game/utils/hintSession.utils'
 import { cobalt } from '@/theme/themes/cobalt'
 import { HintCard } from './HintCard'
 

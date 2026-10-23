@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { type SharedValue, useAnimatedReaction } from 'react-native-reanimated'
 import { peersOf } from '@sudoku/core'
-import { scannedLevel } from '@/game/utils/start.utils'
+import { scannedLevel } from '@/game/utils/newGame.utils'
 import * as playUtils from '@/scan/utils/play.utils'
 import { GATE_RESULTS } from '@/scan/constants/transition.constants'
 import { firstOpen, fullScan, puzzle, scanOf, wrongDigit } from '@/scan/puzzle.testkit'

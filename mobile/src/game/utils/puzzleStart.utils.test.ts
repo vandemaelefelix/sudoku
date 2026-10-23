@@ -2,7 +2,7 @@ import { createGame, generate, place, select, tick, type Digit, type Game, type 
 import { createMemoryStorage, type GameStorage, type SavedProgress } from '@/storage'
 import { startMeasures } from '@/utils/measure.utils'
 import { createPuzzleStart } from './puzzleStart.utils'
-import { scannedLevel } from './start.utils'
+import { scannedLevel } from './newGame.utils'
 
 const OWNER = 'user-alice'
 
