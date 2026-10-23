@@ -63,13 +63,13 @@ def kinds_of(ids: list[str], kind: str) -> list[dict]:
 def save_kinds(store: LabelStore, entries: list[dict], screen: str = "groups") -> int:
     """Kind lines of a screen: a line per changed or new kind. The Kind step and the Groups
     screen of older journals write them like this."""
-    kinds, t, action = store.kinds(), store._t(), store._action()
+    kinds, t, action = store.kinds(), store.state.t(), store.state.action()
     lines = [
         Line(t, store.session, action, e["id"], "kind", kinds.get(e["id"]), e["kind"], screen)
         for e in entries
         if kinds.get(e["id"]) != e["kind"]
     ]
-    store._write(lines)
+    store.state.write(lines)
     return len(lines)
 
 
@@ -82,17 +82,17 @@ def settle_kinds(store: LabelStore) -> int:
 def move_digit(store: LabelStore, cell: str, digit: str, screen: str) -> None:
     """A digit line of a screen that no step writes any more. A move to `empty` also clears
     the kind, as the old Groups screen did."""
-    store._refresh()
+    store.state.refresh()
     old = store.folder[cell]
     if old == digit:
         return
-    t, action = store._t(), store._action()
+    t, action = store.state.t(), store.state.action()
     lines = [Line(t, store.session, action, cell, "digit", old, digit, screen)]
     kind = store.kinds().get(cell)
     if digit == "empty" and kind is not None:
         lines.append(Line(t, store.session, action, cell, "kind", kind, None, screen))
-    store._apply_digits(lines)
-    store._write(lines)
+    store.state.apply_digits(lines)
+    store.state.write(lines)
 
 
 def probs(label: str, p: float, kind: str = "printed", kp: float = 0.9) -> dict:

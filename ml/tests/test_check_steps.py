@@ -350,9 +350,11 @@ def test_a_kind_the_model_reads_differently_adds_a_half(tmp_path: Path):
 
 def digit_line(store: LabelStore, cell: str, screen: str = "digits") -> str:
     """A digit line of a person, as the Digits step writes it for an unchanged cell."""
-    action = store._action()
+    action = store.state.action()
     folder = store.folder[cell]
-    store._write([Line(store._t(), store.session, action, cell, "digit", folder, folder, screen)])
+    store.state.write(
+        [Line(store.state.t(), store.session, action, cell, "digit", folder, folder, screen)]
+    )
     return action
 
 

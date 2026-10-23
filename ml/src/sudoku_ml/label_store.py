@@ -1,7 +1,6 @@
 """State and rules of the labelling app. label_server.py only translates HTTP to these calls."""
 
 import csv
-import io
 import json
 import tomllib
 from collections import Counter, OrderedDict
@@ -28,41 +27,29 @@ from sudoku_ml.doubt import (
     labels_key,
     scan_signals,
 )
-from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright, warp_grid
+from sudoku_ml.flatten import GRID_CELLS, check_corners, load_upright
 from sudoku_ml.journal import (
     KINDS,
     Line,
     Source,
-    append_records,
-    current_kinds,
-    current_label_sources,
     current_outlines,
-    current_sources,
     format_outline,
     format_source,
-    format_time,
     parse_outline,
-    read_journal,
-    read_records,
-    rollback_lines,
-    undo_lines,
     undone_actions,
 )
-from sudoku_ml.kind_check import CheckLine, summary
+from sudoku_ml.kind_check import summary
 from sudoku_ml.kind_review import check_items, model_items, near_duplicate_items, open_items
+from sudoku_ml.label_state import LabelState
 from sudoku_ml.manifest import (
-    base_kinds,
-    base_sources,
-    check_image_store,
     confirmed_cells,
-    repair_lines,
     warn_unreadable,
 )
 from sudoku_ml.photo_check import PhotoCheck
 from sudoku_ml.photo_import import detect_outline, read_detections, write_detections
-from sudoku_ml.relabel import move_cells
 from sudoku_ml.scan_outlines import cut as scan_cut
 from sudoku_ml.scan_outlines import outline_fit, read_scores, write_scores
+from sudoku_ml.scan_render import grid_png, outline_jpeg
 from sudoku_ml.status import read_last_finish
 from sudoku_ml.tables import (
     APP_SCAN,
@@ -71,8 +58,6 @@ from sudoku_ml.tables import (
     PhotoRow,
     format_corners,
     parse_corners,
-    pixel_id,
-    read_cells,
     read_photos,
     stem_of,
     write_atomic,
@@ -106,11 +91,8 @@ def _source(row: PhotoRow) -> str:
 
 class LabelStore:
     def __init__(self, paths: DataPaths, now: Callable[[], datetime] = lambda: datetime.now(UTC)):
-        self.paths, self._now = paths, now
-        self.session = now().strftime("%Y%m%d-%H%M%S")
-        self._actions = 0
-        self._registered: dict[str, str] = {}
-        self._load()
+        self.state = LabelState(paths, now)
+        self.paths, self.session = paths, self.state.session
         self._dups: tuple[list[tuple[str, str]], set[str]] | None = None
         self._suspects_ok = True
         self._pre_cache: tuple[tuple[int, int], str | None, dict[str, dict]] | None = None
@@ -118,124 +100,43 @@ class LabelStore:
         self._photos: OrderedDict[str, np.ndarray] = OrderedDict()
         self.check = PhotoCheck(paths, self.session, now)
 
-    def _stamp(self) -> tuple[int, int]:
-        journal, table = self.paths.journal, self.paths.cells_csv
-        return (
-            journal.stat().st_size if journal.exists() else 0,
-            table.stat().st_mtime_ns if table.exists() else 0,
-        )
+    @property
+    def folder(self) -> dict[str, str]:
+        return self.state.folder
 
-    def _load(self) -> None:
-        """Raises ValueError when cells.csv does not parse, or when the image store is missing
-        or wrong: cells.csv holds the finished kinds and sources, so the store refuses to start
-        without it (ADR-018)."""
-        table = read_cells(self.paths.cells_csv)
-        check_image_store(self.paths, table)
-        self._base_kinds, self._base_sources = base_kinds(table), base_sources(table)
-        self._base_label_sources = {c: r.label_source for c, r in table.items()}
-        listed = {stem_of(cell): cell for cell in table}
-        self._stem_ids = {**listed, **self._registered}
-        self.folder: dict[str, str] = {}
-        for path in self.paths.cells.glob("*/*.png"):
-            if path.stem not in self._stem_ids:
-                # A stop before the manifest rewrite leaves cells that cells.csv does not list.
-                cell_id = pixel_id(path)
-                if stem_of(cell_id) != path.stem:
-                    raise ValueError(f"{path} is not named after its pixels ({stem_of(cell_id)})")
-                self._stem_ids[path.stem] = cell_id
-            self.folder[self._stem_ids[path.stem]] = path.parent.name
-        self.lines = read_journal(self.paths.journal)
-        self.checks = read_records(self.paths.kind_checks, CheckLine)
-        self._seen = self._stamp()
-
-    def repair(self) -> int:
-        """Drop the kind of each cell in empty/, unlabeled/ or discarded/ (see repair_lines)."""
-        self._refresh()
-        lines = repair_lines(self.folder, self.kinds(), self._t(), f"{self.session}-repair")
-        self._write(lines)
-        return len(lines)
-
-    def _refresh(self) -> None:
-        # `just label-rollback` in another terminal appends to the journal and moves files. A cut
-        # appends source lines. Finish deletes the journal and rewrites cells.csv.
-        if self._stamp() != self._seen:
-            self._load()
+    @property
+    def lines(self) -> list[Line]:
+        return self.state.lines
 
     def now(self) -> datetime:
-        return self._now()
+        return self.state.now()
 
-    def _t(self) -> str:
-        return format_time(self._now())
-
-    def _action(self) -> str:
-        self._actions += 1
-        return f"{self.session}-{self._actions}"
-
-    def _write(self, lines: list[Line]) -> None:
-        if not lines:
-            return
-        append_records(self.paths.journal, lines)
-        self.lines.extend(lines)
-        self._seen = self._stamp()
-
-    def _apply_digits(self, lines: list[Line]) -> None:
-        # One move_cells call: it reads every cell folder once, and 16k cells make that slow.
-        wanted = {
-            stem_of(line.cell): line.new
-            for line in lines
-            if line.field == "digit" and line.old != line.new
-        }
-        if wanted:
-            move_cells(self.paths.cells, wanted)
-        for line in lines:
-            if line.field == "digit" and line.old != line.new:
-                self.folder[line.cell] = line.new
+    def repair(self) -> int:
+        return self.state.repair()
 
     def label_sources(self) -> dict[str, str]:
-        return current_label_sources(self.lines, self._base_label_sources)
+        return self.state.label_sources()
 
     def kinds(self) -> dict[str, str | None]:
-        return current_kinds(self.lines, self._base_kinds)
+        return self.state.kinds()
 
     def sources(self) -> dict[str, Source]:
-        """Full cell id → the sudoku photo, row and col (0-8) it was cut from."""
-        self._refresh()
-        return current_sources(self.lines, self._base_sources)
+        return self.state.sources()
 
     def cell_file(self, stem: str) -> Path:
-        self._refresh()
-        return self.paths.cells / self.folder[self._stem_ids[stem]] / f"{stem}.png"
+        return self.state.cell_file(stem)
 
     def undo_target(self) -> str | None:
-        """The screen of the action that undo would reverse, or None when there is none. An
-        imported photo's outline check is not in the journal, so undo never reaches it."""
-        self._refresh()
-        lines = undo_lines(self.lines, self._t(), self.session)
-        if not lines:
-            return None
-        action = lines[0].action.removeprefix("undo:")
-        return next(x.screen for x in self.lines if x.action == action)
+        return self.state.undo_target()
 
     def undo(self) -> int:
-        self._refresh()
-        lines = undo_lines(self.lines, self._t(), self.session)
-        self._apply_digits(lines)
-        self._write(lines)
-        return len(lines)
+        return self.state.undo()
 
     def rollback(self, session: str) -> int:
-        self._refresh()
-        lines = rollback_lines(self.lines, session, self._t(), self.session)
-        self._apply_digits(lines)
-        self._write(lines)
-        return len(lines)
+        return self.state.rollback(session)
 
     def register(self, cell_ids: list[str], folder: str = "unlabeled") -> None:
-        """Make new cells in `folder` known. Ctrl-C rewrites cells.csv with them later."""
-        for cell in cell_ids:
-            self._registered[stem_of(cell)] = cell
-            self._stem_ids[stem_of(cell)] = cell
-            self.folder[cell] = folder
+        self.state.register(cell_ids, folder)
 
     def _read_prelabels(self) -> tuple[str | None, dict[str, dict]]:
         # The file has one entry per cell. A screen change reads it again and again.
@@ -262,7 +163,7 @@ class LabelStore:
         every cell once, then caches."""
         if self._dups is None:
             cells = read_real_cells(self.paths)
-            ids = [self._stem_ids[c.path.stem] for c in cells]
+            ids = [self.state.stem_ids[c.path.stem] for c in cells]
             folders = np.array([c.path.parent.name for c in cells])
             hashes = np.array([dhash(c.sample.image) for c in cells], dtype=np.uint64)
             pairs = []
@@ -272,34 +173,34 @@ class LabelStore:
                 pairs += [(ids[i], ids[j]) for j in np.nonzero(close)[0] + i + 1]
             config = tomllib.loads(self.paths.config.read_text())
             _, _, test = split_cells(cells, tuple(config["split"]), config["seed"])
-            test_ids = {self._stem_ids[c.path.stem] for c in test}
+            test_ids = {self.state.stem_ids[c.path.stem] for c in test}
             self._dups = (pairs, test_ids)
         return self._dups
 
     def _model_items(self, current) -> list:
         self._suspects_ok = True
         try:
-            return model_items(self.paths.suspects, self._stem_ids, current)
+            return model_items(self.paths.suspects, self.state.stem_ids, current)
         except (OSError, ValueError, KeyError, TypeError, csv.Error) as error:
             warn_unreadable(self.paths.suspects, error)
             self._suspects_ok = False
             return []
 
     def review_items(self) -> list[dict]:
-        self._refresh()
-        kinds = self.kinds()
+        self.state.refresh()
+        kinds = self.state.kinds()
 
         def current(cell: str, field: str) -> str | None:
-            return kinds.get(cell) if field == "kind" else self.folder.get(cell)
+            return kinds.get(cell) if field == "kind" else self.state.folder.get(cell)
 
         items = (
-            near_duplicate_items(self._near_duplicates()[0], kinds, self.lines)
+            near_duplicate_items(self._near_duplicates()[0], kinds, self.state.lines)
             + self._model_items(current)
-            + check_items(self.checks, current)
+            + check_items(self.state.checks, current)
         )
         merged: dict[tuple[str, str], dict] = {}
-        for item in open_items(items, self.lines, read_last_finish(self.paths.status)):
-            if item.cell not in self.folder:
+        for item in open_items(items, self.state.lines, read_last_finish(self.paths.status)):
+            if item.cell not in self.state.folder:
                 continue
             entry = merged.setdefault(
                 (item.cell, item.field),
@@ -307,7 +208,7 @@ class LabelStore:
                     "id": item.cell,
                     "stem": stem_of(item.cell),
                     "field": item.field,
-                    "folder": self.folder[item.cell],
+                    "folder": self.state.folder[item.cell],
                     "kind": kinds.get(item.cell),
                     "reasons": [],
                 },
@@ -335,12 +236,12 @@ class LabelStore:
         """Settle the doubtful cells of one page as one action: a digit line per cell, also an
         unchanged one, and a kind line per cell with a kind. The review lines close the items.
         Checks all entries first."""
-        self._refresh()
-        kinds, t, action = self.kinds(), self._t(), self._action()
+        self.state.refresh()
+        kinds, t, action = self.state.kinds(), self.state.t(), self.state.action()
         lines = []
         for entry in entries:
             cell, digit, kind = entry["id"], entry["digit"], entry.get("kind")
-            if self.folder.get(cell) not in DIGIT_CLASSES:
+            if self.state.folder.get(cell) not in DIGIT_CLASSES:
                 raise ValueError(f"{stem_of(cell)}: not in a digit folder")
             if digit not in ASSIGNABLE:
                 raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
@@ -348,14 +249,14 @@ class LabelStore:
                 kind = None
             elif kind not in KINDS:
                 raise ValueError(f"{stem_of(cell)}: the digit {digit} needs a kind")
-            old = self.folder[cell]
+            old = self.state.folder[cell]
             lines.append(Line(t, self.session, action, cell, "digit", old, digit, "review"))
             if kind is not None or kinds.get(cell) is not None:
                 lines.append(
                     Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "review")
                 )
-        self._apply_digits(lines)
-        self._write(lines)
+        self.state.apply_digits(lines)
+        self.state.write(lines)
         return len(lines)
 
     # Outlines and the cells of each scan, for uploaded scans and imported photos
@@ -366,10 +267,10 @@ class LabelStore:
         An uploaded scan takes its outline from sudoku-photos.csv with the journal on top. An
         imported photo takes its status from sudoku-photos.csv only: `pending` is an open outline
         without corners (see _corners). A `legacy` photo and a missing file are never offered."""
-        self._refresh()
+        self.state.refresh()
         rows = read_photos(self.paths.photos_csv)
         now = current_outlines(
-            self.lines,
+            self.state.lines,
             {r.photo_id: format_outline(r.status, r.corners) for r in rows if r.source == APP_SCAN},
         )
         states = []
@@ -468,17 +369,8 @@ class LabelStore:
         """The scan at `size` pixels on the long side. With `outline`, its current outline in
         green."""
         state = self._scan_state(photo)
-        rgb = self._upright(state.row)
-        scale = min(1.0, size / max(rgb.shape[:2]))
-        small = cv2.resize(rgb, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
         corners = self._corners(state) if outline else ""
-        if corners:
-            quad = np.array(parse_corners(corners), dtype=np.float32) * scale
-            width = max(2, round(max(small.shape[:2]) / 160))
-            cv2.polylines(small, [quad.round().astype(np.int32)], True, (58, 214, 90), width)
-        out = io.BytesIO()
-        Image.fromarray(small).save(out, "JPEG", quality=85)
-        return out.getvalue()
+        return outline_jpeg(self._upright(state.row), corners, size)
 
     def flat_png(self, photo: str, corners=None) -> bytes:
         """The grid that `corners` cut from the scan, with the cell lines drawn: the preview of a
@@ -487,24 +379,8 @@ class LabelStore:
         state = self._scan_state(photo)
         if corners is None and not state.corners:
             raise ValueError(f"{photo}: no outline yet")
-        try:
-            chosen = parse_corners(state.corners) if corners is None else corners
-            flat = warp_grid(self._upright(state.row), check_corners(chosen))
-        except (np.linalg.LinAlgError, cv2.error) as error:
-            raise ValueError("these corners do not form a grid") from error
-        if corners is None:
-            out = io.BytesIO()
-            Image.fromarray(flat).save(out, "PNG")
-            return out.getvalue()
-        step = flat.shape[0] / GRID_CELLS
-        for k in range(GRID_CELLS + 1):
-            at = min(round(k * step), flat.shape[0] - 1)
-            thick = 2 if k % 3 == 0 else 1
-            flat[max(0, at - thick + 1) : at + 1, :] = (58, 214, 90)
-            flat[:, max(0, at - thick + 1) : at + 1] = (58, 214, 90)
-        out = io.BytesIO()
-        Image.fromarray(flat).save(out, "PNG")
-        return out.getvalue()
+        chosen = parse_corners(state.corners) if corners is None else corners
+        return grid_png(self._upright(state.row), chosen, lines=corners is not None)
 
     def _unchecked(self, photo: str) -> ScanState:
         state = self._scan_state(photo)
@@ -522,8 +398,8 @@ class LabelStore:
         with the same pixels belongs to that scan."""
         return {
             row * GRID_CELLS + col: cell
-            for cell, (source, row, col) in self.sources().items()
-            if source == photo_id and self.folder.get(cell, "discarded") != "discarded"
+            for cell, (source, row, col) in self.state.sources().items()
+            if source == photo_id and self.state.folder.get(cell, "discarded") != "discarded"
         }
 
     def _discard(self, cells, kinds, t: str, action: str) -> list[Line]:
@@ -536,7 +412,7 @@ class LabelStore:
                     action,
                     cell,
                     "digit",
-                    self.folder[cell],
+                    self.state.folder[cell],
                     "discarded",
                     "outlines",
                 )
@@ -551,7 +427,7 @@ class LabelStore:
         """Accept an imported photo: PhotoCheck cuts its cells into unlabeled/. This writes
         sudoku-photos.csv at once, so undo cannot reverse it (ADR-018)."""
         result = self.check.accept(stem_of(state.row.photo_id), corners)
-        self.register(result["new_cells"])
+        self.state.register(result["new_cells"])
         self._photos.pop(state.row.photo_id, None)
         return result
 
@@ -571,13 +447,13 @@ class LabelStore:
                     self.check.usable(stem, parse_corners(corners[state.row.photo_id]))
                 except ValueError as error:
                     raise ValueError(f"{stem}: {error}. Open it and set its corners") from error
-        t, action = self._t(), self._action()
+        t, action = self.state.t(), self.state.action()
         lines = [
             self._outline_line(s, "accepted", s.corners, t, action)
             for s in states
             if s.row.source == APP_SCAN
         ]
-        self._write(lines)
+        self.state.write(lines)
         for state in states:
             if state.row.source != APP_SCAN:
                 self._cut_photo(state, parse_corners(corners[state.row.photo_id]))
@@ -591,12 +467,12 @@ class LabelStore:
         if state.row.source != APP_SCAN:
             self.check.reject(photo)
             return 1
-        t, action = self._t(), self._action()
+        t, action = self.state.t(), self.state.action()
         own = self._own_cells(state.row.photo_id)
         lines = [self._outline_line(state, "rejected", "", t, action)]
-        lines += self._discard(own.values(), self.kinds(), t, action)
-        self._apply_digits(lines)
-        self._write(lines)
+        lines += self._discard(own.values(), self.state.kinds(), t, action)
+        self.state.apply_digits(lines)
+        self.state.write(lines)
         return len(lines)
 
     def fix_outline(self, photo: str, corners) -> dict:
@@ -617,21 +493,21 @@ class LabelStore:
         rgb = self._upright(state.row)
         old_cut = [cell for _, cell in scan_cut(rgb, state.corners)]
         new_cut = scan_cut(rgb, text)
-        kinds, label_sources = self.kinds(), self.label_sources()
-        t, action = self._t(), self._action()
+        kinds, label_sources = self.state.kinds(), self.state.label_sources()
+        t, action = self.state.t(), self.state.action()
         lines = [self._outline_line(state, "accepted", text, t, action)]
         new_cells, kept = [], 0
         target = self.paths.cells / "discarded"
-        sources = self.sources()
+        sources = self.state.sources()
         for position, (image, cell) in enumerate(new_cut):
-            where = self.folder.get(cell)
+            where = self.state.folder.get(cell)
             own_discarded = (
                 where == "discarded" and sources.get(cell, ("",))[0] == state.row.photo_id
             )
             if where is not None and not own_discarded:
                 kept += 1
                 continue
-            label = self.folder.get(old_cut[position])
+            label = self.state.folder.get(old_cut[position])
             if label not in DIGIT_CLASSES:
                 continue
             if where is None:
@@ -641,7 +517,7 @@ class LabelStore:
                 Image.fromarray(image).save(tmp, "PNG")
                 target.mkdir(parents=True, exist_ok=True)
                 tmp.replace(target / f"{stem_of(cell)}.png")
-                self.register([cell], "discarded")
+                self.state.register([cell], "discarded")
                 source = format_source((state.row.photo_id, *divmod(position, GRID_CELLS)))
                 lines.append(
                     Line(t, self.session, action, cell, "source", None, source, "outlines")
@@ -670,15 +546,15 @@ class LabelStore:
         wanted = {cell for _, cell in new_cut}
         gone = [c for c in self._own_cells(state.row.photo_id).values() if c not in wanted]
         lines += self._discard(gone, kinds, t, action)
-        self._apply_digits(lines)
-        self._write(lines)
+        self.state.apply_digits(lines)
+        self.state.write(lines)
         return {"cells": len(new_cells), "kept": kept, "discarded": len(gone)}
 
     def _own_places(self) -> dict[str, dict[int, str]]:
         """Photo id → place (0-80) → the first cell of the sources that sits in a folder."""
         found: dict[str, dict[int, str]] = {}
-        for cell, (photo, row, col) in self.sources().items():
-            if cell in self.folder:
+        for cell, (photo, row, col) in self.state.sources().items():
+            if cell in self.state.folder:
                 found.setdefault(photo, {}).setdefault(row * GRID_CELLS + col, cell)
         return found
 
@@ -698,7 +574,7 @@ class LabelStore:
             cut = [cell for _, cell in scan_cut(self._upright(state.row), state.corners)]
         if own is None:
             own = self._own_places().get(state.row.photo_id, {})
-        return [cell if cell in self.folder else own.get(n) for n, cell in enumerate(cut)]
+        return [cell if cell in self.state.folder else own.get(n) for n, cell in enumerate(cut)]
 
     def _suggestion(self, cell: str, pre: dict[str, dict]) -> tuple[str | None, str | None]:
         """The digit and kind that a cell in unlabeled/ starts with: the model's pre-label."""
@@ -715,12 +591,12 @@ class LabelStore:
         A scan without an open cell is left out."""
         states = self._scan_states() if states is None else states
         accepted = [s.row.photo_id for s in states if s.status == "accepted"]
-        label_sources, labelled = self.label_sources(), confirmed_cells(self.lines)
+        label_sources, labelled = self.state.label_sources(), confirmed_cells(self.state.lines)
         found: dict[str, list[str]] = {photo: [] for photo in accepted}
-        for cell, (photo, _, _) in self.sources().items():
+        for cell, (photo, _, _) in self.state.sources().items():
             if photo not in found:
                 continue
-            folder = self.folder.get(cell)
+            folder = self.state.folder.get(cell)
             if folder == "unlabeled" or (
                 folder in DIGIT_CLASSES
                 and label_sources.get(cell, "").startswith("app-")
@@ -734,13 +610,13 @@ class LabelStore:
     def loose_cells(self, states: list[ScanState] | None = None) -> list[str]:
         """The cells in unlabeled/ that no scan with an accepted outline holds. They have no
         photo."""
-        self._refresh()
+        self.state.refresh()
         states = self._scan_states() if states is None else states
         accepted = {s.row.photo_id for s in states if s.status == "accepted"}
-        sources = self.sources()
+        sources = self.state.sources()
         return [
             c
-            for c, f in self.folder.items()
+            for c, f in self.state.folder.items()
             if f == "unlabeled" and sources.get(c, ("",))[0] not in accepted
         ]
 
@@ -749,16 +625,16 @@ class LabelStore:
         return {
             "states": states,
             "pre": self._prelabels(),
-            "kinds": self.kinds(),
-            "label_sources": self.label_sources(),
-            "sources": self.sources(),
+            "kinds": self.state.kinds(),
+            "label_sources": self.state.label_sources(),
+            "sources": self.state.sources(),
             "scans": {s.row.photo_id: _source(s.row) for s in states if s.status == "accepted"},
         }
 
     def _label_of(self, cell: str, pre: dict, kinds: dict) -> tuple[str | None, str | None]:
         """The digit and kind that a cell starts with: its folder and kind, or for a cell in
         unlabeled/ the model's guess."""
-        folder = self.folder.get(cell)
+        folder = self.state.folder.get(cell)
         if folder == "unlabeled":
             return self._suggestion(cell, pre)
         return folder, kinds.get(cell)
@@ -795,9 +671,9 @@ class LabelStore:
     def _awaiting_kind(self) -> set[str]:
         """The cells whose digit a person confirmed in this journal and that have no person
         kind line after it. An undone action does not count."""
-        undone = undone_actions(self.lines)
+        undone = undone_actions(self.state.lines)
         waiting: set[str] = set()
-        for line in self.lines:
+        for line in self.state.lines:
             if line.action in undone or line.screen == "undo":
                 continue
             if line.field == "digit" and line.screen in DIGIT_SCREENS:
@@ -813,7 +689,7 @@ class LabelStore:
         kind."""
         awaiting = self._awaiting_kind()
         found = []
-        for cell, folder in sorted(self.folder.items()):
+        for cell, folder in sorted(self.state.folder.items()):
             if folder not in DIGIT_FOLDERS or cell in open_digits:
                 continue
             kind = ctx["kinds"].get(cell)
@@ -828,17 +704,17 @@ class LabelStore:
     def open_cells(self) -> list[dict]:
         """Every open digit cell with the label it starts with. `digit` is None for a cell in
         unlabeled/ without a guess."""
-        self._refresh()
+        self.state.refresh()
         return self._open_digit_cells(self._context())
 
     def open_kind_cells(self) -> list[dict]:
-        self._refresh()
+        self.state.refresh()
         ctx = self._context()
         return self._open_kind_cells(ctx, {c["id"] for c in self._open_digit_cells(ctx)})
 
     def prelabel_targets(self) -> set[str]:
         """The cells that the model must guess: every open digit cell and open kind cell."""
-        self._refresh()
+        self.state.refresh()
         ctx = self._context()
         digits = self._open_digit_cells(ctx)
         kinds = self._open_kind_cells(ctx, {c["id"] for c in digits})
@@ -875,7 +751,7 @@ class LabelStore:
                     continue
                 entry = cache[photo] = {"corners": state.corners, "cut": cut}
                 changed = True
-            full = [self._stem_ids.get(stem) for stem in entry["cut"]]
+            full = [self.state.stem_ids.get(stem) for stem in entry["cut"]]
             places = self._places(state, full, own.get(photo, {}))
             labels = [
                 self._label_of(cell, ctx["pre"], ctx["kinds"]) if cell else (None, None)
@@ -908,10 +784,10 @@ class LabelStore:
         return found
 
     def _confirmed(self, field: str, screens: tuple[str, ...]) -> set[str]:
-        undone = undone_actions(self.lines)
+        undone = undone_actions(self.state.lines)
         return {
             x.cell
-            for x in self.lines
+            for x in self.state.lines
             if x.field == field and x.screen in screens and x.action not in undone
         }
 
@@ -980,7 +856,9 @@ class LabelStore:
         """The Digits step: the open digit cells of one tab, the highest doubt first."""
         counts, scored, sure = self._scored_digits(digit, threshold)
         done = Counter(
-            self.folder[c] for c in self._confirmed("digit", DIGIT_SCREENS) if c in self.folder
+            self.state.folder[c]
+            for c in self._confirmed("digit", DIGIT_SCREENS)
+            if c in self.state.folder
         )
         return self._check(digit, DIGIT_TABS, counts, scored, sure, done, threshold)
 
@@ -992,16 +870,16 @@ class LabelStore:
         digit."""
         counts, scored, sure, kind_counts = self._scored_kinds(digit, threshold, kind)
         done = Counter(
-            self.folder[c]
+            self.state.folder[c]
             for c in self._confirmed("kind", KIND_SCREENS)
-            if self.folder.get(c) in DIGIT_FOLDERS
+            if self.state.folder.get(c) in DIGIT_FOLDERS
         )
         page = self._check(digit, DIGIT_FOLDERS, counts, scored, sure, done, threshold)
         return {**page, "kind_counts": kind_counts}
 
     def _confirm_digit_lines(self, entries: list[dict]) -> int:
         open_ids = {c["id"] for c in self.open_cells()}
-        kinds, t, action = self.kinds(), self._t(), self._action()
+        kinds, t, action = self.state.kinds(), self.state.t(), self.state.action()
         lines, seen = [], set()
         for entry in entries:
             cell, digit = entry["id"], entry["digit"]
@@ -1011,27 +889,29 @@ class LabelStore:
                 raise ValueError(f"{stem_of(cell)}: unknown digit {digit!r}")
             seen.add(cell)
             lines.append(
-                Line(t, self.session, action, cell, "digit", self.folder[cell], digit, "digits")
+                Line(
+                    t, self.session, action, cell, "digit", self.state.folder[cell], digit, "digits"
+                )
             )
             if digit in NO_KIND_FOLDERS or digit == "discarded":
                 if kinds.get(cell) is not None:
                     lines.append(
                         Line(t, self.session, action, cell, "kind", kinds[cell], None, "digits")
                     )
-        self._apply_digits(lines)
-        self._write(lines)
+        self.state.apply_digits(lines)
+        self.state.write(lines)
         return len(lines)
 
     def confirm_digits(self, entries: list[dict]) -> int:
         """Confirm open digit cells as one action: a digit line per cell, also an unchanged one.
         A move to `empty` or `discarded` drops the kind. Checks all entries first. Finish writes
         `verified` for the cells."""
-        self._refresh()
+        self.state.refresh()
         return self._confirm_digit_lines(entries)
 
     def sure_digits(self, digit: str, threshold: float = DIGIT_THRESHOLD) -> int:
         """Confirm every sure cell of the tab as one action. Returns the number of cells."""
-        self._refresh()
+        self.state.refresh()
         _, scored, sure = self._scored_digits(digit, threshold)
         label = {c["id"]: c["digit"] for c in scored}
         self._confirm_digit_lines([{"id": c, "digit": label[c]} for c in sure])
@@ -1039,7 +919,7 @@ class LabelStore:
 
     def _confirm_kind_lines(self, entries: list[dict]) -> int:
         open_ids = {c["id"] for c in self.open_kind_cells()}
-        kinds, t, action = self.kinds(), self._t(), self._action()
+        kinds, t, action = self.state.kinds(), self.state.t(), self.state.action()
         lines, seen = [], set()
         for entry in entries:
             cell, kind = entry["id"], entry["kind"]
@@ -1051,13 +931,13 @@ class LabelStore:
             lines.append(
                 Line(t, self.session, action, cell, "kind", kinds.get(cell), kind, "kinds")
             )
-        self._write(lines)
+        self.state.write(lines)
         return len(lines)
 
     def confirm_kinds(self, entries: list[dict]) -> int:
         """Confirm open kind cells as one action: a kind line per cell, also an unchanged one.
         Checks all entries first."""
-        self._refresh()
+        self.state.refresh()
         return self._confirm_kind_lines(entries)
 
     def sure_kinds(
@@ -1065,7 +945,7 @@ class LabelStore:
     ) -> int:
         """Confirm every sure cell of the tab, of one kind if `kind` is set, as one action.
         Returns the number of cells."""
-        self._refresh()
+        self.state.refresh()
         _, scored, sure, _ = self._scored_kinds(digit, threshold, kind)
         label = {c["id"]: c["kind"] for c in scored}
         self._confirm_kind_lines([{"id": c, "kind": label[c]} for c in sure])
@@ -1075,7 +955,7 @@ class LabelStore:
 
     def status(self) -> dict:
         """The counts of the start page. It reads no cell image and runs no model."""
-        self._refresh()
+        self.state.refresh()
         ctx = self._context()
         digits = self._open_digit_cells(ctx)
         kinds = self._open_kind_cells(ctx, {c["id"] for c in digits})
@@ -1087,17 +967,17 @@ class LabelStore:
             "model": self._read_prelabels()[0],
             "doubtful": self.open_review_count(),
             "suspects": self.paths.suspects.exists(),
-            "changes": len(self.lines),
+            "changes": len(self.state.lines),
         }
 
     def label_state(self) -> dict:
-        self._refresh()
-        kinds = self.kinds()
-        counts = Counter(kinds.get(c) for c, f in self.folder.items() if f in DIGIT_FOLDERS)
+        self.state.refresh()
+        kinds = self.state.kinds()
+        counts = Counter(kinds.get(c) for c, f in self.state.folder.items() if f in DIGIT_FOLDERS)
         return {
             "printed": counts["printed"],
             "handwritten": counts["handwritten"],
             "unsure": counts["unsure"],
             "review_open": len(self.review_items()),
-            "check": summary(self.checks),
+            "check": summary(self.state.checks),
         }
