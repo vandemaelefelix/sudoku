@@ -32,7 +32,7 @@ the other devices of that player. The decisions are in
 | `bruno/` | The Bruno collection: one request per route and per refusal, and the environments `felix` and `dev` |
 | `test/unit/` | Tests without DynamoDB. `openapiDrift.test.ts` compares the generated zod with the contracts |
 | `test/db/` | Tests against DynamoDB Local. Each file creates its own table from `tableDesign.ts` |
-| `tools/smoke.ts` | The smoke test of a deployed stage |
+| `scripts/smoke.ts` | The smoke test of a deployed stage |
 
 ## The steps of a sync
 

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { scanAnswerSchema, validateScanRecord } from '@sudoku/scan-contract'
+import { MAX_JPEG_BYTES, scanAnswerSchema, validateScanRecord } from '@sudoku/scan-contract'
 import { syncRequestSchema, syncResponseSchema } from '@sudoku/sync-contract'
 import { describe, expect, it } from 'vitest'
 import { CreateScanBody, CreateScanHeader, CreateScanResponse, SyncBody, SyncResponse } from '../../.generated/api.zod'
@@ -52,6 +52,11 @@ describe('openapi.yaml against the zod contracts', () => {
       { entries: [{ ...entry, finishedAt: '2026-10-15T09:12:34.567+02:00' }], cursor: null },
       false,
     ],
+    ['unknown source', { entries: [{ ...entry, source: 'photo' }], cursor: null }, false],
+    ['unknown result', { entries: [{ ...entry, result: 'draw' }], cursor: null }, false],
+    ['cursor of 1025 characters', { entries: [], cursor: 'a'.repeat(1025) }, false],
+    ['id is not a uuid', { entries: [{ ...entry, id: 'x' }], cursor: null }, false],
+    ['negative hintsUsed', { entries: [{ ...entry, hintsUsed: -1 }], cursor: null }, false],
     ['wrong schema version', { entries: [{ ...entry, schemaVersion: 2 }], cursor: null }, false],
   ]
 
@@ -100,9 +105,9 @@ describe('openapi.yaml against the zod contracts', () => {
 
   it.each([
     [1, true],
-    [1_000_000, true],
+    [MAX_JPEG_BYTES, true],
     [0, false],
-    [1_000_001, false],
+    [MAX_JPEG_BYTES + 1, false],
     [1.5, false],
   ])('POST /v1/scans x-jpeg-bytes: %s', (value, accepted) => {
     expect(CreateScanHeader.safeParse({ 'x-jpeg-bytes': value }).success).toBe(accepted)

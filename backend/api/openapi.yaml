@@ -122,6 +122,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '410':
+          description: The token belongs to a deleted account (`account_deleted`). The app sends the scan again without the token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '429':
           $ref: '#/components/responses/Throttled'
         '500':
