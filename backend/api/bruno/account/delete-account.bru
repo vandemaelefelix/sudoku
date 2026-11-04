@@ -1,0 +1,24 @@
+meta {
+  name: Delete account
+  type: http
+  seq: 1
+}
+
+delete {
+  url: {{baseUrl}}/v1/account
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+docs {
+  Do not run this with a real account. It deletes the rows and the Clerk user of the token.
+  Use a smoke user. A second call also gives 204.
+}

@@ -1,0 +1,47 @@
+meta {
+  name: Sync - push one game
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/v1/sync
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "entries": [
+      {
+        "schemaVersion": 1,
+        "id": "{{$guid}}",
+        "level": "medium",
+        "source": "generated",
+        "result": "won",
+        "seed": 123456,
+        "playedMs": 754000,
+        "mistakes": 1,
+        "hintsUsed": 2,
+        "finishedAt": "2026-10-15T09:12:34.567Z",
+        "createdAt": "2026-10-15T09:12:34.600Z",
+        "updatedAt": "2026-10-15T09:12:34.600Z",
+        "deletedAt": null
+      }
+    ],
+    "cursor": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.acceptedIds.length: eq 1
+}
+
+docs {
+  The id is new on each send. The response holds the own entry in `changes`.
+}

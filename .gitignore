@@ -51,3 +51,6 @@ mobile/android/
 coverage/
 mobile/dist/
 .vitest/
+
+# Zod that orval makes from backend/api/openapi.yaml. A drift test reads it.
+backend/api/.generated/
