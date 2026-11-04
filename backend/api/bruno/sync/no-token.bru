@@ -1,0 +1,22 @@
+meta {
+  name: Sync - no token
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/v1/sync
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "entries": [],
+    "cursor": null
+  }
+}
+
+assert {
+  res.status: eq 401
+}

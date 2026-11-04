@@ -1,0 +1,39 @@
+meta {
+  name: Create scan
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/v1/scans
+  body: json
+  auth: none
+}
+
+headers {
+  x-app-key: {{appKey}}
+  x-jpeg-bytes: 1000
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 200
+  res.body.uploadUrl: isString
+}
+
+script:pre-request {
+  const fs = require("fs");
+  const path = require("path");
+  const file = path.join(bru.cwd(), "../../../shared/fixtures/scan-records/good-1.json");
+  req.setBody(JSON.parse(fs.readFileSync(file, "utf8")));
+}
+
+docs {
+  The script reads the body from `shared/fixtures/scan-records/good-1.json`. It needs the Bruno
+  Developer Mode (the Safe Mode blocks `fs`). Paste a record in the body instead if you prefer Safe Mode.
+  The header `x-jpeg-bytes` must equal the `Content-Length` of the later photo PUT.
+  This stores a row in the stage. Use `felix` or `dev` only.
+}

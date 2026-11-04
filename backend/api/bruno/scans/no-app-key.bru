@@ -1,0 +1,23 @@
+meta {
+  name: Create scan - no app key
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/v1/scans
+  body: json
+  auth: none
+}
+
+headers {
+  x-jpeg-bytes: 1000
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 401
+}

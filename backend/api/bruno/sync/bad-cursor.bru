@@ -1,0 +1,27 @@
+meta {
+  name: Sync - bad cursor
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/v1/sync
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "entries": [],
+    "cursor": "not-a-cursor"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq invalid_cursor
+}

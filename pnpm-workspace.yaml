@@ -13,3 +13,5 @@ allowBuilds:
   # Both scripts only print a message. Clerk pulls them in.
   browser-tabs-lock: false
   core-js: false
+  # The install script only checks the binary. The platform package already holds it. Orval pulls it in.
+  esbuild: false

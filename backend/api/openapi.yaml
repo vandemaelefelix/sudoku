@@ -1,0 +1,372 @@
+openapi: 3.1.0
+info:
+  title: Sudoku API
+  version: 1.0.0
+  description: |
+    The HTTP API of the sudoku app. One API Gateway, two Lambdas (ADR-027, ADR-030).
+    The zod schemas in `shared/sync-contract` and `shared/scan-contract` stay the source of truth.
+    This file documents them. A test compares the zod that orval generates from this file with them.
+    OpenAPI cannot say that a probability list sums to 1 or that the corners form a convex quad.
+    Only the zod validator checks those two rules.
+servers:
+  - url: https://{apiId}.execute-api.eu-west-1.amazonaws.com
+    description: The API of one stage. Read the URL from the `sst deploy` output.
+    variables:
+      apiId:
+        default: replace-me
+tags:
+  - name: sync
+  - name: account
+  - name: scans
+paths:
+  /v1/sync:
+    post:
+      tags: [sync]
+      operationId: sync
+      summary: Push finished games and pull the games of the other devices
+      description: |
+        The server pushes each entry first, then pulls, so the response holds the own changes of the caller.
+        A null cursor asks for a full pull. When `more` is true, call again with the new cursor.
+      security:
+        - clerkJwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRequest'
+      responses:
+        '200':
+          description: The sync worked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '400':
+          description: The body does not match the contract (`invalid_request`), or the cursor is not usable (`invalid_cursor`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          description: The account was deleted (`account_deleted`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /v1/account:
+    delete:
+      tags: [account]
+      operationId: deleteAccount
+      summary: Delete the account of the caller
+      description: |
+        The player comes only from the `sub` of the token. The call takes no body.
+        A second call also gives 204. After a Clerk failure the player stays tombstoned, and a sync answers 410.
+      security:
+        - clerkJwt: []
+      responses:
+        '204':
+          description: The tombstone, the rows and the Clerk user are done.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /v1/scans:
+    post:
+      tags: [scans]
+      operationId: createScan
+      summary: Store a scan record and get a URL to upload the photo
+      description: |
+        No JWT authorizer. The app key gates the call. An optional `Authorization` header adds the owner.
+        A bad token answers 401. The app then sends the call again without the header.
+        The response URL signs `Content-Length`, so S3 refuses a photo of another size.
+      security:
+        - appKey: []
+        - appKey: []
+          clerkJwtOptional: []
+      parameters:
+        - name: x-jpeg-bytes
+          in: header
+          required: true
+          description: The photo length in bytes.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRecord'
+      responses:
+        '200':
+          description: The record is stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanAnswer'
+        '400':
+          description: The record or the `x-jpeg-bytes` header is not valid (`invalid_request`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          description: The token belongs to a deleted account (`account_deleted`). The app sends the scan again without the token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  securitySchemes:
+    clerkJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A Clerk token from the JWT template `sudoku-api`. The authorizer checks the issuer and the audience.
+    clerkJwtOptional:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The same token. Optional on `POST /v1/scans`.
+    appKey:
+      type: apiKey
+      in: header
+      name: x-app-key
+      description: The shared app key. It is not a secret (SUD-11).
+  responses:
+    Unauthorized:
+      description: No token, or the token is not valid. API Gateway or the Lambda sends this body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GatewayMessage'
+    Throttled:
+      description: The throttle of API Gateway refused the call. The app reads only the status code.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GatewayMessage'
+    ServerError:
+      description: A step failed. The Lambda logs only the error name.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GatewayMessage'
+  schemas:
+    GatewayMessage:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [invalid_request, invalid_cursor, account_deleted]
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+    Level:
+      type: string
+      enum: [easy, medium, hard, expert]
+    PuzzleSource:
+      type: string
+      enum: [generated, scanned]
+    GameResult:
+      type: string
+      enum: [won, lost, abandoned]
+    UtcTime:
+      type: string
+      format: date-time
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
+      description: Only the form of `Date.toISOString()`, with 3 digits of milliseconds.
+      example: '2026-10-16T12:00:00.000Z'
+    HistoryEntry:
+      type: object
+      description: One finished game on the wire.
+      required:
+        - schemaVersion
+        - id
+        - level
+        - source
+        - result
+        - seed
+        - playedMs
+        - mistakes
+        - hintsUsed
+        - finishedAt
+        - createdAt
+        - updatedAt
+        - deletedAt
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        id:
+          type: string
+          format: uuid
+        level:
+          $ref: '#/components/schemas/Level'
+        source:
+          $ref: '#/components/schemas/PuzzleSource'
+        result:
+          $ref: '#/components/schemas/GameResult'
+        seed:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 4294967295
+        playedMs:
+          type: integer
+          minimum: 0
+        mistakes:
+          type: integer
+          minimum: 0
+        hintsUsed:
+          type: integer
+          minimum: 0
+        finishedAt:
+          $ref: '#/components/schemas/UtcTime'
+        createdAt:
+          $ref: '#/components/schemas/UtcTime'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTime'
+        deletedAt:
+          oneOf:
+            - $ref: '#/components/schemas/UtcTime'
+            - type: 'null'
+    SyncRequest:
+      type: object
+      required: [entries, cursor]
+      properties:
+        entries:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
+        cursor:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 1024
+          description: Null asks for a full pull.
+    SyncResponse:
+      type: object
+      required: [acceptedIds, changes, cursor, more]
+      properties:
+        acceptedIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+          description: |
+            The server stored the entry, or already holds an equal or newer `updatedAt` for that id.
+            At the daily count, the server leaves out the entries that do not fit.
+        changes:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
+        cursor:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        more:
+          type: boolean
+          description: When true, the new cursor holds more changes.
+    Probability:
+      type: number
+      minimum: 0
+      maximum: 1
+    ScanCell:
+      type: object
+      required: [digitProbs, kindProbs, finalDigit, finalKind, edited]
+      properties:
+        digitProbs:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/Probability'
+          description: The 10 values sum to 1.
+        kindProbs:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/Probability'
+          description: The 4 values sum to 1.
+        finalDigit:
+          type: integer
+          minimum: 0
+          maximum: 9
+        finalKind:
+          type: integer
+          minimum: 0
+          maximum: 3
+        edited:
+          type: boolean
+    ScanRecord:
+      type: object
+      required: [schemaVersion, scanId, contributorId, appVersion, modelVersion, corners, cells]
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        scanId:
+          type: string
+          format: uuid
+        contributorId:
+          type: string
+          format: uuid
+        appVersion:
+          type: string
+          minLength: 1
+          maxLength: 32
+        modelVersion:
+          type: string
+          minLength: 1
+          maxLength: 32
+        corners:
+          type: array
+          minItems: 4
+          maxItems: 4
+          description: Four points (x, y) in the range 0 to 1. They form a convex quad.
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              $ref: '#/components/schemas/Probability'
+        cells:
+          type: array
+          minItems: 81
+          maxItems: 81
+          items:
+            $ref: '#/components/schemas/ScanCell'
+    ScanAnswer:
+      type: object
+      required: [uploadUrl]
+      properties:
+        uploadUrl:
+          type: string
+          description: A signed S3 URL. PUT the photo there with the same `Content-Length`.

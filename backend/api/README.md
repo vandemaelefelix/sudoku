@@ -27,9 +27,12 @@ the other devices of that player. The decisions are in
 | `src/deps.ts` | The `SyncDeps` type, `docClient()` and the default `sleep` |
 | `src/deleteRows.ts` | The row delete of the account delete: the pages, the batches with retry, and the photos |
 | `src/log.ts` | The logger with an allow-list of fields |
-| `test/unit/` | Tests without DynamoDB |
+| `openapi.yaml` | The API spec of the three routes. It documents the zod contracts and does not replace them |
+| `orval.config.ts` | Makes zod from `openapi.yaml` into `.generated/` (git-ignored). `pnpm --filter @sudoku/sync-api generate` runs it |
+| `bruno/` | The Bruno collection: one request per route and per refusal, and the environments `felix` and `dev` |
+| `test/unit/` | Tests without DynamoDB. `openapiDrift.test.ts` compares the generated zod with the contracts |
 | `test/db/` | Tests against DynamoDB Local. Each file creates its own table from `tableDesign.ts` |
-| `tools/smoke.ts` | The smoke test of a deployed stage |
+| `scripts/smoke.ts` | The smoke test of a deployed stage |
 
 ## The steps of a sync
 
@@ -58,6 +61,25 @@ The push runs before the pull, so the response holds the own changes of the call
 | 500 | Clerk failed, or a DynamoDB call failed. A retry of the whole call is safe. After a Clerk failure the player stays tombstoned: a sync answers 410 |
 
 The route needs Clerk on the stage: it reads the secret `ClerkSecretKey`, which `backend/infra/api.ts` links wherever the API exists. Without the secret the call answers 500 with the log name `ClerkError`. It never logs the `sub`, the token or the Clerk answer.
+
+## API spec and Bruno
+
+`openapi.yaml` is a description of the routes. The zod schemas in `shared/sync-contract` and
+`shared/scan-contract` stay the source of truth (SUD-07). When you change a contract, change the yaml in the same commit.
+`openapiDrift.test.ts` fails when the generated zod and the contract accept different bodies.
+
+OpenAPI cannot state two rules of `POST /v1/scans`: each probability list sums to 1, and the corners form a convex quad.
+Only `validateScanRecord()` checks them. The drift test lists both as known gaps.
+
+### Try the API in Bruno
+
+1. Open the folder `backend/api/bruno` as a collection in Bruno.
+2. Choose the environment `felix` or `dev`. Set `baseUrl` to the API URL from the `sst deploy` output.
+3. Set the secret `token` to a fresh Clerk token of the JWT template `sudoku-api`. `scripts/smoke.ts` shows how to get one.
+4. Set the secret `appKey` to the value of the SST secret `ScanAppKey`. Only `POST /v1/scans` needs it.
+5. Run "Sync - full pull" first. It stores the cursor for "Sync - next page".
+
+Bruno keeps secret values out of the files. Do not run the requests against `production`.
 
 ## Logging
 

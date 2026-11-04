@@ -1,0 +1,36 @@
+meta {
+  name: Sync - full pull
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/v1/sync
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "entries": [],
+    "cursor": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.cursor: isString
+  res.body.more: isBoolean
+}
+
+script:post-response {
+  if (res.status === 200) bru.setVar("cursor", res.body.cursor);
+}
+
+docs {
+  A null cursor asks for a full pull. The response cursor goes to the runtime variable `cursor`.
+}

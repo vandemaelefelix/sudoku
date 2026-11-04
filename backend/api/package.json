@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run --project unit",
+    "test": "pnpm generate && vitest run --project unit",
     "test:db": "vitest run --project db",
-    "typecheck": "tsc -p tsconfig.json"
+    "generate": "orval",
+    "typecheck": "pnpm generate && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.1150.0",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/aws-lambda": "8.10.164",
     "@types/node": "26.6.4",
+    "orval": "8.46.0",
     "typescript": "~6.0.3",
     "vitest": "5.0.3"
   }
